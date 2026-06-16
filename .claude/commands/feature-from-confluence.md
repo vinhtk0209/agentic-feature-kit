@@ -1,5 +1,5 @@
 ---
-description: Fetch a Confluence spec page then run the full B0–B12 feature workflow with human-in-the-loop confirm gates
+description: Turn a Confluence page, PDF, or Word spec into convention-compliant, PR-ready feature code — B0–B12 workflow with human-in-the-loop confirm gates
 ---
 
 <!--
@@ -18,6 +18,7 @@ SHELL_PERSISTENT: true          # Bash tool keeps cwd & env between calls
 PYTHON_AVAILABLE: true          # may invoke .claude/integrations/browser-use-wrapper.py at B11 fallback
 AUTOLINT_HOOK:    true          # PostToolUse hook lints on every Edit/Write (settings.local.json)
 PROMPT_VERSION:   v3.17
+COPILOT_SUPPORT: false          # Copilot edition not maintained — Claude Code only
 ```
 
 When a step says "in parallel" or "spawn agents", honour it. When a step says "if PYTHON_AVAILABLE", honour it.
@@ -430,6 +431,8 @@ Applies at: **B1** (parse fail), **B2** (image download fail), **B3** (SpecKit f
 ## AUTONOMY — Opt-in Unattended Mode *(v3.17 — Issue A: gate throughput)*
 
 > **Default: OFF.** With no autonomy flag, every STOP gate behaves exactly as written (HARD RULE 1 unchanged). This block only takes effect when the user **explicitly grants standing authorization** — which itself satisfies HARD RULE 1's "explicit user response" for the covered gates, given once instead of per-gate.
+>
+> ⚠️ **Experimental**: `--auto` has limited end-to-end testing, especially in COMPLEX mode. Prefer manual gates for the first few runs on a new repo.
 
 **How to enable:** the user passes a flag or says so in the invocation, e.g.
 `/feature-from-confluence <url> --auto` or `--auto=scope,files,plan`. Resolve `AUTONOMY` from this; persist it to `context-summary.md` as `autonomyGates`.
@@ -731,6 +734,15 @@ If it exits **non-zero** (a regression):
 ```
 **STOP** and surface this to the user. Do NOT proceed to B0 until the corpus is green — or the user explicitly accepts the risk. When you later fix a false positive/negative or change a gate, add a `*.case.json` capturing the behavior (see `.claude/integrations/corpus/README.md`).
 
+*KPI reporting: `npm run workflow:kpis` (metrics per run). Dashboard: `npm run workflow:dashboard`.*
+
+### Step 0.F — MCP availability summary *(informational, non-blocking)*
+
+Print exactly one line then continue — do NOT branch or halt on either value:
+```
+ℹ️  MCPs: confluence-mcp=[✅|❌] feature-workflow=[✅|❌]
+```
+
 ### Step 1 — Resume check
 
 ```bash
@@ -796,7 +808,8 @@ Call the `fetch_confluence_page` MCP tool with URL: `$ARGUMENTS`
 - Tell the user exactly which env vars to set in `.claude/mcp-server/.env`:
   - Option A (LDAP): `CONFLUENCE_USER=username` + `CONFLUENCE_PASS=password`
   - Option B (PAT): `CONFLUENCE_TOKEN=your_pat_token`
-- **STOP. Wait for user to fix credentials, then retry.**
+- **STOP. Wait for user to fix credentials, then retry.**  
+  *(Credential template: copy `.env.example` → `.env` and also copy the Confluence block to `.claude/mcp-server/.env`.)*
 
 **If the `confluence-mcp` MCP server is unavailable** (not a credentials error — tool unregistered, server down, or `isError`/connection failure after one retry) — degrade gracefully instead of dead-ending:
 
@@ -1216,192 +1229,10 @@ Analyze `docs/specs/<FeatureName>/processed.md` per the DYNAMIC DECOMPOSE rules 
 
 > **[DYNAMIC DECOMPOSE]** — Skip this entire step if no UI is detected in B1. Record `"B2: skipped — no UI detected"` in context-summary.
 
-### Quy trình
-
-1. Parse all image URLs and iframe embeds from the raw Confluence markdown in `docs/specs/<title>.md`
-2. Create `docs/specs/<FeatureName>/images/` if it does not exist
-
-### Step 3 — Classify content type (trước khi download)
-
-Với mỗi image URL, xác định `CONTENT_TYPE` dựa trên **3 tín hiệu** (ưu tiên theo thứ tự):
-
-| Tín hiệu | Condition | `CONTENT_TYPE` |
-| -------- | --------- | -------------- |
-| URL pattern | URL chứa `diagram`, `flow`, `chart` | `DIAGRAM_FLOW` |
-| URL pattern | URL chứa `screenshot`, `screen`, `ui-` | `UI_SCREENSHOT` |
-| Heading context | Heading gần nhất chứa **EN** "Flow", "Diagram", "Process" / **VI** "Luồng", "Quy trình", "Sơ đồ" / **JP** "フロー", "図", "プロセス" | `DIAGRAM_FLOW` |
-| Heading context | Heading gần nhất chứa **EN** "Screen", "UI", "Interface", "Page" / **VI** "Màn hình", "Giao diện", "Trang" / **JP** "画面", "ページ" | `UI_SCREENSHOT` |
-| Heading context | Heading gần nhất chứa **EN** "Button", "Action", "CTA" / **VI** "Nút", "Hành động" / **JP** "ボタン" | `BUTTON_DESCRIPTION` |
-| Không khớp | — | `UNKNOWN` |
-
-> **(v3.8 — Change L.3 i18n classification)** Heading regex must match patterns case-insensitively across EN/VI/JP. Use Unicode-aware regex (e.g. `\p{L}` boundaries). Both editions emit the same `CONTENT_TYPE` assignments — locked.
-
-Log classification: `[timestamp] [B2-classify] url=<url> type=<CONTENT_TYPE>`
-
-> **Lưu ý**: `DIAGRAM_FLOW` có độ ưu tiên cao nhất vì ảnh này cần thiết cho B5 (generate diagram.md).
-
-### Step 4 — Deduplication
-
-Trước khi download mỗi URL: kiểm tra xem URL đã tồn tại trong `downloaded_urls` set (trong session này) chưa.
-
-- URL đã có → skip, log `[B2-dedup] skipped duplicate: <url>`
-- URL mới → thêm vào set, tiến hành download
-
-### Step 5 — Batch download (song song theo URL strategy)
-
-**Pre-check (run before any HTTP download):** Check if `docs/specs/<FeatureName>/images/` already contains files. If it does, those images were saved by the MCP server during B0 (Confluence auth already applied). Skip HTTP download for those — proceed directly to Step 7 (annotate) for pre-fetched images.
-
-Log: `[timestamp] [B2-prefetch] found N MCP-saved images in docs/specs/<FeatureName>/images/ — skipping download`
-
-Phân loại URL theo **download strategy**, rồi download tất cả song song:
-
-| URL pattern | Strategy |
-| ----------- | -------- |
-| Contains `figma.com` | Figma strategy |
-| Contains Confluence domain (e.g. `your-confluence.example.com`) | Confluence strategy |
-| Any other external URL | Generic strategy |
-
-| Strategy | Attempt 1 | Attempt 2 | Attempt 3 |
-| --- | --- | --- | --- |
-| **Confluence** | Re-fetch via MCP: call `fetch_confluence_page` with the original Confluence URL — MCP has auth. Save any new base64 image blocks returned. | Attachment/export API via direct HTTP + auth header (`CONFLUENCE_USER/PASS`) | GET no auth |
-| **Figma** | Playwright screenshot → `images/figma-<hash>.png` | Figma REST `GET /v1/images/<key>?ids=<ids>` + `$FIGMA_TOKEN` (401 → log `"FIGMA_TOKEN missing"`) | Chromium screenshot direct |
-| **Generic** | HTTP GET no auth | HEAD check then GET | GET + User-Agent |
-
-*Attempt 3 = last real attempt for all strategies — no placeholder created on fail.*
-
-Log mỗi attempt vào `docs/specs/<FeatureName>/recovery.log`.
-
-### Step 6 — Xử lý kết quả sau khi tất cả ảnh đã được xử lý
-
-Sau khi **tất cả** ảnh đã được xử lý (thành công hoặc fail), kiểm tra `failed_images` list.
-
-**Nếu KHÔNG có ảnh nào fail** → tiếp tục bình thường.
-
-**Nếu CÓ ít nhất một ảnh fail cả 3 attempt** → **STOP GATE**:
-
-```text
-⚠️  IMAGES REQUIRED FOR CORRECT UI IMPLEMENTATION
-
-Các ảnh sau đã thử 3 lần nhưng thất bại:
-
-| Loại             | Tên file         | Lý do         |
-| ---------------- | ---------------- | ------------- |
-| UI_SCREENSHOT    | screen1.png      | 403 Forbidden |
-| DIAGRAM_FLOW     | flow.png         | Timeout       |
-
-⚠️  Ảnh UI_SCREENSHOT cần thiết để B10 implement UI đúng layout, button labels
-    và column order. Không có ảnh này, UI sẽ được implement từ text spec — có thể
-    sai so với thiết kế thực tế.
-
-Vui lòng cung cấp các ảnh này:
-  [1] Copy file vào docs/specs/<FeatureName>/images/ rồi gõ "done"
-  [2] Paste đường dẫn đến file gốc
-  [3] Gõ "skip" — tôi chấp nhận UI có thể không match spec chính xác
-```
-
-**STOP — KHÔNG tiếp tục cho đến khi nhận được phản hồi của user.**
-
-- User gõ `"done"` → verify các file tồn tại trong `images/`, tiếp tục
-- User gõ `"skip"` → đánh dấu tất cả failed ảnh là `⚠️ [IMAGE MISSING]` inline trong processed.md và tiếp tục
-- User cung cấp path → copy/rename file vào `images/`, verify, tiếp tục
-
-Nếu user đã cung cấp ảnh (done/path), **không** append Error Report. Nếu user chọn skip, append Error Report:
-
-```markdown
----
-## ⚠️ Image Error Report (user skipped)
-| File | Type | Strategy | Attempts | Final Reason |
-| ---- | ---- | -------- | -------- | ------------ |
-| image1.png | UI_SCREENSHOT | Confluence | 3/3 | 403 Forbidden |
-| flow.png | DIAGRAM_FLOW | Generic | 3/3 | Timeout |
-```
-
-**NEVER skip failed images silently — luôn hỏi user trước.**
-
-### Step 7 — Annotate successfully downloaded images
-
-Sau khi Step 6 hoàn thành, đọc từng ảnh đã download thành công bằng Read tool và tạo `docs/specs/<FeatureName>/image-annotations.md`.
-
-Với mỗi file trong `docs/specs/<FeatureName>/images/` (bỏ qua failed images):
-
-1. Đọc file ảnh: `Read({ file_path: "docs/specs/<FeatureName>/images/<filename>" })`
-2. Append một section vào image-annotations.md:
-
-```markdown
-### <filename>
-**Type:** <CONTENT_TYPE>
-**Path:** docs/specs/<FeatureName>/images/<filename>
-
-- [3–8 bullets mô tả: layout regions, visible components, button labels, field labels,
-  states shown, column order, màu sắc đặc trưng]
-  - UI_SCREENSHOT: tập trung vào những gì developer cần để match visual
-  - DIAGRAM_FLOW: numbered sequence + decision nodes theo thứ tự
-  - BUTTON_DESCRIPTION: exact label text + trạng thái enabled/disabled
-```
-
-Log: `[timestamp] [B2-annotate] images_annotated=N` → `recovery.log`
-
-**Resume**: nếu `image-annotations.md` đã tồn tại (resume session), chỉ annotate các ảnh chưa có entry.
-**Zero images downloaded**: skip Step 7 silently.
-
----
-
-## B2.5 — Extract Design Tokens *(v3.6 — REQUIRED if ≥ 1 UI_SCREENSHOT)*
-
-**Purpose**: extract authoritative design tokens (colors, typography, spacing) from spec images to prevent B10 from inventing CSS values, and to enable B11 CSS audit.
-
-**Skip silently** if `image-annotations.md` has 0 UI_SCREENSHOT entries.
-
-### Quy trình
-
-For each UI_SCREENSHOT entry in `image-annotations.md`:
-
-1. Use `Read(<imagePath>)` to view the image (Claude sees pixels directly via image input)
-2. Extract:
-   - **Palette**: exactly 5 dominant colors (round to 5 — duplicate primary if image has fewer; pick most-used if more)
-   - **Typography**: H1, H2, Body, Caption, Label (5 roles minimum) with `<size>/<weight>/<line-height>`
-   - **Spacing**: dominant gap/padding values sorted ascending (look for 4px/8px grid)
-   - **Component bounds**: approximate width×height of major components
-
-3. Write `docs/specs/<FeatureName>/visual-properties.md` using this LOCKED schema:
-
-```markdown
-# Visual Properties — <FeatureName>
-
-## Palette
-- primary: #xxxxxx
-- secondary: #xxxxxx
-- accent: #xxxxxx
-- surface: #xxxxxx
-- text: #xxxxxx
-
-## Typography
-- H1: <size>/<weight>/<line-height>
-- H2: <size>/<weight>/<line-height>
-- Body: <size>/<weight>/<line-height>
-- Caption: <size>/<weight>/<line-height>
-- Label: <size>/<weight>/<line-height>
-
-## Spacing scale
-- Base unit: 4px
-- 4px / 8px / 16px / 24px / 32px (sorted ascending)
-
-## Component bounds (approximate)
-- Header: 1440×64
-- Card: 400×200
-- ...
-```
-
-### Determinism rules (Change J.3 parity lock)
-
-- ALWAYS exactly 5 colors. ALWAYS lowercase 6-char hex. NO 3-char shorthand, NO alpha.
-- Spacing: ALWAYS `px`, ALWAYS sorted ascending.
-- Typography: ALWAYS include the 5 named roles.
-- NO additional H2 sections beyond the 4 listed. NO creative formatting.
-
-These rules ensure deterministic, run-to-run identical visual-properties.md given the same image input.
-
-Log: `[timestamp] [B2.5-tokens] palette=5 spacing=N typography=5` → `recovery.log`.
+> If UI was detected in B1: Read `.claude/_content/images.md` now.
+> It contains the complete B2 image procedure (Steps 3–7: classify → dedup → batch download →
+> result handling → annotate) and the B2.5 design token extraction procedure.
+> Execute them exactly as written. If no UI was detected, skip this Read and continue to B3.
 
 ---
 
@@ -1409,45 +1240,7 @@ Log: `[timestamp] [B2.5-tokens] palette=5 spacing=N typography=5` → `recovery.
 
 **Print PROGRESS DISPLAY** (current: `▶ B3`) trước khi làm bất kỳ action nào.
 
-> Run in parallel with B1 and B2. If fetch fails: use built-in patterns (PROJECT CONTEXT). Do NOT block flow.
-
-### Quy trình
-
-#### Step 1 — Check local cache first
-
-Check `.claude/speckit/` for cached files:
-
-```
-.claude/speckit/
-  superpowers.md
-  browser-use.md
-  claude-mem.md
-  .cache-timestamp    ← ISO date the cache was last written
-```
-
-- If all three files exist **and** `.cache-timestamp` is less than 7 days old → **cache HIT**: read from `.claude/speckit/` directly. Skip network fetch entirely.
-- Otherwise → **cache MISS**: proceed to Step 2.
-
-#### Step 2 — Fetch from GitHub (cache MISS only)
-
-Fetch the following three URLs using WebFetch (run all three in parallel):
-
-```
-WebFetch: https://raw.githubusercontent.com/obra/superpowers/main/CLAUDE.md
-WebFetch: https://raw.githubusercontent.com/browser-use/browser-use/main/README.md
-WebFetch: https://raw.githubusercontent.com/thedotmack/claude-mem/main/README.md
-```
-
-For each fetch: apply **SELF-RECOVER** (retry up to 3 times).
-
-- If fetch **succeeds**: save to `.claude/speckit/<name>.md` and update `.cache-timestamp` with current ISO date.
-- If all 3 attempts **fail** for a repo:
-  - Log to `docs/specs/<FeatureName>/recovery.log`
-  - Print once: `⚠️  SpecKit fetch failed (network/VPN) — using built-in patterns`
-  - Fall back to built-in patterns from PROJECT CONTEXT
-  - **Do NOT block flow**
-
-> `.claude/speckit/` should be in `.gitignore` — it is a local cache, not committed.
+> Run in parallel with B1 and B2. Do NOT block flow.
 
 ### Apply 3 Lenses from Superpowers
 
@@ -1581,267 +1374,12 @@ After user responds: run **★5 CONTEXT SUMMARY** → save to `docs/specs/<Featu
 >
 > Use templates from `.claude/templates/` as starting structure — fill in `{{PLACEHOLDERS}}` with actual spec content.
 
-### File 1: `docs/specs/<FeatureName>/diagram.md`
-
-Base on: `.claude/templates/diagram.template.md`
-
-Apply SELF-EVALUATE before writing. Use Mermaid. If DYNAMIC DECOMPOSE detected multiple independent flows → create multiple diagram sections.
-
-**(v3.14 — P1 multi-diagram LR rule)** Diagram layout rules — MANDATORY:
-- **ALWAYS** use `flowchart LR` (left-to-right). **NEVER** `flowchart TD` for feature diagrams.
-- **MAX 15 nodes per diagram section.** When a flow exceeds 15 nodes, split into focused sub-diagrams (e.g. "Entry flow", "Tab navigation flow", "Modal flow", "Delete flow").
-- **NEVER** produce a single monolithic diagram with 40+ nodes — it is unrenderable in VS Code Mermaid preview.
-- Minimum diagrams: one per major user flow identified by DYNAMIC DECOMPOSE. Aim for 4–7 diagrams, each ≤12 nodes.
-- Reference: `docs/specs/AdminTaskProcessing/diagram.md` (6 separate LR diagrams, each ≤12 nodes).
-
-````markdown
-# Feature Flow Diagram: [FeatureName]
-
-## Entry Flow
-```mermaid
-flowchart LR
-    A([🚀 Start: Trigger]) --> B[Step 1]
-    B --> C{Decision?}
-    C -->|Yes| D[Happy Path]
-    C -->|No| E[Alternative Path]
-    D --> F([✅ End State])
-    E --> F
-```
-
-## Error / Edge Case Flow
-```mermaid
-flowchart LR
-    A[Edge Trigger] --> B{Check condition}
-    B -->|Error| C[Error Handler]
-    B -->|OK| D[Continue]
-    C --> E([⚠️ Notify User])
-```
-````
-
-### File 2: `docs/specs/<FeatureName>/steps.md`
-
-Base on: `.claude/templates/steps.template.md`
-
-Apply SELF-EVALUATE before writing.
-
-> **Use FILE_STRUCTURE** (resolved in SESSION BOOTSTRAP Step 0.B) as the canonical file layout.
-> Do NOT assume React file structure if CLAUDE.md describes a different framework.
-> Replace `data/apiHooks.ts` with the equivalent from FILE_STRUCTURE if Vue/Angular detected
-> (e.g. `composables/useFeature.ts` for Vue, `services/feature.service.ts` for Angular).
-
-```markdown
-# Implementation Steps: [FeatureName]
-
-## Pre-conditions
-- [ ] [Required dependency or environment state]
-
-## Implementation Steps
-
-### Step 1: data/types.ts
-- **Action**: Define TypeScript interfaces for all entities from spec
-- **Files affected**: `src/<feature-path>/data/types.ts`
-- **Verify**: no `any` types, all spec fields covered
-
-### Step 2: data/api.ts
-- **Action**: API functions with `USE_MOCK = true`, mock arrays matching spec fields
-- **Files affected**: `src/<feature-path>/data/api.ts`
-- **Verify**: `PROJECT_CTX.http_client` used; every response returned via `mapXxx(...)` from transform.ts — NO blind cast of raw response to a type
-
-### Step 2.5: data/transform.ts *(anti-corruption layer — HARD RULE 33)*
-- **Action**: One pure `mapXxx(raw): Xxx` per response type; centralises raw→domain field mapping
-- **Files affected**: `src/<feature-path>/data/transform.ts`
-- **Verify**: api.ts calls these mappers; no `as Type` cast on raw responses anywhere
-
-### Step 3: data/apiHooks.ts
-- **Action**: `useQuery` (staleTime) + `useMutation` (invalidate in `onSettled`)
-- **Files affected**: `src/<feature-path>/data/apiHooks.ts`
-- **Verify**: `onSettled` not `onSuccess` for invalidations
-
-### Step 4: [FeatureName].tsx
-- **Action**: Main component using `src/generic/` components
-- **Files affected**: `src/<feature-path>/<FeatureName>.tsx`
-- **Verify**: loading / error / empty / success states all handled
-
-### Step 4.5: Named section wrapper components *(only when spec explicitly names sub-sections)*
-- **Trigger**: spec describes a named section distinct from individual cards — e.g. "Required assessments section", "Score statistics section", "Learning progress section", "Overview panel"
-- **Action**: Create one wrapper component per named section (e.g. `RequiredAssessmentsSection.tsx`, `LearningProgressSection.tsx`) — even if thin — so the component tree mirrors the spec's named structure
-- **Verify**: every section explicitly named in the spec has a corresponding wrapper component; cards/rows are children of their section, not children of the page directly
-
-### Step 5: messages.ts
-- **Action**: `defineMessages` for all user-visible strings
-- **Verify**: no hardcoded strings in JSX
-
-### Step 6: [FeatureName].scss
-- **Action**: Component styles following existing scss patterns
-
-### Step 6.5: utils/ — Format / display utility functions *(only when Business Rules specify a display/format rule)*
-- **Trigger**: spec contains phrases like "display as X.0", "round to N decimal places", "max N significant characters", "format score", "display rule", "rounding rule"
-- **Action**: Create `src/<feature-path>/utils/<utilName>.ts` with a pure function implementing the rule
-- **Example**: `formatScore(value: number): string` for "max 3 significant chars, 1 decimal place"
-- **Verify**: function has unit-testable logic, imported in every component that displays the formatted value
-- **Note**: If spec lists a display rule in Business Rules or AC items → this step is REQUIRED, not optional
-- **Precision pattern (L-04)**: "1 decimal place, drop trailing .0" → `const v = Math.round(x*10)/10; return v%1===0 ? v.toFixed(0) : v.toFixed(1);` — NOT `toPrecision(n)` (sig-figs, wrong for decimal-place display).
-
-### Step 7: Route wiring
-- **Action**: Register route / tab in parent component
-- **Verify**: navigation works end-to-end
-
-### Step 8: Tests — unit + E2E covering every ACT/BR *(HARD RULE 36 — generate up front)*
-- **Action**: For EVERY ACT row and every Business-Rule/display row in checklist.md, create a test case now (stub if logic not yet built):
-  - logic / business / display rules → a Jest `utils/<rule>.test.ts` (referencing the ACT/BR id in the test name) AND a `ux-states.json unit_tests[]` entry with `ac_id`
-  - UI / interaction / visible-state ACs → a `ux-states.json` `ac_assertions[]` entry (`ac_id` + selector + expected) under the relevant state
-- **Files affected**: `src/<feature-path>/utils/*.test.ts`, `docs/specs/<FeatureName>/ux-states.json`
-- **Verify**: `npx tsx .claude/integrations/lint-feature.ts src/<feature-path> --checklist docs/specs/<FeatureName>/checklist.md --ux-states docs/specs/<FeatureName>/ux-states.json --gate` → HR36 AC coverage 100% of FE-testable rows (backend-only rows marked `<!-- enforced-by: BE -->`)
-
-## Post-conditions
-- [ ] Feature renders at correct route
-- [ ] All ACP items verifiable in browser
-
-## Rollback Plan
-1. `git revert [commit-hash]`
-2. Remove route registration from parent component
-3. `git push origin develop`
-```
-
-### File 3: `docs/specs/<FeatureName>/checklist.md`
-
-Base on: `.claude/templates/checklist.template.md`
-
-Apply SELF-EVALUATE before writing. One row per Acceptance Criteria item from the spec.
-
-**(v3.14 — P5 5-section completeness)** The checklist MUST contain all 5 sections. Missing any section is INCOMPLETE — regenerate before B6 gate. Reference: `docs/specs/AdminTaskProcessing/checklist.md`.
-
-```markdown
-# Checklist — [FeatureName]
-> JIRA: [JIRA-ID] | Complexity: [SIMPLE|MEDIUM|COMPLEX] (score N) | Gate mode: [gates]
-<!-- [B5-checklist] req_rows=N (spec_ac_count=N + br_count=N) ✅ -->
-
----
-
-## Requirements (REQ)
-
-| # | Requirement | Status |
-|---|-------------|--------|
-| REQ-01 | (AC1) [requirement text from spec — 1:1 with spec objectives] | ⬜ |
-
----
-
-## UI Verification (one row per component)
-
-| # | Component | Screen | Check | Status |
-|---|-----------|--------|-------|--------|
-| UI-01 | [component name] | [page name] | [what to verify against spec] | ⬜ |
-
----
-
-## Actions / Acceptance Criteria (ACT)
-
-| # | Test | Screen | Status |
-|---|------|--------|--------|
-| ACT-01 | [acceptance criterion from spec] | [page name] | ⬜ |
-
----
-
-## UX States
-
-| # | State | Screen | Status |
-|---|-------|--------|--------|
-| UX-01 | Loading skeleton shown while data fetches | [page name] | ⬜ |
-| UX-02 | Error state shown when API call fails | [page name] | ⬜ |
-| UX-03 | Empty state shown when no data | [page name] | ⬜ |
-| UX-04 | Mutation in-progress state disables submit button | [page name] | ⬜ |
-
----
-
-## Playwright Verify (B11)
-
-| Check | Result | Notes |
-|-------|--------|-------|
-| PLAYWRIGHT-001: Main route resolves (no crash) | ⬜ | |
-| PLAYWRIGHT-002: Secondary route resolves (no crash) | ⬜ | |
-| PLAYWRIGHT-003: No unhandled JS errors on either page | ⬜ | |
-| PLAYWRIGHT-004: Primary success state renders meaningful content | ⬜ | |
-| PLAYWRIGHT-005: Key interactive element visible | ⬜ | |
-| PLAYWRIGHT-006: Tab/section switching renders without crash | ⬜ | |
-
----
-
-## Summary
-
-- Total REQ rows: **N**
-- Total UI rows: **N** — ✅ 0/N
-- Total ACT rows: **N** — ✅ 0/N
-- Total UX rows: **N** — ✅ 0/N
-- Playwright rows: **6** — ✅ 0/6
-<!-- LOCKED line shape — `Total <Section> rows: **N** — ✅ v/N` is parsed by lint-feature.ts (HR35).
-     Initial verified count is 0 (✅ 0/N); B11 raises it. Do NOT use ⬜ here or convert to a table — the parser needs ✅ v/N. -->
-
-- `⬜` = not yet verified | `✅` = verified | `⚠️` = backend-only/partial | `❌` = failing
-```
-
-### File 4: `docs/specs/<FeatureName>/ux-states.json` *(v3.6 — Change F, required if checklist has UI or ACT rows with tool ≠ Manual)*
-
-Machine-readable mapping consumed by `playwright-runner.ts --interactions` at B11. **Single source of truth** for per-row verification. LOCKED schema:
-
-```json
-{
-  "feature": "<FeatureName>",
-  "states": [
-    {
-      "name": "<state-slug>",
-      "route": "/path/to/route",
-      "steps": [
-        { "action": "waitForSelector", "selector": "[data-testid='...']", "timeout": 5000, "label": "load" },
-        { "action": "click", "selector": "[data-testid='...']", "label": "click X" }
-      ],
-      "baseline": "images/<spec-image>.png",
-      "ui_rows": ["UI-001", "UI-002"],
-      "ac_assertions": [
-        { "ac_id": "ACT-001", "selector": "[data-testid='...']", "expected": "visible" }
-      ]
-    }
-  ],
-  "negative_states": [
-    {
-      "name": "<negative-slug>",
-      "steps": [...],
-      "ac_assertions": [
-        { "ac_id": "ACT-XXX", "selector": "[role='alert']", "expected": "i18n:errors.titleRequired" }
-      ]
-    }
-  ],
-  "unit_tests": [
-    { "ac_id": "ACT-AC5a", "test_file": "src/<feature-folder>/utils/formatScore.test.ts", "grep": "7 displays as 7\\.0" }
-  ]
-}
-```
-
-**`expected` enum** (LOCKED): `visible` | `hidden` | `text:<exact>` | `i18n:<message-id>` | `count:<n>` | `attr:<name>=<value>`
-
-**B5 validation rule (universal, runs before closing B6 gate)**:
-
-```text
-ui_ids_checklist  := set of UI-XXX in checklist UI Verification table
-ui_ids_states     := union of states[].ui_rows[]
-ASSERT setEquals(ui_ids_checklist, ui_ids_states)
-
-playwright_act_ids := ACT rows with tool=Playwright
-ac_assertion_ids   := union of states[].ac_assertions[].ac_id ∪ negative_states[].ac_assertions[].ac_id
-ASSERT setEquals(playwright_act_ids, ac_assertion_ids)
-
-unit_test_ids   := ACT rows with tool=Unit Test
-unit_tests_ids  := unit_tests[].ac_id
-ASSERT setEquals(unit_test_ids, unit_tests_ids)
-
-# W.1 — every UI_SCREENSHOT design image must have a state that diffs against it
-ui_screenshots  := set of UI_SCREENSHOT files in image-annotations.md
-baselined       := set of states[].baseline (basename)
-ASSERT ui_screenshots ⊆ baselined   # each design image is mirrored by ≥1 state with baseline set
-```
-
-If ANY assertion fails → STOP B5, present mismatch to user, ask whether to add states / fix checklist. Universal rule — applies to feature regardless of row count. The W.1 assertion guarantees the mandatory B11 visual diff (`--visual-baseline-dir`) actually has a state→image mapping to run against — without it, design images go un-diffed (the AnalyzeData failure mode).
-
-**Step F.5 — Form validation negative_states** *(v3.6 — Change M)*: for each AC with rule (`required`, `max`, `regex`, `min`), emit 1 entry in `negative_states[]` with `expected_error_selector` + `expected_text` (use `i18n:` prefix when message has ID).
+> **Load output file templates now — required before creating any file:**
+>
+> Read the file `.claude/_content/templates.md` (path relative to project root).
+> It contains the complete specifications and embedded template structures for all 4 output files:
+> File 1 (diagram.md), File 2 (steps.md), File 3 (checklist.md), and File 4 (ux-states.json).
+> Create all four files exactly as specified there — no deviation from the templates.
 
 ---
 
@@ -2339,134 +1877,11 @@ Log to `docs/specs/<FeatureName>/recovery.log`:
 
  ### Step 2 — Spawn the implementation agent
 
-```
-
-```
-Agent({
-  description: "Implement <FeatureName> — B10 files",
-  isolation: "worktree",
-  prompt: """
-    You are implementing a feature for a web application. Follow the project's conventions exactly.
-
-    ╔══════════════════════════════════════════════════════════════╗
-    ║  SCSS SCOPE GUARD — READ BEFORE WRITING ANY FILE            ║
-    ║                                                              ║
-    ║  Before writing or editing ANY .scss file:                  ║
-    ║  1. Verify its full path starts with src/<feature-folder>/  ║
-    ║  2. If it does NOT → DO NOT TOUCH IT. Skip silently.        ║
-    ║                                                              ║
-    ║  This applies even if a lint/type error points to that file. ║
-    ║  Pre-existing scss errors outside the feature folder are     ║
-    ║  NEVER your responsibility. List them as "Pre-existing".    ║
-    ╚══════════════════════════════════════════════════════════════╝
-
-    STACK: {{STACK_DESCRIPTION}}
-    HTTP: {{PROJECT_CTX.http_client}} — use only the project's standard HTTP client, never raw fetch/axios
-    RESPONSES: {{PROJECT_CTX.response_transform}} on every API response
-    REQUESTS: use `PROJECT_CTX.request_transform` (if defined) for all POST/PUT/PATCH bodies — import it from your project's HTTP client module; do NOT write plain snake_case object literals; import request transform alongside response transform at the top of api.ts
-    IMPORTS: {{PROJECT_CTX.import_alias}} alias — no deep cross-feature imports
-    COMMIT FORMAT: {{PROJECT_CTX.commit_format}}
-
-    FILE STRUCTURE (resolved from CLAUDE.md or framework default — use this, do NOT invent your own):
-    {{FILE_STRUCTURE}}
-
-    FEATURE: <FeatureName>
-    FOLDER: src/<feature-folder>/
-
-    CONFIRMED DESIGN (from B6.5):
-    <paste component decomposition, state shape, API contract from B6.5>
-
-    TASK BREAKDOWN (from B7 steps.md):
-    <paste the full task table from steps.md>
-
-    KEY SPEC REQUIREMENTS:
-    <paste ACP items and business rules from processed.md>
-
-    VISUAL SPEC ANNOTATIONS (from docs/specs/<FeatureName>/image-annotations.md):
-    <paste full contents of image-annotations.md, or "(none — no images downloaded)" if file absent>
-
-    DESIGN TOKENS (from docs/specs/<FeatureName>/visual-properties.md):
-    <paste full contents of visual-properties.md, or "(none — B2.5 was skipped)" if file absent>
-
-    SPEC IMAGES — Direct visual access (do this FIRST before writing any file):
-    1. Glob({ pattern: "docs/specs/<FeatureName>/images/**" }) → get list of image files
-    2. Read each image file with the Read tool — you will see the image visually
-    3. Cross-reference what you see with the text annotations above
-    If images exist: what you see visually is the authoritative spec — match layout, button labels,
-    column order, and component placement exactly. Text annotations are secondary context only.
-
-    HARD CONSTRAINTS (v3.6 — Change H: visual-properties.md is authoritative):
-    - **Design tokens authoritative**: visual-properties.md (if present) is the ONLY source of truth for
-      colors, spacing, typography. Every hex code in your generated `.scss` MUST appear in the palette
-      section. Every `padding`/`margin`/`gap` value in px MUST appear in the spacing scale. Every
-      `font-size`/`font-weight` MUST match a typography role rule.
-    - **NO invented values**: Do NOT use hex codes from imagination (e.g. `#4a90e2` if not in palette).
-      Do NOT use arbitrary spacing (e.g. `padding: 13px` when scale is 4/8/16/24). If a needed token
-      is missing, STOP and ask user to clarify rather than inventing.
-    - **Use SCSS variables**: Define palette/spacing/typography as `$variable-name` at top of
-      feature SCSS (or in feature `_tokens.scss` partial), reference them everywhere. No raw hex
-      literals scattered across components.
-    - **(W.6) Simple proportional bar → CSS, NOT a charting library**: only use recharts/chart.js when
-      the design shows real chart furniture (value axis, gridlines, multiple series, legend). A per-row
-      proportional bar (one bar filling `value/total %`, label one side + value the other) MUST be a
-      CSS track `<div>` + fill `<div>` with `width:<pct>%` — so it carries no unwanted axes and an
-      inline icon/label can share the row. **Never** render the same domain array twice (once to feed a
-      chart, once as a sibling label list) — that duplication (the W-l Exam Details smell) means a chart
-      was used where a row was wanted. `lint-feature.ts` W7 warns on a domain array `.map()`'d ≥2×.
-
-╔══════════════════════════════════════════════════════════════╗
-║  CONTAMINATION GUARD                                         ║
-║                                                              ║
-║  BASELINE folder (if any): src/<BASELINE_FOLDER>/           ║
-║                                                              ║
-║  DO NOT read, reference, or copy from that folder.          ║
-║  Implement PURELY from the spec files listed above.         ║
-║  Reading the BASELINE folder invalidates this result.        ║
-╚══════════════════════════════════════════════════════════════╝
-
-    CHECKLIST PER FILE — apply to every file you write:
-    - data/types.ts: no `any`, all spec fields, exported interfaces; when the API contract shows a literal numeric or string value for a field (e.g. `maxAttempts: 2`), preserve it as a TypeScript literal type — do NOT widen to `number` or `string`
-    - data/api.ts: USE_MOCK = true, delay(), PROJECT_CTX.http_client, mock data covers all spec fields; every response returned via a mapXxx() from data/transform.ts — NEVER blind-cast a raw response to a type; import request transform alongside response transform; use request transform for all POST/PUT/PATCH bodies — never plain snake_case object literals. If contractStatus=PROVISIONAL, stamp the PROVISIONAL comment (HARD RULE 32) at the top of the file.
-    - data/transform.ts: one mapXxx(raw): Xxx per response type (anti-corruption layer, HARD RULE 33). api.ts imports and calls these; the `as Type` cast on a raw HTTP response is banned.
-    - utils/: every Business-Rule / display-format row in checklist.md → a pure function + co-located <name>.test.ts wired into ux-states.json unit_tests[] (HARD RULE 34), unless the row is marked enforced-by BE
-    - data/apiHooks.ts: useQuery with staleTime, useMutation with invalidateQueries in onSettled (NOT onSuccess)
-    - <Feature>.tsx: loading / error / empty / success states, reuse src/generic/ components, no hardcoded strings
-    - messages.ts: defineMessages, all user-visible strings extracted from JSX
-    - <Feature>.scss: ONLY write styles in src/<feature-folder>/. Do NOT edit SCSS of other features, src/generic/*.scss, or global stylesheets
-    - All imports: @src/... alias, no deep cross-feature imports
-
-    STOP CONDITIONS — do NOT implement; report back to coordinator instead:
-    - Deleting any existing file
-    - Modifying DB schema or migration files
-    - Changing anything under src/generic/ (shared across features)
-    - Renaming a function/component used in more than one feature folder
-    - Modifying any .scss file outside src/<feature-folder>/ (including src/generic/*.scss and global stylesheets)
-
-    For everything outside STOP CONDITIONS: implement silently. Ask nothing.
-
-    Before reporting done, run SELF-EVAL:
-    - **Code-quality gate (v3.16 — one command, replaces the old grep list):**
-      `npx tsx .claude/integrations/lint-feature.ts src/<feature-folder> --code-only`
-      → MUST report 0 errors. Covers: HARD RULE 33 no blind cast (`<transform>(data) as Type`), no `any`,
-      no `console.log/debug`, no deep `../../../` imports, transform.ts present when api.ts makes HTTP calls,
-      and no placeholder (assertion-less) tests. Fix every error before reporting done.
-    - **Design-token greps (NOT covered by the script — keep these inline):**
-      - Token compliance: `grep -roE '#[0-9a-fA-F]{6}' src/<feature-folder>/` — every hex MUST appear in visual-properties.md palette.
-      - Spacing compliance: scan `src/<feature-folder>/**/*.scss` for `\d+px` not matching the spacing scale.
-      - Typography compliance: scan for `font-size`/`font-weight` not matching a role in visual-properties.md.
-    - React Query keys consistent: every `queryKey` starts with `['<feature-folder>', ...]`.
-
-    If ANY violation: fix before reporting done (do NOT report a partial pass).
-
-    When done, report:
-    - Files created: [list]
-    - Files modified: [list]
-    - STOP conditions encountered: [list or "none"]
-    - Any imports or packages added: [list or "none"]
-    - Token / spacing / typography / quality grep results: all clean ✅ (or list any unfixable items)
-  """
-})
-```
+> Read `.claude/_content/agent-build.md` now.
+> It contains the complete `Agent()` invocation template for the B10 implementation agent.
+> Before spawning: substitute all `<FeatureName>`, `<feature-folder>`, `<BASELINE_FOLDER>`,
+> `{{STACK_DESCRIPTION}}`, `{{PROJECT_CTX.*}}`, and similar placeholders with the values
+> assembled in Step 1 above. Then execute the Agent call exactly as templated.
 
 **Wait for the agent to return before proceeding to B11.**
 
@@ -2569,215 +1984,11 @@ Skip Agent B entirely:
 
 **Wait for Agent A to return before spawning Agent B.** Agent B reads feature TSX files written by Agent A to extract real selectors for `ux-states.json`.
 
-```
-// Agent A — Static analysis
-Agent({
-  description: "B11-A: Static analysis — <FeatureName>",
-  prompt: """
-    Run static analysis on the <FeatureName> feature in this React/TypeScript project.
-    Feature folder: src/<feature-folder>/
-
-    ╔══════════════════════════════════════════════════════════════════════╗
-    ║  SCOPED COMMANDS — YOU MUST USE THESE EXACT COMMANDS               ║
-    ║  Do NOT run npm run lint / npm run stylelint (they scan the whole   ║
-    ║  project and will show errors from other features — not your job).  ║
-    ║                                                                      ║
-    ║  Run ONLY these 3 scoped commands:                                  ║
-    ║    1. npm run types                                                  ║
-    ║       → only fix TS errors whose path starts with src/<feat-folder>/║
-    ║    2. npx stylelint "src/<feature-folder>/**/*.scss"                ║
-    ║           --config .stylelintrc.json                                ║
-    ║    3. npx eslint --ext .js,.jsx,.ts,.tsx src/<feature-folder>/      ║
-    ║                                                                      ║
-    ║  Commands 2 and 3 already only report feature-folder errors.        ║
-    ║  For command 1 (full-project): IGNORE any error whose path          ║
-    ║  does NOT start with src/<feature-folder>/ — do not read, do not   ║
-    ║  edit, do not mention as fixable. List as "Pre-existing".           ║
-    ║                                                                      ║
-    ║  NEVER run: npm run lint | npm run lint:fix | npm run stylelint     ║
-    ║  (un-scoped). These modify the whole project.                       ║
-    ╚══════════════════════════════════════════════════════════════════════╝
-
-    For each error IN src/<feature-folder>/:
-      - Report file:line, error message
-      - Apply the fix using the Edit tool
-      - Re-run the failing check to confirm it passes
-
-    Self-Recovery (up to 3 attempts per error):
-      Attempt 1: auto-fix with Edit
-      Attempt 2: alternate approach (different type annotation, different import path)
-      Attempt 3: minimal change to satisfy the linter without changing behavior
-    After 3 failed attempts on the same error: stop and report it unresolved.
-
-    Final report format:
-      types:  PASS | FAIL (N errors in feature, N auto-fixed, N unresolved)
-      scss:   PASS | FAIL (N errors, N auto-fixed, N unresolved)
-      eslint: PASS | FAIL (N errors, N auto-fixed, N unresolved)
-      Files modified: [list or "none"]
-      Pre-existing (skipped): [file:line list or "none"]
-  """
-})
-
-// Agent B — UI verification  ← run AFTER Agent A returns
-// This agent calls run_b11 (phase orchestrator) then enhances with direct playwright
-Agent({
-  description: "B11-B: UI verification — <FeatureName>",
-  prompt: """
-    Verify the <FeatureName> feature renders correctly using Playwright interactions.
-    Feature route: <feature-route>
-    Feature folder: src/<feature-folder>/
-
-    Step 0 — Phase-level MCP verification (primary path, v3.9):
-      Call the MCP tool `run_b11` (from `feature-workflow` server) with:
-        - featureName: <FeatureName>
-        - featurePath: src/<feature-folder>
-        - noPlaywright: false
-      This runs ALL routes from ux-states.json in one call (reads top-level routes[] OR, if absent,
-      derives routes from states[].route — the B5 LOCKED schema, audit F1).
-      Returns: { b11_a, b11_b, typeErrors, lintErrors, coverageErrors, routeResults[], checklistUpdated, summary }
-      `coverageErrors` is the HR33/34/35/36 gate result (lint-feature --gate) run inside run_b11 —
-      if > 0, fix the uncovered ACT rows / blind casts before B12 (do NOT proceed on a coverage failure).
-
-      If b11_a = fail: read typeErrors / lintErrors — these are scoped to featurePath, fix them,
-        then call run_b11 again (up to 3 attempts).
-      If b11_b = fail: read routeResults[].checks for per-route details.
-        Pre-existing failures (CORS, migration banner, env-level) → note in checklist, do NOT block.
-      If the tool returns `isError = true` OR the `feature-workflow` MCP server is unavailable:
-        → Log: "[B11] MCP run_b11 unavailable — falling back to playwright-runner direct"
-        → Fall through to Step 1 below.
-
-    Step 1 — Ensure docs/specs/<FeatureName>/ux-states.json is present and consumable — do NOT clobber B5's file:
-      ONE schema is authoritative: B5's LOCKED "File 4" FLAT shape, which BOTH readers depend on —
-      b11-runner.ts reads routes via states[].route; lint-feature.ts reads AC coverage via
-      states[].ac_assertions[] and unit_tests[]. Never replace it with a nested states[].states[]
-      shape — that drops ac_assertions and makes the coverage gate read 0% (audit F1).
-
-      Flat schema (authoritative):
-      {
-        "feature": "<FeatureName>",
-        "version": "v2",
-        "routes": ["<feature-route>"],            // optional convenience mirror of states[].route
-        "states": [
-          {
-            "name": "<ScreenName-state>",
-            "route": "<feature-route>",
-            "steps": [ { "action": "waitForSelector", "selector": "[data-testid='...']", "label": "load" } ],
-            "ui_rows": ["UI-001"],
-            "ac_assertions": [ { "ac_id": "ACT-001", "selector": "[data-testid='...']", "expected": "visible" } ]
-          }
-        ],
-        "negative_states": [ { "name": "...", "steps": [...], "ac_assertions": [ { "ac_id": "ACT-0XX", "selector": "[role='alert']", "expected": "i18n:errors.required" } ] } ],
-        "unit_tests": [ { "ac_id": "ACT-AC5a", "test_file": "src/<feature-folder>/utils/x.test.ts", "grep": "..." } ]
-      }
-
-      Case A — file EXISTS (B5 created it): preserve states[] / ac_assertions[] / unit_tests[] exactly.
-        ONLY add a top-level "routes": [unique states[].route] if it is missing. Do NOT rewrite states[].
-      Case B — file ABSENT: create it in the FLAT schema above from processed.md state descriptions
-        + real selectors from the feature's TSX. One state per screen; each carries its own route,
-        steps, and ac_assertions. Do NOT emit a nested states[].states[] shape.
-      Rules:
-      - Use real selectors extracted from the feature's TSX files
-      - UI library selector rules (v3.14): Modal → use the library's root CSS class (e.g. `.modal`) NOT [data-testid="modal-*"];
-        Toast/Notification → text=<exact message> NOT [data-testid="toast-*"]; avoid [role="alert"] for toast detection
-
-    Step 2 — Initial screenshot (fallback / enhancement when run_b11 succeeded):
-      MSYS_NO_PATHCONV=1 DEV_SERVER_URL=${DEV_SERVER_URL:-http://localhost:3000} \
-        npx tsx .claude/integrations/playwright-runner.ts <feature-route> \
-        --screenshot --feature-name <FeatureName>
-      Parse the --- JSON --- block from output.
-
-    Step 3 — Error state (mock API 500):
-      MSYS_NO_PATHCONV=1 DEV_SERVER_URL=${DEV_SERVER_URL:-http://localhost:3000} \
-        npx tsx .claude/integrations/playwright-runner.ts <feature-route> \
-        --screenshot --feature-name <FeatureName> --mock-error
-      Verify PLAYWRIGHT-006 passed (error alert rendered on 500 response).
-
-    Step 4 — UX state interactions + per-row verification (v3.6 — Changes E/I/K/L/M/N):
-      MSYS_NO_PATHCONV=1 DEV_SERVER_URL=${DEV_SERVER_URL:-http://localhost:3000} \
-        npx tsx .claude/integrations/playwright-runner.ts <feature-route> \
-        --screenshot --feature-name <FeatureName> \
-        --interactions docs/specs/<FeatureName>/ux-states.json \
-        --ac-checklist docs/specs/<FeatureName>/checklist.md \
-        --messages-path src/<feature-folder>/messages.ts \
-        --audit-a11y \
-        --audit-css docs/specs/<FeatureName>/visual-properties.md \
-        --visual-baseline-dir docs/specs/<FeatureName>/images \
-        --visual-diff-threshold 5
-      The runner detects v2 schema (states[] array) automatically and uses per-state baseline diff +
-      ac_assertions + unit_tests. It also updates checklist.md Status + Evidence per row.
-
-      Map check IDs:
-        PLAYWRIGHT-007       → Visual regression vs spec baselines (per-state pixel diff)
-        PLAYWRIGHT-008       → Per-AC assertion verification (states[].ac_assertions)
-        PLAYWRIGHT-UI-ROWS   → UI Verification table verdicts (mapped from baseline diff)
-        PLAYWRIGHT-UNIT      → Unit Test ACT rows (jest -t pattern)
-        PLAYWRIGHT-009       → A11y audit (axe-core, critical+serious only)
-        PLAYWRIGHT-010       → CSS computed-style audit vs visual-properties.md
-        PLAYWRIGHT-STATE-*   → Per-state interaction success/failure (legacy v1 fallback)
-
-      If visual-properties.md is missing → omit --audit-css.
-
-      W.1 (MANDATORY visual diff — image-vs-screenshot, not testid-only):
-        If image-annotations.md has ≥1 UI_SCREENSHOT entry, --visual-baseline-dir is REQUIRED, not
-        optional. Each ux-states.json state that mirrors a design image MUST set states[].baseline to
-        the matching docs/specs/<FeatureName>/images/<file>.png (B5 authoring rule). A UI_SCREENSHOT
-        design image with NO executed PLAYWRIGHT-007 diff for some state is a B11 **incomplete**
-        finding — list it under Unresolved and do NOT mark the corresponding UI rows ✅.
-        Rationale: a per-AC testid/text pass (PLAYWRIGHT-008) cannot detect layout / styling /
-        section-structure / label drift — those slipped through on AnalyzeData precisely
-        because the design images in images/ were never diffed against screenshots/.
-        Only skip --visual-baseline-dir when image-annotations.md has 0 UI_SCREENSHOT entries.
-
-    Step 5 — browser-use (only for flows Playwright cannot verify):
-      Pre-check before invoking (both conditions must pass):
-        1. File exists:  test -f .claude/integrations/browser-use-wrapper.py
-        2. Python exists: command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1
-      If both pass:
-        python .claude/integrations/browser-use-wrapper.py "<task>" <feature-route>
-      If either fails:
-        Skip silently — log "browser-use skipped — wrapper or python unavailable"
-        Append "⚠️ complex flows not auto-verified (browser-use unavailable)" row to checklist
-      Use for: modal chains, infinite scroll, multi-step interactions, polling.
-
-    Step 6 — Unit tests (only for logic NOT reproducible via UI):
-      npm test -- --testPathPattern=src/<feature-folder>/
-
-    Step 7 — Checklist update (if docs/specs/<FeatureName>/checklist.md exists):
-      W.1 verified-status rule (HR35 downgrade): a UI row may be set ✅ Pass ONLY if it is backed by
-        a passed PLAYWRIGHT-007 visual diff OR an explicit structural assertion (section grouping /
-        column header / exact label text). A row whose only evidence is testid/text presence
-        (PLAYWRIGHT-008) is marked ⚠️ Partial (testid-only), NOT ✅ — so the Summary verified-ratio
-        reflects true visual fidelity, not assertion presence.
-      Read ## UI Verification table — for each row with empty `screenshot:`:
-        Set Evidence: "screenshot: screenshots/<screenshotPath filename>"
-        Set Status:   ⬜ → ✅ Pass (visual/structural backed) | ⚠️ Partial (testid-only) | ❌ Fail
-      Read ## ACT table — for each row with tool=Playwright and Status=⬜ Pending:
-        Set Status: ✅ Pass or ❌ Fail
-        Set Evidence: screenshot filename
-      Recount Summary section: update "X / Y passed" per section + Overall line.
-      Edit tool to write back. Print: "📋 Checklist updated".
-      If checklist missing: skip silently, note "checklist not found" in report.
-
-    Self-Recovery on test fail (up to 3 attempts):
-      Attempt 1: analyze error → auto-fix code → re-run
-      Attempt 2: alternate implementation of same behavior → retest
-      Attempt 3: isolate failing case → fix in isolation → retest full suite
-    After 3 attempts, classify the failure:
-      Bug/edge case → report unresolved
-      Architecture mismatch → report: "Design cycle-back needed — return to B6.5"
-
-    Final report format:
-      Loading state: PASS | FAIL (screenshot path)
-      Error state:   PASS | FAIL (error alert selector found/not found)
-      Empty state:   PASS | FAIL | N/A
-      Success state: PASS | FAIL (screenshot path)
-      Interactions:  N steps across M states
-      Screenshots:   docs/specs/<FeatureName>/screenshots/
-      Unresolved:    [list or "none"]
-      Design issue:  yes (describe) | no
-  """
-})
-```
+> Read `.claude/_content/agent-verify.md` now.
+> It contains the Agent A (static analysis) and Agent B (UI verification) invocation templates.
+> Execute Agent A first and wait for it to return.
+> Then — if `PLAYWRIGHT_OPTED_IN = true` — execute Agent B using the template in the same file.
+> If `PLAYWRIGHT_OPTED_IN = false`, mark Agent B ⏭️ Skipped as stated above.
 
 ### Coverage gate *(HARD RULE 36 — after both agents return, before the final report)*
 
