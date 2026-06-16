@@ -1,0 +1,51 @@
+{
+  "name": "feature-from-confluence-kit",
+  "version": "3.17.0",
+  "private": true,
+  "description": "Claude Code agentic workflow kit: a spec becomes convention-compliant, PR-ready code with human-in-the-loop gates, a deterministic self-test toolchain, and a self-improvement loop.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint:feature": "npx tsx .claude/integrations/lint-feature.ts",
+    "eval:feature": "npx tsx .claude/integrations/eval-feature.ts",
+    "verify:browser": "npx tsx .claude/integrations/playwright-runner.ts",
+    "check:ownership": "npx tsx .claude/integrations/check-ownership.ts",
+    "check:lessons": "npx tsx .claude/integrations/lesson-registry.ts --summary",
+    "check:lessons-sync": "npx tsx .claude/integrations/lesson-registry.ts --sync-check",
+    "check:playwright-token": "npx tsx .claude/integrations/version-check.ts --playwright",
+    "check:amendments": "npx tsx .claude/integrations/improve-trigger.ts --status",
+    "workflow:kpis": "npx tsx .claude/integrations/kpi-report.ts",
+    "workflow:dashboard": "npx tsx .claude/integrations/kpi-report.ts --dashboard",
+    "workflow:index": "npx tsx .claude/integrations/feature-index.ts",
+    "workflow:digest": "npx tsx .claude/integrations/feature-digest.ts",
+    "version:check": "npx tsx .claude/integrations/version-check.ts",
+    "test:lint-feature": "npx tsx .claude/integrations/lint-feature.test.ts",
+    "test:ownership": "npx tsx .claude/integrations/check-ownership.test.ts",
+    "test:integration": "npx tsx .claude/integrations/integration.test.ts",
+    "test:eval-feature": "npx tsx .claude/integrations/eval-feature.test.ts",
+    "test:eval-regression": "npx tsx .claude/integrations/eval-regression.test.ts",
+    "test:lesson-registry": "npx tsx .claude/integrations/lesson-registry.test.ts",
+    "test:improve-trigger": "npx tsx .claude/integrations/improve-trigger.test.ts",
+    "test:prompt-budget": "npx tsx .claude/integrations/prompt-budget.test.ts",
+    "test:contract-probe": "npx tsx .claude/integrations/contract-probe.test.ts",
+    "test:learned-config": "npx tsx .claude/integrations/learned-config.test.ts",
+    "test:friction-meter": "npx tsx .claude/integrations/friction-meter.test.ts",
+    "test:feature-index": "npx tsx .claude/integrations/feature-index.test.ts",
+    "test:feature-digest": "npx tsx .claude/integrations/feature-digest.test.ts",
+    "test:memory": "npx tsx .claude/integrations/memory.test.ts",
+    "test:regression-corpus": "npx tsx .claude/integrations/regression-corpus.test.ts",
+    "test:telemetry": "npx tsx .claude/integrations/telemetry.test.ts",
+    "test:playwright-runner": "npx tsx .claude/integrations/playwright-runner.test.ts",
+    "test:kit": "npm run test:lint-feature && npm run test:ownership && npm run test:integration && npm run test:eval-feature && npm run test:eval-regression && npm run test:lesson-registry && npm run test:improve-trigger && npm run test:prompt-budget && npm run test:contract-probe && npm run test:learned-config && npm run test:friction-meter && npm run test:feature-index && npm run test:feature-digest && npm run test:memory && npm run test:regression-corpus && npm run test:telemetry && npm run test:playwright-runner && npm run version:check && npm run workflow:index -- --check && npx tsx .claude/integrations/prompt-budget.ts --gate && npm run check:lessons-sync",
+    "test": "npm run test:kit"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^4.9.5",
+    "playwright": "^1.60.0",
+    "@playwright/test": "^1.60.0",
+    "@axe-core/playwright": "^4.11.3"
+  }
+}

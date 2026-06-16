@@ -1,0 +1,13 @@
+{
+  "id": "learned-loading-on-flags-missing",
+  "kind": "gate",
+  "description": "With a learned-config that requires a loading state (provenance: user_loading_state), a ux-states.json lacking one must fail with a `learned` error. Guards that the verified→persist→enforce loop keeps biting.",
+  "files": {
+    "feat/data/transform.ts": "export const mapFoo = (raw: unknown) => raw;\n",
+    "feat/data/api.ts": "import { yourHttpClient } from '@your-org/http-client';\nimport { transformResponse } from '@your-org/http-client';\nimport { mapFoo } from './transform';\nexport const getFoo = async () => {\n  const { data } = await yourHttpClient().get('/api/foo');\n  return mapFoo(transformResponse(data));\n};\n",
+    "docs/specs/F/ux-states.json": "{\"states\":[{\"name\":\"Success\",\"route\":\"/x\"}]}\n",
+    "docs/specs/.learned-config.json": "{\"version\":1,\"updatedAt\":\"\",\"config\":{},\"provenance\":[{\"patternId\":\"user_loading_state\",\"amendmentId\":\"corpus\",\"at\":\"\"}]}\n"
+  },
+  "lint": { "folder": "feat", "uxStates": "docs/specs/F/ux-states.json" },
+  "expect": { "gate": "fail", "mustFlagRules": ["learned"] }
+}

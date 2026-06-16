@@ -1,0 +1,12 @@
+{
+  "id": "learned-loading-off-passes",
+  "kind": "gate",
+  "description": "With NO learned-config present, a feature whose ux-states lacks a loading state still passes. Guards default-off: a learned rule must never become always-on by accident.",
+  "files": {
+    "feat/data/transform.ts": "export const mapFoo = (raw: unknown) => raw;\n",
+    "feat/data/api.ts": "import { yourHttpClient } from '@your-org/http-client';\nimport { transformResponse } from '@your-org/http-client';\nimport { mapFoo } from './transform';\nexport const getFoo = async () => {\n  const { data } = await yourHttpClient().get('/api/foo');\n  return mapFoo(transformResponse(data));\n};\n",
+    "docs/specs/F/ux-states.json": "{\"states\":[{\"name\":\"Success\",\"route\":\"/x\"}]}\n"
+  },
+  "lint": { "folder": "feat", "uxStates": "docs/specs/F/ux-states.json" },
+  "expect": { "gate": "pass", "mustNotFlagRules": ["learned"] }
+}

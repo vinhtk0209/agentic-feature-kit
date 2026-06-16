@@ -1,0 +1,11 @@
+{
+  "id": "gate-clean-passes",
+  "kind": "gate",
+  "description": "A well-formed feature (transform layer, no blind cast, no any) passes the code-quality gate with 0 errors. Guards against a future change over-reaching and flagging clean code.",
+  "files": {
+    "feat/data/transform.ts": "export const mapFoo = (raw: unknown) => raw;\n",
+    "feat/data/api.ts": "import { yourHttpClient } from '@your-org/http-client';\nimport { transformResponse } from '@your-org/http-client';\nimport { mapFoo } from './transform';\nexport const getFoo = async () => {\n  const { data } = await yourHttpClient().get('/api/foo');\n  return mapFoo(transformResponse(data));\n};\n"
+  },
+  "lint": { "folder": "feat", "codeOnly": true },
+  "expect": { "gate": "pass", "mustNotFlagRules": ["HR33", "quality", "test-quality"] }
+}

@@ -1,0 +1,263 @@
+#!/usr/bin/env node
+/**
+ * feature-digest.ts — Compact, regenerable resume layer for a COMPLETED feature.
+ *
+ * PROBLEM (PRIORITY 3): a finished feature folder holds 20+ artifacts (raw-spec,
+ * processed, steps, checklist, ux-states, BE reports, screenshots…). Re-loading all
+ * of them to "remember" a done feature is expensive. feature-digest.md is a single
+ * small page that projects only what a future session needs to recall the outcome.
+ *
+ * TRIGGER CONDITION: the feature's context-summary.md has finalConfirmed === true
+ * (i.e. the workflow reached final_confirmed at B9). The CLI refuses to generate
+ * for a non-final feature unless --force is passed.
+ *
+ * GENERATION FLOW (pure projection — reads, never mutates, the raw artifacts):
+ *   context-summary.md  → task type, JIRA, gate results, major fixes (regenerated/kept)
+ *   eval-baseline.json  → final eval score + per-category breakdown + AC/verification %
+ *   checklist.md        → AC/REQ + UI/ACT row counts
+ *   screenshots/, ux-states.json → browser coverage
+ *   BE-integration-report.md     → pointer + section headers (BE findings)
+ *
+ * ROLLBACK: the digest is derived state. Delete feature-digest.md and nothing is
+ * lost — the raw artifacts remain the source of truth and the file regenerates
+ * identically. It is NEVER read as input by any gate, so a stale/edited digest
+ * cannot corrupt the workflow; the next generation overwrites it.
+ *
+ * Usage:
+ *   npx tsx .claude/integrations/feature-digest.ts <FeatureName>
+ *   npx tsx .claude/integrations/feature-digest.ts            # uses docs/specs/.current-feature
+ *   npx tsx .claude/integrations/feature-digest.ts <Feature> --force   # generate even if not final
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { parseContextJson } from './feature-index';
+
+const SPECS_DIR = path.join('docs', 'specs');
+
+function readIfExists(p: string): string | null {
+  return fs.existsSync(p) ? fs.readFileSync(p, 'utf-8') : null;
+}
+
+/** Collect `##`/`###` headings under a top-level section, for a prose pointer. */
+function extractHeadings(markdown: string, max = 8): string[] {
+  return markdown
+    .split(/\r?\n/)
+    .filter((l) => /^#{2,3}\s+\S/.test(l))
+    .map((l) => l.replace(/^#{2,3}\s+/, '').trim())
+    .slice(0, max);
+}
+
+interface EvalCategory { name: string; score: number; status: string; detail: string }
+
+export interface DigestInputs {
+  featureName: string;
+  ctx: Record<string, unknown> | null;
+  evalBaseline: { overall?: number; categories?: EvalCategory[] } | null;
+  checklist: string | null;
+  beReport: string | null;
+  screenshotCount: number;
+  uxStateCount: number;
+}
+
+export function gatherInputs(featureDir: string, featureName: string): DigestInputs {
+  const ctxRaw = readIfExists(path.join(featureDir, 'context-summary.md'));
+  const ctx = ctxRaw ? parseContextJson(ctxRaw) : null;
+
+  let evalBaseline: DigestInputs['evalBaseline'] = null;
+  const evalRaw = readIfExists(path.join(featureDir, 'eval-baseline.json'));
+  if (evalRaw) {
+    try { evalBaseline = JSON.parse(evalRaw); } catch { evalBaseline = null; }
+  }
+
+  const screenshotsDir = path.join(featureDir, 'screenshots');
+  const screenshotCount = fs.existsSync(screenshotsDir)
+    ? fs.readdirSync(screenshotsDir).filter((f) => /\.(png|jpg|jpeg)$/i.test(f)).length
+    : 0;
+
+  let uxStateCount = 0;
+  const uxRaw = readIfExists(path.join(featureDir, 'ux-states.json'));
+  if (uxRaw) {
+    try {
+      const parsed = JSON.parse(uxRaw);
+      const states = Array.isArray(parsed) ? parsed : parsed.states ?? parsed.uxStates;
+      if (Array.isArray(states)) uxStateCount = states.length;
+    } catch { /* leave 0 */ }
+  }
+
+  return {
+    featureName,
+    ctx,
+    evalBaseline,
+    checklist: readIfExists(path.join(featureDir, 'checklist.md')),
+    beReport: readIfExists(path.join(featureDir, 'BE-integration-report.md')),
+    screenshotCount,
+    uxStateCount,
+  };
+}
+
+export function isFinalConfirmed(ctx: Record<string, unknown> | null): boolean {
+  if (!ctx) return false;
+  return ctx.finalConfirmed === true || ctx.phase === 'final_confirmed';
+}
+
+/** Count "| REQ-NN |" and "| UI-NN |" / "| ACT-NN |" rows in checklist.md. */
+function countChecklistRows(checklist: string | null): { req: number; ui: number; act: number } {
+  if (!checklist) return { req: 0, ui: 0, act: 0 };
+  const count = (re: RegExp) => (checklist.match(re) ?? []).length;
+  return {
+    req: count(/\|\s*REQ-\d+\s*\|/g),
+    ui: count(/\|\s*UI-\d+\s*\|/g),
+    act: count(/\|\s*ACT-\d+\s*\|/g),
+  };
+}
+
+export function buildDigest(inputs: DigestInputs): string {
+  const { featureName, ctx, evalBaseline, beReport, screenshotCount, uxStateCount } = inputs;
+  const get = (k: string): unknown => (ctx ? ctx[k] : undefined);
+  const rows = countChecklistRows(inputs.checklist);
+
+  const lines: string[] = [
+    `# Feature Digest — ${featureName}`,
+    '',
+    '> Auto-generated by `.claude/integrations/feature-digest.ts` when `finalConfirmed = Yes`.',
+    '> Compact resume layer ONLY. The raw artifacts in this folder remain the source of truth.',
+    '> Safe to delete — regenerates identically; never read as a gate input.',
+    '',
+    `- **Task type:** ${get('taskType') ?? '—'}`,
+    `- **JIRA:** ${get('jiraId') ?? '—'}`,
+    `- **Gate mode:** ${get('gateMode') ?? '—'}`,
+    '',
+    '## Final Eval Score',
+    '',
+  ];
+
+  if (evalBaseline && typeof evalBaseline.overall === 'number') {
+    lines.push(`**${evalBaseline.overall}/100** overall`, '');
+    if (Array.isArray(evalBaseline.categories) && evalBaseline.categories.length > 0) {
+      lines.push('| Category | Score | Status | Detail |', '|----------|-------|--------|--------|');
+      for (const c of evalBaseline.categories) {
+        lines.push(`| ${c.name} | ${c.score} | ${c.status} | ${c.detail} |`);
+      }
+      lines.push('');
+    }
+  } else {
+    lines.push(`${get('evalOverall') ?? '_No eval-baseline.json recorded._'}`, '');
+  }
+
+  // Gate results — from the machine-written gatesGreen block, if present.
+  lines.push('## Gate Results', '');
+  const gates = get('gatesGreen');
+  if (gates && typeof gates === 'object') {
+    lines.push('| Gate | Result |', '|------|--------|');
+    for (const [k, v] of Object.entries(gates as Record<string, unknown>)) {
+      lines.push(`| ${k} | ${v} |`);
+    }
+    lines.push('');
+  } else {
+    lines.push('_No gate snapshot recorded in context-summary.md._', '');
+  }
+
+  // AC coverage — projected from eval category + checklist row counts.
+  const acCategory = evalBaseline?.categories?.find((c) => /AC coverage/i.test(c.name));
+  lines.push('## AC Coverage', '');
+  lines.push(
+    acCategory
+      ? `- **${acCategory.detail}** (eval category score ${acCategory.score})`
+      : '- _AC coverage not scored in eval-baseline.json._'
+  );
+  lines.push(`- Checklist rows: REQ=${rows.req}, UI=${rows.ui}, ACT=${rows.act}`, '');
+
+  // Browser coverage.
+  const verifyCategory = evalBaseline?.categories?.find((c) => /Verification/i.test(c.name));
+  lines.push('## Browser Coverage', '');
+  if (verifyCategory) lines.push(`- **${verifyCategory.detail}** (eval Verification score ${verifyCategory.score})`);
+  lines.push(`- Screenshots captured: ${screenshotCount}`);
+  lines.push(`- UX states mapped: ${uxStateCount}`, '');
+
+  // Major fixes — from regenerated/kept arrays.
+  const regenerated = get('regenerated');
+  const kept = get('kept');
+  lines.push('## Major Fixes', '');
+  if (Array.isArray(regenerated) && regenerated.length > 0) {
+    lines.push('**Regenerated:**');
+    for (const r of regenerated) lines.push(`- ${r}`);
+    lines.push('');
+  }
+  if (Array.isArray(kept) && kept.length > 0) {
+    lines.push('**Kept as-is:**');
+    for (const k of kept) lines.push(`- ${k}`);
+    lines.push('');
+  }
+  if (!(Array.isArray(regenerated) && regenerated.length) && !(Array.isArray(kept) && kept.length)) {
+    lines.push('_No regenerated/kept manifest recorded._', '');
+  }
+
+  // BE findings — pointer + section headers (never inline the full report).
+  lines.push('## BE Findings', '');
+  if (beReport) {
+    lines.push('Source: [`BE-integration-report.md`](./BE-integration-report.md)', '');
+    const headings = extractHeadings(beReport);
+    if (headings.length > 0) for (const h of headings) lines.push(`- ${h}`);
+    lines.push('');
+  } else {
+    lines.push('_No BE-integration-report.md in this folder._', '');
+  }
+
+  lines.push('## Known Limitations', '');
+  lines.push(
+    beReport && /limitation|known issue|todo|caveat|workaround/i.test(beReport)
+      ? '⚠️ See limitations/caveats noted in `BE-integration-report.md` (search: limitation / caveat / TODO).'
+      : '_None recorded — see raw artifacts if needed._'
+  );
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+/** Generate the digest for a feature folder. Returns the digest path or null. */
+export function generateDigest(
+  featureName: string,
+  opts: { force?: boolean; specsDir?: string } = {}
+): { written: boolean; reason?: string; digestPath: string } {
+  const specsDir = opts.specsDir ?? SPECS_DIR;
+  const featureDir = path.join(specsDir, featureName);
+  const digestPath = path.join(featureDir, 'feature-digest.md');
+
+  if (!fs.existsSync(featureDir)) {
+    return { written: false, reason: `feature folder not found: ${featureDir}`, digestPath };
+  }
+
+  const inputs = gatherInputs(featureDir, featureName);
+  if (!opts.force && !isFinalConfirmed(inputs.ctx)) {
+    return { written: false, reason: 'not final-confirmed (use --force to override)', digestPath };
+  }
+
+  fs.writeFileSync(digestPath, buildDigest(inputs), 'utf-8');
+  return { written: true, digestPath };
+}
+
+// ─── CLI ─────────────────────────────────────────────────────────────────────
+
+if (process.argv[1] && process.argv[1].includes('feature-digest') && !process.argv[1].includes('.test.')) {
+  const args = process.argv.slice(2);
+  const force = args.includes('--force');
+  const positional = args.filter((a) => !a.startsWith('--'));
+
+  let featureName = positional[0];
+  if (!featureName) {
+    const pointer = path.join(SPECS_DIR, '.current-feature');
+    featureName = fs.existsSync(pointer) ? fs.readFileSync(pointer, 'utf-8').trim() : '';
+  }
+  if (!featureName) {
+    console.error('Usage: feature-digest.ts <FeatureName> [--force]  (no .current-feature pointer found)');
+    process.exit(1);
+  }
+
+  const res = generateDigest(featureName, { force });
+  if (res.written) {
+    console.log(`✅ Wrote ${res.digestPath}`);
+  } else {
+    console.log(`⏭️  Skipped ${featureName}: ${res.reason}`);
+  }
+}

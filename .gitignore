@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.claude/mcp-server/node_modules/
+.claude/mcp-workflow/node_modules/
+
+# Secrets — NEVER commit. Copy .env.example → .env and fill locally.
+.env
+.env.local
+.env.private
+.claude/mcp-server/.env
+.claude/mcp-workflow/.env
+
+# Playwright auth (local only)
+.env.playwright
+
+# Workflow runtime state (regenerated per session/feature)
+docs/specs/.current-feature
+docs/specs/.feedback-history.md
+docs/specs/.kpi-history.jsonl
+# NOTE: docs/specs/INDEX.md is intentionally committed — `test:kit`'s
+# `workflow:index --check` gate compares against it, so it must exist on a fresh clone.
+
+# Claude Code local session state (machine-specific paths, not portable)
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+*.log

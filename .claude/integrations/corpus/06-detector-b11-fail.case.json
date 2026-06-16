@@ -1,0 +1,9 @@
+{
+  "id": "detector-b11-agent-a-fail",
+  "kind": "detector",
+  "description": "A feedback history containing a b11_a failure must surface the b11_agent_a_fail pattern. Guards the analyzer the self-improvement loop depends on against silent breakage (e.g. a parser or pattern-id rename).",
+  "files": {
+    "docs/specs/.feedback-history.md": "[2026-06-01T00:00:00.000Z] [Feat1] [auto]\nreflection_final: 80% | recoveries: 0 | b11_a: fail | b11_b: pass\nb9_6: skip | peer_conflict: no | skipped: [none] | design_cycleback: no | gates_revised: [none]\nfriction_score: 0 | friction_level: smooth | clarification_cycles: 0 | gate_revisions: 0 | manual_corrections: 0 | re_plans: 0 | impl_retries: 0 | verif_retries: 0 | prompt_version: v3.16\n"
+  },
+  "expect": { "patterns": ["b11_agent_a_fail"], "minTotalRuns": 1 }
+}

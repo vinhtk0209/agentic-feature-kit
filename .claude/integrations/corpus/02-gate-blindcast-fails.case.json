@@ -1,0 +1,10 @@
+{
+  "id": "gate-blindcast-fails",
+  "kind": "gate",
+  "description": "An api.ts that blind-casts an HTTP response (`data as Foo`) must fail HR33. Guards the core anti-corruption gate against being silently weakened.",
+  "files": {
+    "feat/data/api.ts": "import { yourHttpClient } from '@your-org/http-client';\nexport interface Foo { id: number }\nexport const getFoo = async (): Promise<Foo> => {\n  const { data } = await yourHttpClient().get('/api/foo');\n  return data as Foo;\n};\n"
+  },
+  "lint": { "folder": "feat", "codeOnly": true },
+  "expect": { "gate": "fail", "mustFlagRules": ["HR33"] }
+}

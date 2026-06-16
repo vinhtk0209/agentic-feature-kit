@@ -1,0 +1,32 @@
+# CLAUDE.md (template)
+
+> Copy this to your project root as `CLAUDE.md` and fill in the values.
+> The `/feature-from-confluence` workflow reads these at SESSION BOOTSTRAP into `PROJECT_CTX`.
+> Any key left out falls back to a generic React/TypeScript default (the workflow logs a warning).
+
+## Project Overview
+
+<one paragraph: what this app is, framework, where features live>
+
+## Conventions (read by the workflow)
+
+- **query_library**: `@tanstack/react-query` | `swr` | `pinia` | `ngrx` | …
+- **http_client**: `yourHttpClient()` | `axios` | `fetch`
+- **response_transform**: `transformResponse(data)` | `toCamelCase` | `keysToCamelCase`
+- **import_alias**: `@src/` | `@app/` | `~`
+- **shared_components_path**: `src/generic/` | `src/shared/` | `src/common/`
+- **i18n_pattern**: `defineMessages` + `useIntl` | `i18next`
+- **branch**: <default base branch, e.g. `develop`>
+- **commit_format**: e.g. `[JIRA-ID] type: description`
+
+## Workflow Overrides (optional — repo-specific HARD-RULE knobs)
+
+> Leave these OUT unless you need them. When absent, the kit uses generic-safe fallbacks
+> (e.g. HARD RULE 23's endpoint_base_override stays INACTIVE; URL prefixes come from
+> grepping `src/**/api.ts`). Only define them to pin repo-specific behavior.
+
+- **reference_feature**: `src/<folder>/` — mirror naming conventions from here (HR29)
+- **endpoint_base_override**: `/api/v1/.../` — REST base for a specific feature family (HR23)
+- **api_url_convention**: canonical `/api/vN/` prefix + id-param names (HR20)
+- **spec_section_map**: which spec sections hold Objectives / Components / AC (HR21/HR22)
+- **ui_library**: component lib for selector pitfalls (e.g. `@your-org/ui-lib`)

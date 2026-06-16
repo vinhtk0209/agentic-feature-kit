@@ -1,0 +1,6 @@
+{
+  "_comment": "Size ratchet for workflow prompts (KB). Guarded by regression-corpus.ts at SESSION BOOTSTRAP Step 0.E. To add content, trim elsewhere or raise the number deliberately — a visible decision, not silent growth.",
+  "files": {
+    ".claude/commands/feature-from-confluence.md": 168
+  }
+}

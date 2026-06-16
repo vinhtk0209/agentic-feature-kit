@@ -1,0 +1,30 @@
+# Workflow Kit CI — runs the deterministic self-test + drift gates for the
+# .claude/ feature-from-confluence toolchain on every PR / push to develop|main.
+#
+# Scope note (intentional): this gates ONLY the workflow kit (`npm run test:kit`,
+# which chains the 13 integration test suites + `workflow:index --check` + the
+# prompt-budget ratchet `--gate`). It deliberately does NOT run full-app
+# `npm run types` / `npm run lint` / `npm test`, which currently carry
+# pre-existing app type/lint debt unrelated to the kit and would make this red
+# on day one. Enabling full-app gates is a separate cleanup (see
+# docs/claude-commands/AUDIT-ACTION-LIST.md).
+name: Workflow Kit CI
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+jobs:
+  kit-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run workflow-kit self-test + drift gates
+        run: npm run test:kit

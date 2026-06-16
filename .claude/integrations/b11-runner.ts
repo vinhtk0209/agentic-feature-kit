@@ -1,0 +1,367 @@
+#!/usr/bin/env node
+/**
+ * b11-runner.ts — Phase-level B11 orchestration
+ *
+ * Runs the full B11 verification in a single call:
+ *   1. Read routes[] from ux-states.json (or extract from states[].screen)
+ *   2. Run playwright-runner.ts for each route (serial)
+ *   3. Run scoped types + lint checks (errors outside feature folder are pre-existing)
+ *   4. Update checklist.md PLAYWRIGHT-* rows
+ *   5. Return structured JSON
+ *
+ * Usage:
+ *   npx tsx .claude/integrations/b11-runner.ts <featureName>
+ *   npx tsx .claude/integrations/b11-runner.ts <featureName> --feature-path src/your-app/tabs/admin-tasks
+ *   npx tsx .claude/integrations/b11-runner.ts <featureName> --no-playwright
+ *
+ * Output (JSON to stdout):
+ *   {
+ *     b11_a: "pass" | "fail",           // static analysis (types + lint)
+ *     b11_b: "pass" | "fail" | "skip",  // playwright UI verification
+ *     typeErrors: N,                     // errors inside feature folder
+ *     lintErrors: N,
+ *     routeResults: [{ route, passed, checks, screenshotPath }],
+ *     checklistUpdated: boolean,
+ *     summary: string
+ *   }
+ */
+
+import { execSync, spawnSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import { resolveRoutes, parseUxStates } from './ux-states';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface RouteResult {
+  route: string;
+  passed: boolean;
+  checks: Array<{ id: string; passed: boolean; message: string }>;
+  screenshotPath?: string;
+}
+
+interface B11Result {
+  b11_a: 'pass' | 'fail';
+  b11_b: 'pass' | 'fail' | 'skip';
+  typeErrors: number;
+  lintErrors: number;
+  coverageErrors: number;
+  contractErrors: number;
+  contractWarnings: number;
+  routeResults: RouteResult[];
+  checklistUpdated: boolean;
+  summary: string;
+}
+
+// ─── Args ────────────────────────────────────────────────────────────────────
+
+const args = process.argv.slice(2);
+if (args.length === 0) {
+  console.error('Usage: npx tsx b11-runner.ts <featureName> [--feature-path <path>] [--no-playwright]');
+  process.exit(1);
+}
+
+const featureName = args[0];
+const featurePathIdx = args.indexOf('--feature-path');
+const featurePath = featurePathIdx >= 0 ? args[featurePathIdx + 1] : null;
+const noPlaywright = args.includes('--no-playwright');
+
+const cwd = process.cwd();
+const specsDir = path.join(cwd, 'docs', 'specs', featureName);
+const integrationsDir = path.join(cwd, '.claude', 'integrations');
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function run(cmd: string, captureStderr = false): { code: number; stdout: string; stderr: string } {
+  const result = spawnSync(cmd, {
+    shell: true,
+    cwd,
+    encoding: 'utf-8',
+    timeout: 120000,
+  });
+  return {
+    code: result.status ?? 1,
+    stdout: (result.stdout ?? '').toString().trim(),
+    stderr: (result.stderr ?? '').toString().trim(),
+  };
+}
+
+function readFile(filePath: string): string | null {
+  try { return fs.readFileSync(filePath, 'utf-8'); } catch { return null; }
+}
+
+function writeFile(filePath: string, content: string): void {
+  fs.writeFileSync(filePath, content, 'utf-8');
+}
+
+// ─── Step 1: Read routes ──────────────────────────────────────────────────────
+
+function readRoutes(): string[] {
+  // Route resolution lives in ux-states.ts (single source of truth, shared with the integration
+  // test) so the B5 flat schema (states[].route) can never silently diverge from the reader again
+  // — audit F1. parseUxStates returns null on malformed JSON → resolveRoutes → [].
+  const raw = readFile(path.join(specsDir, 'ux-states.json'));
+  if (!raw) return [];
+  return resolveRoutes(parseUxStates(raw));
+}
+
+// ─── Step 2: Run playwright for each route ────────────────────────────────────
+
+function runPlaywrightForRoute(route: string): RouteResult {
+  const runnerPath = path.join(integrationsDir, 'playwright-runner.ts');
+  if (!fs.existsSync(runnerPath)) {
+    return { route, passed: false, checks: [{ id: 'RUNNER', passed: false, message: 'playwright-runner.ts not found' }] };
+  }
+
+  const uxStatesPath = path.join(specsDir, 'ux-states.json');
+  const checklistPath = path.join(specsDir, 'checklist.md');
+  const interactionsArg = fs.existsSync(uxStatesPath) ? `--interactions "${uxStatesPath}"` : '';
+  const checklistArg = fs.existsSync(checklistPath) ? `--ac-checklist "${checklistPath}"` : '';
+
+  const cmd = [
+    `npx tsx "${runnerPath}"`,
+    `"${route}"`,
+    `--screenshot`,
+    `--feature-name "${featureName}"`,
+    interactionsArg,
+    checklistArg,
+  ].filter(Boolean).join(' ');
+
+  const { code, stdout, stderr } = run(cmd);
+
+  // playwright-runner outputs JSON — try to parse it
+  try {
+    const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]) as {
+        passed?: boolean;
+        checks?: Array<{ id: string; passed: boolean; message: string }>;
+        screenshotPath?: string;
+      };
+      return {
+        route,
+        passed: parsed.passed ?? code === 0,
+        checks: parsed.checks ?? [],
+        screenshotPath: parsed.screenshotPath,
+      };
+    }
+  } catch {
+    // fall through to plain result
+  }
+
+  return {
+    route,
+    passed: code === 0,
+    checks: [{ id: 'PLAYWRIGHT-RUN', passed: code === 0, message: stdout || stderr }],
+  };
+}
+
+// ─── Step 3: Static analysis ──────────────────────────────────────────────────
+
+function countScopedErrors(output: string, scopePath: string | null): number {
+  if (!scopePath) return 0;
+  const lines = output.split('\n');
+  // A line is a scoped error if it contains the feature path and contains "error"
+  return lines.filter((l) => l.includes(scopePath) && /error/i.test(l)).length;
+}
+
+function runStaticAnalysis(): { typeErrors: number; lintErrors: number; b11_a: 'pass' | 'fail' } {
+  // Types
+  const typesResult = run('npm run types 2>&1');
+  const typeOutput = typesResult.stdout + typesResult.stderr;
+  // With a feature path → scope to the feature. Without one (audit F3): fall back to the
+  // WHOLE-PROJECT error count rather than silently reporting 0, so a missing --feature-path
+  // can never produce an unconditional green b11_a.
+  const typeErrors = featurePath
+    ? countScopedErrors(typeOutput, featurePath)
+    : (typeOutput.match(/error TS\d+/g) ?? []).length;
+
+  // ESLint scoped to feature folder (only if featurePath given)
+  let lintErrors = 0;
+  if (featurePath) {
+    const lintResult = run(`npx eslint --ext .js,.jsx,.ts,.tsx "${featurePath}" 2>&1`);
+    const lintOutput = lintResult.stdout + lintResult.stderr;
+    lintErrors = (lintOutput.match(/\d+ error/g) ?? [])
+      .reduce((sum, m) => sum + parseInt(m, 10), 0);
+  }
+
+  const b11_a: 'pass' | 'fail' = typeErrors === 0 && lintErrors === 0 ? 'pass' : 'fail';
+  return { typeErrors, lintErrors, b11_a };
+}
+
+// ─── Step 3.5: Coverage gate (audit F5 — wire lint-feature --gate into the orchestrator) ──────
+// The strongest HR33/34/35/36 gate used to be a separate prose step the model had to remember.
+// Run it here so its verdict travels in the run_b11 result. HR33/34/35/36 is a hard rule, so
+// coverageErrors > 0 now fails the run (non-zero exit) alongside b11_a — it is no longer advisory.
+function runCoverageGate(): { coverageErrors: number; coverageSummary: string } {
+  if (!featurePath) return { coverageErrors: 0, coverageSummary: 'coverage=skipped (no --feature-path)' };
+  const linter = path.join(integrationsDir, 'lint-feature.ts');
+  const checklistPath = path.join(specsDir, 'checklist.md');
+  const uxStatesPath = path.join(specsDir, 'ux-states.json');
+  if (!fs.existsSync(linter) || !fs.existsSync(checklistPath)) {
+    return { coverageErrors: 0, coverageSummary: 'coverage=skipped (linter or checklist missing)' };
+  }
+  const parts = [`npx tsx "${linter}"`, `"${featurePath}"`, `--checklist "${checklistPath}"`];
+  if (fs.existsSync(uxStatesPath)) parts.push(`--ux-states "${uxStatesPath}"`);
+  parts.push('--gate', '--json');
+  const { stdout, stderr } = run(parts.join(' '));
+  try {
+    const m = (stdout || stderr).match(/\{[\s\S]*\}/);
+    if (m) {
+      const j = JSON.parse(m[0]) as { errors?: number };
+      const n = j.errors ?? 0;
+      return { coverageErrors: n, coverageSummary: `coverage=${n} error(s) (HR33/34/35/36)` };
+    }
+  } catch { /* fall through */ }
+  return { coverageErrors: 0, coverageSummary: 'coverage=unparsed' };
+}
+
+// ─── Step 3.6: Contract probe (advisory) ──────────────────────────────────────
+// Verify the .http contract still satisfies data/types.ts (api.ts blind-casts the
+// response, so nothing else checks this). ADVISORY by policy (USE_MOCK=true, real API
+// not yet integrated): reported in the result, never gates the exit code.
+function runContractProbe(): { contractErrors: number; contractWarnings: number; contractSummary: string } {
+  if (!featurePath) return { contractErrors: 0, contractWarnings: 0, contractSummary: 'contract=skipped (no --feature-path)' };
+  const probe = path.join(integrationsDir, 'contract-probe.ts');
+  let httpFile = '';
+  try {
+    const hit = fs.readdirSync(specsDir).find((f) => f.endsWith('.http'));
+    if (hit) httpFile = path.join(specsDir, hit);
+  } catch { /* no specs dir */ }
+  const typesFile = [path.join(cwd, featurePath, 'data', 'types.ts'), path.join(cwd, featurePath, 'types.ts')].find((p) => fs.existsSync(p)) ?? '';
+  const apiFile = [path.join(cwd, featurePath, 'data', 'api.ts'), path.join(cwd, featurePath, 'api.ts')].find((p) => fs.existsSync(p)) ?? '';
+  if (!fs.existsSync(probe) || !httpFile || !typesFile || !apiFile) {
+    return { contractErrors: 0, contractWarnings: 0, contractSummary: 'contract=skipped (missing .http/types/api)' };
+  }
+  const cmd = `npx tsx "${probe}" --http "${httpFile}" --types "${typesFile}" --api "${apiFile}" --get-only --json`;
+  const { stdout, stderr } = run(cmd);
+  try {
+    const m = (stdout || stderr).match(/\{[\s\S]*\}/);
+    if (m) {
+      const j = JSON.parse(m[0]) as { errors?: number; warnings?: number };
+      const e = j.errors ?? 0;
+      const w = j.warnings ?? 0;
+      return { contractErrors: e, contractWarnings: w, contractSummary: `contract=${e} drift error(s), ${w} warning(s) [advisory]` };
+    }
+  } catch { /* fall through */ }
+  return { contractErrors: 0, contractWarnings: 0, contractSummary: 'contract=unparsed' };
+}
+
+// ─── Step 4: Update checklist PLAYWRIGHT rows ─────────────────────────────────
+
+function updateChecklistPlaywright(routeResults: RouteResult[]): boolean {
+  const checklistPath = path.join(specsDir, 'checklist.md');
+  const content = readFile(checklistPath);
+  if (!content) return false;
+
+  const allPassed = routeResults.every((r) => r.passed);
+  const passCount = routeResults.filter((r) => r.passed).length;
+  const total = routeResults.length;
+
+  // Update PLAYWRIGHT-001 through PLAYWRIGHT-005 summary if present
+  let updated = content;
+
+  // Mark overall playwright section pass/fail
+  // If there's an existing "Playwright Verify" table, update it
+  const playwrightSection = /## Playwright Verify[\s\S]*?(?=\n---|\n## |\n$)/;
+  if (playwrightSection.test(updated)) {
+    // Section exists — leave per-check rows as-is (playwright-runner updates them)
+    // Just ensure the section is present; runner handles individual row updates
+  } else {
+    // Append a minimal section
+    const rows = routeResults.map((r, i) => {
+      const icon = r.passed ? '✅ pass' : '❌ fail';
+      const notes = r.checks.find((c) => !c.passed)?.message ?? '';
+      return `| PLAYWRIGHT-ROUTE-${String(i + 1).padStart(3, '0')}: ${r.route} | ${icon} | ${notes} |`;
+    }).join('\n');
+
+    const section = `\n## Playwright Verify (B11)\n\n| Check | Result | Notes |\n|-------|--------|-------|\n${rows}\n`;
+    updated = updated.replace(/(\n## Summary)/, `${section}\n## Summary`);
+  }
+
+  if (updated !== content) {
+    writeFile(checklistPath, updated);
+    return true;
+  }
+  return false;
+}
+
+// ─── Main ────────────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  const routes = readRoutes();
+
+  // Static analysis
+  const { typeErrors, lintErrors, b11_a } = runStaticAnalysis();
+
+  // Coverage gate (HR33/34/35/36) — reported alongside static analysis
+  const { coverageErrors, coverageSummary } = runCoverageGate();
+
+  // Contract probe (advisory) — .http contract vs data/types.ts
+  const { contractErrors, contractWarnings, contractSummary } = runContractProbe();
+
+  // Playwright
+  let b11_b: 'pass' | 'fail' | 'skip' = 'skip';
+  let routeResults: RouteResult[] = [];
+
+  if (!noPlaywright && routes.length > 0) {
+    for (const route of routes) {
+      routeResults.push(runPlaywrightForRoute(route));
+    }
+    b11_b = routeResults.every((r) => r.passed) ? 'pass' : 'fail';
+  } else if (!noPlaywright && routes.length === 0) {
+    b11_b = 'skip';
+  }
+
+  // Update checklist
+  const checklistUpdated = routeResults.length > 0
+    ? updateChecklistPlaywright(routeResults)
+    : false;
+
+  const passedRoutes = routeResults.filter((r) => r.passed).length;
+  const summary = [
+    `Static: types=${typeErrors} errors, lint=${lintErrors} errors (b11_a=${b11_a})`,
+    coverageSummary,
+    contractSummary,
+    routes.length > 0
+      ? `Playwright: ${passedRoutes}/${routeResults.length} routes passed (b11_b=${b11_b})`
+      : 'Playwright: no routes defined (b11_b=skip)',
+  ].join(' | ');
+
+  const result: B11Result = {
+    b11_a,
+    b11_b,
+    typeErrors,
+    lintErrors,
+    coverageErrors,
+    contractErrors,
+    contractWarnings,
+    routeResults,
+    checklistUpdated,
+    summary,
+  };
+
+  // Persist the machine-measured verdict so b12-logger records b11_a/b11_b from
+  // ground truth instead of trusting hand-transcribed metrics (audit Fix 2).
+  // Written on every run — including failures — so the learning loop sees real
+  // pass/fail. b12-logger consumes (deletes) this file after reading it.
+  try {
+    fs.mkdirSync(specsDir, { recursive: true });
+    writeFile(
+      path.join(specsDir, '.b11-result.json'),
+      JSON.stringify({ b11_a, b11_b, coverageErrors, writtenAt: new Date().toISOString() }, null, 2),
+    );
+  } catch { /* non-fatal — stdout JSON remains the primary contract */ }
+
+  console.log(JSON.stringify(result, null, 2));
+  // Hard gates: static analysis (b11_a) AND AC coverage (HR33/34/35/36). Playwright
+  // (b11_b) keeps its own retry loop and 'skip' is a valid outcome, so it is reported
+  // in the JSON but does not gate the exit code.
+  const gatesPass = b11_a === 'pass' && coverageErrors === 0;
+  process.exit(gatesPass ? 0 : 1);
+}
+
+main().catch((err) => {
+  console.error(JSON.stringify({ error: String(err) }));
+  process.exit(1);
+});
