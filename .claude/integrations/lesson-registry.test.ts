@@ -119,6 +119,29 @@ test('buildReport — unenforced HIGH is 0 when all HIGH are enforced', () => {
   assert(report.unenforcedHigh === 0, `single enforced HIGH should give unenforcedHigh=0`);
 });
 
+// Regression: a typo in an enum value (e.g. test_status="active") must NOT crash
+// parseLessons/buildReport. It used to throw `byStatus[undefined].push`, taking down
+// `npm test` (lesson-registry runs inside test:kit). Now coerced to a safe default.
+const BAD_ENUMS = `
+<!-- @lesson id="L-BAD-001" classification="tooling_improvement" priority="urgent" root_cause="x" enforced_by="none" test_status="active" -->
+### Bad enums
+Unknown classification/priority/test_status values.
+`;
+
+test('parseLessons — unknown enum values coerce to defaults (no crash)', () => {
+  const lessons = parseLessons(BAD_ENUMS);
+  assert(lessons.length === 1, 'should parse the lesson');
+  assert(lessons[0].testStatus === 'pending', `test_status → pending, got ${lessons[0].testStatus}`);
+  assert(lessons[0].priority === 'low', `priority → low, got ${lessons[0].priority}`);
+  assert(lessons[0].classification === 'prompt_rule', `classification → prompt_rule, got ${lessons[0].classification}`);
+});
+
+test('buildReport — bad-enum lesson does not throw and buckets under defaults', () => {
+  const report = buildReport(parseLessons(BAD_ENUMS));
+  assert(report.total === 1, 'total should be 1');
+  assert(report.pending === 1, 'coerced lesson should land in the pending bucket');
+});
+
 test('parseCliArgs — defaults', () => {
   const opts = parseCliArgs([]);
   assert(opts.summary === false, 'summary default false');

@@ -26,3 +26,7 @@ docs/specs/.kpi-history.jsonl
 # OS / editor
 .DS_Store
 *.log
+
+# Local backups (e.g. command-file snapshots before an edit)
+*.bak
+*.bak.*

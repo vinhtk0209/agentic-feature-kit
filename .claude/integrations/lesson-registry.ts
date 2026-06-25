@@ -119,6 +119,22 @@ function attr(raw: string, name: string): string {
   return m ? m[1].trim() : '';
 }
 
+// Allowed enum values — used to coerce unknown annotation values to a safe default
+// instead of crashing. A single typo in prompt-evolution.md (e.g. test_status="active")
+// must NOT take down the whole tool / `npm test` (this runs inside test:kit).
+const VALID_CLASSIFICATIONS: ReadonlySet<string> = new Set<LessonClassification>([
+  'prompt_rule', 'validation_rule', 'automated_gate', 'regression_test',
+  'project_knowledge', 'temporary_observation', 'reject',
+]);
+const VALID_PRIORITIES: ReadonlySet<string> = new Set<LessonPriority>(['high', 'medium', 'low']);
+const VALID_TEST_STATUSES: ReadonlySet<string> = new Set<LessonTestStatus>(['enforced', 'pending', 'exempt']);
+
+function coerce<T extends string>(value: string, valid: ReadonlySet<string>, fallback: T, field: string, id: string): T {
+  if (valid.has(value)) return value as T;
+  if (value) console.warn(`⚠️  lesson-registry: lesson ${id} has unknown ${field}="${value}" → treating as "${fallback}"`);
+  return fallback;
+}
+
 export function parseLessons(content: string): Lesson[] {
   const lessons: Lesson[] = [];
   // Normalise line endings
@@ -138,11 +154,11 @@ export function parseLessons(content: string): Lesson[] {
     const id = attr(raw, 'id');
     if (!id) continue; // skip malformed annotations
 
-    const classification = (attr(raw, 'classification') || 'prompt_rule') as LessonClassification;
-    const priority = (attr(raw, 'priority') || 'low') as LessonPriority;
+    const classification = coerce<LessonClassification>(attr(raw, 'classification') || 'prompt_rule', VALID_CLASSIFICATIONS, 'prompt_rule', 'classification', id);
+    const priority = coerce<LessonPriority>(attr(raw, 'priority') || 'low', VALID_PRIORITIES, 'low', 'priority', id);
     const rootCause = attr(raw, 'root_cause') || 'unknown';
     const enforcedBy = attr(raw, 'enforced_by') || 'none';
-    const testStatus = (attr(raw, 'test_status') || 'pending') as LessonTestStatus;
+    const testStatus = coerce<LessonTestStatus>(attr(raw, 'test_status') || 'pending', VALID_TEST_STATUSES, 'pending', 'test_status', id);
 
     lessons.push({ id, classification, priority, rootCause, enforcedBy, testStatus, snippet });
   }

@@ -19,6 +19,8 @@
     "check:lessons-sync": "npx tsx .claude/integrations/lesson-registry.ts --sync-check",
     "check:playwright-token": "npx tsx .claude/integrations/version-check.ts --playwright",
     "check:amendments": "npx tsx .claude/integrations/improve-trigger.ts --status",
+    "sync": "npx tsx scripts/sync-to-targets.ts",
+    "sync:dry": "npx tsx scripts/sync-to-targets.ts --dry-run",
     "workflow:kpis": "npx tsx .claude/integrations/kpi-report.ts",
     "workflow:dashboard": "npx tsx .claude/integrations/kpi-report.ts --dashboard",
     "workflow:index": "npx tsx .claude/integrations/feature-index.ts",

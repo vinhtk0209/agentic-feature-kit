@@ -1,0 +1,10 @@
+{
+  "targets": ["../isu-elearner-learning", "../tempp/isu-elearner-authoring"],
+  "syncPaths": [
+    "commands/",
+    "integrations/",
+    "templates/",
+    "_content/",
+    "prompt-evolution.md"
+  ]
+}

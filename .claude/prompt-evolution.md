@@ -933,7 +933,7 @@ curl check → if NOT 200/302:
 
 **Source**: ISUITE2026-408 BulkEnrollment post-API verification run (2026-06-24). User noted that `## Summary` in `checklist.md` was updated manually after each Playwright run.
 
-<!-- @lesson id="L-2026-06-24-001" classification="tooling_improvement" priority="medium" root_cause="workflow_design_flaw" enforced_by="playwright-runner.ts:updateChecklistSummary" test_status="active" -->
+<!-- @lesson id="L-2026-06-24-001" classification="automated_gate" priority="medium" root_cause="workflow_design_flaw" enforced_by="playwright-runner.ts:updateChecklistSummary" test_status="enforced" -->
 ### Change L-23 — Add `updateChecklistSummary()` to playwright-runner.ts
 
 **Where**: `.claude/integrations/playwright-runner.ts` — new function `updateChecklistSummary()` + call site in `runFeatureVerification()`.

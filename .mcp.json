@@ -7,6 +7,11 @@
     "feature-workflow": {
       "command": "npx",
       "args": ["tsx", ".claude/mcp-workflow/index.ts"]
+    },
+    "codegraph": {
+      "type": "stdio",
+      "command": "codegraph",
+      "args": ["serve", "--mcp"]
     }
   }
 }

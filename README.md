@@ -30,6 +30,30 @@ npm test          # = npm run test:kit
 
 `test:kit` runs all integration suites + `version-check` + `workflow:index --check` + the prompt-budget ratchet `--gate`. The CI workflow (`.github/workflows/workflow-kit-ci.yml`) runs the same on every PR.
 
+## Syncing the kit to target repos (workspace)
+
+This kit is the **source of truth**. Use the sync script to push it into the repos that consume it (one-way, source always wins):
+
+```bash
+npm run sync          # copy allowlisted paths -> target repos, then report versions
+npm run sync:dry      # preview only (no files written, no Supabase write)
+```
+
+- Targets + paths are declared in **`sync.config.json`** (`targets`, `syncPaths`). Only allowlisted paths (`commands/`, `integrations/`, `templates/`, `_content/`, `prompt-evolution.md`) are touched — anything else in a target (e.g. `.env`, `mcp-server/`) is left alone.
+- After copying, the script records each target's installed `PROMPT_VERSION` into Supabase (`installs` table) so the dashboard can show "installed vs running" per repo. This part is **best-effort** — a network failure only warns; the file sync still succeeds.
+- Supabase creds for the report come from the kit's own **`.env`** (`SUPABASE_URL`, `SUPABASE_ANON_KEY`; public anon key, RLS-protected). Missing creds → report skipped with a warning.
+
+## Database migrations (Supabase)
+
+SQL in **`migrations/`** is run **manually** in the Supabase SQL editor (the scripts never run DDL):
+
+| File | Purpose |
+|---|---|
+| `0001_installs.sql` | `installs` table — version synced onto each repo (written by `npm run sync`) |
+| `0002_repo_runs.sql` | `repo_runs` table — version each repo last ran (upserted by `telemetry.ts` on a successful verify) |
+
+Both use anon + RLS (insert/update/select policies). The dashboard joins them per-repo on `/versions`.
+
 ## Commands (Claude Code slash commands)
 
 | Command | Purpose |

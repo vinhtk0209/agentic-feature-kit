@@ -27,6 +27,11 @@ const SUPABASE_ANON_KEY =
 
 // Read version from the prompt file so each repo reports its actual installed version.
 // Falls back to the hardcoded value if the file is missing (e.g. in tests).
+//
+// FORMAT MUST MATCH scripts/sync-to-targets.ts `resolveTargetVersion()` exactly:
+// `major.minor` + ".0" (e.g. "3.17.0"). The dashboard compares repo_runs.last_run_version
+// (written here) with installs.kit_version (written by the sync script); diverging
+// formats would make "installed vs running" mismatch falsely. Keep both in lockstep.
 function resolveKitVersion(): string {
   try {
     const thisFile = fileURLToPath(import.meta.url);
@@ -41,6 +46,20 @@ function resolveKitVersion(): string {
   return "3.17.0";
 }
 const KIT_VERSION = resolveKitVersion();
+
+// Resolve the repo this telemetry.ts lives in, so we can record per-repo runs.
+// Layout is always <repo>/.claude/integrations/telemetry.ts, so the repo root is
+// three dirs up. Used to upsert repo_runs (mirrors how sync writes `installs`).
+function resolveRepo(): string {
+  try {
+    const thisFile = fileURLToPath(import.meta.url);
+    const repoRoot = path.dirname(path.dirname(path.dirname(thisFile)));
+    return path.basename(repoRoot);
+  } catch {
+    return "unknown";
+  }
+}
+const REPO = resolveRepo();
 
 const headers = {
   "Content-Type": "application/json",
@@ -116,6 +135,8 @@ async function verify(): Promise<number> {
     const quota =
       result.max_runs === null ? "unlimited" : `${result.runs_used}/${result.max_runs}`;
     console.log(`✅ Token valid — ${result.owner} (runs: ${quota})`);
+    // Record this repo's running version (best-effort; never blocks verify).
+    await recordRepoRun();
     return 0;
   } else {
     const msg: Record<string, string> = {
@@ -141,6 +162,32 @@ async function insert(table: string, row: Record<string, unknown>): Promise<void
   } catch (e) {
     console.error(`⚠️  telemetry ${table} skipped: ${(e as Error).message}`);
   }
+}
+
+/**
+ * Best-effort upsert into a telemetry table (insert-or-update on the primary key);
+ * never throws to the caller. Used for repo_runs so each repo keeps one row.
+ */
+async function upsert(table: string, row: Record<string, unknown>): Promise<void> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: "POST",
+      headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) console.error(`⚠️  telemetry ${table}: ${res.status}`);
+  } catch (e) {
+    console.error(`⚠️  telemetry ${table} skipped: ${(e as Error).message}`);
+  }
+}
+
+/** Record that THIS repo ran the kit at the current version (per-repo, upsert). */
+async function recordRepoRun(): Promise<void> {
+  await upsert("repo_runs", {
+    repo: REPO,
+    last_run_version: KIT_VERSION,
+    last_run_at: new Date().toISOString(),
+  });
 }
 
 /** Look up the caller's token_id via the verify function's side channel. */

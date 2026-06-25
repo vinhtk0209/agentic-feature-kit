@@ -319,6 +319,8 @@ npx tsx .claude/integrations/memory.ts save final_confirmed \
 
 The file `docs/specs/<FeatureName>/context-summary.md` is created/updated by the integration. Do NOT write it manually.
 
+**On context pressure or after an auto-compaction (mid-run):** the workflow's durable state lives on disk, not in chat history — do NOT assume earlier messages are intact. Re-orient by running `npx tsx .claude/integrations/memory.ts load` (current phase + decisions) and reading the active `docs/specs/<FeatureName>/` folder (recovery.log, artifacts), then continue from the last saved phase. This keeps a compaction from silently losing position or repeating a completed step. To stay resilient between gates, prefer referencing on-disk artifacts (spec, screenshots, lens outputs) by path over re-pasting their full contents into context.
+
 ---
 
 ### ★6 LEARN
@@ -1421,6 +1423,8 @@ Do these files match the scope correctly?
 > DIAGRAM_FLOW entries → verify State Shape covers all described transitions.
 > Reference annotation filenames inline so user can cross-check.
 
+**Finding reuse candidates** (for the `src/generic/ Reuse` section below): prefer the **CodeGraph MCP** tool when available — `codegraph_explore "<feature concept>"` (relevant symbols + source + call paths in one call) or `codegraph query "Table|List|Toolbar|..."` — instead of crawling files. It indexes every symbol (higher recall than name-grep) and shows callers so you can judge fit, directly reducing wrong-component picks. **Fallback** when CodeGraph MCP is not present: grep `PROJECT_CTX.shared_components_path` (e.g. `src/generic/`) as before — same behavior as without this tool. For a large survey you MAY delegate this discovery to a subagent that returns only a compact reuse report, keeping the main context lean.
+
 **Claude MUST NOT continue past this point until the user responds.**
 
 ```
@@ -2196,15 +2200,24 @@ Call MCP tool `run_feedback_append` (from `feature-workflow` server):
 Returns `{ ok: true, entryCount: N }`. Writes to `docs/specs/<FeatureName>/feedback.log`
 and `docs/specs/.feedback-history.md` (trimmed to 10 entries automatically).
 
-**If MCP returns `isError`**: fall back — write manually to both files:
+**If MCP is unavailable or returns `isError`**: fall back to calling `b12-logger.ts`
+DIRECTLY (same script the MCP tool wraps) — do NOT hand-write the markdown. The direct
+call is what also writes `.kpi-history.jsonl` and fires `improve-trigger`; hand-writing
+only the markdown silently breaks the KPI history + verification half of the learning loop.
+
+```bash
+npx tsx .claude/integrations/b12-logger.ts "<FeatureName>" \
+  '{"reflectionFinal":"<X%>","recoveries":N,"b11_a":"pass|fail","b11_b":"pass|fail|skip","b9_6":"pass|fail|skip","peerConflict":false,"skipped":[],"designCycleback":false,"gatesRevised":[]}' || true
+```
+
+`b12-logger.ts` trims `.feedback-history.md` to the 10 most recent entries automatically.
+Only if BOTH the MCP tool and `b12-logger.ts` fail (e.g. tsx missing), hand-write the entry below as a last resort:
 
 ```
 [ISO-timestamp] [<FeatureName>] [auto]
 reflection_final: X% | recoveries: N | b11_a: pass|fail | b11_b: pass|fail|skipped
 b9_6: pass|fail|skip | peer_conflict: yes|no | skipped: [list or none] | design_cycleback: yes|no | gates_revised: [list or none]
 ```
-
-Then trim `docs/specs/.feedback-history.md` to keep only the **10 most recent entries**.
 
 ### Step 2 — Ask for user feedback (optional, non-blocking)
 
