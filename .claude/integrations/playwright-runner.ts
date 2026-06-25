@@ -113,20 +113,87 @@ interface CheckResult {
   evidence?: string;
 }
 
-interface InteractionStep {
-  action: 'click' | 'fill' | 'navigate' | 'wait' | 'waitForSelector' | 'screenshot' | 'mockRoute';
-  selector?: string;
-  value?: string;
+// ── InteractionStep discriminated union (v3) ────────────────────────────────
+// Each action is a separate interface for full type safety in switch branches.
+// Existing action types are preserved exactly; new types added below.
+
+interface StepCommon { label: string; screenshotAfter?: boolean; timeout?: number; }
+
+// Existing
+interface ClickStep            extends StepCommon { action: 'click';           selector: string; }
+interface FillStep             extends StepCommon { action: 'fill';            selector: string; value: string; }
+interface NavigateStep         extends StepCommon { action: 'navigate';        url: string; }
+interface WaitStep             extends StepCommon { action: 'wait'; }
+interface WaitForSelectorStep  extends StepCommon { action: 'waitForSelector'; selector: string; }
+interface ScreenshotStep       extends StepCommon { action: 'screenshot'; }
+interface MockRouteStep        extends StepCommon {
+  action: 'mockRoute';
+  urlPattern?: string;
   url?: string;
-  timeout?: number;
-  label: string;
-  screenshotAfter?: boolean;
-  // mockRoute-specific fields
-  urlPattern?: string;        // glob pattern for page.route() interception
   responseStatus?: number;
   responseBody?: unknown;
   responseHeaders?: Record<string, string>;
 }
+
+// New v3 action types
+/** page.type() — fires keydown/keyup per character; use for debounced inputs. */
+interface TypeStep extends StepCommon { action: 'type'; selector: string; value: string; }
+/** page.selectOption() — selects an <option> by value string. */
+interface SelectStep extends StepCommon { action: 'select'; selector: string; value: string; }
+/**
+ * Inline assertion: reads an attribute and asserts its value.
+ * Boolean attributes (disabled, checked, readonly, required, selected):
+ *   expected="true"  → assert attribute is present
+ *   expected="false" → assert attribute is absent
+ * All other attributes: string equality check.
+ * Throws on mismatch — fails the enclosing state (triggers cascade detection).
+ */
+interface AssertAttributeStep extends StepCommon {
+  action: 'assertAttribute';
+  selector: string;
+  attribute: string;
+  expected: string;
+}
+/**
+ * Registers a one-shot dialog dismiss handler.
+ * Place BEFORE the step that opens the dialog.
+ * Handler fires once and clears; add another dismissDialog for each subsequent dialog.
+ */
+interface DismissDialogStep extends StepCommon { action: 'dismissDialog'; }
+/** page.waitForURL() — waits until page URL matches a glob pattern string. */
+interface WaitForURLStep extends StepCommon { action: 'waitForURL'; pattern: string; }
+/**
+ * Inline assertion: counts elements matching selector and asserts equals expected.
+ * Throws on mismatch — fails the enclosing state.
+ */
+interface AssertCountStep extends StepCommon { action: 'assertCount'; selector: string; expected: number; }
+/**
+ * Drag the source element onto the target via a manual pointer sequence
+ * (move→down→nudge→move-in-steps→settle→up). Works with pointer-sensor DnD
+ * libraries (e.g. @dnd-kit) where Playwright's high-level dragTo can be unreliable.
+ */
+interface DragAndDropStep extends StepCommon { action: 'dragAndDrop'; selector: string; targetSelector: string; }
+/** Inline assertion: trimmed text content of selector equals expected. Throws on mismatch. */
+interface AssertTextStep extends StepCommon { action: 'assertText'; selector: string; expected: string; }
+/**
+ * page.setInputFiles() — attaches files to a hidden or visible file input element.
+ * Each entry in `files` is either:
+ *   - A real file path on disk (absolute or relative to cwd)
+ *   - A mock spec string: 'mock:<name>:<sizeBytes>:<mimeType>'
+ *     e.g. 'mock:enrollments.csv:1024:text/csv'
+ *     Generates a synthetic Buffer of the given byte length (filled with 'A').
+ * Works on inputs with display:none — Playwright bypasses the OS picker.
+ */
+interface SetInputFilesStep extends StepCommon {
+  action: 'setInputFiles';
+  selector: string;
+  files: string | string[];
+}
+
+type InteractionStep =
+  | ClickStep | FillStep | NavigateStep | WaitStep | WaitForSelectorStep | ScreenshotStep | MockRouteStep
+  | TypeStep | SelectStep | AssertAttributeStep | DismissDialogStep | WaitForURLStep | AssertCountStep
+  | DragAndDropStep | AssertTextStep | SetInputFilesStep;
 
 interface InteractionScript {
   states: {
@@ -541,13 +608,81 @@ function updateChecklistRows(checklistPath: string, verdicts: RowVerdict[]): voi
   fs.writeFileSync(checklistPath, text, 'utf8');
 }
 
+/**
+ * Auto-update the `## Summary` section in checklist.md after row updates.
+ * Counts ✅/❌/⬜ per section (REQ, UI, ACT, UX) and rewrites the Summary block.
+ * Called immediately after updateChecklistRows() so counts reflect the latest run.
+ */
+function updateChecklistSummary(
+  checklistPath: string,
+  playwrightChecks: CheckResult[],
+  acResults: RowVerdict[],
+  unitTestResults: RowVerdict[],
+  runTimestamp: string,
+): void {
+  if (!fs.existsSync(checklistPath)) return;
+  const text = fs.readFileSync(checklistPath, 'utf8');
+
+  const countSection = (title: string): { total: number; pass: number; fail: number; pending: number } => {
+    const startIdx = text.indexOf(`## ${title}`);
+    if (startIdx === -1) return { total: 0, pass: 0, fail: 0, pending: 0 };
+    const rest = text.slice(startIdx);
+    const nextSection = rest.match(/\n## /);
+    const section = nextSection ? rest.slice(0, nextSection.index) : rest;
+    const tableLines = section.split('\n').filter(
+      (l) => /^\|/.test(l.trim()) && !/^\|\s*[-:]+\s*\|/.test(l.trim()),
+    );
+    const dataRows = tableLines.slice(1); // skip header row
+    return {
+      total: dataRows.length,
+      pass: dataRows.filter((l) => l.includes('✅')).length,
+      fail: dataRows.filter((l) => l.includes('❌')).length,
+      pending: dataRows.filter((l) => l.includes('⬜')).length,
+    };
+  };
+
+  const req = countSection('Requirements Coverage');
+  const ui = countSection('UI Verification');
+  const act = countSection('ACT');
+  const ux = countSection('UX States');
+
+  const date = new Date(runTimestamp).toISOString().slice(0, 10);
+  const passPw = playwrightChecks.filter((c) => c.passed).length;
+  const totalPw = playwrightChecks.length;
+  const acPass = acResults.filter((r) => r.passed).length;
+  const utPass = unitTestResults.filter((r) => r.passed).length;
+  const utTotal = unitTestResults.length;
+
+  const icon = (s: { pass: number; fail: number; total: number }): string => {
+    if (s.total === 0) return '⬜';
+    if (s.fail > 0) return '❌';
+    if (s.pass === s.total) return '✅';
+    return '⚠️';
+  };
+  const pendingNote = (n: number) => (n > 0 ? ` (${n} pending)` : '');
+
+  const summaryLines = [
+    `- Total REQ rows: **${req.total}** — ${icon(req)} ${req.pass}/${req.total}${pendingNote(req.pending)}`,
+    `- Total UI rows: **${ui.total}** — ${icon(ui)} ${ui.pass}/${ui.total} verified`,
+    `- Total ACT rows: **${act.total}** — ${icon(act)} ${act.pass}/${act.total} verified${pendingNote(act.pending)}`,
+    `- Total UX rows: **${ux.total}** — ${icon(ux)} ${ux.pass}/${ux.total}`,
+    `- Playwright latest: **${passPw}/${totalPw}${passPw === totalPw ? ' ALL PASS' : ''}** (${date})${acResults.length > 0 ? ` — ${acPass}/${acResults.length} AC assertions` : ''}`,
+    ...(utTotal > 0 ? [`- Unit tests: **${utPass}/${utTotal}** pass`] : []),
+    '',
+    '- `⬜` = not yet verified | `✅` = verified | `⚠️` = backend-only/partial | `❌` = failing',
+  ];
+
+  const newSummary = `## Summary\n\n${summaryLines.join('\n')}`;
+  const updated = text.replace(/## Summary[\s\S]*$/, newSummary);
+  if (updated !== text) fs.writeFileSync(checklistPath, updated, 'utf8');
+}
+
 function runUnitTestEntry(entry: UnitTestEntry): { passed: boolean; evidence: string } {
-  // Spawn jest. The repo has `npm test` configured. Use --testPathPattern and -t.
+  // Use npx jest directly with --no-coverage to avoid threshold failures and speed up runs.
   try {
     const { spawnSync } = require('child_process') as typeof import('child_process');
-    const args = ['test', '--', '--testPathPattern', entry.test_file];
-    if (entry.grep) args.push('-t', entry.grep);
-    const r = spawnSync('npm', args, { encoding: 'utf8', shell: true });
+    const args = ['jest', entry.test_file, '--no-coverage'];    if (entry.grep) args.push('-t', entry.grep);
+    const r = spawnSync('npx', args, { encoding: 'utf8', shell: true });
     const out = `${r.stdout}\n${r.stderr}`;
     const passed = r.status === 0 && /PASS/.test(out);
     return { passed, evidence: passed ? `jest pass: ${entry.test_file}` : `jest fail (exit ${r.status})` };
@@ -595,6 +730,90 @@ async function runInteractionState(
           await page.route(pattern, (r) => r.fulfill({ status, body, headers }));
           break;
         }
+        // ── v3 action types ─────────────────────────────────────────────────
+        case 'type':
+          await page.type(step.selector, step.value, { timeout: step.timeout ?? 10_000 });
+          break;
+        case 'select':
+          await page.selectOption(step.selector, step.value, { timeout: step.timeout ?? 10_000 });
+          break;
+        case 'assertAttribute': {
+          const el = await page.$(step.selector);
+          if (!el) throw new Error(`assertAttribute: selector not found — ${step.selector}`);
+          const actual = await el.getAttribute(step.attribute);
+          const boolAttrs = ['disabled', 'checked', 'readonly', 'required', 'selected', 'multiple'];
+          if (boolAttrs.includes(step.attribute) && (step.expected === 'true' || step.expected === 'false')) {
+            const present = actual !== null;
+            if (present !== (step.expected === 'true')) {
+              throw new Error(`assertAttribute: "${step.attribute}" is ${present ? 'present' : 'absent'} on "${step.selector}" (expected ${step.expected})`);
+            }
+          } else if (actual !== step.expected) {
+            throw new Error(`assertAttribute: "${step.attribute}"="${actual}" expected "${step.expected}" on "${step.selector}"`);
+          }
+          break;
+        }
+        case 'dismissDialog':
+          page.once('dialog', (dialog) => { dialog.dismiss().catch(() => {}); });
+          break;
+        case 'waitForURL':
+          await page.waitForURL(step.pattern, { timeout: step.timeout ?? 10_000 });
+          break;
+        case 'assertCount': {
+          const count = await page.locator(step.selector).count();
+          if (count !== step.expected) {
+            throw new Error(`assertCount: "${step.selector}" count=${count} expected ${step.expected}`);
+          }
+          break;
+        }
+        case 'dragAndDrop': {
+          const source = page.locator(step.selector).first();
+          const target = page.locator(step.targetSelector).first();
+          const sb = await source.boundingBox();
+          const tb = await target.boundingBox();
+          if (!sb) throw new Error(`dragAndDrop: source not found — ${step.selector}`);
+          if (!tb) throw new Error(`dragAndDrop: target not found — ${step.targetSelector}`);
+          const sx = sb.x + sb.width / 2;
+          const sy = sb.y + sb.height / 2;
+          const tx = tb.x + tb.width / 2;
+          // Drop into the lower portion of the target so a downward sortable swap commits;
+          // closestCenter then resolves the target as "over".
+          const ty = tb.y + tb.height * 0.75;
+          await page.mouse.move(sx, sy);
+          await page.mouse.down();
+          await page.waitForTimeout(100);
+          // small nudge to trip pointer-sensor activation (e.g. @dnd-kit)
+          await page.mouse.move(sx, sy + 8);
+          await page.waitForTimeout(100);
+          await page.mouse.move(tx, ty, { steps: 20 });
+          await page.waitForTimeout(150);
+          // settle on the target so the sortable registers the final position
+          await page.mouse.move(tx, ty);
+          await page.waitForTimeout(150);
+          await page.mouse.up();
+          break;
+        }
+        case 'assertText': {
+          const actual = (await page.locator(step.selector).first().textContent() ?? '').trim();
+          if (actual !== step.expected) {
+            throw new Error(`assertText: "${step.selector}" text="${actual}" expected "${step.expected}"`);
+          }
+          break;
+        }
+        case 'setInputFiles': {
+          const fileList = Array.isArray(step.files) ? step.files : [step.files];
+          const resolved = fileList.map((f) => {
+            if (f.startsWith('mock:')) {
+              const parts = f.split(':');
+              const name = parts[1] ?? 'test.csv';
+              const size = parseInt(parts[2] ?? '1024', 10) || 1024;
+              const mimeType = parts[3] ?? 'text/csv';
+              return { name, mimeType, buffer: Buffer.alloc(size, 65) };
+            }
+            return f;
+          });
+          await page.setInputFiles(step.selector, resolved as Parameters<typeof page.setInputFiles>[1]);
+          break;
+        }
       }
       if (step.screenshotAfter) {
         fs.mkdirSync(screenshotDir, { recursive: true });
@@ -631,7 +850,7 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
   const { route, takeScreenshot, featureName, mockError, interactionScript, scriptV2 } = cfg;
   const visualDiffThreshold = cfg.visualDiffThreshold ?? 5;
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const baseUrl = process.env.DEV_SERVER_URL ?? 'http://localhost:3000';
+  const baseUrl = (process.env.DEV_SERVER_URL ?? 'http://localhost:3000').replace(/\/$/, '');
   // Accept full URLs (e.g. http://localhost:3000/path) or path-only (/path).
   // On Windows/Git Bash, POSIX paths can be mangled to C:/Program Files/Git/...
   // — detect that and strip the prefix back to a path.
@@ -922,6 +1141,7 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
     if (cfg.acChecklistPath && fs.existsSync(cfg.acChecklistPath)) {
       const allVerdicts = [...extended.uiResults, ...extended.acResults, ...extended.unitTestResults];
       updateChecklistRows(cfg.acChecklistPath, allVerdicts);
+      updateChecklistSummary(cfg.acChecklistPath, checks, extended.acResults, extended.unitTestResults, new Date().toISOString());
     }
 
     return {

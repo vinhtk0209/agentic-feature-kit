@@ -73,16 +73,96 @@ not hardcoded.
 
 ### Step 1 — Copy the kit
 
-Copy the entire `.claude/` folder to your new project root:
+Copy the entire `.claude/` folder (plus `setup.sh`, `setup.ps1`, `scripts/`, and `package.json` entries)
+to your new project root:
 
 ```bash
-cp -r /source-project/.claude /your-new-project/.claude
+cp -r /source-project/.claude  /your-new-project/.claude
+cp    /source-project/setup.sh  /your-new-project/setup.sh
+cp    /source-project/setup.ps1 /your-new-project/setup.ps1
+cp -r /source-project/scripts   /your-new-project/scripts
 ```
 
 Files that are project-specific (`.env`, `node_modules/`, `speckit/`) are gitignored
 and will not be copied if you clone from git.
 
-### Step 2 — Run /init to generate CLAUDE.md
+### Step 2 — Run setup
+
+Run **once** from the project root. This installs all npm dependencies (root + both MCP servers),
+creates all required env files, registers MCP servers in `.mcp.json`, and patches
+`.claude/settings.local.json`.
+
+```bash
+# bash (Linux / macOS / Git Bash on Windows)
+bash setup.sh
+# or: npm run setup
+```
+
+```powershell
+# PowerShell (Windows)
+pwsh setup.ps1
+```
+
+What it does, in order:
+
+| Step | Action |
+|------|--------|
+| 1/4 | `npm install` at repo root (tsx, playwright, @playwright/test, …) |
+| 2/4 | `npm install` in `.claude/mcp-server/` (@modelcontextprotocol/sdk, axios, dotenv, …) |
+| 3/4 | `npm install` in `.claude/mcp-workflow/` (@modelcontextprotocol/sdk, dotenv) |
+| 4/4 | Creates `.env.playwright`, `.claude/mcp-server/.env`, `.mcp.json`, patches `.claude/settings.local.json` |
+
+Safe to re-run — never overwrites existing files.
+
+### Step 3 — Fill in credentials
+
+The script prints a checklist at the end. Three things to fill in:
+
+**`.claude/mcp-server/.env`** — Confluence access:
+
+```env
+# Option A — Personal Access Token (recommended)
+CONFLUENCE_TOKEN=your_pat_token
+
+# Option B — LDAP (username WITHOUT domain suffix)
+# CONFLUENCE_USER=your_username
+# CONFLUENCE_PASS=your_password
+```
+
+> Get `CONFLUENCE_TOKEN`: Confluence → your avatar → **Profile → Personal Access Tokens**
+
+Also update the Confluence base URL in `.claude/mcp-server/index.ts`:
+
+```typescript
+const baseConfUrl = 'https://your-confluence-instance.com/conf';
+```
+
+**Root `.env`** — Kit token:
+
+```env
+KIT_TOKEN=your_kit_token
+```
+
+> Get `KIT_TOKEN`: contact the kit maintainer.  
+> Alternative: run `npm run workflow:login` — it writes the token to your OS config automatically.
+
+**`.env.playwright`** — UI verification tokens *(optional — only needed at B11)*:
+
+```env
+DEV_SERVER_URL=http://localhost:3000
+PUBLIC_PATH=/your-app/          # remove if served at root /
+PLAYWRIGHT_ACCESS_TOKEN=...     # copy from browser DevTools → Application → Local Storage
+PLAYWRIGHT_REFRESH_TOKEN=...
+PLAYWRIGHT_TOKEN_EXPIRES_AT=... # epoch ms
+```
+
+> Shortcut: `npm run workflow:login` populates all three Playwright tokens automatically.
+
+> **Why `PUBLIC_PATH` matters**: SPAs with a non-root deploy path (webpack `PUBLIC_PATH`) serve
+> their HTML at `http://localhost:<port>/<PUBLIC_PATH>/`. Without this prefix React Router cannot
+> match any routes → blank page → all `waitForSelector` calls time out.
+
+### Step 4 — Run /init to generate CLAUDE.md
 
 In Claude Code, open the new project and run:
 
@@ -102,95 +182,12 @@ This reads the codebase and generates `CLAUDE.md` at the project root.
 If `CLAUDE.md` is missing when you run `/feature-from-confluence`, you'll be prompted
 to run `/init` first — the workflow resumes automatically after.
 
-### Step 3 — Configure Playwright env vars
+### Step 5 — Restart Claude Code
 
-Create `.env.playwright` in the project root (copy from any existing project):
+Restart Claude Code so it reads `.mcp.json` and starts both MCP servers.
+When prompted to approve an MCP server → **Allow**.
 
-```env
-# Base URL of the dev server (default: http://localhost:3000)
-DEV_SERVER_URL=http://localhost:3000
-
-# PUBLIC_PATH of this app — runner prepends it automatically to every route.
-# Examples: /your-app/  |  /authoring/  |  /studio/
-# Remove or leave blank if the app is served at root (/).
-PUBLIC_PATH=/your-app/
-
-# Auth tokens (copy from browser localStorage after login)
-PLAYWRIGHT_ACCESS_TOKEN=<your-access-token>
-PLAYWRIGHT_REFRESH_TOKEN=<your-refresh-token>
-PLAYWRIGHT_TOKEN_EXPIRES_AT=<epoch-ms>
-```
-
-> **Why `PUBLIC_PATH` matters**: SPAs with a non-root deploy path (webpack `PUBLIC_PATH`) serve
-> their HTML at `http://localhost:<port>/<PUBLIC_PATH>/`. Without this prefix React Router cannot
-> match any routes → blank page → all `waitForSelector` calls time out. Setting `PUBLIC_PATH` in
-> `.env.playwright` means every `playwright-runner.ts` invocation works with bare routes — you
-> never need to include the prefix manually.
-
-### Step 4 — Configure Confluence credentials (optional — only needed for `/feature-from-confluence`)
-
-Copy the example env file:
-
-```bash
-cp .claude/mcp-server/.env.example .claude/mcp-server/.env
-```
-
-Open `.claude/mcp-server/.env` and fill in credentials:
-
-```env
-# Option A — LDAP (username WITHOUT domain suffix)
-CONFLUENCE_USER=your_username
-CONFLUENCE_PASS=your_password
-
-# Option B — Personal Access Token
-CONFLUENCE_TOKEN=your_pat_token
-```
-
-Update the Confluence base URL in `.claude/mcp-server/index.ts`:
-
-```typescript
-// Find this line and update to your Confluence instance:
-const baseConfUrl = 'https://your-confluence-instance.com/conf';
-```
-
-### Step 5 — Install MCP server dependencies
-
-Both MCP servers need dependencies:
-
-```bash
-# Confluence server (fetches spec pages)
-cd .claude/mcp-server
-npm install
-
-# Feature-workflow server (run_b11, run_feedback_append, verify_feature_route, etc.)
-cd .claude/mcp-workflow
-npm install
-```
-
-### Step 6 — Register MCP servers in Claude Code settings
-
-Add **both** servers to `.claude/settings.json` (or `.claude/settings.local.json`):
-
-```json
-{
-  "mcpServers": {
-    "confluence-mcp": {
-      "command": "npx",
-      "args": ["tsx", ".claude/mcp-server/index.ts"]
-    },
-    "feature-workflow": {
-      "command": "npx",
-      "args": ["tsx", ".claude/mcp-workflow/index.ts"]
-    }
-  }
-}
-```
-
-### Step 7 — Restart Claude Code
-
-Restart so Claude Code reads the MCP config. When prompted to approve the MCP server → **Allow**.
-
-### Step 8 — Verify
+### Step 6 — Verify
 
 Type `/` in Claude Code chat. These commands must appear:
 - `/feature-from-confluence`
@@ -213,10 +210,11 @@ Test `/playwright-verify` independently (dev server must be running):
 /playwright-verify /your/feature/route --feature-name MyFeature
 ```
 
-Expected: PKG_MANAGER detected, Playwright checked/installed, 5 checks run, screenshots saved to `docs/specs/MyFeature/screenshots/`, and `docs/specs/MyFeature/checklist.md` auto-updated if present.
+Expected: PKG_MANAGER detected, Playwright checked/installed, 5 checks run, screenshots saved to
+`docs/specs/MyFeature/screenshots/`, and `docs/specs/MyFeature/checklist.md` auto-updated if present.
 
 > **Dev server URL:** defaults to `http://localhost:8000`. Override with `DEV_SERVER_URL` in `.env.playwright`.
-> **PUBLIC_PATH:** set `PUBLIC_PATH=/<your-path>/` in `.env.playwright` — runner auto-prepends it to every route. See Step 3.
+> **PUBLIC_PATH:** set `PUBLIC_PATH=/<your-path>/` in `.env.playwright` — runner auto-prepends it to every route.
 
 ---
 

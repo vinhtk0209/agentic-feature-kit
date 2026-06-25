@@ -26,7 +26,7 @@
  *   }
  */
 
-import { execSync, spawnSync } from 'child_process';
+import { execSync, spawnSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { resolveRoutes, parseUxStates } from './ux-states';
@@ -72,18 +72,83 @@ const integrationsDir = path.join(cwd, '.claude', 'integrations');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function run(cmd: string, captureStderr = false): { code: number; stdout: string; stderr: string } {
+function run(cmd: string, timeoutMs = 120_000): { code: number; stdout: string; stderr: string } {
   const result = spawnSync(cmd, {
     shell: true,
     cwd,
     encoding: 'utf-8',
-    timeout: 120000,
+    timeout: timeoutMs,
   });
   return {
     code: result.status ?? 1,
     stdout: (result.stdout ?? '').toString().trim(),
     stderr: (result.stderr ?? '').toString().trim(),
   };
+}
+
+/**
+ * Async Playwright-safe runner: uses spawn() to get a real PID, then kills the
+ * FULL process tree (not just the shell) on timeout — prevents orphaned Chromium.
+ *
+ * Windows: taskkill /pid <pid> /T /F traverses shell → Chromium subtree.
+ * POSIX:   detached:true gives the child its own pgid; process.kill(-pgid) wipes it.
+ */
+async function runPlaywrightSpawn(
+  cmd: string,
+  timeoutMs: number,
+): Promise<{ code: number; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    const proc = spawn(cmd, {
+      shell: true,
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: process.platform !== 'win32',
+    });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
+    proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+
+    const killTree = (pid: number): void => {
+      if (process.platform === 'win32') {
+        spawnSync(`taskkill /pid ${pid} /T /F`, { shell: true, stdio: 'ignore' });
+      } else {
+        try { process.kill(-pid, 'SIGKILL'); } catch { /* already gone */ }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      if (proc.pid) killTree(proc.pid);
+      resolve({
+        code: 1,
+        stdout: stdout.trim(),
+        stderr: (stderr + `\n[PLAYWRIGHT-TIMEOUT] Killed after ${timeoutMs / 1000}s — Chromium process tree terminated`).trim(),
+      });
+    }, timeoutMs);
+
+    proc.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ code: code ?? 1, stdout: stdout.trim(), stderr: stderr.trim() });
+    });
+  });
+}
+
+/**
+ * Kill headless Chromium orphans left by previous crashed B11 runs before
+ * launching a new browser. Two OR conditions:
+ *   1. ms-playwright in CommandLine — Playwright's own Chromium cache (primary)
+ *   2. --headless in CommandLine   — fallback for custom PLAYWRIGHT_BROWSERS_PATH setups
+ * Never touches the user's real Chrome (which has neither).
+ */
+function killOrphanedChromium(): void {
+  if (process.platform === 'win32') {
+    spawnSync(
+      'powershell -NoProfile -Command "Get-WmiObject Win32_Process | Where-Object { ($_.Name -like \'chrome*\' -or $_.Name -like \'chromium*\') -and ($_.CommandLine -like \'*ms-playwright*\' -or $_.CommandLine -like \'*--headless*\') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"',
+      { shell: true, stdio: 'ignore', timeout: 15_000 },
+    );
+  } else {
+    spawnSync('pkill -f "(ms-playwright.*chrome|chrome.*--headless)" 2>/dev/null; true', { shell: true, stdio: 'ignore', timeout: 10_000 });
+  }
 }
 
 function readFile(filePath: string): string | null {
@@ -105,9 +170,18 @@ function readRoutes(): string[] {
   return resolveRoutes(parseUxStates(raw));
 }
 
+function readStateCount(): number {
+  const raw = readFile(path.join(specsDir, 'ux-states.json'));
+  if (!raw) return 0;
+  try {
+    const parsed = JSON.parse(raw) as { states?: unknown[]; negative_states?: unknown[] };
+    return (parsed.states?.length ?? 0) + (parsed.negative_states?.length ?? 0);
+  } catch { return 0; }
+}
+
 // ─── Step 2: Run playwright for each route ────────────────────────────────────
 
-function runPlaywrightForRoute(route: string): RouteResult {
+async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<RouteResult> {
   const runnerPath = path.join(integrationsDir, 'playwright-runner.ts');
   if (!fs.existsSync(runnerPath)) {
     return { route, passed: false, checks: [{ id: 'RUNNER', passed: false, message: 'playwright-runner.ts not found' }] };
@@ -127,7 +201,7 @@ function runPlaywrightForRoute(route: string): RouteResult {
     checklistArg,
   ].filter(Boolean).join(' ');
 
-  const { code, stdout, stderr } = run(cmd);
+  const { code, stdout, stderr } = await runPlaywrightSpawn(cmd, timeoutMs);
 
   // playwright-runner outputs JSON — try to parse it
   try {
@@ -289,7 +363,14 @@ function updateChecklistPlaywright(routeResults: RouteResult[]): boolean {
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  // Kill any headless Chromium orphans from previous crashed B11 runs before
+  // launching a new browser. Scoped to ms-playwright cache + --headless flag — safe.
+  killOrphanedChromium();
+
   const routes = readRoutes();
+  // Fixed 10-minute ceiling per route — generous enough for any realistic feature.
+  // Revisit only if a feature genuinely needs > 10 min (unlikely: that's 20+ states).
+  const playwrightTimeoutMs = 600_000;
 
   // Static analysis
   const { typeErrors, lintErrors, b11_a } = runStaticAnalysis();
@@ -306,7 +387,7 @@ async function main(): Promise<void> {
 
   if (!noPlaywright && routes.length > 0) {
     for (const route of routes) {
-      routeResults.push(runPlaywrightForRoute(route));
+      routeResults.push(await runPlaywrightForRoute(route, playwrightTimeoutMs));
     }
     b11_b = routeResults.every((r) => r.passed) ? 'pass' : 'fail';
   } else if (!noPlaywright && routes.length === 0) {

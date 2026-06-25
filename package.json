@@ -2,6 +2,9 @@
   "name": "feature-from-confluence-kit",
   "version": "3.17.0",
   "private": true,
+  "bin": {
+    "workflow": "bin/workflow.ts"
+  },
   "description": "Claude Code agentic workflow kit: a spec becomes convention-compliant, PR-ready code with human-in-the-loop gates, a deterministic self-test toolchain, and a self-improvement loop.",
   "type": "commonjs",
   "engines": {
@@ -20,6 +23,12 @@
     "workflow:dashboard": "npx tsx .claude/integrations/kpi-report.ts --dashboard",
     "workflow:index": "npx tsx .claude/integrations/feature-index.ts",
     "workflow:digest": "npx tsx .claude/integrations/feature-digest.ts",
+    "setup": "node -e \"require('os').platform()==='win32' ? require('child_process').execSync('powershell -ExecutionPolicy Bypass -File setup.ps1', {stdio:'inherit'}) : require('child_process').execSync('bash setup.sh', {stdio:'inherit'})\"",
+    "setup:env": "bash scripts/setup-env.sh",
+    "workflow:login": "npx tsx bin/workflow.ts login",
+    "workflow:init": "npx tsx bin/workflow.ts init",
+    "workflow:update": "npx tsx bin/workflow.ts update",
+    "workflow:status": "npx tsx bin/workflow.ts status",
     "version:check": "npx tsx .claude/integrations/version-check.ts",
     "test:lint-feature": "npx tsx .claude/integrations/lint-feature.test.ts",
     "test:ownership": "npx tsx .claude/integrations/check-ownership.test.ts",
@@ -46,6 +55,9 @@
     "typescript": "^4.9.5",
     "playwright": "^1.60.0",
     "@playwright/test": "^1.60.0",
-    "@axe-core/playwright": "^4.11.3"
+    "@axe-core/playwright": "^4.11.3",
+    "@types/pngjs": "^6.0.5",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0"
   }
 }

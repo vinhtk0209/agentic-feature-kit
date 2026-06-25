@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "confluence-mcp": {
+      "command": "npx",
+      "args": ["tsx", ".claude/mcp-server/index.ts"]
+    },
+    "feature-workflow": {
+      "command": "npx",
+      "args": ["tsx", ".claude/mcp-workflow/index.ts"]
+    }
+  }
+}

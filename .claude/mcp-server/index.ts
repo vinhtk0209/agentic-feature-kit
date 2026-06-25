@@ -62,20 +62,23 @@ function extractImageUrls(html: string, baseConfUrl: string): string[] {
   return urls;
 }
 
+
 async function fetchImageAsBase64(
   imageUrl: string,
   authHeader: Record<string, string>,
   agent: import('https').Agent,
+  cookieHeader: Record<string, string> = {},
 ): Promise<{ data: string; mimeType: string } | null> {
   try {
     const response = await axios.get(imageUrl, {
-      headers: authHeader,
+      headers: { ...authHeader, ...cookieHeader },
       httpsAgent: agent,
       responseType: 'arraybuffer',
       timeout: 8000,
     });
     const mimeType: string = (response.headers['content-type'] as string | undefined)
       ?.split(';')[0] ?? 'image/png';
+    if (!mimeType.startsWith('image/')) return null;
     const data = Buffer.from(response.data as ArrayBuffer).toString('base64');
     return { data, mimeType };
   } catch {
@@ -322,10 +325,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     const agent = new (await import('https')).Agent({ rejectUnauthorized: false });
 
-    const { data } = await axios.get(apiUrl, {
+    const apiResp = await axios.get(apiUrl, {
       headers: { ...authHeader, Accept: 'application/json' },
       httpsAgent: agent,
     });
+    const { data } = apiResp;
 
     const title: string = data.title;
     const space: string = data.space?.name ?? '';
@@ -343,10 +347,41 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       markdown,
     ].filter(Boolean).join('\n');
 
-    // Fetch embedded images so Claude can see the UI screenshots
-    const imageUrls = extractImageUrls(html, baseConfUrl);
+    // Embedded-page attachment URLs (/download/attachments/embedded-page/...) require a web
+    // session cookie that REST/Basic auth cannot provide. Work around this by prefetching the
+    // current page's attachment list once, building a filename→REST-download-URL map, then
+    // substituting those REST URLs (which do accept Basic/Bearer auth) before fetching.
+    // Build filename → direct download URL map from the page's attachment list.
+    // Use _links.download (the versioned URL) which accepts Basic/Bearer auth,
+    // unlike /rest/api/content/{id}/download which redirects through the web layer.
+    const attachmentMap = new Map<string, string>();
+    try {
+      const attResp = await axios.get(
+        `${baseConfUrl}/rest/api/content/${pageId}/child/attachment?limit=50&expand=_links`,
+        { headers: { ...authHeader, Accept: 'application/json' }, httpsAgent: agent },
+      );
+      for (const att of (attResp.data.results ?? [])) {
+        const downloadPath: string | undefined = att._links?.download;
+        if (att.title && downloadPath) {
+          // _links.download is relative to the Confluence context root (e.g. /conf),
+          // not the origin, so prepend baseConfUrl not just origin.
+          attachmentMap.set(att.title as string, `${baseConfUrl}${downloadPath}`);
+        }
+      }
+    } catch {
+      // Non-fatal — fall back to original URLs
+    }
+
+    const rawImageUrls = extractImageUrls(html, baseConfUrl).slice(0, 10);
+    const imageUrls = rawImageUrls.map((imgUrl) => {
+      const m = imgUrl.match(/\/download\/attachments\/embedded-page\/[^/]+\/[^/]+\/([^?#]+)/);
+      if (!m) return imgUrl;
+      const filename = decodeURIComponent(m[1]);
+      return attachmentMap.get(filename) ?? imgUrl;
+    });
+
     const imageResults = await Promise.all(
-      imageUrls.slice(0, 10).map((imgUrl) => fetchImageAsBase64(imgUrl, authHeader, agent)),
+      imageUrls.map((imgUrl) => fetchImageAsBase64(imgUrl, authHeader, agent)),
     );
 
     // Save markdown to docs/specs/ for user to review
@@ -367,7 +402,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
         mkdirSync(imagesDir, { recursive: true });
         imageResults.forEach((img, idx) => {
-          if (img) {
+          if (img && img.mimeType.startsWith('image/')) {
             const ext = img.mimeType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'png';
             const filename = `mcp-image-${String(idx + 1).padStart(2, '0')}.${ext}`;
             writeFileSync(join(imagesDir, filename), Buffer.from(img.data, 'base64'));

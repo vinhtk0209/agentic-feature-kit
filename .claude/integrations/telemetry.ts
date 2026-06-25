@@ -16,11 +16,31 @@
  * Exit codes (verify): 0 = valid · 1 = invalid/expired/quota · 2 = network/config error
  */
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 const SUPABASE_URL = "https://vkuojxgvkxndftenrdno.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdW9qeGd2a3huZGZ0ZW5yZG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjgwMzMsImV4cCI6MjA5NzAwNDAzM30.MrTuIuN1kghxMXu0yyOW9MtmXVY7xH0-2HSCwTKo2cU";
 
-const KIT_VERSION = "3.17.0";
+// Read version from the prompt file so each repo reports its actual installed version.
+// Falls back to the hardcoded value if the file is missing (e.g. in tests).
+function resolveKitVersion(): string {
+  try {
+    const thisFile = fileURLToPath(import.meta.url);
+    const cmdFile = path.join(
+      path.dirname(path.dirname(thisFile)),
+      "commands", "feature-from-confluence.md"
+    );
+    const content = fs.readFileSync(cmdFile, "utf8");
+    const match = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
+    if (match) return match[1] + ".0";
+  } catch {}
+  return "3.17.0";
+}
+const KIT_VERSION = resolveKitVersion();
 
 const headers = {
   "Content-Type": "application/json",
@@ -34,7 +54,24 @@ const headers = {
 };
 
 function getToken(): string | null {
-  return process.env.KIT_TOKEN ?? null;
+  if (process.env.KIT_TOKEN) return process.env.KIT_TOKEN;
+  // Fallback: read token saved by `workflow login` so users don't need KIT_TOKEN in .env
+  try {
+    // Config is stored under workflow/claude/ — the agent-scoped layout used
+    // by bin/lib/local-config.ts. "claude" is fixed here because telemetry.ts
+    // is always the Claude edition (it ships inside .claude/).
+    const dir =
+      process.platform === "win32"
+        ? path.join(
+            process.env.APPDATA ?? path.join(os.homedir(), "AppData", "Roaming"),
+            "workflow", "claude"
+          )
+        : path.join(os.homedir(), ".config", "workflow", "claude");
+    const raw = fs.readFileSync(path.join(dir, "config.json"), "utf8");
+    return (JSON.parse(raw) as { token?: string }).token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Resolve the token_id for the current token (needed for log/error inserts). */
@@ -67,6 +104,7 @@ async function verify(): Promise<number> {
     result = await rpc<VerifyResult>("verify_kit_token", {
       p_token: token,
       p_kit_version: KIT_VERSION,
+      p_checkpoint: "step0",
     });
   } catch (e) {
     // Network/backend failure: do NOT hard-block the user on infra issues.
