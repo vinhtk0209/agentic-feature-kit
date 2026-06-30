@@ -1,4 +1,4 @@
--- Migration 0002 — per-repo "running version" tracking (Phần B, follow-up)
+-- Migration 0002 — per-repo "running version" tracking (Part B, follow-up)
 -- Run this manually in the Supabase SQL editor. Telemetry never runs DDL.
 --
 -- Why a separate table instead of a `repo` column on usage_logs:

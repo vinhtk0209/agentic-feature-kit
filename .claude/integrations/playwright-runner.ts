@@ -844,6 +844,7 @@ interface RunnerConfig {
   auditCssPath?: string;
   messagesPath?: string;
   visualDiffThreshold?: number;
+  disableWebSecurity?: boolean;
 }
 
 async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & { extended?: ExtendedResults }> {
@@ -878,7 +879,15 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
   let browser: Browser | null = null;
 
   try {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({
+      headless: true,
+      // --disable-web-security lets a local dev origin call a cross-origin backend without the
+      // browser CORS-blocking the page (e.g. a parent page hitting a remote API like api.fpt-apps.com).
+      // Opt-in via --disable-web-security; only for local dev verification, never production.
+      args: cfg.disableWebSecurity
+        ? ['--disable-web-security', '--disable-features=IsolateOrigins,site-per-process']
+        : [],
+    });
     const page = await browser.newPage();
 
     // Inject localStorage tokens before any script runs (prevents redirect to logout)
@@ -1201,6 +1210,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
   const takeScreenshot = args.includes('--screenshot');
   const mockError = args.includes('--mock-error');
   const auditA11y = args.includes('--audit-a11y');
+  const disableWebSecurity = args.includes('--disable-web-security');
 
   const flagValue = (name: string): string | undefined => {
     const idx = args.indexOf(name);
@@ -1255,6 +1265,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     auditCssPath,
     messagesPath,
     visualDiffThreshold,
+    disableWebSecurity,
   })
     .then(printResult)
     .catch(console.error);

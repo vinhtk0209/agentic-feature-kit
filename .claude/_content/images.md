@@ -1,41 +1,41 @@
-### Quy trình
+### Process
 
 1. Parse all image URLs and iframe embeds from the raw Confluence markdown in `docs/specs/<title>.md`
 2. Create `docs/specs/<FeatureName>/images/` if it does not exist
 
-### Step 3 — Classify content type (trước khi download)
+### Step 3 — Classify content type (before download)
 
-Với mỗi image URL, xác định `CONTENT_TYPE` dựa trên **3 tín hiệu** (ưu tiên theo thứ tự):
+For each image URL, determine `CONTENT_TYPE` from **3 signals** (in priority order):
 
-| Tín hiệu | Condition | `CONTENT_TYPE` |
-| -------- | --------- | -------------- |
-| URL pattern | URL chứa `diagram`, `flow`, `chart` | `DIAGRAM_FLOW` |
-| URL pattern | URL chứa `screenshot`, `screen`, `ui-` | `UI_SCREENSHOT` |
-| Heading context | Heading gần nhất chứa **EN** "Flow", "Diagram", "Process" / **VI** "Luồng", "Quy trình", "Sơ đồ" / **JP** "フロー", "図", "プロセス" | `DIAGRAM_FLOW` |
-| Heading context | Heading gần nhất chứa **EN** "Screen", "UI", "Interface", "Page" / **VI** "Màn hình", "Giao diện", "Trang" / **JP** "画面", "ページ" | `UI_SCREENSHOT` |
-| Heading context | Heading gần nhất chứa **EN** "Button", "Action", "CTA" / **VI** "Nút", "Hành động" / **JP** "ボタン" | `BUTTON_DESCRIPTION` |
-| Không khớp | — | `UNKNOWN` |
+| Signal | Condition | `CONTENT_TYPE` |
+| ------ | --------- | -------------- |
+| URL pattern | URL contains `diagram`, `flow`, `chart` | `DIAGRAM_FLOW` |
+| URL pattern | URL contains `screenshot`, `screen`, `ui-` | `UI_SCREENSHOT` |
+| Heading context | Nearest heading contains **EN** "Flow", "Diagram", "Process" / **VI** "Luồng", "Quy trình", "Sơ đồ" / **JP** "フロー", "図", "プロセス" | `DIAGRAM_FLOW` |
+| Heading context | Nearest heading contains **EN** "Screen", "UI", "Interface", "Page" / **VI** "Màn hình", "Giao diện", "Trang" / **JP** "画面", "ページ" | `UI_SCREENSHOT` |
+| Heading context | Nearest heading contains **EN** "Button", "Action", "CTA" / **VI** "Nút", "Hành động" / **JP** "ボタン" | `BUTTON_DESCRIPTION` |
+| No match | — | `UNKNOWN` |
 
 > **(v3.8 — Change L.3 i18n classification)** Heading regex must match patterns case-insensitively across EN/VI/JP. Use Unicode-aware regex (e.g. `\p{L}` boundaries). Both editions emit the same `CONTENT_TYPE` assignments — locked.
 
 Log classification: `[timestamp] [B2-classify] url=<url> type=<CONTENT_TYPE>`
 
-> **Lưu ý**: `DIAGRAM_FLOW` có độ ưu tiên cao nhất vì ảnh này cần thiết cho B5 (generate diagram.md).
+> **Note**: `DIAGRAM_FLOW` has the highest priority because these images are needed for B5 (generate diagram.md).
 
 ### Step 4 — Deduplication
 
-Trước khi download mỗi URL: kiểm tra xem URL đã tồn tại trong `downloaded_urls` set (trong session này) chưa.
+Before downloading each URL: check whether the URL already exists in the `downloaded_urls` set (in this session).
 
-- URL đã có → skip, log `[B2-dedup] skipped duplicate: <url>`
-- URL mới → thêm vào set, tiến hành download
+- URL already present → skip, log `[B2-dedup] skipped duplicate: <url>`
+- New URL → add to the set, proceed to download
 
-### Step 5 — Batch download (song song theo URL strategy)
+### Step 5 — Batch download (parallel by URL strategy)
 
 **Pre-check (run before any HTTP download):** Check if `docs/specs/<FeatureName>/images/` already contains files. If it does, those images were saved by the MCP server during B0 (Confluence auth already applied). Skip HTTP download for those — proceed directly to Step 7 (annotate) for pre-fetched images.
 
 Log: `[timestamp] [B2-prefetch] found N MCP-saved images in docs/specs/<FeatureName>/images/ — skipping download`
 
-Phân loại URL theo **download strategy**, rồi download tất cả song song:
+Classify each URL by **download strategy**, then download all in parallel:
 
 | URL pattern | Strategy |
 | ----------- | -------- |
@@ -51,43 +51,43 @@ Phân loại URL theo **download strategy**, rồi download tất cả song song
 
 *Attempt 3 = last real attempt for all strategies — no placeholder created on fail.*
 
-Log mỗi attempt vào `docs/specs/<FeatureName>/recovery.log`.
+Log each attempt to `docs/specs/<FeatureName>/recovery.log`.
 
-### Step 6 — Xử lý kết quả sau khi tất cả ảnh đã được xử lý
+### Step 6 — Handle the result after all images have been processed
 
-Sau khi **tất cả** ảnh đã được xử lý (thành công hoặc fail), kiểm tra `failed_images` list.
+After **all** images have been processed (success or fail), check the `failed_images` list.
 
-**Nếu KHÔNG có ảnh nào fail** → tiếp tục bình thường.
+**If NO image failed** → continue normally.
 
-**Nếu CÓ ít nhất một ảnh fail cả 3 attempt** → **STOP GATE**:
+**If at least one image failed all 3 attempts** → **STOP GATE**:
 
 ```text
 ⚠️  IMAGES REQUIRED FOR CORRECT UI IMPLEMENTATION
 
-Các ảnh sau đã thử 3 lần nhưng thất bại:
+The following images were tried 3 times but failed:
 
-| Loại             | Tên file         | Lý do         |
+| Type             | File name        | Reason        |
 | ---------------- | ---------------- | ------------- |
 | UI_SCREENSHOT    | screen1.png      | 403 Forbidden |
 | DIAGRAM_FLOW     | flow.png         | Timeout       |
 
-⚠️  Ảnh UI_SCREENSHOT cần thiết để B10 implement UI đúng layout, button labels
-    và column order. Không có ảnh này, UI sẽ được implement từ text spec — có thể
-    sai so với thiết kế thực tế.
+⚠️  UI_SCREENSHOT images are required for B10 to implement the UI with the correct
+    layout, button labels and column order. Without them the UI is implemented from
+    the text spec — which may not match the actual design.
 
-Vui lòng cung cấp các ảnh này:
-  [1] Copy file vào docs/specs/<FeatureName>/images/ rồi gõ "done"
-  [2] Paste đường dẫn đến file gốc
-  [3] Gõ "skip" — tôi chấp nhận UI có thể không match spec chính xác
+Please provide these images:
+  [1] Copy the files into docs/specs/<FeatureName>/images/ then type "done"
+  [2] Paste the path to the source file
+  [3] Type "skip" — I accept the UI may not match the spec exactly
 ```
 
-**STOP — KHÔNG tiếp tục cho đến khi nhận được phản hồi của user.**
+**STOP — DO NOT continue until you receive the user's response.**
 
-- User gõ `"done"` → verify các file tồn tại trong `images/`, tiếp tục
-- User gõ `"skip"` → đánh dấu tất cả failed ảnh là `⚠️ [IMAGE MISSING]` inline trong processed.md và tiếp tục
-- User cung cấp path → copy/rename file vào `images/`, verify, tiếp tục
+- User types `"done"` → verify the files exist in `images/`, continue
+- User types `"skip"` → mark all failed images as `⚠️ [IMAGE MISSING]` inline in processed.md and continue
+- User provides a path → copy/rename the file into `images/`, verify, continue
 
-Nếu user đã cung cấp ảnh (done/path), **không** append Error Report. Nếu user chọn skip, append Error Report:
+If the user provided images (done/path), do **not** append an Error Report. If the user chose skip, append an Error Report:
 
 ```markdown
 ---
@@ -98,32 +98,32 @@ Nếu user đã cung cấp ảnh (done/path), **không** append Error Report. N�
 | flow.png | DIAGRAM_FLOW | Generic | 3/3 | Timeout |
 ```
 
-**NEVER skip failed images silently — luôn hỏi user trước.**
+**NEVER skip failed images silently — always ask the user first.**
 
 ### Step 7 — Annotate successfully downloaded images
 
-Sau khi Step 6 hoàn thành, đọc từng ảnh đã download thành công bằng Read tool và tạo `docs/specs/<FeatureName>/image-annotations.md`.
+After Step 6 completes, read each successfully downloaded image with the Read tool and create `docs/specs/<FeatureName>/image-annotations.md`.
 
-Với mỗi file trong `docs/specs/<FeatureName>/images/` (bỏ qua failed images):
+For each file in `docs/specs/<FeatureName>/images/` (skip failed images):
 
-1. Đọc file ảnh: `Read({ file_path: "docs/specs/<FeatureName>/images/<filename>" })`
-2. Append một section vào image-annotations.md:
+1. Read the image file: `Read({ file_path: "docs/specs/<FeatureName>/images/<filename>" })`
+2. Append a section to image-annotations.md:
 
 ```markdown
 ### <filename>
 **Type:** <CONTENT_TYPE>
 **Path:** docs/specs/<FeatureName>/images/<filename>
 
-- [3–8 bullets mô tả: layout regions, visible components, button labels, field labels,
-  states shown, column order, màu sắc đặc trưng]
-  - UI_SCREENSHOT: tập trung vào những gì developer cần để match visual
-  - DIAGRAM_FLOW: numbered sequence + decision nodes theo thứ tự
-  - BUTTON_DESCRIPTION: exact label text + trạng thái enabled/disabled
+- [3–8 bullets describing: layout regions, visible components, button labels, field labels,
+  states shown, column order, distinctive colors]
+  - UI_SCREENSHOT: focus on what a developer needs to match the visual
+  - DIAGRAM_FLOW: numbered sequence + decision nodes in order
+  - BUTTON_DESCRIPTION: exact label text + enabled/disabled state
 ```
 
 Log: `[timestamp] [B2-annotate] images_annotated=N` → `recovery.log`
 
-**Resume**: nếu `image-annotations.md` đã tồn tại (resume session), chỉ annotate các ảnh chưa có entry.
+**Resume**: if `image-annotations.md` already exists (resume session), only annotate images that have no entry yet.
 **Zero images downloaded**: skip Step 7 silently.
 
 ---
@@ -134,7 +134,7 @@ Log: `[timestamp] [B2-annotate] images_annotated=N` → `recovery.log`
 
 **Skip silently** if `image-annotations.md` has 0 UI_SCREENSHOT entries.
 
-### Quy trình
+### Process
 
 For each UI_SCREENSHOT entry in `image-annotations.md`:
 

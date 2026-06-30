@@ -264,7 +264,7 @@ and asks:
 
 ```
 ✅ Implementation done.
-Bạn có muốn chạy UI verification bằng Playwright không?
+Do you want to run UI verification with Playwright?
   [Yes] / [No]
 ```
 

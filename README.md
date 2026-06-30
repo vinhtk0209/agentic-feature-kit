@@ -1,5 +1,7 @@
 # feature-from-confluence — Claude Code Agentic Workflow Kit (standalone)
 
+[![Workflow Kit CI](https://github.com/vinhtk0209/agentic-feature-kit/actions/workflows/workflow-kit-ci.yml/badge.svg)](https://github.com/vinhtk0209/agentic-feature-kit/actions/workflows/workflow-kit-ci.yml)
+
 > **One command. Your spec becomes convention-compliant, PR-ready code — with human-in-the-loop gates, a deterministic self-test toolchain, and a self-improvement loop.**
 >
 > Kit version **v3.17**. **Claude Code only** and **tech-stack agnostic** — it reads your project's conventions from `CLAUDE.md`.
@@ -64,6 +66,10 @@ Both use anon + RLS (insert/update/select policies). The dashboard joins them pe
 | `/api-contract <feature>` | Reverse-engineer a `.http` contract from a data layer |
 | `/playwright-verify <route>` | Standalone UI verification (screenshots, UX states) |
 | `/codex-review` | Repo-convention branch review (complements built-in `/code-review`) |
+
+> **Run these from a browser:** the companion **kit-dashboard** ships a **Command Runner** (`/run`)
+> that launches these commands on any repo without a terminal — live output, interactive gates, and
+> per-run token/cost telemetry on `/performance`. See `kit-dashboard/README.md`.
 
 ## Spec sources are pluggable
 

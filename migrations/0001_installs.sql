@@ -1,4 +1,4 @@
--- Migration 0001 — install-based version reporting (Phần B)
+-- Migration 0001 — install-based version reporting (Part B)
 -- Run this manually in the Supabase SQL editor. The sync script never runs DDL.
 --
 -- `installs` answers a DIFFERENT question than `usage_logs`:

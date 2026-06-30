@@ -56,6 +56,19 @@ Agent({
     Feature route: <feature-route>
     Feature folder: src/<feature-folder>/
 
+    Step 0a — RESOLVE the route from the REAL router, NEVER from the spec title/heading.
+      (Audit 2026-06-29: a run inferred `/class-management/1` → React-Router "404 Not Found",
+      so every state cascade-failed on the opening navigate. The app actually routes
+      `/class-management/edit/:id` — read from `<Link to=...>` in the parent list page.)
+      Before using <feature-route> in ux-states.json states[].route:
+        1. Grep how the parent page is reached, and read its router entry:
+           grep -rnE "<Link to=|<Route |path:|generatePath\(|createBrowserRouter" src | grep -i "<route-keyword>"
+        2. Take the router's path PATTERN (fill :params with a real id) as <feature-route>.
+        3. If the dev server is up (B10.5), confirm it is NOT a 404 BEFORE running Playwright:
+           curl -s -o /dev/null -w "%{http_code}" "${DEV_SERVER_URL:-http://localhost:3000}<PUBLIC_PATH><feature-route>"
+           A 404 (or an "Unexpected Application Error" / "404 Not Found" render) = wrong route →
+           fix it from the router first; do NOT run Playwright on a route that 404s.
+
     Step 0 — Phase-level MCP verification (primary path, v3.9):
       Call the MCP tool `run_b11` (from `feature-workflow` server) with:
         - featureName: <FeatureName>

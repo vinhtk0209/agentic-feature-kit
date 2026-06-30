@@ -795,7 +795,7 @@ Store the JSON output as `FEEDBACK_ANALYSIS` in working memory.
 
 ## B0 — Fetch / Read Spec + Task Type Detection
 
-> **Print PROGRESS DISPLAY** (current: `▶ B0`) trước khi làm bất kỳ action nào.
+> **Print PROGRESS DISPLAY** (current: `▶ B0`) before doing any action.
 > **Load the spec first — always, automatically. No user prompt needed.**
 > Branch based on `INPUT_TYPE` detected in ARG VALIDATION.
 
@@ -988,12 +988,12 @@ If internal iframe found:
 ```
 ⚠️ LEGACY TASK DETECTED
 
-Dấu hiệu : <iframe> tìm thấy tại [file:line]
-            src trỏ đến route nội bộ: [route]
-Feature này đang được load qua iframe.
-→ Không cần implement mới. Chỉ cần maintain iframe src.
+Signal   : <iframe> found at [file:line]
+            src points to an internal route: [route]
+This feature is being loaded via an iframe.
+→ No new implementation needed. Just maintain the iframe src.
 
-Dừng flow. Không chạy B1–B12.
+Stop the flow. Do NOT run B1–B12.
 ```
 
 **STOP. Do not continue.**
@@ -1048,8 +1048,8 @@ Evidence   :
 Spec says  : [1-line summary of what the spec is asking to change]
 
 Confirm:
-  [Yes — chỉ update endpoint / existing code]
-  [No  — chạy full flow B1–B12]
+  [Yes — only update endpoint / existing code]
+  [No  — run the full flow B1–B12]
 ```
 - `Yes` → locate the existing `api.ts`, apply changes from spec, done
 - `No` → proceed to B1 as NEW FEATURE
@@ -1090,9 +1090,9 @@ Save result to `docs/specs/<FeatureName>/task-type.md` using the structured form
 
 ---
 
-## B0.5 — Pre-flight Check *(chạy ngay sau B0, trước B1)*
+## B0.5 — Pre-flight Check *(run right after B0, before B1)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B0.5`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B0.5`) before doing any action.
 
 Run two checks. **Do NOT block the flow on either check.**
 
@@ -1174,13 +1174,13 @@ On `mismatch` (exit 1) ONLY, STOP and show:
 
 ---
 
-## B1 — Process Spec *(chạy song song với B2 + B3)*
+## B1 — Process Spec *(run in parallel with B2 + B3)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B1`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B1`) before doing any action.
 
 **Start B1, B2, and B3 in parallel. Raw spec is already saved by B0 — do NOT re-fetch.**
 
-### Quy trình
+### Process
 
 1. Read `docs/specs/<title>.md` (saved by B0). **Do NOT call `fetch_confluence_page` again.**
 
@@ -1216,7 +1216,7 @@ On `mismatch` (exit 1) ONLY, STOP and show:
    - Attempt 1: Re-parse raw file with different section detection logic
    - Attempt 2: Re-fetch from Confluence, parse from scratch
    - Attempt 3: Generate missing sections from available context
-   - After 3 failures: ask user `[Continue với data hiện có] / [Abort]`
+   - After 3 failures: ask user `[Continue with current data] / [Abort]`
 
 5. Log each attempt to `docs/specs/<FeatureName>/recovery.log`.
 
@@ -1226,9 +1226,9 @@ Analyze `docs/specs/<FeatureName>/processed.md` per the DYNAMIC DECOMPOSE rules 
 
 ---
 
-## B2 — Xử lý Images *(chạy song song với B1 + B3)*
+## B2 — Process Images *(run in parallel with B1 + B3)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B2`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B2`) before doing any action.
 
 > **[DYNAMIC DECOMPOSE]** — Skip this entire step if no UI is detected in B1. Record `"B2: skipped — no UI detected"` in context-summary.
 
@@ -1239,9 +1239,9 @@ Analyze `docs/specs/<FeatureName>/processed.md` per the DYNAMIC DECOMPOSE rules 
 
 ---
 
-## B3 — Fetch SpecKit *(chạy song song với B1 + B2)*
+## B3 — Fetch SpecKit *(run in parallel with B1 + B2)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B3`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B3`) before doing any action.
 
 > Run in parallel with B1 and B2. Do NOT block flow.
 
@@ -1332,11 +1332,11 @@ Log: `[B3-speckit-lenses] lenses=4 file=docs/specs/<FeatureName>/speckit-lenses.
 
 ## B4 — Confirm Scope *(STOP gate)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B4`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B4`) before doing any action.
 
 **Claude MUST NOT continue past this point until the user responds.**
 
-### Quy trình
+### Process
 
 1. Compile questions from Clarify + Analyze lenses (B3)
 2. Cross-reference with `docs/specs/<FeatureName>/processed.md` — skip questions the spec already answered
@@ -1350,7 +1350,7 @@ Log: `[B3-speckit-lenses] lenses=4 file=docs/specs/<FeatureName>/speckit-lenses.
    - **Data shape**: pagination type — page-based or infinite scroll?
    - **Interactions**: mutations needed (create/update/delete/approve)? polling?
    - **Filters/Search**: filter panel? API-side or client-side?
-   - **Backend contract**: Đã có BE API contract (file/URL) chưa? → persist answer as `contractStatus` in context-summary. [REAL] dán path/URL → golden, skip B8.6 inference | [PROVISIONAL] sắp có → inferred + stamp `// CONTRACT: PROVISIONAL` + RECONCILE.md | [FE_ONLY] không có BE
+   - **Backend contract**: Is there a BE API contract (file/URL) yet? → persist answer as `contractStatus` in context-summary. [REAL] paste path/URL → golden, skip B8.6 inference | [PROVISIONAL] coming soon → inferred + stamp `// CONTRACT: PROVISIONAL` + RECONCILE.md | [FE_ONLY] no BE
    - **Mock**: `USE_MOCK = true` to start? Edge cases to mock?
    - **i18n**: new `messages.ts` or extend existing one?
    - **Image-spec gaps**: (from Step 2.5, only if any detected)
@@ -1413,17 +1413,19 @@ Do these files match the scope correctly?
 
 ## B6.5 — Design Review *(STOP gate)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B6.5`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B6.5`) before doing any action.
 
-> **Tách Design khỏi Plan.** Bước này quyết định kiến trúc — component decomposition, state shape, API contract — trước khi đi vào task breakdown ở B7.
-> Use **Superpower lens** từ B3. Apply **★3 SELF-EVALUATE** before presenting.
+> **Separate Design from Plan.** This step decides the architecture — component decomposition, state shape, API contract — before moving into the task breakdown in B7.
+> Use the **Superpower lens** from B3. Apply **★3 SELF-EVALUATE** before presenting.
 >
 > If `docs/specs/<FeatureName>/image-annotations.md` exists: read it before presenting the Design Review.
 > UI_SCREENSHOT entries → verify Component Decomposition matches described layout regions.
 > DIAGRAM_FLOW entries → verify State Shape covers all described transitions.
 > Reference annotation filenames inline so user can cross-check.
 
-**Finding reuse candidates** (for the `src/generic/ Reuse` section below): prefer the **CodeGraph MCP** tool when available — `codegraph_explore "<feature concept>"` (relevant symbols + source + call paths in one call) or `codegraph query "Table|List|Toolbar|..."` — instead of crawling files. It indexes every symbol (higher recall than name-grep) and shows callers so you can judge fit, directly reducing wrong-component picks. **Fallback** when CodeGraph MCP is not present: grep `PROJECT_CTX.shared_components_path` (e.g. `src/generic/`) as before — same behavior as without this tool. For a large survey you MAY delegate this discovery to a subagent that returns only a compact reuse report, keeping the main context lean.
+**Finding reuse candidates** (for the `src/generic/ Reuse` section below): prefer the **CodeGraph MCP** tool when available — `codegraph_explore "<feature concept>"` (relevant symbols + source + call paths in one call) or `codegraph query "Table|List|Toolbar|..."` — instead of crawling files. It indexes every symbol (higher recall than name-grep) and shows callers so you can judge fit, directly reducing wrong-component picks. **Fallback** when CodeGraph MCP is not present: grep `PROJECT_CTX.shared_components_path` (e.g. `src/generic/`) as before — same behavior as without this tool.
+
+> **Offload large surveys.** If finding reuse candidates would mean reading more than ~8 files or ~400 lines (broad shared-component sweep, wide symbol search), **delegate it to a read-only discovery subagent** instead of crawling in the main context. Read `.claude/_content/discovery-agent.md` for the protocol + Agent template; substitute `{{CONCEPT}}`, `{{SHARED_PATH}}`, `{{HAS_CODEGRAPH}}` and spawn. The agent returns a compact ranked reuse report (≤ 40 lines, no file dumps) that fills the `src/generic/ Reuse` section below. For a quick one-or-two-file lookup, stay inline — spawning costs more than it saves.
 
 **Claude MUST NOT continue past this point until the user responds.**
 
@@ -1464,12 +1466,12 @@ Does this design look correct?
 
 ---
 
-## B7 — Lên Plan
+## B7 — Plan
 
-**Print PROGRESS DISPLAY** (current: `▶ B7`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B7`) before doing any action.
 
-> **Design đã được confirm ở B6.5.** B7 chỉ là task breakdown — không quyết định kiến trúc nữa.
-> Use **Superpower lens** từ B3 để chọn thứ tự thực hiện tối ưu. Apply **★3 SELF-EVALUATE** before presenting.
+> **Design was confirmed at B6.5.** B7 is only the task breakdown — no more architecture decisions.
+> Use the **Superpower lens** from B3 to choose the optimal execution order. Apply **★3 SELF-EVALUATE** before presenting.
 
 ```markdown
 ## Implementation Plan: [FeatureName]
@@ -1497,18 +1499,18 @@ Does this design look correct?
 ### Dependencies
 - [Any new npm packages needed, or "none"]
 
-### Package Selection *(chạy khi Dependencies ≠ "none")*
+### Package Selection *(run when Dependencies ≠ "none")*
 
-Với mỗi capability cần thiết (charts, date picker, file upload, rich text, maps, etc.):
+For each required capability (charts, date picker, file upload, rich text, maps, etc.):
 
-**Step 1** — Scan `package.json` đã có package phù hợp chưa:
-- Tìm trong `dependencies` + `devDependencies` theo capability keyword
-- Nếu có → dùng package đó. Ghi: `"Reusing existing: <package>@<version>"`
+**Step 1** — Scan `package.json` for an already-suitable package:
+- Search `dependencies` + `devDependencies` by capability keyword
+- If found → use that package. Record: `"Reusing existing: <package>@<version>"`
 
-**Step 2** — Nếu chưa có → check CLAUDE.md có ghi preferred package không
-- Ví dụ: `"charts: recharts"`, `"date: date-fns"`, `"rich-text: tiptap"`
+**Step 2** — If not present → check whether CLAUDE.md declares a preferred package
+- Example: `"charts: recharts"`, `"date: date-fns"`, `"rich-text: tiptap"`
 
-**Step 3** — Nếu không có preference → recommend theo framework default:
+**Step 3** — If there is no preference → recommend per framework default:
 
 | Capability    | React default    | Vue default              | Angular default    |
 |---------------|------------------|--------------------------|--------------------|
@@ -1520,16 +1522,16 @@ Với mỗi capability cần thiết (charts, date picker, file upload, rich tex
 | Data table    | @tanstack/table  | vue-good-table           | ag-grid-angular    |
 | Drag & drop   | dnd-kit          | vue-draggable            | angular-cdk        |
 
-**Step 4** — Nếu ambiguous (nhiều lựa chọn tương đương) → STOP, hỏi user:
+**Step 4** — If ambiguous (several equivalent choices) → STOP, ask the user:
 ```
 📦 Package selection needed
-Feature cần [capability]. Lựa chọn cho [framework]:
-  [A] [package-A] — [mô tả ngắn]
-  [B] [package-B] — [mô tả ngắn]
-Bạn muốn dùng cái nào?
+Feature needs [capability]. Choices for [framework]:
+  [A] [package-A] — [short description]
+  [B] [package-B] — [short description]
+Which one do you want to use?
 ```
 
-**Step 5** — Ghi kết quả vào task table với cột "Package to install":
+**Step 5** — Record the result in the task table under the "Package to install" column:
 
 | Step | File | What | Package to install |
 |------|------|------|--------------------|
@@ -1546,19 +1548,19 @@ Bạn muốn dùng cái nào?
 
 ## B8 — User Confirm Plan *(STOP gate)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B8`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B8`) before doing any action.
 
 **Claude MUST NOT continue past this point until the user responds.**
 
 ```
-📋 Implementation Plan sẵn sàng:
+📋 Implementation Plan ready:
 
 [Display plan from B7]
 
 [Self-evaluation: plan covers X / Y ACP requirements]
 
-Plan này ổn không?
-[Yes — tiếp tục] / [No — điều chỉnh gì?]
+Does this plan look good?
+[Yes — continue] / [No — what should be adjusted?]
 ```
 
 > **STOP GATE — no output, wait for user response.**
@@ -1568,9 +1570,9 @@ Plan này ổn không?
 
 ---
 
-## B8.5 — Conflict Check *(tự động, chạy ngay sau B8)*
+## B8.5 — Conflict Check *(automatic, run right after B8)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B8.5`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B8.5`) before doing any action.
 
 Run automatically. Do not ask user before running.
 
@@ -1607,11 +1609,11 @@ git diff --name-only HEAD -- "**/*.sql" "**/migration*" "**/migrate*" "**/migrat
 
 ---
 
-## B8.6 — API Contract *(tự động sau B8.5, trước B9)*
+## B8.6 — API Contract *(automatic after B8.5, before B9)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B8.6`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B8.6`) before doing any action.
 
-> Generate file `.http` từ API endpoints đã xác định ở B6.5 Design Review. Chạy tự động — không có STOP gate. Cho phép review contract trước khi bất kỳ code nào được viết.
+> Generate the `.http` file from the API endpoints identified in the B6.5 Design Review. Runs automatically — no STOP gate. Lets you review the contract before any code is written.
 
 ### Step 0 — Branch on contractStatus (HARD RULE 32)
 
@@ -1619,43 +1621,43 @@ git diff --name-only HEAD -- "**/*.sql" "**/migration*" "**/migrate*" "**/migrat
 - **PROVISIONAL** → run Step 1 inference, then write `docs/components/<FeatureName>/RECONCILE.md` (inferred endpoint + shape list for later diff at B12.8).
 - **FE_ONLY** → run Step 1 inference as today.
 
-### Step 1 — Extract API endpoints (đọc đủ 2 nguồn)
+### Step 1 — Extract API endpoints (read both sources)
 
-**Nguồn 1 — B6.5 working memory** (nếu B6.5 đã chạy): đọc API Contract section.
+**Source 1 — B6.5 working memory** (if B6.5 ran): read the API Contract section.
 
-**Nguồn 2 — `docs/specs/<FeatureName>/processed.md`** (luôn đọc, kể cả khi B6.5 đã chạy): scan toàn bộ file để bổ sung endpoint bị thiếu.
+**Source 2 — `docs/specs/<FeatureName>/processed.md`** (always read, even if B6.5 ran): scan the whole file to add any missing endpoints.
 
-Khi đọc `processed.md`, tìm **tất cả** các tín hiệu sau:
+When reading `processed.md`, look for **all** of the following signals:
 
-| Tín hiệu trong spec | Endpoint suy ra |
+| Signal in the spec | Inferred endpoint |
 | --- | --- |
 | Screen / tab load | `GET /{resource}` |
-| Header metadata (dates, instructor, progress) | Embedded trong main GET, không tạo endpoint riêng |
-| Popup / modal với nội dung riêng | `GET /{resource}/{id}/detail` — lazy |
-| Tab 2, 3... chỉ load khi active | `GET /{sub-resource}` — lazy tab |
-| Save / Submit button | `POST /{resource}/submit` hoặc `PUT /{resource}/{id}` |
-| Save per-item + Bulk save | `PUT /{id}` + `POST /bulk-submit` (2 endpoint) |
-| Publish / Release / Approve | `POST /{resource}/publish` hoặc `/approve` |
+| Header metadata (dates, instructor, progress) | Embedded in the main GET, no separate endpoint |
+| Popup / modal with its own content | `GET /{resource}/{id}/detail` — lazy |
+| Tab 2, 3... loads only when active | `GET /{sub-resource}` — lazy tab |
+| Save / Submit button | `POST /{resource}/submit` or `PUT /{resource}/{id}` |
+| Save per-item + Bulk save | `PUT /{id}` + `POST /bulk-submit` (2 endpoints) |
+| Publish / Release / Approve | `POST /{resource}/publish` or `/approve` |
 | Auto-grade / System trigger | `POST /auto-grade` — FE=❌ backend only |
-| History / attempt / log | `GET /{resource}/{id}/history` hoặc `/attempts` |
+| History / attempt / log | `GET /{resource}/{id}/history` or `/attempts` |
 | Filter / search (server-side) | `GET /{resource}?filter=...` |
 
-Sau khi extract, điền vào bảng tạm:
+After extracting, fill in a temporary table:
 
 ```
-| # | Method | Path | Trigger | FE gọi? |
+| # | Method | Path | Trigger | FE calls? |
 |---|--------|------|---------|---------|
 | 1 | GET    | /... | page load | ✅ |
 | 2 | GET    | /.../detail | popup open | ✅ lazy |
 | 3 | POST   | .../publish | system | ❌ backend only |
 ```
 
-**Phải có ít nhất 1 endpoint cho mỗi UI action sau nếu spec đề cập đến:**
+**There must be at least 1 endpoint for each of the following UI actions if the spec mentions it:**
 
-- Xem chi tiết (popup, drawer) → GET detail endpoint
-- Lưu / submit → POST hoặc PUT
+- View detail (popup, drawer) → GET detail endpoint
+- Save / submit → POST or PUT
 - Publish / release → POST publish
-- Tab lazy → GET endpoint riêng
+- Lazy tab → its own GET endpoint
 
 ### Step 2 — Create output directory
 
@@ -1665,25 +1667,25 @@ New-Item -ItemType Directory -Force -Path "docs/components/<FeatureName>"
 
 ### Step 3 — Write `docs/components/<FeatureName>/<FeatureName>.full.http`
 
-Tạo một block per endpoint theo canonical format trong [`.claude/templates/http-contract.template.md`](../templates/http-contract.template.md) (annotations `# Used by` / `# React Query key` / `# FE calls`, full `/api/v1/...` paths per HARD RULE 26).
+Create one block per endpoint following the canonical format in [`.claude/templates/http-contract.template.md`](../templates/http-contract.template.md) (annotations `# Used by` / `# React Query key` / `# FE calls`, full `/api/v1/...` paths per HARD RULE 26).
 
-Với POST/PATCH/PUT: thêm `Content-Type: application/json` và request body mẫu (snake_case fields từ spec).
+For POST/PATCH/PUT: add `Content-Type: application/json` and a sample request body (snake_case fields from the spec).
 
-Với path parameters (e.g. `{sessionId}`): khai báo biến ở đầu file:
+For path parameters (e.g. `{sessionId}`): declare a variable at the top of the file:
 
 ```http
 @session_id = 123
 ```
 
-Cuối file: thêm section `### EXPECTED RESPONSE SHAPES` — liệt kê **tất cả** TypeScript-style type definitions cho mọi response, bao gồm nested types. Đây là nguồn sự thật để B10 agent implement `data/types.ts`.
+End of file: add a `### EXPECTED RESPONSE SHAPES` section — list **all** TypeScript-style type definitions for every response, including nested types. This is the source of truth for the B10 agent implementing `data/types.ts`.
 
-Apply **★3 SELF-EVALUATE** trước khi write:
+Apply **★3 SELF-EVALUATE** before writing:
 
-- Verify mỗi popup/modal trong spec đều có GET endpoint riêng
-- Verify feature title "Release/Publish/Approve" đều có POST endpoint
-- Verify mỗi lazy tab đều có GET endpoint riêng với `enabled` flag
-- Verify tất cả response shapes được liệt kê đầy đủ (không bỏ sót nested type nào)
-- **Reverse-trace từ UI → API**: với mỗi section/panel/tab visible trên màn hình (header, overview, info-bar, main content, sidebar, v.v.) — xác định field nào trong response shape phục vụ section đó. Nếu bất kỳ section nào không có field tương ứng trong bất kỳ response nào → bổ sung endpoint hoặc bổ sung field vào response shape có liên quan trước khi write
+- Verify every popup/modal in the spec has its own GET endpoint
+- Verify "Release/Publish/Approve" feature titles each have a POST endpoint
+- Verify every lazy tab has its own GET endpoint with an `enabled` flag
+- Verify all response shapes are listed in full (no nested type left out)
+- **Reverse-trace from UI → API**: for each section/panel/tab visible on screen (header, overview, info-bar, main content, sidebar, etc.) — identify which field in the response shape serves that section. If any section has no corresponding field in any response → add an endpoint or add the field to the relevant response shape before writing
 - **Cover the easy-to-miss field categories** (each is a common omission discovered via skill-test):
   1. **Aggregate / computed / "overall" / "total" / "summary" fields** — when spec uses phrases like "Score statistics displays overall score of all components", "Average score", "Total progress", that implies a dedicated aggregate field at the parent level of the response (e.g. `overallScores: { objective, subjective }`), not just per-item entries. List every aggregate phrase in the spec and verify the response has a corresponding rolled-up field.
   2. **Visible labels and singletons** — names, dates, IDs, badges shown anywhere on screen (e.g. `learnerName`, `courseName`, `nextEventLabel`, `startDate`, `endDate`, `instructorName`, `questionCount`, `examTime`). These are often part of a header or overview section and easy to miss when focusing only on lists.
@@ -1691,31 +1693,31 @@ Apply **★3 SELF-EVALUATE** trước khi write:
   4. **Navigation URL fields tied to action buttons** — when spec describes a button that navigates to a dynamic target (e.g. "Keep Going button — navigates to uncompleted module/assignment", "Continue where left off"), the response must include a URL or ID field (e.g. `unfinishedItemUrl`, `nextItemId`) that the FE uses to construct the navigation target. Do NOT hardcode the nav target.
   5. **Weighted score component arrays** — when spec describes a weighted average formula ("averageScore = Σ(Score × Weight) / 100", "component weights", "each component has a weight"), the response must include: (a) an array of score components with individual `weight` fields, AND (b) a top-level rolled-up `averageScore`. Missing either breaks the average score display and the weight-based UI (component score cards).
   6. **Literal type values** — when the spec or business rules describe a field that always has a single fixed value (e.g. "max attempts is always 2"), represent it as a TypeScript literal type in EXPECTED RESPONSE SHAPES (e.g. `maxAttempts: 2`) — do NOT widen to `number` or `string`. The B10 agent reads this section as source of truth and must copy the literal type exactly.
-- Nếu thiếu → bổ sung, re-score cho đến ≥ 90%
+- If anything is missing → add it, re-score until ≥ 90%
 
-### Step 4 — Show preview và tự động tiếp tục
+### Step 4 — Show preview and auto-continue
 
 ```
 📄 API Contract generated: docs/components/<FeatureName>/<FeatureName>.full.http
    Endpoints: N (GET×N, POST×N, PUT×N, DELETE×N)
-   FE hooks cần implement: N endpoints (còn lại: N system-triggered / N backend-only)
-   [Preview 2 endpoints đầu]
+   FE hooks to implement: N endpoints (remaining: N system-triggered / N backend-only)
+   [Preview first 2 endpoints]
 
-→ Tiếp tục B9...
+→ Continue to B9...
 ```
 
-**Không dừng — tự động proceed to B9.**
+**Do not stop — automatically proceed to B9.**
 
 ---
 
 ## B9 — Final Confirm *(STOP gate — strict)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B9`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B9`) before doing any action.
 
 **Claude MUST NOT implement anything until receiving the exact accepted response.**
 
 ```
-⚡ Sẵn sàng implement?
+⚡ Ready to implement?
 
 Feature   : [featureName — from context-summary]
 Task type : [NEW | BASELINE]
@@ -1723,8 +1725,8 @@ Scope     : [1-line summary of confirmed scope]
 Plan      : N tasks, M files to create / modify
 Conflicts : None / [summary of what was resolved]
 
-Chỉ nhận: "yes" / "y" / "confirm" (không phân biệt hoa thường)
-Các response sau KHÔNG được chấp nhận: ok, sure, go ahead, let's do it, proceed, sounds good
+Only accepts: "yes" / "y" / "confirm" (case-insensitive)
+The following responses are NOT accepted: ok, sure, go ahead, let's do it, proceed, sounds good
 ```
 
 > **STOP GATE — no output, wait for user response.**
@@ -1734,9 +1736,9 @@ Các response sau KHÔNG được chấp nhận: ok, sure, go ahead, let's do it
 
 ---
 
-## B9.5 — Git Sync *(bắt buộc trước B10)*
+## B9.5 — Git Sync *(required before B10)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B9.5`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B9.5`) before doing any action.
 
 Run immediately after B9 is confirmed. **Do NOT start B10 until this succeeds.**
 
@@ -1799,19 +1801,19 @@ git stash pop
 
 ---
 
-## B9.6 — Package Install *(tự động sau B9.5, trước B10)*
+## B9.6 — Package Install *(automatic after B9.5, before B10)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B9.6`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B9.6`) before doing any action.
 
-Collect tất cả packages có status **(NEW)** từ B7 Package Selection table.
+Collect all packages with status **(NEW)** from the B7 Package Selection table.
 
-**Nếu KHÔNG có package mới:**
+**If there are NO new packages:**
 
 ```
 ✅ No new packages required — proceeding to B10
 ```
 
-**Nếu CÓ package mới:** print và install bằng PKG_MANAGER (từ SESSION BOOTSTRAP Step 0.B):
+**If there ARE new packages:** print and install with PKG_MANAGER (from SESSION BOOTSTRAP Step 0.B):
 
 ```
 📦 Installing [N] new package(s) with [PKG_MANAGER]:
@@ -1836,10 +1838,10 @@ bun add recharts@^2 date-fns@^3
 | Result | Action |
 |--------|--------|
 | Install succeeded | ✅ Proceed to B10 |
-| Install failed (network) | Apply ★1 SELF-RECOVER — retry 3×. Nếu vẫn fail: ★7 STEP FAILURE PROTOCOL |
-| Peer dependency conflict | Warn user với conflict details. Ask: `[Force install] / [Choose different version] / [Skip package]`. STOP chờ user. |
+| Install failed (network) | Apply ★1 SELF-RECOVER — retry 3×. If still failing: ★7 STEP FAILURE PROTOCOL |
+| Peer dependency conflict | Warn user with conflict details. Ask: `[Force install] / [Choose different version] / [Skip package]`. STOP and wait for user. |
 
-Log kết quả vào `docs/specs/<FeatureName>/recovery.log`:
+Log the result to `docs/specs/<FeatureName>/recovery.log`:
 
 ```
 [timestamp] [B9.6] pkg_manager=[PKG_MANAGER] packages=[list] result=pass|fail reason=...
@@ -1849,7 +1851,7 @@ Log kết quả vào `docs/specs/<FeatureName>/recovery.log`:
 
 ## B10 — Implement
 
-**Print PROGRESS DISPLAY** (current: `▶ B10`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B10`) before doing any action.
 
 > **Spawn an implementation subagent via the Agent tool.** This keeps the main context clean while the agent writes all feature files.
 
@@ -1907,25 +1909,25 @@ Log: `[timestamp] [B10] BASELINE restored`
 
 ---
 
-## B10.5 — Playwright Gate *(STOP gate sau B10)*
+## B10.5 — Playwright Gate *(STOP gate after B10)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B10.5`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B10.5`) before doing any action.
 
 **Claude MUST NOT continue to B11 until user responds.**
 
 ```
 ✅ Implementation done — [N files created / M files modified]
 
-Bạn có muốn chạy UI verification bằng Playwright không?
+Do you want to run UI verification with Playwright?
 
-  [Yes] Claude sẽ kiểm tra Playwright, cài nếu thiếu (dùng PKG_MANAGER),
-        rồi chạy full B11: static analysis + headless browser (4 UX states)
+  [Yes] Claude will check Playwright, install if missing (using PKG_MANAGER),
+        then run full B11: static analysis + headless browser (4 UX states)
 
-  [No]  Bỏ qua UI testing — chỉ chạy static analysis (types + lint)
-        B11 Agent B sẽ được đánh dấu ⏭️ Skipped
+  [No]  Skip UI testing — run static analysis only (types + lint)
+        B11 Agent B will be marked ⏭️ Skipped
 ```
 
-**STOP — chờ user response.**
+**STOP — wait for user response.**
 
 - **Yes** → set `PLAYWRIGHT_OPTED_IN = true`, proceed to B11
 - **No**  → set `PLAYWRIGHT_OPTED_IN = false`, proceed to B11
@@ -1934,7 +1936,7 @@ Bạn có muốn chạy UI verification bằng Playwright không?
 
 ## B11 — Verify *(spawn agents)*
 
-**Print PROGRESS DISPLAY** (current: `▶ B11`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B11`) before doing any action.
 
 > **Token preflight** — before spawning Agent B, check Playwright credential freshness:
 > ```
@@ -2063,7 +2065,7 @@ Options:
 
 ## B12 — Done
 
-**Print PROGRESS DISPLAY** (current: `▶ B12`) trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** (current: `▶ B12`) before doing any action.
 
 **[★3 FINAL SELF-EVALUATE]** before notifying. Cross-check against **Superpower done criteria** (from B3 working memory) on four axes:
 
@@ -2320,7 +2322,7 @@ If 0 approved: skip Step 3 silently.
 
 ## B12.8 — Contract Reconciliation *(automatic, after B12.6 — non-blocking)*
 
-**Print PROGRESS DISPLAY** trước khi làm bất kỳ action nào.
+**Print PROGRESS DISPLAY** before doing any action.
 
 > **Trigger (BOTH required):** `context-summary.contractStatus == PROVISIONAL` AND a real backend contract
 > file has been placed in `docs/components/<FeatureName>/` (any `.http` / `.md` other than the generated
