@@ -1,0 +1,57 @@
+# Dashboard Guide
+
+`kit-dashboard` is the admin dashboard — a Next.js 16 app that reads telemetry from
+Supabase and can **run Claude Code commands for any repo** from the browser (the Command
+Runner, v0.2.0).
+
+## Stack
+
+| Concern | Choice |
+|---------|--------|
+| Framework | Next.js 16 (App Router) |
+| UI | React 19 + Tailwind CSS |
+| Charts | Recharts |
+| Database | Supabase |
+| Auth | Supabase Auth (cookie session, gated via `src/proxy.ts`) |
+
+## Run it
+
+```bash
+cd kit-dashboard
+npm run create-admin   # one-time: create an admin account
+npm run dev:all        # Next.js + the PTY sidecar (Command Runner)
+```
+
+Open `http://localhost:3000` → log in. Use plain `npm run dev` if you don't need the
+Command Runner.
+
+## Pages
+
+| Route | What |
+|-------|------|
+| `/` | Summary cards — active tokens, runs, errors, top version, bypass, suspicious tokens. |
+| `/usage` | Runs/day chart, runs by owner, recent runs. **CSV + PNG export.** |
+| `/performance` | Token/cost + per-repo ranking + checkpoint activity. **CSV + PNG export.** |
+| `/versions` | Installed-vs-running version per repo, “update available”, Sync all. **CSV + PNG export.** |
+| `/run` | Command Runner — launch kit commands per repo, live terminal, gates, queue. |
+| `/schedules` | Cron-scheduled runs (node-cron in the sidecar). |
+| `/logs` | Full-text search across run logs. |
+| `/alerts` | Slack/webhook alert config + run-failure notifications. |
+| `/tokens`, `/bypass`, `/activity`, `/errors` | Token admin, bypass codes, audit trails, error reports. |
+
+## Command Runner (v0.2.0)
+
+Runs `claude` on the host machine with `cwd` = the target repo, streams output over a
+WebSocket (PTY sidecar `server/pty-server.ts`), surfaces STOP gates and permission prompts
+inline, and captures token/cost via a Claude OTEL → OTLP receiver. Concurrency is capped
+with a FIFO queue; failed runs can be retried; two runs can be compared side by side.
+
+> Auth has two layers: **dashboard login** (Supabase Auth) and the **KIT_TOKEN** gate the
+> kit itself verifies per run. The dashboard can inject one runner token for all runs
+> (`runner.secrets.json`, set from `/run`).
+
+## Export (B-08)
+
+Every table exports to **CSV** (UTF-8 BOM for Excel) and every chart to **PNG**
+(Recharts SVG → canvas), via the `⬇ CSV` / `⬇ PNG` buttons on `/usage`, `/performance`,
+and `/versions`.

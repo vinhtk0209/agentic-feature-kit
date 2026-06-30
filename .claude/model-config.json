@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "primary": "opus",
+  "fallback": ["sonnet", "haiku"],
+  "models": {
+    "opus": { "id": "claude-opus-4-8", "label": "Opus 4.8", "provider": "claude" },
+    "sonnet": { "id": "claude-sonnet-4-6", "label": "Sonnet 4.6", "provider": "claude" },
+    "haiku": { "id": "claude-haiku-4-5-20251001", "label": "Haiku 4.5", "provider": "claude" },
+    "fable": { "id": "claude-fable-5", "label": "Fable 5", "provider": "claude" },
+    "copilot": { "id": "github-copilot", "label": "GitHub Copilot", "provider": "copilot" }
+  }
+}

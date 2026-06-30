@@ -14,10 +14,28 @@ evolution silently regressing behavior — a known-good feature starting to fail
 re-run the LLM workflow end-to-end (not reproducible in a script); it exercises the
 gates/analyzers that those changes flow through.
 
+## Managing cases (CLI)
+
+`corpus-manager.ts` (A-02) scaffolds, lists, and validates cases so the corpus stays
+consistent:
+
+```bash
+npm run corpus:add -- --name "modal-close" --tags "L-03,UI"   # scaffold a gate case
+npm run corpus:add -- --name "b11-fail" --kind detector        # scaffold a detector case
+npm run corpus:list -- --tag UI                                # filter by tag (or --kind)
+npm run corpus:validate                                         # schema-check + runnable check
+```
+
+`corpus:validate` also runs in `npm run test:kit` via `test:corpus-manager` (unit tests of
+the validator/scaffolder). It reports schema errors as hard failures and verdict
+mismatches as a regression warning (the hard regression gate stays `test:regression-corpus`).
+
 ## Adding a case
 
-Drop a `NN-name.case.json` file here. Each case materializes its `files` in an
-isolated temp dir, runs one tool, and compares to `expect`. Two kinds:
+Drop a `NN-name.case.json` file here (or scaffold one with `npm run corpus:add`). Each case
+materializes its `files` in an isolated temp dir, runs one tool, and compares to `expect`.
+An optional `"tags": ["UI", "L-03"]` field is supported for curation/filtering — the
+regression runner ignores it; `corpus:list --tag` uses it. Two kinds:
 
 ### `gate` — runs `lint-feature`'s `lint()`
 

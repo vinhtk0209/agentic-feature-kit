@@ -1,0 +1,71 @@
+# Integrations
+
+The kit ships **24+ deterministic scripts** in `.claude/integrations/`. They are the
+non-LLM backbone: gates, evaluators, the regression corpus, telemetry, and reporting. Each
+is runnable via an `npm` script and most have a matching `*.test.ts`.
+
+## Gates & quality
+
+| Script | npm | What it does |
+|--------|-----|--------------|
+| `lint-feature.ts` | `npm run lint:feature` | Convention gate — anti-corruption (HR33), blind-cast, ownership, learned rules. |
+| `check-ownership.ts` | `npm run check:ownership` | Verifies file ownership boundaries. |
+| `prompt-budget.ts` | (in `test:kit`) | Ratchets the prompt-file size budget so commands don't bloat. |
+
+## Evaluation
+
+| Script | npm | What it does |
+|--------|-----|--------------|
+| `eval-feature.ts` | `npm run eval:feature` | Scores a generated feature (artifacts, checklist, code, AC, verification). |
+| `eval-ab.ts` | `npm run eval:ab` | A/B compares two prompt versions' scorecards (Δ per category, win/loss/tie). |
+| `regression-corpus.ts` | (in `test:kit`) | Replays golden cases (`corpus/*.case.json`) to catch silent regressions. |
+
+## Corpus management (A-02)
+
+| npm | What it does |
+|-----|--------------|
+| `npm run corpus:add -- --name "x" --tags "UI"` | Scaffold a new golden case (`gate` or `--kind detector`). |
+| `npm run corpus:list -- --tag UI` | List/filter cases by tag or kind. |
+| `npm run corpus:validate` | Schema-check every case + confirm each is runnable. |
+
+## Verification
+
+| Script | npm | What it does |
+|--------|-----|--------------|
+| `playwright-runner.ts` | `npm run verify:browser` | Drives Playwright for UI verification. |
+
+## Telemetry & reporting
+
+| Script | npm | What it does |
+|--------|-----|--------------|
+| `telemetry.ts` | — | Calls Supabase RPC `verify_kit_token` at gate checkpoints; logs usage. |
+| `kpi-report.ts` | `npm run workflow:kpis` / `--dashboard` | KPI summary / dashboard JSON. |
+| `feature-index.ts` | `npm run workflow:index` | Builds/checks the feature index. |
+| `feature-digest.ts` | `npm run workflow:digest` | Feature digest report. |
+
+## Self-improvement loop
+
+| Script | npm | What it does |
+|--------|-----|--------------|
+| `feedback-analyzer.ts` | — | Detects recurring failure patterns from feedback history. |
+| `lesson-registry.ts` | `npm run check:lessons` / `--sync-check` | Tracks lessons (L-01…) and their sync state. |
+| `improve-trigger.ts` | `npm run check:amendments` | Surfaces when a learned amendment is warranted. |
+| `learned-config.ts` | — | Persists + enforces learned rules (default-off). |
+
+## Running everything
+
+```bash
+npm test     # = npm run test:kit — every gate, detector, and unit test
+```
+
+## Extending the kit (plugins)
+
+Extend the kit without forking via the **plugin/hook system** (`hooks.ts`): drop a plugin
+into `.claude/plugins/` and react to lifecycle events (`before:lint`, `after:verify`,
+`on:error`, …).
+
+```bash
+npm run hooks:list   # discovered plugins + their hooks
+```
+
+See **docs/PLUGINS.md** for the contract.

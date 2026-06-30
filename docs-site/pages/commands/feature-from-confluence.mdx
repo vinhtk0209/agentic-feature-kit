@@ -1,0 +1,50 @@
+# /feature-from-confluence
+
+> Turn a Confluence page, PDF, or Word spec into convention-compliant, PR-ready feature
+> code — the full **B0–B12** workflow with human-in-the-loop confirm gates.
+
+This is the flagship command. It reads a spec, plans the feature against your repo's
+conventions, generates the data and UI layers, runs the deterministic gates, verifies the
+UI with Playwright, and stops at confirm gates so a human approves the important steps.
+
+## Usage
+
+```text
+/feature-from-confluence <spec URL or file path>
+```
+
+The `<spec>` can be a Confluence URL (needs `CONFLUENCE_TOKEN`), a path to a markdown file
+converted from a PDF/Word doc, or a Figma export.
+
+## The B0–B12 workflow (overview)
+
+| Phase | What happens |
+|-------|--------------|
+| **B0** | Read + understand the spec; extract acceptance criteria. |
+| **B1–B5** | Plan against conventions, scaffold, generate the data layer (anti-corruption), then the UI. |
+| **B6** | Reuse discovery — find existing components/utilities before writing new ones. |
+| **B9** | Confirm gate — human approves the plan before bulk changes. |
+| **B10.5** | Playwright UI verification gate (screenshots + UX states). |
+| **B11** | Self-test + convention gates (lint, ownership, anti-corruption). |
+| **B12** | Self-improvement logging — capture feedback for the learning loop. |
+
+> The phase letters are the kit's internal checkpoints; they also surface as telemetry
+> checkpoints (`step0`, `B0`, `B5`, `B11`, `B12`) on the [dashboard](/dashboard).
+
+## Gates you'll hit
+
+- **HARD RULE 37** — never auto-commit/push. A human always does that.
+- **Anti-corruption layer** — HTTP responses must pass through a `transform.ts`, never be
+  blind-cast (`data as Foo`).
+- **Prompt budget** — the command file stays within a size budget (ratcheted in CI).
+
+## Requirements
+
+- `KIT_TOKEN` (telemetry gate verifies it at step0).
+- `CONFLUENCE_TOKEN` for Confluence specs.
+- A target repo with a documented `CLAUDE.md`.
+
+## Related
+
+- [`/new-feature`](/commands/new-feature) — the spec-free, gate-free quick path.
+- [`/playwright-verify`](/commands/playwright-verify) — run the UI verification standalone.

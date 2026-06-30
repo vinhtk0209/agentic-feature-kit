@@ -1,0 +1,24 @@
+# /drop-mock
+
+> Remove the `USE_MOCK` flag and all mock infrastructure from an `api.ts` file — without
+> changing the real API logic.
+
+When a feature was built mock-first and the real API is now ready, this command strips the
+mock scaffolding cleanly.
+
+## Usage
+
+```text
+/drop-mock <path to api.ts>
+```
+
+## What it does
+
+1. **Reads** the target `api.ts` fully, and notes whether a sibling `data/transform.ts`
+   exists (the v3.16 anti-corruption layer).
+2. **Removes** the `USE_MOCK` flag, mock data, and mock branches.
+3. **Preserves** the real API calls and the transform layer untouched.
+
+## Related
+
+- [`/api-contract`](/commands/api-contract) — generate an `.http` contract for the real API.

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Conventional Commits enforcement (C-04). Enable with: npm run git-hooks:install
+# (sets core.hooksPath to .githooks). Dependency-free — no husky.
+npx tsx scripts/commit-msg.ts "$1"

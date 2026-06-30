@@ -1,0 +1,67 @@
+# Getting Started
+
+## Prerequisites
+
+- **Node.js ≥ 20**
+- **Claude Code** installed and authenticated (a Claude Pro/Max subscription or API access)
+- A target repo that follows a documented `CLAUDE.md` convention set
+
+## Install
+
+```bash
+git clone <claude-workflow-kit>
+cd claude-workflow-kit
+npm install
+```
+
+## Environment
+
+Create a root `.env`:
+
+```bash
+KIT_TOKEN=           # from: npm run workflow:login
+CONFLUENCE_TOKEN=    # a Confluence PAT (only for /feature-from-confluence on Confluence specs)
+```
+
+If you use the optional Confluence MCP connector, copy
+`.claude/mcp-server/.env.example` → `.claude/mcp-server/.env` and set the same two values.
+
+## Verify the toolchain
+
+```bash
+npm test          # = npm run test:kit — the full deterministic suite
+```
+
+This runs every gate, detector, and unit test (lint, ownership, eval, regression corpus,
+prompt budget, telemetry, …). It does **not** call the LLM — it pins the deterministic
+parts the self-improvement loop touches.
+
+## Run your first feature
+
+Inside Claude Code, in your **target** repo:
+
+```text
+/feature-from-confluence https://confluence/…/your-spec
+```
+
+The kit walks B0–B12, pausing at confirm gates. For a lighter, spec-free scaffold use
+[`/new-feature`](/commands/new-feature).
+
+## Install the kit into a target repo
+
+The kit is the **source of truth**; it pushes one-way into target repos via an allowlist
+sync:
+
+```bash
+npm run sync        # copy commands/integrations/templates/_content → targets, report version
+npm run sync:dry    # preview without writing
+```
+
+Configure targets + allowlist in `sync.config.json`. See the
+[API Reference](/api-reference#sync) for details.
+
+## Next steps
+
+- **[Commands Reference](/commands)** — every slash command and its arguments.
+- **[Integrations](/integrations)** — the deterministic scripts and how to run them.
+- **[Dashboard Guide](/dashboard)** — stand up the admin dashboard.

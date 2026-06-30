@@ -1,0 +1,51 @@
+# claude-workflow-kit
+
+An **agentic workflow kit** for Claude Code: a spec becomes convention-compliant,
+PR-ready feature code, with human-in-the-loop gates, a deterministic self-test
+toolchain, and a self-improvement loop.
+
+> Current kit version: **v3.17**
+
+## What it does
+
+You point Claude Code at a spec (a Confluence page, a PDF, a Word doc, or a short
+description) and the kit drives a full **B0–B12 workflow**: it reads the spec, plans the
+feature against your repo's conventions, generates the data/UI layers, runs deterministic
+gates (anti-corruption, ownership, lint, prompt-budget), verifies the UI with Playwright,
+and stops at confirm gates so a human stays in control. The output is convention-compliant
+code that's ready for a pull request.
+
+## Why it exists
+
+- **Convention compliance is hard to keep consistent.** The kit encodes your repo rules
+  (e.g. anti-corruption layer, no blind casts) as gates that fail loudly.
+- **LLM output drifts.** A regression corpus + eval tooling pin the deterministic parts so
+  prompt/config changes can't silently regress behavior.
+- **It learns.** A feedback loop captures what went wrong and turns recurring issues into
+  enforceable learned rules.
+
+## Quick start
+
+```bash
+npm install
+npm run workflow:login          # get a KIT_TOKEN
+npm test                        # full deterministic test suite (test:kit)
+```
+
+Then, inside Claude Code in your target repo:
+
+```text
+/feature-from-confluence <spec URL or path>
+```
+
+See **[Getting Started](/getting-started)** for the full setup, then the
+**[Commands Reference](/commands)** for every slash command.
+
+## How the pieces fit
+
+| Layer | What |
+|-------|------|
+| **[Commands](/commands)** | 6 slash commands — the flagship `/feature-from-confluence` plus focused helpers. |
+| **[Integrations](/integrations)** | 24+ deterministic scripts: lint, eval, regression corpus, telemetry, Playwright runner, KPIs. |
+| **[Dashboard](/dashboard)** | `kit-dashboard` — admin UI for usage, performance, versions, tokens, and the Command Runner. |
+| **[API Reference](/api-reference)** | Telemetry RPC, Supabase schema, and the npm script surface. |

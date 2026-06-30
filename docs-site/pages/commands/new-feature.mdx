@@ -1,0 +1,37 @@
+# /new-feature
+
+> Plan a new feature end-to-end following `CLAUDE.md` conventions — the lightweight,
+> interactive scaffold for a feature **without** a Confluence/PDF spec.
+
+Use this when you don't have a formal spec and want a quick, interactive path. It
+intentionally does **not** run the full B0–B12 quality gates — for spec-driven, gated,
+production work use [`/feature-from-confluence`](/commands/feature-from-confluence).
+
+## Usage
+
+```text
+/new-feature <feature description> [ | spec: <path to a spec file>]
+```
+
+Argument parsing:
+
+- Everything **before** ` | spec:` is the **feature description**.
+- Everything **after** ` | spec:` (optional) is a **path to a spec file** (markdown
+  converted from a PDF, a Figma export, etc.).
+
+### Examples
+
+```text
+/new-feature a settings page with a dark-mode toggle
+/new-feature bulk enrollment table | spec: ./docs/specs/bulk-enroll.md
+```
+
+## What you get
+
+A planned, scaffolded feature that follows your repo conventions — but without the
+deterministic gates, Playwright verification, or self-improvement logging that the
+flagship command runs.
+
+## Related
+
+- [`/feature-from-confluence`](/commands/feature-from-confluence) — the full gated workflow.

@@ -21,9 +21,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { lint } from './lint-feature';
+import { loadModelConfig } from './model-config';
 
 export interface CatScore { name: string; score: number; status: 'pass' | 'warn' | 'fail'; detail: string; }
-export interface Scorecard { feature: string; categories: CatScore[]; overall: number; }
+export interface Scorecard { feature: string; categories: CatScore[]; overall: number; model?: string; }
 
 /** Categories that dropped vs a baseline scorecard (regression detection). */
 export function compareBaseline(card: Scorecard, base: Scorecard): string[] {
@@ -79,7 +80,7 @@ export function evalChecklist(specDir: string): CatScore {
 }
 
 /** Pure scorer — runs the 5 categories and returns the scorecard. Reusable / testable. */
-export function scoreFeature(opts: { folder: string; specDir: string; responseTransform?: string }): Scorecard {
+export function scoreFeature(opts: { folder: string; specDir: string; responseTransform?: string; model?: string }): Scorecard {
   const checklist = path.join(opts.specDir, 'checklist.md');
   const uxStates = path.join(opts.specDir, 'ux-states.json');
   const findings = lint({ folder: opts.folder, checklist, uxStates, responseTransform: opts.responseTransform || 'transformResponse', minVerified: 0.6, gate: false, json: false, codeOnly: false });
@@ -99,7 +100,9 @@ export function scoreFeature(opts: { folder: string; specDir: string; responseTr
     { name: 'Verification', score: verPct, status: verPct >= 60 ? 'pass' : 'fail', detail: `${verPct}% [HR35]` },
   ];
   const overall = clamp(Math.round(cats.reduce((s, c) => s + c.score, 0) / cats.length));
-  return { feature: path.basename(opts.specDir), categories: cats, overall };
+  // Tag the scorecard with the model used (A-03), when provided — kept optional so callers
+  // that don't care (and existing baselines) are unaffected.
+  return { feature: path.basename(opts.specDir), categories: cats, overall, ...(opts.model ? { model: opts.model } : {}) };
 }
 
 function main() {
@@ -115,11 +118,13 @@ function main() {
   const folder = rest[0];
   const specDir = opt.spec;
   if (!folder || !specDir) {
-    console.error('usage: eval-feature.ts <feature-src-folder> --spec docs/specs/<F> [--response-transform fn] [--min 80] [--gate] [--json] [--write-baseline f] [--baseline f]');
+    console.error('usage: eval-feature.ts <feature-src-folder> --spec docs/specs/<F> [--response-transform fn] [--model opus] [--min 80] [--gate] [--json] [--write-baseline f] [--baseline f]');
     process.exit(2);
   }
   const min = Number(opt.min || '80');
-  const card = scoreFeature({ folder, specDir, responseTransform: opt['response-transform'] });
+  // Model tag (A-03): explicit --model wins, else the configured primary.
+  const model = opt.model || loadModelConfig().primary;
+  const card = scoreFeature({ folder, specDir, responseTransform: opt['response-transform'], model });
   const cats = card.categories;
   const overall = card.overall;
 
@@ -134,7 +139,7 @@ function main() {
   if (flags.has('--json')) {
     console.log(JSON.stringify({ ...card, regressions }, null, 2));
   } else {
-    console.log(`\nEVAL · ${card.feature}`);
+    console.log(`\nEVAL · ${card.feature}${card.model ? ` · model=${card.model}` : ''}`);
     console.log('─'.repeat(64));
     for (const c of cats) {
       const icon = c.status === 'pass' ? '✅' : (c.status === 'warn' ? '⚠️' : '❌');

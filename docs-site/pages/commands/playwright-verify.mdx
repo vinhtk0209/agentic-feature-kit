@@ -1,0 +1,36 @@
+# /playwright-verify
+
+> Run Playwright UI verification on any route — screenshot it, map the 4 UX states, and
+> auto-fix bugs (up to 3 attempts).
+
+Standalone UI verification. The flagship workflow runs this at gate B10.5, but you can
+invoke it independently on any route.
+
+## Usage
+
+```text
+/playwright-verify <route>
+```
+
+The command validates the argument first — a missing/invalid route stops it before any
+other step.
+
+## What it does
+
+1. **Navigates** to the route and captures screenshots.
+2. **Maps the 4 UX states** — loading, empty, error, and success.
+3. **Auto-fixes** detected issues, retrying up to 3 times.
+
+## Lessons baked in
+
+The verifier encodes hard-won lessons (see `LESSONS-FOR-KIT.md`), e.g.:
+
+- **L-01** — check a component actually imports `recharts` before asserting on
+  `.recharts-wrapper`.
+- **L-03** — distinguish a confirmation modal (has a Cancel button) from a display modal
+  (only an X icon) when choosing a close selector.
+
+## Requirements
+
+- Playwright installed (a kit `devDependency`).
+- A running dev server for the target route.

@@ -1,0 +1,22 @@
+# /api-contract
+
+> Generate an `.http` API contract from an existing feature's data layer.
+
+Reverse-engineers a ready-to-run `.http` file (REST Client format) by reading the
+feature's data layer — useful for documenting endpoints or probing them manually.
+
+## Usage
+
+```text
+/api-contract <feature folder>
+```
+
+## What it does
+
+1. **Reads** `<feature>/data/api.ts` and extracts every exported async function: its URL,
+   HTTP method, params, and request-body shape.
+2. **Emits** a `.http` contract file with one request per endpoint.
+
+## Related
+
+- [`/drop-mock`](/commands/drop-mock) — strip mock infra once the real API is wired.

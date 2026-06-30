@@ -1,0 +1,26 @@
+# /codex-review
+
+> Thorough code review of the current branch against your `CLAUDE.md` conventions.
+
+A **repo-convention** review. It complements (does not replace) the built-in
+`/code-review`, which hunts general correctness bugs — this command checks your project's
+specific rules.
+
+## Usage
+
+```text
+/codex-review
+```
+
+## What it does
+
+1. **Identifies changed files** — `git diff --name-only main...HEAD`, filtered to source
+   files (`.ts`, `.tsx`, `.js`, `.jsx`, `.scss`).
+2. **Reviews** each file against the convention categories in your repo's `CLAUDE.md`.
+
+> The 10 review categories in the command are placeholders — replace them with your
+> project's actual rules (read from your `CLAUDE.md` conventions section).
+
+## Related
+
+- Built-in `/code-review` — general correctness/bug review of your working diff.

@@ -3,6 +3,9 @@ node_modules/
 .claude/mcp-server/node_modules/
 .claude/mcp-workflow/node_modules/
 
+# Generated edition bundles (npm run build:copilot)
+dist/
+
 # Secrets — NEVER commit. Copy .env.example → .env and fill locally.
 .env
 .env.local

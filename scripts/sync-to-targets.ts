@@ -7,7 +7,10 @@
  *     `syncPaths`) are touched. Anything not listed is left alone in the target, so
  *     .env / secrets / mcp-server are safe because they are NOT in the allowlist.
  *  3. Manual trigger only: `npm run sync` (real) / `npm run sync -- --dry-run` (preview).
- *  4. Dry-run + report. No backup folder (the source of truth IS the backup).
+ *  4. Dry-run + report. Before overwriting a target, snapshot the to-be-changed files
+ *     into <target>/.kit-backup/<timestamp>/ (A-05) so a bad sync is reversible; the
+ *     last 3 snapshots per target are kept. (The source of truth is still the forward
+ *     backup; .kit-backup is the *target-side* undo.)
  *  5. Target paths come from config (relative). Never hardcode absolute paths.
  *
  * Usage:
@@ -17,6 +20,10 @@
  *                              # reserved flag, but exposes it via npm_config_dry_run,
  *                              # which we honor so this stays safe.
  *   npx tsx scripts/sync-to-targets.ts --dry-run   # direct invocation
+ *
+ *   npm run sync:rollback -- --target ../isu-elearner-learning   # restore last snapshot
+ *   npm run sync:rollback -- --target <t> --snapshot <name>      # restore a specific one
+ *   npm run sync:rollback -- --target <t> --list                 # list snapshots
  */
 
 import * as fs from "fs";
@@ -172,16 +179,142 @@ function syncTarget(
     return { target: targetRel, changes };
   }
 
-  for (const rel of relFiles) {
+  // Classify everything first so we can snapshot the to-be-changed files BEFORE writing.
+  const planned = relFiles.map((rel) => {
     const destAbs = path.join(targetClaude, rel);
-    const kind = classify(rel, destAbs);
-    changes.push({ rel, kind });
+    return { rel, destAbs, kind: classify(rel, destAbs) };
+  });
+  for (const p of planned) changes.push({ rel: p.rel, kind: p.kind });
 
-    if (kind === "unchanged" || dryRun) continue;
-    fs.mkdirSync(path.dirname(destAbs), { recursive: true });
-    fs.writeFileSync(destAbs, readSource(rel));
+  const toWrite = planned.filter((p) => p.kind !== "unchanged");
+  if (dryRun || toWrite.length === 0) return { target: targetRel, changes };
+
+  // A-05: snapshot the pre-images (and record added files) so this sync is reversible.
+  const snap = snapshotBeforeWrite(targetRoot, toWrite);
+  if (snap) console.log(`  ↻ snapshot: ${path.relative(targetRoot, snap)}`);
+
+  for (const p of toWrite) {
+    fs.mkdirSync(path.dirname(p.destAbs), { recursive: true });
+    fs.writeFileSync(p.destAbs, readSource(p.rel));
   }
   return { target: targetRel, changes };
+}
+
+// ---------------------------------------------------------------------------
+// A-05: target-side snapshot + rollback.
+// ---------------------------------------------------------------------------
+
+const BACKUP_DIRNAME = ".kit-backup";
+const MAX_SNAPSHOTS = 3;
+
+interface SnapshotManifest { at: string; added: string[]; updated: string[] }
+interface PlannedWrite { rel: string; destAbs: string; kind: ChangeKind }
+
+/** List snapshot folder names under a target's .kit-backup, oldest → newest. */
+export function listSnapshots(backupRoot: string): string[] {
+  if (!fs.existsSync(backupRoot)) return [];
+  return fs
+    .readdirSync(backupRoot, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort(); // timestamp names sort chronologically
+}
+
+/** Keep only the newest `keep` snapshots; delete the rest. */
+export function pruneSnapshots(backupRoot: string, keep: number = MAX_SNAPSHOTS): void {
+  const snaps = listSnapshots(backupRoot);
+  for (const name of snaps.slice(0, Math.max(0, snaps.length - keep))) {
+    fs.rmSync(path.join(backupRoot, name), { recursive: true, force: true });
+  }
+}
+
+/**
+ * Snapshot the files a sync is about to change. For `updated` files we copy the current
+ * (pre-overwrite) content under <snap>/.claude/<rel>; `added` files have no pre-image so
+ * they're only recorded in the manifest (rollback deletes them). Returns the snapshot dir.
+ */
+function snapshotBeforeWrite(targetRoot: string, toWrite: PlannedWrite[]): string | null {
+  if (toWrite.length === 0) return null;
+  const backupRoot = path.join(targetRoot, BACKUP_DIRNAME);
+  fs.mkdirSync(backupRoot, { recursive: true });
+  // Never let snapshots get committed into the target, regardless of its .gitignore.
+  fs.writeFileSync(path.join(backupRoot, ".gitignore"), "*\n");
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const snapDir = path.join(backupRoot, stamp);
+  fs.mkdirSync(snapDir, { recursive: true });
+
+  const added: string[] = [];
+  const updated: string[] = [];
+  for (const p of toWrite) {
+    if (p.kind === "added") { added.push(p.rel); continue; }
+    const snapFile = path.join(snapDir, ".claude", p.rel);
+    fs.mkdirSync(path.dirname(snapFile), { recursive: true });
+    fs.copyFileSync(p.destAbs, snapFile);
+    updated.push(p.rel);
+  }
+  const manifest: SnapshotManifest = { at: new Date().toISOString(), added, updated };
+  fs.writeFileSync(path.join(snapDir, "manifest.json"), JSON.stringify(manifest, null, 2));
+  pruneSnapshots(backupRoot);
+  return snapDir;
+}
+
+/**
+ * Apply a snapshot back onto a target's .claude/: restore `updated` files from the
+ * snapshot's pre-images and delete `added` files (they didn't exist before the sync).
+ * Returns counts. Pure w.r.t. FS paths — unit-tested.
+ */
+export function applyRollback(
+  targetClaude: string,
+  snapDir: string,
+  manifest: SnapshotManifest
+): { restored: number; removed: number } {
+  let restored = 0;
+  let removed = 0;
+  for (const rel of manifest.updated) {
+    const from = path.join(snapDir, ".claude", rel);
+    const to = path.join(targetClaude, rel);
+    if (fs.existsSync(from)) {
+      fs.mkdirSync(path.dirname(to), { recursive: true });
+      fs.copyFileSync(from, to);
+      restored += 1;
+    }
+  }
+  for (const rel of manifest.added) {
+    const to = path.join(targetClaude, rel);
+    if (fs.existsSync(to)) { fs.rmSync(to); removed += 1; }
+  }
+  return { restored, removed };
+}
+
+/** CLI rollback for one target. */
+function rollbackTarget(targetRel: string, snapshotName: string | null, list: boolean): void {
+  const targetRoot = path.resolve(KIT_ROOT, targetRel);
+  const backupRoot = path.join(targetRoot, BACKUP_DIRNAME);
+  const snaps = listSnapshots(backupRoot);
+
+  if (list) {
+    console.log(`\nSnapshots for ${targetRel} (${backupRoot}):`);
+    if (snaps.length === 0) console.log("  (none)");
+    for (const s of snaps) console.log(`  • ${s}`);
+    console.log("");
+    return;
+  }
+
+  if (snaps.length === 0) fail(`No snapshots in ${backupRoot} — nothing to roll back.`);
+  const chosen = snapshotName ?? snaps[snaps.length - 1];
+  if (!snaps.includes(chosen)) fail(`Snapshot "${chosen}" not found. Available: ${snaps.join(", ")}`);
+
+  const snapDir = path.join(backupRoot, chosen);
+  let manifest: SnapshotManifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(path.join(snapDir, "manifest.json"), "utf8"));
+  } catch (e) {
+    return fail(`Cannot read manifest for snapshot "${chosen}": ${(e as Error).message}`);
+  }
+  const { restored, removed } = applyRollback(path.join(targetRoot, ".claude"), snapDir, manifest);
+  console.log(`\n✅ Rolled back ${targetRel} to snapshot ${chosen}`);
+  console.log(`   restored ${restored} file(s), removed ${removed} added file(s).`);
 }
 
 function printReport(
@@ -209,7 +342,7 @@ function fail(msg: string): never {
 }
 
 // ---------------------------------------------------------------------------
-// Install reporting (Phần B): after syncing a target, record which kit version
+// Install reporting (Part B): after syncing a target, record which kit version
 // now lives on that repo into Supabase `installs` (upsert on `repo`).
 // ---------------------------------------------------------------------------
 
@@ -331,7 +464,22 @@ async function closeFetchSockets(): Promise<void> {
   }
 }
 
+function argValue(name: string): string | null {
+  const i = process.argv.findIndex((a) => a === `--${name}` || a.startsWith(`--${name}=`));
+  if (i === -1) return null;
+  const a = process.argv[i];
+  return a.includes("=") ? a.slice(a.indexOf("=") + 1) : process.argv[i + 1] ?? null;
+}
+
 async function main() {
+  // A-05 rollback mode: restore a target from its .kit-backup snapshot, then exit.
+  if (process.argv.includes("--rollback")) {
+    const target = argValue("target");
+    if (!target) fail("--rollback requires --target <relative-path>");
+    rollbackTarget(target as string, argValue("snapshot"), process.argv.includes("--list"));
+    return;
+  }
+
   // npm reserves --dry-run and strips it before the script sees argv, but exposes it
   // as npm_config_dry_run=true. Honor that so `npm run sync -- --dry-run` is still safe.
   const dryRun =
@@ -397,4 +545,7 @@ async function main() {
   );
 }
 
-main();
+// Run the CLI only when invoked directly (not when imported by a test).
+if (process.argv[1] && /sync-to-targets\.ts$/.test(process.argv[1].replace(/\\/g, "/"))) {
+  main();
+}

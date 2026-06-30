@@ -1,0 +1,16 @@
+# Commands Reference
+
+The kit ships **6 slash commands** (in `.claude/commands/`). The flagship is
+`/feature-from-confluence`; the rest are focused helpers.
+
+| Command | Purpose |
+|---------|---------|
+| [`/feature-from-confluence <spec>`](/commands/feature-from-confluence) | Flagship — full B0–B12 workflow turning a Confluence/PDF/Word spec into PR-ready code. |
+| [`/new-feature`](/commands/new-feature) | Lightweight, interactive scaffold for a feature **without** a spec (no gates). |
+| [`/drop-mock <api.ts>`](/commands/drop-mock) | Remove the `USE_MOCK` flag + mock infrastructure once a real API is ready. |
+| [`/api-contract <feature>`](/commands/api-contract) | Reverse-engineer an `.http` API contract from a feature's data layer. |
+| [`/playwright-verify <route>`](/commands/playwright-verify) | Independent UI verification — screenshots, 4 UX states, auto-fix (3 attempts). |
+| [`/codex-review`](/commands/codex-review) | Convention review of the current branch against your `CLAUDE.md`. |
+
+> Each command's source lives in `.claude/commands/<name>.md`. The pages here summarize
+> usage; the source files are the authoritative prompt.
