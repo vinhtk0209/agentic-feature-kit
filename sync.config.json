@@ -5,6 +5,7 @@
     "integrations/",
     "templates/",
     "_content/",
-    "prompt-evolution.md"
+    "prompt-evolution.md",
+    "mcp-server/index.ts"
   ]
 }

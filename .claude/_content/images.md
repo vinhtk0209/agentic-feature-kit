@@ -1,6 +1,6 @@
 ### Process
 
-1. Parse all image URLs and iframe embeds from the raw Confluence markdown in `docs/specs/<title>.md`
+1. Parse all image URLs and iframe embeds from the B0 raw spec (`docs/specs/<FeatureName>/raw-spec.md`)
 2. Create `docs/specs/<FeatureName>/images/` if it does not exist
 
 ### Step 3 — Classify content type (before download)
@@ -31,7 +31,12 @@ Before downloading each URL: check whether the URL already exists in the `downlo
 
 ### Step 5 — Batch download (parallel by URL strategy)
 
-**Pre-check (run before any HTTP download):** Check if `docs/specs/<FeatureName>/images/` already contains files. If it does, those images were saved by the MCP server during B0 (Confluence auth already applied). Skip HTTP download for those — proceed directly to Step 7 (annotate) for pre-fetched images.
+**Pre-check (run before any HTTP download):** For Confluence input, the B2 hand-off already called the
+`save_confluence_images` MCP tool, which wrote the page's embedded images into
+`docs/specs/<FeatureName>/images/` (Confluence auth + embedded-page workaround already applied). Check
+that folder — for every URL whose image is already present there, **skip HTTP download** and proceed
+directly to Step 7 (annotate). Only fall through to the download strategies below for images the MCP
+tool could not save (or for non-Confluence inputs).
 
 Log: `[timestamp] [B2-prefetch] found N MCP-saved images in docs/specs/<FeatureName>/images/ — skipping download`
 

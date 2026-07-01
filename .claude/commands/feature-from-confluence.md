@@ -3,7 +3,7 @@ description: Turn a Confluence page, PDF, or Word spec into convention-compliant
 ---
 
 <!--
-  feature-from-confluence — Claude Code Edition v3.17
+  feature-from-confluence — Claude Code Edition v3.18
   © 2026 claude-workflow-kit contributors. MIT Licence — see repository root.
 -->
 
@@ -17,7 +17,7 @@ PARALLEL_MODE:    true          # B5/B10/B11 may spawn subagents in parallel
 SHELL_PERSISTENT: true          # Bash tool keeps cwd & env between calls
 PYTHON_AVAILABLE: true          # may invoke .claude/integrations/browser-use-wrapper.py at B11 fallback
 AUTOLINT_HOOK:    true          # PostToolUse hook lints on every Edit/Write (settings.local.json)
-PROMPT_VERSION:   v3.17
+PROMPT_VERSION:   v3.18
 COPILOT_SUPPORT: false          # Copilot edition not maintained — Claude Code only
 ```
 
@@ -416,7 +416,7 @@ Applies at: **B1** (parse fail), **B2** (image download fail), **B3** (SpecKit f
 27. **(v3.11 — Change O.2; amended v3.15 — Change P6: PUBLIC_PATH env var)** The app's `PUBLIC_PATH` (e.g. `/your-app/` or `/authoring/`) MUST be set in `.env.playwright` as `PUBLIC_PATH=<value>`. The runner reads this env var and auto-prepends it to every feature route — callers pass bare routes (e.g. `/course-dashboard/...`), not prefixed routes. Do NOT hardcode the public path into `DEV_SERVER_URL` or into the route argument. At B11, reachability check: `curl "${DEV_SERVER_URL:-http://localhost:3000}/home"` — if 200/302 → skip `npm run dev`. Log: `[B11] dev-server=already-running PUBLIC_PATH=<value-from-env.playwright>`.
 28. **(v3.12 — Change P.1 golden endpoint file)** At B8.6, BEFORE inventing any endpoint resource paths: check if `docs/components/<FeatureName>/<FeatureName>.full.http` already exists in the workspace (the golden reference file). If the file exists, read it and copy its HTTP request lines verbatim — do NOT invent or rename resource paths, do NOT add endpoints not present in the golden file. Only generate new endpoint paths from spec if NO golden file exists at that path. Log: `[B8.6-golden-endpoint] source=golden-file endpoints=N` (if golden found) or `[B8.6-golden-endpoint] source=generated-from-spec` (if not found). **(v3.16)** This complements HARD RULE 32: when `contractStatus=REAL`, the user-provided contract IS the golden file — adopt it even if no `<FeatureName>.full.http` exists yet at the path above. HR28 and HR32 never conflict: HR28 = "if a golden file is already on disk, copy it"; HR32 = "ask the user whether one exists and where."
 29. **(v3.12 — Change P.2 code naming convention)** If a reference implementation exists at `src/<ref-feature>/` (a feature serving the same domain as the current feature): mirror its naming conventions for (a) TypeScript type/interface names — use the same noun + suffix pattern (e.g. `Data`, `Response`, `Payload`, `Item`); (b) API function names — use the same verb prefix (`get`, `post`, `put`, `delete`) + matching noun; (c) React Query hook names — use the same pattern (`useGet*`, `usePost*`, `useMutation*`); (d) i18n message key categories — adopt the same prefixes (`tab.*`, `label.*`, `button.*`, `status.*`, `error.*`, `success.*`). If no reference implementation exists, follow the dominant convention observed in `src/<shared-module>/` and `src/generic/`. Log: `[B7-plan] naming-reference=<ref-feature-or-generic>`. **(v3.16 portability)** When `CLAUDE.md` does NOT define `reference_feature`, use the **dominant convention observed in `src/`** — do NOT assume any specific folder. The reference folder is **a per-repo value, set in its `CLAUDE.md` → `### Workflow Overrides`** (per-repo; not shipped with the kit). See "## PORTABILITY".
-30. **(v3.13 — Change Q.1 Playwright worktree criterion)** At B11, the minimum PASS criterion for the Playwright verification gate (b11_a) is **5/5 basic checks**: (1) dev server reachable (HTTP 200/302 at DEV_SERVER_URL/home), (2) MCP `verify_feature_route` returns non-fatal result OR MCP is unavailable (step skipped), (3) loading state renders without crash (ux-states.json loading step passes), (4) success state renders without crash (ux-states.json success step passes), (5) unit tests pass (Step 5 — `npm test -- --testPathPattern=src/<feature-folder>`). Extended checks — per-AC browser assertions, visual regression diff, a11y audit, CSS computed-style audit — are **BONUS only** and do NOT affect b11_a PASS/FAIL. If the feature runs in a clean-room worktree whose route is NOT yet present in the main workspace `src/index.jsx` (infrastructure limitation — dev server serves only main workspace checkout): log `[B11] extended-checks=infra-blocked reason=worktree-route-not-deployed` and set b11_a=pass if basic 5/5 pass. Do NOT fail Cat 13 solely because the feature route is unreachable from the main-workspace dev server.
+30. **(v3.13 — Change Q.1 Playwright worktree criterion)** At B11, the minimum PASS criterion for the Playwright verification gate (b11_a) is **5/5 basic checks**: (1) dev server reachable (HTTP 200/302 at DEV_SERVER_URL/home), (2) MCP `verify_feature_route` returns non-fatal result OR MCP is unavailable (step skipped), (3) loading state renders without crash (ux-states.json loading step passes), (4) success state renders without crash (ux-states.json success step passes), (5) unit tests pass (Step 5 — `npm test -- --testPathPattern=src/<feature-folder>`). Extended checks — per-AC browser assertions, visual regression diff, a11y audit, CSS computed-style audit — are **BONUS only** and do NOT affect b11_a PASS/FAIL. *(v3.18 — visual regression diff is **opt-in**: it runs only when `playwright-runner.ts` is invoked with `--visual-diff`; default off. See prompt-evolution Change W.1 — do NOT make it mandatory again.)* If the feature runs in a clean-room worktree whose route is NOT yet present in the main workspace `src/index.jsx` (infrastructure limitation — dev server serves only main workspace checkout): log `[B11] extended-checks=infra-blocked reason=worktree-route-not-deployed` and set b11_a=pass if basic 5/5 pass. Do NOT fail Cat 13 solely because the feature route is unreachable from the main-workspace dev server.
 31. **(v3.14 — Change R.1 ux-states.json non-optional)** `docs/specs/<FeatureName>/ux-states.json` MUST be generated during B10 (as part of the File 4 artifact) and MUST contain ≥3 states before B11. This requirement is non-optional — do NOT skip ux-states.json generation even if: (a) user opts out of Playwright at B10.5; (b) the feature runs in a worktree with no dev server access. The file is a required artifact for future Playwright runs. If the template was created at B5, update it during B10 to reflect the actual CSS selectors from the generated components (e.g. `[id^='score-']` for score inputs, `.final-exam-card` for clickable cards, `[aria-label='...']` for icon buttons). Each state MUST have at least one `screenshot` step so evidence is captured. Log: `[B10.5] ux-states.json=ready states=N`.
 32. **(v3.16 — Change S.1 Contract provenance / Contract-first)** At B4 the workflow MUST ask the backend-contract status before B5 writes any output file. Persist the answer to `context-summary.md` as `contractStatus`. Three states:
     - **REAL** — user provides a contract file path or URL. Adopt it as the golden source: at B8.6 copy its endpoint paths + request/response shapes VERBATIM, skip all inference; `### EXPECTED RESPONSE SHAPES` = the real shapes. Log `[B4-contract] status=REAL source=<path>`.
@@ -471,7 +471,7 @@ Steps are grouped into **8 phases** so the user sees at a glance where they are 
 
 ```text
 ╔════════════════════════════════════════════════════════════════════════╗
-║  /feature-from-confluence · v3.17   ▶ B2 — Download Images              ║
+║  /feature-from-confluence · v3.18   ▶ B2 — Download Images              ║
 ║  Feature: <FeatureName>   ·   Mode: <SIMPLE|MEDIUM|COMPLEX> (score N)   ║
 ║  Progress: ███████░░░░░░░░░░░░░░░░░  3 / 26 steps   ·   🛑 next: B4     ║
 ╠════════════════════════════════════════════════════════════════════════╣
@@ -516,6 +516,23 @@ Steps are grouped into **8 phases** so the user sees at a glance where they are 
 - Always mark `🛑` before each STOP gate so the user knows where input is needed; `🛑 next: BX` in the header must point to the next incomplete STOP gate.
 - Keep phase groups ① → ⑧ in order; the phase containing `▶` is the active phase.
 - Do not skip PROGRESS DISPLAY even at automatic steps (B0.5, B8.5, B8.6, B9.5, B9.6, B12.8).
+
+### Machine marker (for the dashboard sidecar — Session 4)
+
+**Immediately after printing the banner above, emit ONE marker line** so the Command-Runner
+sidecar can track the phase and count distinct steps reached (`step_count`) without guessing from
+prose. Print it verbatim on its own line (replace `<BX>` with the current step id, e.g. `B5`):
+
+```text
+@@KIT_EVENT@@ {"v":1,"type":"state","phase":"<BX>"}
+```
+
+- One marker per step, every step (including automatic ones). The sidecar counts **distinct**
+  `phase` values, so re-printing the same step (e.g. after a retry) does not inflate the count.
+- Keep it a single short line — do not wrap or pretty-print the JSON (the sidecar parses one line).
+- This is the deterministic replacement for prose-parsing (see kit-progress-event-contract.md).
+  The version + error markers are emitted by `telemetry.ts` (meta at Step 0, error on failure);
+  this state/phase marker is the only one the command file itself prints.
 
 ---
 
@@ -819,14 +836,18 @@ Call the `fetch_confluence_page` MCP tool with URL: `$ARGUMENTS`
 ```
 ⚠️  Confluence MCP unavailable — cannot auto-fetch the page.
     Continue without it:
-      [1] Paste the spec markdown — I will save it to docs/specs/<title>.md and proceed from B1
+      [1] Paste the spec markdown — I will stage it to docs/specs/.incoming-spec.md and proceed from B1
       [2] Re-run with an exported file:  /feature-from-confluence path/to/spec.pdf  (or .docx)
       [3] Retry the MCP fetch (after restarting Claude Code / re-registering the server)
 ```
 
-**STOP — wait for the user's choice.** On `[1]`, write the pasted content to `docs/specs/<title>.md` with the same header format as the PDF/Word branches, then continue to the Convergence point. Log `[B0] confluence-mcp=unavailable fallback=<paste|file|retry>` → `recovery.log`.
+**STOP — wait for the user's choice.** On `[1]`, write the pasted content to the staging file `docs/specs/.incoming-spec.md` with the same header format as the PDF/Word branches, then continue to the Convergence point. Log `[B0] confluence-mcp=unavailable fallback=<paste|file|retry>` → `recovery.log`.
 
-The MCP server auto-saves the raw spec to `docs/specs/<title>.md`. **Do NOT rewrite this file.**
+**(v3.18 — single-writer)** `fetch_confluence_page` no longer writes anything to disk — it returns
+the spec markdown **in the tool response** plus a ticket-id hint. Keep that returned text in context;
+**B1 is the sole writer** of the spec (it writes `docs/specs/<FeatureName>/raw-spec.md`). Do NOT
+write a `docs/specs/<title>.md` sibling here. Note the returned `Ticket id` (`US-…`) for B1; if the
+note says "No US-ID found", carry that warning forward so B1 applies the loud fallback.
 
 ---
 
@@ -834,7 +855,7 @@ The MCP server auto-saves the raw spec to `docs/specs/<title>.md`. **Do NOT rewr
 
 1. Derive `<title>` from the filename (strip path and `.pdf` extension, convert hyphens/underscores to spaces, title-case).
 2. Read the PDF using the `Read` tool with the path `$ARGUMENTS`. The tool supports PDFs natively.
-3. Save the extracted text to `docs/specs/<title>.md`:
+3. Save the extracted text to the staging file `docs/specs/.incoming-spec.md`:
    ```
    # <title>
    **Source:** $ARGUMENTS
@@ -859,16 +880,16 @@ The MCP server auto-saves the raw spec to `docs/specs/<title>.md`. **Do NOT rewr
 1. Derive `<title>` from the filename (strip path and `.docx`/`.doc` extension).
 2. Try to convert with `pandoc` (attempt 1):
    ```bash
-   pandoc "$ARGUMENTS" -t markdown -o "docs/specs/<title>.md"
+   pandoc "$ARGUMENTS" -t markdown -o "docs/specs/.incoming-spec.md"
    ```
 3. If `pandoc` is not available, try `mammoth` (attempt 2):
    ```bash
-   npx mammoth "$ARGUMENTS" --output-format=markdown > "docs/specs/<title>.md"
+   npx mammoth "$ARGUMENTS" --output-format=markdown > "docs/specs/.incoming-spec.md"
    ```
 4. If both fail, try reading raw XML from the `.docx` zip (attempt 3):
    ```bash
    # .docx is a zip — extract word/document.xml and strip tags
-   unzip -p "$ARGUMENTS" word/document.xml | sed 's/<[^>]*>//g' > "docs/specs/<title>.md"
+   unzip -p "$ARGUMENTS" word/document.xml | sed 's/<[^>]*>//g' > "docs/specs/.incoming-spec.md"
    ```
 5. If all 3 attempts fail → show:
    ```
@@ -894,30 +915,32 @@ The MCP server auto-saves the raw spec to `docs/specs/<title>.md`. **Do NOT rewr
 
 ---
 
-### Convergence point — all 3 branches must produce the same output
+### Convergence point — all 3 branches must hand B1 the same raw spec text
 
-> **All input types (Confluence / PDF / Word) MUST be converted to a single markdown file before B1 runs.**
-> B1 onward reads only `docs/specs/<title>.md` — it does not know or care about the original input source.
+> **(v3.18 — single-writer)** All input types must make the raw spec **available to B1**. There is no
+> per-feature sibling `.md` anymore — **B1 is the sole writer** of `docs/specs/<FeatureName>/raw-spec.md`.
 
-| Input type | Output file | Converter |
-|------------|-------------|-----------|
-| Confluence | `docs/specs/<title>.md` | MCP server (auto-saves) |
-| PDF | `docs/specs/<title>.md` | `Read` tool → write to file |
-| Word | `docs/specs/<title>.md` | pandoc / mammoth / raw XML |
+| Input type | How B1 receives the raw spec | Converter |
+|------------|------------------------------|-----------|
+| Confluence | In the `fetch_confluence_page` tool response (kept in context) | MCP server (returns text, no disk write) |
+| PDF | Staging file `docs/specs/.incoming-spec.md` | `Read` tool → write to staging |
+| Word | Staging file `docs/specs/.incoming-spec.md` | pandoc / mammoth / raw XML |
 
-**Do NOT proceed to B1 until `docs/specs/<title>.md` exists and is non-empty.**
+**Do NOT proceed to B1 until the raw spec is available** — for Confluence: the tool returned spec
+text; for PDF/Word: `docs/specs/.incoming-spec.md` exists and is non-empty. B1 writes it to
+`raw-spec.md` and then deletes the staging file.
 
 #### Structural Fidelity Check (PDF and Word only — skip for Confluence)
 
-After saving `docs/specs/<title>.md` from a PDF or Word source, verify structural completeness:
+After saving `docs/specs/.incoming-spec.md` from a PDF or Word source, verify structural completeness:
 
 ```powershell
 # Count headings (cross-platform via PowerShell)
-$headings = (Select-String -Path "docs/specs/<title>.md" -Pattern "^#").Count
+$headings = (Select-String -Path "docs/specs/.incoming-spec.md" -Pattern "^#").Count
 # Count tables
-$tables = (Select-String -Path "docs/specs/<title>.md" -Pattern "^\|").Count
+$tables = (Select-String -Path "docs/specs/.incoming-spec.md" -Pattern "^\|").Count
 # Count lists
-$lists = (Select-String -Path "docs/specs/<title>.md" -Pattern "^[-*]").Count
+$lists = (Select-String -Path "docs/specs/.incoming-spec.md" -Pattern "^[-*]").Count
 ```
 
 If `$tables -eq 0` and the raw text contains apparent table-like structure (lines with multiple `|` or tab-separated columns):
@@ -944,7 +967,7 @@ If `$headings -eq 0`:
 ```text
 ⚠️  Extraction warning: no headings found in extracted content.
     The file may be empty, image-only, or extraction failed silently.
-    Please verify docs/specs/<title>.md has readable content before continuing.
+    Please verify docs/specs/.incoming-spec.md has readable content before continuing.
 ```
 
 Log fidelity results to `docs/specs/<FeatureName>/recovery.log`:
@@ -1178,16 +1201,39 @@ On `mismatch` (exit 1) ONLY, STOP and show:
 
 **Print PROGRESS DISPLAY** (current: `▶ B1`) before doing any action.
 
-**Start B1, B2, and B3 in parallel. Raw spec is already saved by B0 — do NOT re-fetch.**
+**Start B1, B2, and B3 in parallel. Raw spec is already available from B0 — do NOT re-fetch.**
 
 ### Process
 
-1. Read `docs/specs/<title>.md` (saved by B0). **Do NOT call `fetch_confluence_page` again.**
+1. **Determine the canonical feature-folder name** *(do this first — B2 + B3 depend on it)*:
+   - `usId` = the `Ticket id` reported by the B0 response (pattern `US-[A-Z]{1,4}-\d+`).
+   - `<FeatureName>` = `<usId>-<SemanticName>`, where `<SemanticName>` is a short PascalCase name you
+     derive from the spec (e.g. `BulkEnrollment`, `PaymentConfig`, `AnalyzeExamPerformance`).
+     → e.g. `US-AD-057` + `BulkEnrollment` = folder `docs/specs/US-AD-057-BulkEnrollment/`.
+   - **Loud fallback:** if B0 reported "No US-ID found", use `<SemanticName>` alone AND print
+     `⚠️ no US-ID in title — folder = <SemanticName> (verify uniqueness)`.
+   - **Collision guard:** if `docs/specs/<FeatureName>/raw-spec.md` already exists, compare its
+     source identity (the `**Page ID:**` / `**Source:**` header line) against the current run:
+       - **Same source** → this is a re-run; overwrite in place (expected, idempotent).
+       - **Different source** (a different ticket/page resolved to the same `<usId>-<FeatureName>`) →
+         **STOP** and ask the user:
+         `⚠️ docs/specs/<FeatureName>/ already exists from a different spec (<existing Page ID> vs <new>).
+         [1] Overwrite  [2] Use <FeatureName>-2  [3] Rename — your choice?`
+         Do NOT silently overwrite a different spec. Log `[B1-name] collision=<resolve>` → `recovery.log`.
+   - All B1–B12 artifacts for this feature live under this one folder. Log
+     `[B1-name] usId=<…|none> folder=<FeatureName>` → `recovery.log`.
 
-1.5. **(v3.14 — P2 raw-spec record)** Copy the full B0 source content verbatim to `docs/specs/<FeatureName>/raw-spec.md`:
-   - MUST be the complete fetched text — NOT a summary, NOT a pointer to another file
-   - Minimum length check: if `raw-spec.md` would be < 80 lines → SELF-RECOVER (re-fetch from source)
-   - This file is the self-contained spec record; the feature folder must be interpretable without any external reference
+1.5. **Obtain the raw spec text** (do **NOT** call `fetch_confluence_page` again):
+   - Confluence → use the spec markdown returned in the B0 tool response (already in context).
+   - PDF / Word / paste → read the staging file `docs/specs/.incoming-spec.md`.
+
+1.6. **(sole writer — v3.18)** Write the full raw spec **verbatim** to
+   `docs/specs/<FeatureName>/raw-spec.md`:
+   - MUST be the complete source text — NOT a summary, NOT a pointer to another file.
+   - Minimum length check: if `raw-spec.md` would be < 80 lines → SELF-RECOVER (re-fetch / re-read source).
+   - This file is the self-contained spec record; the feature folder must be interpretable on its own.
+   - **Cleanup:** if `docs/specs/.incoming-spec.md` was used, delete it once `raw-spec.md` is written.
+     (There is no per-feature sibling `.md` anymore — the raw spec lives only inside the folder.)
    - Log: `[B1-raw-spec] lines=N` → `recovery.log`
 
 2. Create `docs/specs/<FeatureName>/processed.md` by stripping:
@@ -1231,6 +1277,17 @@ Analyze `docs/specs/<FeatureName>/processed.md` per the DYNAMIC DECOMPOSE rules 
 **Print PROGRESS DISPLAY** (current: `▶ B2`) before doing any action.
 
 > **[DYNAMIC DECOMPOSE]** — Skip this entire step if no UI is detected in B1. Record `"B2: skipped — no UI detected"` in context-summary.
+
+> **(v3.18 — two-phase images)** If UI was detected **and** `INPUT_TYPE = confluence`, first call the
+> `save_confluence_images` MCP tool with `{ url: "$ARGUMENTS", targetDir: "docs/specs/<FeatureName>/images" }`.
+> The MCP writes the page's embedded images straight into the canonical folder (using its attachment-list
+> workaround for embedded-page URLs). Then continue with annotation. For non-Confluence inputs, or for any
+> images the tool could not save, fall back to the download strategies in `images.md`.
+>
+> If the `save_confluence_images` tool is **not available** (an older kit MCP on this repo that predates the
+> two-phase writer), do **not** abort: log `⚠️ MCP save_confluence_images not found — this repo's kit MCP
+> predates the two-phase image writer; sync mcp-server/index.ts to update it. Falling back to images.md
+> download.` and continue with the `images.md` download strategies.
 
 > If UI was detected in B1: Read `.claude/_content/images.md` now.
 > It contains the complete B2 image procedure (Steps 3–7: classify → dedup → batch download →

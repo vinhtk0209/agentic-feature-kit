@@ -32,6 +32,15 @@ function extractBaseUrl(url: string): string {
   return match ? match[1] : new URL(url).origin;
 }
 
+// Deterministic ticket id from a page title, e.g. "US-AD-094" from
+// "US-AD-094: ILT/vILT ... --- Assessment Grading". Used by B1 to build the
+// canonical folder name <usId>-<FeatureName>. Returns null when absent (B1 then
+// falls back to FeatureName alone and emits a loud warning).
+function extractUsId(title: string): string | null {
+  const m = title.match(/US-[A-Z]{1,4}-\d+/i);
+  return m ? m[0].toUpperCase() : null;
+}
+
 function htmlToMarkdown(html: string): string {
   const td = new TurndownService({
     headingStyle: 'atx',
@@ -84,6 +93,99 @@ async function fetchImageAsBase64(
   } catch {
     return null;
   }
+}
+
+interface ConfluencePage {
+  pageId: string;
+  title: string;
+  space: string;
+  html: string;
+  markdown: string;
+  baseConfUrl: string;
+  authHeader: Record<string, string>;
+  agent: import('https').Agent;
+}
+
+function resolveAuthHeader(): Record<string, string> | { error: string } {
+  const user = process.env.CONFLUENCE_USER;
+  const pass = process.env.CONFLUENCE_PASS;
+  const pat = process.env.CONFLUENCE_TOKEN;
+  if (!pat && (!user || !pass)) {
+    return {
+      error: [
+        'Missing Confluence credentials.',
+        'Set one of:',
+        '  • CONFLUENCE_USER + CONFLUENCE_PASS  (LDAP/AD login)',
+        '  • CONFLUENCE_TOKEN                    (Personal Access Token)',
+        'in: .claude/mcp-server/.env',
+      ].join('\n'),
+    };
+  }
+  return pat
+    ? { Authorization: `Bearer ${pat}` }
+    : { Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}` };
+}
+
+// Shared B0/B2 fetch: GET the page API once and return everything both phases need.
+async function fetchConfluence(url: string): Promise<ConfluencePage> {
+  const pageId = extractPageId(url);
+  if (!pageId) throw new Error(`Cannot extract page ID from URL: ${url}`);
+  const baseConfUrl = extractBaseUrl(url);
+  const auth = resolveAuthHeader();
+  if ('error' in auth) throw new Error(auth.error);
+
+  const agent = new (await import('https')).Agent({ rejectUnauthorized: false });
+  const apiUrl = `${baseConfUrl}/rest/api/content/${pageId}?expand=body.export_view,title,space`;
+  const apiResp = await axios.get(apiUrl, {
+    headers: { ...auth, Accept: 'application/json' },
+    httpsAgent: agent,
+  });
+  const { data } = apiResp;
+  const title: string = data.title;
+  const space: string = data.space?.name ?? '';
+  const html: string = data.body.export_view.value;
+  const markdown = htmlToMarkdown(html);
+  return { pageId, title, space, html, markdown, baseConfUrl, authHeader: auth, agent };
+}
+
+// B2-only: resolve embedded-page attachment URLs (which need the attachment list,
+// not plain REST/Basic auth) and fetch every image as base64. Returns nulls for
+// images that failed all attempts so the caller can report them.
+async function downloadPageImages(
+  page: ConfluencePage,
+): Promise<Array<{ data: string; mimeType: string } | null>> {
+  const { pageId, html, baseConfUrl, authHeader, agent } = page;
+
+  // Embedded-page attachment URLs (/download/attachments/embedded-page/...) require a web
+  // session cookie that REST/Basic auth cannot provide. Work around this by prefetching the
+  // page's attachment list once, building a filename→REST-download-URL map, then substituting
+  // those REST URLs (which do accept Basic/Bearer auth) before fetching.
+  const attachmentMap = new Map<string, string>();
+  try {
+    const attResp = await axios.get(
+      `${baseConfUrl}/rest/api/content/${pageId}/child/attachment?limit=50&expand=_links`,
+      { headers: { ...authHeader, Accept: 'application/json' }, httpsAgent: agent },
+    );
+    for (const att of (attResp.data.results ?? [])) {
+      const downloadPath: string | undefined = att._links?.download;
+      if (att.title && downloadPath) {
+        // _links.download is relative to the Confluence context root (e.g. /conf), not the origin.
+        attachmentMap.set(att.title as string, `${baseConfUrl}${downloadPath}`);
+      }
+    }
+  } catch {
+    // Non-fatal — fall back to original URLs
+  }
+
+  const rawImageUrls = extractImageUrls(html, baseConfUrl).slice(0, 10);
+  const imageUrls = rawImageUrls.map((imgUrl) => {
+    const m = imgUrl.match(/\/download\/attachments\/embedded-page\/[^/]+\/[^/]+\/([^?#]+)/);
+    if (!m) return imgUrl;
+    const filename = decodeURIComponent(m[1]);
+    return attachmentMap.get(filename) ?? imgUrl;
+  });
+
+  return Promise.all(imageUrls.map((imgUrl) => fetchImageAsBase64(imgUrl, authHeader, agent)));
 }
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
@@ -195,6 +297,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'save_confluence_images',
+      description: 'B2 phase 2: download a Confluence page\'s embedded images and write them to disk under the feature\'s canonical folder. Call this AFTER B1 has named the feature, passing targetDir = docs/specs/<usId>-<FeatureName>/images/. Uses the attachment-list workaround so embedded-page images persist reliably. Returns the list of saved file paths.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: 'Full Confluence page URL (same one passed to fetch_confluence_page).',
+          },
+          targetDir: {
+            type: 'string',
+            description: 'Workspace-relative (or absolute) directory to write images into, e.g. docs/specs/US-AD-057-BulkEnrollment/images',
+          },
+        },
+        required: ['url', 'targetDir'],
+      },
+    },
+    {
       name: 'read_spec_images',
       description: 'Read all downloaded spec images for a feature and return them as base64 image content. Use this at B10 before implementing <Feature>.tsx to get direct visual access to spec screenshots.',
       inputSchema: {
@@ -253,6 +373,45 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], isError: !!result.error };
   }
 
+  if (request.params.name === 'save_confluence_images') {
+    const { url, targetDir } = request.params.arguments as { url: string; targetDir: string };
+    if (!url || !targetDir) {
+      return { content: [{ type: 'text', text: 'url and targetDir are required' }], isError: true };
+    }
+
+    try {
+      const page = await fetchConfluence(url);
+      const imageResults = await downloadPageImages(page);
+
+      const workspaceRoot = process.cwd();
+      const absDir = targetDir.startsWith('/') || /^[A-Za-z]:[\\/]/.test(targetDir)
+        ? targetDir
+        : join(workspaceRoot, targetDir);
+
+      const savedImagePaths: string[] = [];
+      if (imageResults.some(Boolean)) {
+        mkdirSync(absDir, { recursive: true });
+        imageResults.forEach((img, idx) => {
+          if (img && img.mimeType.startsWith('image/')) {
+            const ext = img.mimeType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'png';
+            const filename = `mcp-image-${String(idx + 1).padStart(2, '0')}.${ext}`;
+            writeFileSync(join(absDir, filename), Buffer.from(img.data, 'base64'));
+            savedImagePaths.push(join(targetDir, filename).replace(/\\/g, '/'));
+          }
+        });
+      }
+
+      const total = imageResults.length;
+      const text = savedImagePaths.length > 0
+        ? `Saved ${savedImagePaths.length}/${total} image(s) to ${targetDir}:\n${savedImagePaths.map((p) => `  • ${p}`).join('\n')}`
+        : `No images saved (page had ${total} candidate image URL(s); all failed or none were images). Use the B2 HTTP fallback strategies for any required images.`;
+
+      return { content: [{ type: 'text', text }] };
+    } catch (err: unknown) {
+      return { content: [{ type: 'text', text: `save_confluence_images failed: ${String((err as Error).message ?? err)}` }], isError: true };
+    }
+  }
+
   if (request.params.name === 'read_spec_images') {
     const { featureName } = request.params.arguments as { featureName: string };
     if (!featureName) {
@@ -283,58 +442,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   const { url } = request.params.arguments as { url: string };
 
-  const pageId = extractPageId(url);
-  if (!pageId) {
-    return {
-      content: [{ type: 'text', text: `Cannot extract page ID from URL: ${url}` }],
-      isError: true,
-    };
-  }
-
-  const baseConfUrl = extractBaseUrl(url);
-
-  // Support both Basic auth (user+pass) and Personal Access Token (PAT)
-  const user = process.env.CONFLUENCE_USER;
-  const pass = process.env.CONFLUENCE_PASS;
-  const pat = process.env.CONFLUENCE_TOKEN;
-
-  if (!pat && (!user || !pass)) {
-    return {
-      content: [{
-        type: 'text',
-        text: [
-          'Missing Confluence credentials.',
-          'Set one of:',
-          '  • CONFLUENCE_USER + CONFLUENCE_PASS  (LDAP/AD login)',
-          '  • CONFLUENCE_TOKEN                    (Personal Access Token)',
-          'in: .claude/mcp-server/.env',
-        ].join('\n'),
-      }],
-      isError: true,
-    };
-  }
-
   try {
-    const apiUrl = `${baseConfUrl}/rest/api/content/${pageId}?expand=body.export_view,title,space`;
-
-    const authHeader = pat
-      ? { Authorization: `Bearer ${pat}` }
-      : {
-          Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`,
-        };
-
-    const agent = new (await import('https')).Agent({ rejectUnauthorized: false });
-
-    const apiResp = await axios.get(apiUrl, {
-      headers: { ...authHeader, Accept: 'application/json' },
-      httpsAgent: agent,
-    });
-    const { data } = apiResp;
-
-    const title: string = data.title;
-    const space: string = data.space?.name ?? '';
-    const html: string = data.body.export_view.value;
-    const markdown = htmlToMarkdown(html);
+    // B0 phase: fetch the spec text ONLY. No disk write, no image fetch.
+    // B1 is the sole writer of raw-spec.md (into docs/specs/<usId>-<FeatureName>/),
+    // and B2 calls save_confluence_images to persist images into that same folder.
+    const page = await fetchConfluence(url);
+    const { pageId, title, space, markdown } = page;
 
     const output = [
       `# ${title}`,
@@ -347,88 +460,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       markdown,
     ].filter(Boolean).join('\n');
 
-    // Embedded-page attachment URLs (/download/attachments/embedded-page/...) require a web
-    // session cookie that REST/Basic auth cannot provide. Work around this by prefetching the
-    // current page's attachment list once, building a filename→REST-download-URL map, then
-    // substituting those REST URLs (which do accept Basic/Bearer auth) before fetching.
-    // Build filename → direct download URL map from the page's attachment list.
-    // Use _links.download (the versioned URL) which accepts Basic/Bearer auth,
-    // unlike /rest/api/content/{id}/download which redirects through the web layer.
-    const attachmentMap = new Map<string, string>();
-    try {
-      const attResp = await axios.get(
-        `${baseConfUrl}/rest/api/content/${pageId}/child/attachment?limit=50&expand=_links`,
-        { headers: { ...authHeader, Accept: 'application/json' }, httpsAgent: agent },
-      );
-      for (const att of (attResp.data.results ?? [])) {
-        const downloadPath: string | undefined = att._links?.download;
-        if (att.title && downloadPath) {
-          // _links.download is relative to the Confluence context root (e.g. /conf),
-          // not the origin, so prepend baseConfUrl not just origin.
-          attachmentMap.set(att.title as string, `${baseConfUrl}${downloadPath}`);
-        }
-      }
-    } catch {
-      // Non-fatal — fall back to original URLs
-    }
+    const usId = extractUsId(title);
+    const usIdNote = usId
+      ? `\n\n> **Ticket id (for canonical folder):** \`${usId}\` → name the feature folder \`${usId}-<FeatureName>\`.`
+      : `\n\n> ⚠️ **No US-ID found in this page title.** Fall back to \`<FeatureName>\` alone for the folder name (loud-fallback case — make sure the name is unique).`;
 
-    const rawImageUrls = extractImageUrls(html, baseConfUrl).slice(0, 10);
-    const imageUrls = rawImageUrls.map((imgUrl) => {
-      const m = imgUrl.match(/\/download\/attachments\/embedded-page\/[^/]+\/[^/]+\/([^?#]+)/);
-      if (!m) return imgUrl;
-      const filename = decodeURIComponent(m[1]);
-      return attachmentMap.get(filename) ?? imgUrl;
-    });
-
-    const imageResults = await Promise.all(
-      imageUrls.map((imgUrl) => fetchImageAsBase64(imgUrl, authHeader, agent)),
-    );
-
-    // Save markdown to docs/specs/ for user to review
-    const safeTitle = title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 80);
-    const specsDir = join(process.cwd(), 'docs', 'specs');
-    const specPath = join(specsDir, `${safeTitle}.md`);
-    try {
-      mkdirSync(specsDir, { recursive: true });
-      writeFileSync(specPath, output, 'utf-8');
-    } catch {
-      // Non-fatal — continue even if write fails
-    }
-
-    // Save embedded images to disk so B2 can annotate them without re-downloading
-    const imagesDir = join(specsDir, safeTitle, 'images');
-    const savedImagePaths: string[] = [];
-    if (imageResults.some(Boolean)) {
-      try {
-        mkdirSync(imagesDir, { recursive: true });
-        imageResults.forEach((img, idx) => {
-          if (img && img.mimeType.startsWith('image/')) {
-            const ext = img.mimeType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'png';
-            const filename = `mcp-image-${String(idx + 1).padStart(2, '0')}.${ext}`;
-            writeFileSync(join(imagesDir, filename), Buffer.from(img.data, 'base64'));
-            savedImagePaths.push(`docs/specs/${safeTitle}/images/${filename}`);
-          }
-        });
-      } catch {
-        // Non-fatal
-      }
-    }
-
-    const imageNote = savedImagePaths.length > 0
-      ? `\n\n> **Spec images saved (${savedImagePaths.length}):** ${savedImagePaths.map((p) => `\`${p}\``).join(', ')}`
-      : '';
-    const savedNote = `\n\n> **Spec saved to:** \`docs/specs/${safeTitle}.md\`${imageNote}`;
-
-    const content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [
-      { type: 'text', text: output + savedNote },
-    ];
-    for (const img of imageResults) {
-      if (img) {
-        content.push({ type: 'image', data: img.data, mimeType: img.mimeType });
-      }
-    }
-
-    return { content };
+    return { content: [{ type: 'text', text: output + usIdNote }] };
   } catch (err: unknown) {
     const status = (err as { response?: { status: number } }).response?.status;
     const hint = status === 401
@@ -436,8 +473,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       : status === 403
         ? 'Access denied — your account may not have permission to view this page'
         : status === 404
-          ? `Page ${pageId} not found`
-          : String(err);
+          ? 'Page not found'
+          : String((err as Error).message ?? err);
 
     return { content: [{ type: 'text', text: hint }], isError: true };
   }

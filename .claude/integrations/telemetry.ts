@@ -43,7 +43,7 @@ function resolveKitVersion(): string {
     const match = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
     if (match) return match[1] + ".0";
   } catch {}
-  return "3.17.0";
+  return "3.18.0";
 }
 const KIT_VERSION = resolveKitVersion();
 
@@ -60,6 +60,29 @@ function resolveRepo(): string {
   }
 }
 const REPO = resolveRepo();
+
+// Runner identity — this file ships inside .claude/ (the Claude edition), so it is always
+// "claude". Session 5's codex/copilot editions will emit their own value. Kept as a constant so
+// the marker payload is self-describing and the dashboard never has to assume the tool.
+const RUNNER = "claude";
+
+/**
+ * Emit a machine-readable kit event line on stdout for the dashboard Command-Runner sidecar to
+ * parse (contract: kit-dashboard/docs/design/kit-progress-event-contract.md). The sidecar reads
+ * THIS run's PTY stream, so a marker printed here is inherently scoped to the current run — no DB
+ * join needed. Best-effort: a broken stdout must never affect the workflow, so it never throws.
+ *
+ *   meta  → { type:"meta",  kitVersion, runner }   (emitted once, at verify/step0)
+ *   error → { type:"error", phase }                (emitted at each telemetry error call)
+ * (state/phase markers are emitted by the command file's PROGRESS DISPLAY, not here.)
+ */
+function emitKitEvent(ev: Record<string, unknown>): void {
+  try {
+    process.stdout.write(`@@KIT_EVENT@@ ${JSON.stringify({ v: 1, ...ev })}\n`);
+  } catch {
+    /* stdout unavailable — telemetry markers are optional, never block */
+  }
+}
 
 const headers = {
   "Content-Type": "application/json",
@@ -135,6 +158,11 @@ async function verify(): Promise<number> {
     const quota =
       result.max_runs === null ? "unlimited" : `${result.runs_used}/${result.max_runs}`;
     console.log(`✅ Token valid — ${result.owner} (runs: ${quota})`);
+    // Announce the version that is actually running to the sidecar (step0). This is the single
+    // version source (resolveKitVersion → PROMPT_VERSION), so the dashboard's per-run kit_version
+    // can never drift from installs/repo_runs. Also flags to the sidecar that this run emits
+    // markers at all — so it can tell a measured-0 metric from an unmeasured (marker-less) run.
+    emitKitEvent({ type: "meta", kitVersion: KIT_VERSION, runner: RUNNER });
     // Record this repo's running version (best-effort; never blocks verify).
     await recordRepoRun();
     return 0;
@@ -221,6 +249,10 @@ async function reportError(type: string, phase: string, message: string): Promis
     message,
     kit_version: KIT_VERSION,
   });
+  // Deterministic per-run error signal for the sidecar (error_count). This runs at the kit's
+  // scripted error call site, so it is reliably tied to the current run's stream — unlike the
+  // error_reports row above, which is keyed by token_id and can't be joined back to one run.
+  emitKitEvent({ type: "error", phase });
   console.log(`📊 Reported error: ${type} @ ${phase}`);
 }
 

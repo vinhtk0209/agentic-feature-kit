@@ -693,11 +693,27 @@ and in `kit-standalone/`. Detail: `docs/claude-commands/HARDENING-CHANGELOG.md` 
 
 **Cross-cutting smell**: every component styles layout with inline `style={{…}}` instead of the co-located `.scss` + `visual-properties.md` design tokens (the HR added in v3.8 Change D/H was never runtime-enforced). This is the direct cause of the squeezed/ wrapping / off-palette rendering.
 
-<!-- @lesson id="L-2026-06-13-001" classification="automated_gate" priority="high" root_cause="missing_validation" enforced_by="playwright-runner.ts:--visual-baseline-dir" test_status="enforced" -->
-### Change W.1 — B11 mandatory visual-diff per UI_SCREENSHOT (not optional)
+<!-- @lesson id="L-2026-06-13-001" classification="prompt_rule" priority="medium" root_cause="missing_validation" enforced_by="playwright-runner.ts:--visual-diff (opt-in)" test_status="exempt" -->
+### Change W.1 — Visual-diff per UI_SCREENSHOT is OPT-IN (reverted from mandatory, Session 1 2026-06-30)
 
-**Where**: B11 Step 4 invocation + B5 ux-states.json authoring + checklist `## Summary` verified-ratio rule.
-**Change**: For every image-annotations.md entry typed `UI_SCREENSHOT`, B11 MUST run `compare_images(design_image, rendered_state_screenshot)` (or `playwright-runner --visual-baseline-dir`) with the state→image mapping declared in ux-states.json (each `states[]` gains an optional `baseline: <images/mcp-image-NN.png>`). A `UI_SCREENSHOT` with no executed visual diff is a B11 **incomplete** finding. HR35 verified-ratio may count a UI row as ✅ only if either a visual diff passed OR an explicit structural assertion (section grouping / column header / label text) passed — testid-presence alone is downgraded to ⚠️. Closes the gap that let W-a…W-k through a "75% verified" pass.
+> ⚠️ **DO NOT re-enable this as required.** Visual diff was intentionally moved from mandatory to
+> opt-in in Session 1 (2026-06-30). The capability stays fully working but runs only when the
+> `--visual-diff` flag is passed to `playwright-runner.ts`. A future session must not flip it back to
+> mandatory without an explicit user decision.
+
+**Where**: `playwright-runner.ts` (`--visual-diff` flag, default off) + B11 invocation + B5 ux-states.json authoring.
+**Change (current behavior)**: visual diff is an **opt-in** capability. When `--visual-diff` is passed,
+the runner diffs each `states[].baseline` (optional `baseline: <images/mcp-image-NN.png>`) against the
+rendered screenshot and emits `PLAYWRIGHT-007`; when the flag is absent (the default) it runs no diffs,
+writes no `visual-diff/` folder, and `PLAYWRIGHT-007` reports `skipped — visual diff is opt-in`. It is a
+**bonus** check only and never affects the B11 b11_a 5/5 PASS/FAIL gate (see HARD RULE 30). B5 no longer
+*requires* `ui_screenshots ⊆ states[].baseline` — baselines are optional metadata used only when the flag
+is on.
+
+**Original rationale (historical — why the diff existed):** for the AnalyzeExamPerformance audit, the
+design images in `images/` were never diffed against `screenshots/`, so layout/label drift (W-a…W-k)
+passed a testid-only "75% verified" gate. The diff capability remains the right tool to catch that — it
+is now invoked deliberately (`--visual-diff`) rather than forced on every run.
 
 <!-- @lesson id="L-2026-06-13-002" classification="validation_rule" priority="high" root_cause="ui_ambiguity" enforced_by="lint-feature.ts:W2" test_status="enforced" -->
 ### Change W.2 — Ban i18n string-surgery + layout inline-style; require scss/design-tokens
@@ -732,7 +748,11 @@ and in `kit-standalone/`. Detail: `docs/claude-commands/HARDENING-CHANGELOG.md` 
 
 **Enforcement wired (W.1/W.2/W.3 now `test_status=enforced`):**
 - W.2/W.3 — `lint-feature.ts` gained `checkI18nStringSurgery` (errors on `formatMessage(...).replace(`), `checkInlineLayoutStyle` (warns >6 inline layout-style blocks per .tsx), `checkHandRolledModal` (errors on literal `pgn__modal`/`__modal-backdrop` classnames). 3 new fixture tests in `lint-feature.test.ts` (26 pass). Dogfood on `src/instructor-dashboard/analyze-exam --code-only` → **0 errors** (W2/W3 clean post-fix; 3 inline-style warnings remain on legacy components as non-blocking tech debt).
-- W.1 — `feature-from-confluence.md` B11 Step 4 now passes `--visual-baseline-dir docs/specs/<FeatureName>/images` (was absent → why the diff never ran); the trailing note flipped from "optional" to MANDATORY when ≥1 UI_SCREENSHOT; B5 ux-states validation gained `ui_screenshots ⊆ states[].baseline`; Step 7 HR35 downgrade — a testid-only row is ⚠️ Partial, not ✅.
+- W.1 — *(2026-06-13, since reverted)* originally flipped B11 visual diff to MANDATORY when ≥1
+  UI_SCREENSHOT and added `--visual-baseline-dir` + the B5 `ui_screenshots ⊆ states[].baseline` rule.
+  **Reverted to opt-in in Session 1 (2026-06-30):** the diff now runs only behind `--visual-diff`
+  (default off); the B5 subset rule is no longer required. See the Change W.1 block above — do NOT
+  re-enable as mandatory.
 
 **Feature code fixed (W-a…W-k) in `src/instructor-dashboard/analyze-exam/`:**
 - W-a/W-c — added "Score distribution" heading; replaced the `formatMessage(noResultsFound).replace(...)` Y-axis hack with `messages.numberOfStudents` + ResponsiveContainer (no clip).
@@ -949,3 +969,100 @@ curl check → if NOT 200/302:
 6. Called immediately after `updateChecklistRows()` in the `cfg.acChecklistPath` block so the Summary reflects the just-written row statuses
 
 **Legend line** (`⬜ = not yet verified | ✅ = verified | ...`) is preserved as the last line of the new Summary block.
+
+---
+
+## 2026-06-30 — v3.18: Consolidated Confluence output (single-writer) + visual-diff opt-in — Session 1
+
+<!-- @lesson id="L-27" classification="validation_rule" priority="high" root_cause="dual_naming" enforced_by="mcp-server two-phase + B1 sole-writer" test_status="enforced" -->
+### Change L-27 — All feature output under one canonical folder; MCP is two-phase
+
+**Where**: `.claude/mcp-server/index.ts`, `.claude/commands/feature-from-confluence.md` (B0/B1/B2),
+`.claude/_content/images.md`.
+
+**Problem**: Confluence output scattered across 3 siblings under `docs/specs/` —
+`<safeTitle>.md` (raw spec), `<safeTitle>/images/` (MCP images), and `<FeatureName>/…` (everything
+else). Root cause = **two competing folder-naming systems**: the MCP server wrote under the full
+sanitized page title (`safeTitle`) while the orchestrator wrote under a short `<FeatureName>`. Because
+`safeTitle ≠ FeatureName`, the B2 prefetch (`images.md` Step 5) never found the MCP images → it
+re-downloaded into a *second* images folder (the "redundant images" symptom).
+
+**Slug finding**: a pure-string `<usId>-<cleanName>` rule was tested against 5 real titles — only 2/5
+produced clean names (`---` separator is inconsistent). So the clean name MUST come from B1's semantic
+`FeatureName`, not a string parse. `usId` (regex `US-[A-Z]{1,4}-\d+`) is deterministic; when absent,
+fall back to `FeatureName` alone with a **loud warning**.
+
+**Change (single-writer, two-phase MCP)**:
+- `fetch_confluence_page` (B0) returns spec text **only** — no disk write, no image fetch — plus a
+  `Ticket id` hint (or a loud "no US-ID" note).
+- B1 is the **sole writer** of the spec: it computes `<FeatureName> = <usId>-<SemanticName>` and writes
+  `docs/specs/<FeatureName>/raw-spec.md`. PDF/Word use a single transient `docs/specs/.incoming-spec.md`
+  staging file that B1 consumes and deletes. No per-feature sibling `.md`.
+- New MCP tool `save_confluence_images(url, targetDir)` (B2) writes the page's embedded images straight
+  into `docs/specs/<FeatureName>/images/` using the proven attachment-list workaround — single final
+  location, no move, embedded-page reliability preserved.
+
+**Rule going forward**: all artifacts of a feature MUST live under one root folder
+`docs/specs/<usId>-<FeatureName>/`; never emit files/folders as siblings of the root, and never write
+the same artifact from two places under two different names.
+
+### Change L-27b — Visual diff reverted to opt-in (see Change W.1 above)
+
+Folded into the Change W.1 revert: visual diff now runs only behind `playwright-runner.ts --visual-diff`
+(default off). The `runVisualDiff` code is kept intact. **Do NOT re-enable as mandatory.**
+
+<!-- @lesson id="L-28" classification="prompt_rule" priority="medium" root_cause="workflow_design_flaw" enforced_by="run-parse.ts:parseKitEvent (kit marker channel)" test_status="enforced" -->
+### Change L-28 — One typed run-state event, kit-emitted (no prose-parsing)
+
+**Where**: `.claude/commands/feature-from-confluence.md` (PROGRESS DISPLAY marker) +
+`.claude/integrations/telemetry.ts` (meta/error markers); consumed by the dashboard sidecar
+(`server/run-parse.ts`, `server/pty-server.ts`).
+
+**Problem**: the dashboard originally inferred run state (awaiting input / permission / phase) by
+regex-scanning the raw terminal stream — fragile, and Claude Code emits no prompt-state event of its
+own. A single typed state machine was built but had to be backed by heuristics (the honest Session-2 gap).
+
+**Change**: the kit now emits deterministic `@@KIT_EVENT@@` marker lines on its own stream — one per
+step from the mandatory progress display (`{type:"state",phase}`) — which the sidecar parses with
+**precedence** over the heuristic. Markers ride the run's own PTY, so they are run-scoped by construction.
+
+**Rule going forward**: runtime/dashboard state MUST be driven by an explicit typed event, never by
+parsing free-text output. To expose a new run signal, emit a marker — do not add another regex.
+
+<!-- @lesson id="L-29" classification="prompt_rule" priority="low" root_cause="workflow_design_flaw" enforced_by="none" test_status="exempt" -->
+### Change L-29 — Dashboard reads through a query layer; mutations invalidate the key
+
+**Where**: kit-dashboard (`src/components/*-client.tsx`, `/api/data/*`) — recorded here for kit parity.
+
+**Problem**: pages fetched server-side and refreshed with `router.refresh()` / ad-hoc polling, so a
+mutation (sync, token create) and its table could drift, and "live" data had no consistent refresh path.
+
+**Change**: all reads go through TanStack Query against auth-gated `/api/data/*` routes with a
+hierarchical key; mutations `invalidateQueries` the related key instead of refetching by hand; "live"
+is an explicit `refetchInterval` poll (there is no realtime backend).
+
+**Rule going forward**: never manually refetch — a mutation ALWAYS invalidates the related query key;
+data-heavy reads go through the query layer, not one-off server fetches.
+
+<!-- @lesson id="L-30" classification="validation_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="telemetry.ts meta marker + command_runs migration 0007" test_status="enforced" -->
+### Change L-30 — Every run carries kit_version + per-run perf metrics (extensible, run-scoped)
+
+**Where**: `.claude/integrations/telemetry.ts` (meta/error markers) + `.claude/commands/
+feature-from-confluence.md` (phase marker); dashboard `command_runs` (migration 0007) + `/versions`.
+
+**Problem**: runs weren't tied to a version with measurable per-run performance, so "is the new version
+better?" could only be answered by vibes — and there was no foundation for regression comparison or
+self-training.
+
+**Change**: every run emits its `kit_version` from the **single source** `resolveKitVersion()` →
+`PROMPT_VERSION` (NO second version source — that was the exact drift bug just reconciled), plus per-run
+metrics: duration, step count, error count, success/fail, and **human-intervention count**. Interventions
+are counted in the **sidecar** off the run state machine (the kit is blind to human responses — it must
+NOT self-report them), never by the kit. Metrics persist on `command_runs` (per-run history), NOT
+`repo_runs` (per-repo/overwrite → aggregates impossible). A `runner` column (default `'claude'`) lets
+codex/copilot reuse the table with no new migration. Unmeasured metrics are **NULL, never 0**, so "never
+measured" stays distinct from a genuine zero (which would fake the north-star zero-intervention rate).
+
+**Rule going forward**: comparing versions = comparing metrics, not vibes. Any new metric MUST be
+run-scoped (ride the run's own stream/state, never a `token_id`+time join), extensible across runners,
+and NULL when unmeasured.

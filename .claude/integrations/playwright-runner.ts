@@ -844,6 +844,7 @@ interface RunnerConfig {
   auditCssPath?: string;
   messagesPath?: string;
   visualDiffThreshold?: number;
+  visualDiff?: boolean;   // opt-in (default off): run per-state/standalone visual baseline diffs
   disableWebSecurity?: boolean;
 }
 
@@ -996,6 +997,10 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       cssViolations: [],
     };
 
+    // Visual diff is opt-in (default off). Change W.1 was reverted from mandatory → opt-in
+    // (Session 1): only run baseline diffs when --visual-diff is passed. Do NOT re-enable as required.
+    const visualDiffEnabled = cfg.visualDiff === true;
+
     // ── v1 path: --interactions with object-form states ──
     if (interactionScript && !scriptV2) {
       for (const [stateName, steps] of Object.entries(interactionScript.states)) {
@@ -1043,8 +1048,8 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
         const stateShot = path.join(screenshotDir, `state-${stateSlug}-${timestamp}.png`);
         await takeScreenshotAt(page, stateShot);
 
-        // Visual baseline diff for this state (uses ui_rows)
-        if (state.baseline) {
+        // Visual baseline diff for this state (uses ui_rows) — opt-in only (--visual-diff)
+        if (visualDiffEnabled && state.baseline) {
           const baselinePath = path.isAbsolute(state.baseline) ? state.baseline
             : featureName ? path.join('docs', 'specs', featureName, state.baseline)
             : state.baseline;
@@ -1084,6 +1089,8 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       const vdPassed = extended.visualDiffs.every((v) => v.passed);
       if (extended.visualDiffs.length > 0) {
         checks.push({ id: 'PLAYWRIGHT-007', description: 'Visual regression vs spec baselines', passed: vdPassed, evidence: `${extended.visualDiffs.filter((v) => v.passed).length}/${extended.visualDiffs.length} states matched (≤${visualDiffThreshold}% diff)` });
+      } else if (!visualDiffEnabled) {
+        checks.push({ id: 'PLAYWRIGHT-007', description: 'Visual regression vs spec baselines', passed: true, evidence: 'skipped — visual diff is opt-in (pass --visual-diff to enable)' });
       }
       if (extended.acResults.length > 0) {
         checks.push({ id: 'PLAYWRIGHT-008', description: 'Per-AC behavior verification', passed: acPassed, evidence: `${extended.acResults.filter((r) => r.passed).length}/${extended.acResults.length} AC assertions passed` });
@@ -1096,8 +1103,8 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       }
     }
 
-    // ── Standalone --visual-baseline (single image) ──
-    if (cfg.visualBaseline && !scriptV2) {
+    // ── Standalone --visual-baseline (single image) — opt-in only (--visual-diff) ──
+    if (visualDiffEnabled && cfg.visualBaseline && !scriptV2) {
       const slug = resolvedRoute.replace(/\//g, '_').replace(/^_/, '').replace(/[:<>"|?*]/g, '-');
       fs.mkdirSync(screenshotDir, { recursive: true });
       const actualPath = path.join(screenshotDir, `${slug}-${timestamp}.png`);
@@ -1210,6 +1217,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
   const takeScreenshot = args.includes('--screenshot');
   const mockError = args.includes('--mock-error');
   const auditA11y = args.includes('--audit-a11y');
+  const visualDiff = args.includes('--visual-diff');
   const disableWebSecurity = args.includes('--disable-web-security');
 
   const flagValue = (name: string): string | undefined => {
@@ -1246,7 +1254,8 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     console.error(
       'Usage: npx tsx .claude/integrations/playwright-runner.ts <route> [--screenshot] [--feature-name <name>] [--mock-error]\n' +
       '       [--interactions <path>] [--visual-baseline <png>] [--visual-baseline-dir <dir>] [--ac-checklist <md>]\n' +
-      '       [--audit-a11y] [--audit-css <visual-properties.md>] [--messages-path <messages.ts>] [--visual-diff-threshold <%>]',
+      '       [--audit-a11y] [--audit-css <visual-properties.md>] [--messages-path <messages.ts>] [--visual-diff-threshold <%>]\n' +
+      '       [--visual-diff]  (opt-in: enable visual baseline diffs; off by default)',
     );
     process.exit(1);
   }
@@ -1265,6 +1274,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     auditCssPath,
     messagesPath,
     visualDiffThreshold,
+    visualDiff,
     disableWebSecurity,
   })
     .then(printResult)
