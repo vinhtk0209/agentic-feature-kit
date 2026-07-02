@@ -7,7 +7,47 @@ Version numbers track `PROMPT_VERSION` in `.claude/commands/feature-from-conflue
 
 ---
 
-## [3.18.0] — 2026-06-15
+## [3.18.0] — 2026-06-30
+
+Confluence output consolidation (single-writer) + per-run telemetry markers. `PROMPT_VERSION`
+advanced to v3.18; the marker additions (2026-07-01) landed within v3.18 without a further bump.
+
+### Changed — Confluence output structure (single canonical folder)
+
+- **One root per feature** — all artifacts now live under `docs/specs/<usId>-<FeatureName>/`
+  (raw-spec.md, processed.md, images/, …). Killed the previous 3-way scatter caused by two
+  competing naming systems (MCP `safeTitle` vs orchestrator `FeatureName`) and the duplicate
+  `images/` folder. `<!-- @lesson id="L-27" -->`.
+- **Two-phase MCP (single-writer)** — `fetch_confluence_page` returns spec text only (no disk
+  write, no image fetch); B1 is the sole writer of `raw-spec.md`; new `save_confluence_images(url,
+  targetDir)` tool writes images directly into the canonical folder.
+  (`.claude/mcp-server/index.ts`, `commands/feature-from-confluence.md` B0/B1/B2, `_content/images.md`.)
+
+### Changed — Visual diff is now opt-in
+
+- Visual diff in `playwright-runner.ts` gated behind `--visual-diff` (default off); `runVisualDiff`
+  code kept intact. Reverted Change W.1 from mandatory to opt-in (with a "do not re-enable as
+  required" note). `PLAYWRIGHT-007` reports "skipped — opt-in" when off.
+
+### Added — Per-run telemetry markers (2026-07-01, within v3.18)
+
+- `telemetry.ts` emits `@@KIT_EVENT@@` **meta** (kit version + runner, at verify/step0) and **error**
+  markers; `feature-from-confluence.md` PROGRESS DISPLAY emits a **state/phase** marker per step —
+  consumed by the dashboard sidecar for per-run metrics.
+- Half-sync fix: added `mcp-server/index.ts` to the sync allowlist so the two-phase MCP ships with
+  the v3.18 prompt; added a B2 loud-but-graceful fallback when `save_confluence_images` is absent.
+
+### Documentation
+
+- Ported **L-28** + **L-29** and added **L-30** to `.claude/prompt-evolution.md` (L-27…L-30 present).
+
+## [3.17.1] — 2026-06-15
+
+> **Note (reclassified 2026-07-02):** this entry was originally labeled `[3.18.0]`. Reclassified to
+> 3.17.1 because the content shipped while `PROMPT_VERSION` was still v3.17 (dated one day after
+> [3.17.0]) and is **not** the Session-1 v3.18 work above. Whether a 3.18.0 was *intended* at the
+> time is unverifiable from the squashed baseline history — this is a correction by inference, not a
+> recorded fact.
 
 Nine lessons (L-01 – L-09) distilled from a full-feature verification pass and integrated
 as machine-enforced gates or durable prompt guidance. `<!-- @lesson -->` annotations in
