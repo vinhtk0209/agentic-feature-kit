@@ -23,11 +23,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const CMD = path.join('.claude', 'commands', 'feature-from-confluence.md');
+const README = 'README.md';
 
 interface Stamp { name: string; re: RegExp; }
 const STAMPS: Stamp[] = [
   { name: 'copyright header', re: /Claude Code Edition (v\d+\.\d+)/ },
   { name: 'progress banner', re: /feature-from-confluence · (v\d+\.\d+)/ },
+];
+// README declares the kit version in a different file. Anchor to the specific
+// "Kit version **vX.Y**" bold declaration so historical version mentions elsewhere
+// in the README (changelog tables, "Copilot v3.7", rule-origin tags) don't match.
+const README_STAMPS: Stamp[] = [
+  { name: 'README kit version', re: /Kit version \*\*(v\d+\.\d+)\*\*/ },
 ];
 
 export interface VersionCheck {
@@ -71,18 +78,22 @@ export function checkPlaywrightToken(
   return { expiresAt, nowMs, status, msRemaining };
 }
 
-export function checkVersions(content: string): VersionCheck {
+export function checkVersions(content: string, readmeContent = ''): VersionCheck {
   const sourceMatch = content.match(/PROMPT_VERSION:\s*(v\d+\.\d+)/);
   const source = sourceMatch ? sourceMatch[1] : null;
   const found: VersionCheck['found'] = [];
   const missing: string[] = [];
   const mismatches: VersionCheck['mismatches'] = [];
-  for (const s of STAMPS) {
-    const m = content.match(s.re);
-    if (!m) { missing.push(s.name); continue; }
-    found.push({ name: s.name, version: m[1] });
-    if (source && m[1] !== source) mismatches.push({ name: s.name, version: m[1] });
-  }
+  const scan = (text: string, stamps: Stamp[]) => {
+    for (const s of stamps) {
+      const m = text.match(s.re);
+      if (!m) { missing.push(s.name); continue; }
+      found.push({ name: s.name, version: m[1] });
+      if (source && m[1] !== source) mismatches.push({ name: s.name, version: m[1] });
+    }
+  };
+  scan(content, STAMPS);
+  scan(readmeContent, README_STAMPS);
   return { source, found, missing, mismatches };
 }
 
@@ -117,7 +128,8 @@ if (process.argv[1] && /version-check\.ts$/.test(process.argv[1].replace(/\\/g, 
     console.error(`❌ version-check: command file not found at ${CMD}`);
     process.exit(2);
   }
-  const r = checkVersions(fs.readFileSync(CMD, 'utf-8'));
+  const readmeContent = fs.existsSync(README) ? fs.readFileSync(README, 'utf-8') : '';
+  const r = checkVersions(fs.readFileSync(CMD, 'utf-8'), readmeContent);
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(r, null, 2));
   } else {
