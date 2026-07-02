@@ -24,6 +24,12 @@ import * as path from 'path';
 
 const CMD = path.join('.claude', 'commands', 'feature-from-confluence.md');
 const README = 'README.md';
+// Only the SOURCE kit carries sync.config.json (repo-root; never in the sync
+// allowlist, so it is never copied into a target). Installed copies in target
+// repos have no kit README, so the README stamp must NOT be enforced there —
+// gating on this file keeps the kit's drift detection loud while letting
+// `version:check` stay green in targets.
+const SYNC_CONFIG = 'sync.config.json';
 
 interface Stamp { name: string; re: RegExp; }
 const STAMPS: Stamp[] = [
@@ -33,6 +39,7 @@ const STAMPS: Stamp[] = [
 // README declares the kit version in a different file. Anchor to the specific
 // "Kit version **vX.Y**" bold declaration so historical version mentions elsewhere
 // in the README (changelog tables, "Copilot v3.7", rule-origin tags) don't match.
+// Only audited in the source kit (see SYNC_CONFIG gate below).
 const README_STAMPS: Stamp[] = [
   { name: 'README kit version', re: /Kit version \*\*(v\d+\.\d+)\*\*/ },
 ];
@@ -78,7 +85,7 @@ export function checkPlaywrightToken(
   return { expiresAt, nowMs, status, msRemaining };
 }
 
-export function checkVersions(content: string, readmeContent = ''): VersionCheck {
+export function checkVersions(content: string, readmeContent = '', auditReadme = false): VersionCheck {
   const sourceMatch = content.match(/PROMPT_VERSION:\s*(v\d+\.\d+)/);
   const source = sourceMatch ? sourceMatch[1] : null;
   const found: VersionCheck['found'] = [];
@@ -93,7 +100,7 @@ export function checkVersions(content: string, readmeContent = ''): VersionCheck
     }
   };
   scan(content, STAMPS);
-  scan(readmeContent, README_STAMPS);
+  if (auditReadme) scan(readmeContent, README_STAMPS);
   return { source, found, missing, mismatches };
 }
 
@@ -128,8 +135,9 @@ if (process.argv[1] && /version-check\.ts$/.test(process.argv[1].replace(/\\/g, 
     console.error(`❌ version-check: command file not found at ${CMD}`);
     process.exit(2);
   }
-  const readmeContent = fs.existsSync(README) ? fs.readFileSync(README, 'utf-8') : '';
-  const r = checkVersions(fs.readFileSync(CMD, 'utf-8'), readmeContent);
+  const isSourceKit = fs.existsSync(SYNC_CONFIG);
+  const readmeContent = isSourceKit && fs.existsSync(README) ? fs.readFileSync(README, 'utf-8') : '';
+  const r = checkVersions(fs.readFileSync(CMD, 'utf-8'), readmeContent, isSourceKit);
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(r, null, 2));
   } else {
