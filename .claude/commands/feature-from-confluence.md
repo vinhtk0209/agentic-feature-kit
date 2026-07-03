@@ -530,6 +530,18 @@ prose. Print it verbatim on its own line (replace `<BX>` with the current step i
 - One marker per step, every step (including automatic ones). The sidecar counts **distinct**
   `phase` values, so re-printing the same step (e.g. after a retry) does not inflate the count.
 - Keep it a single short line — do not wrap or pretty-print the JSON (the sidecar parses one line).
+- **At a STOP gate (`🛑` — B4 / B6 / B6.5 / B8 / B9 / B10.5): emit an ADDITIONAL marker carrying
+  `"awaiting":"gate"` immediately BEFORE the gate question** (before the "no output, wait for user
+  response" pause), on its own line:
+  ```text
+  @@KIT_EVENT@@ {"v":1,"type":"state","phase":"<BX>","awaiting":"gate"}
+  ```
+  This lets the sidecar flag "waiting for a human decision" **deterministically** — so it shows the
+  run as awaiting and NEVER auto-approves a workflow gate — instead of guessing from the prompt wording
+  (some gate phrasings match no signature → the run would stall silently; a numbered-menu gate could be
+  mis-read as a tool-permission and auto-answered). Do NOT emit this for Claude Code's own tool-permission
+  prompts (those are not kit steps). When the user responds and the workflow resumes, the next per-step
+  marker (no `awaiting` field) clears it back to running.
 - This is the deterministic replacement for prose-parsing (see kit-progress-event-contract.md).
   The version + error markers are emitted by `telemetry.ts` (meta at Step 0, error on failure);
   this state/phase marker is the only one the command file itself prints.
