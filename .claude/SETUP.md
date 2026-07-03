@@ -137,7 +137,7 @@ Also update the Confluence base URL in `.claude/mcp-server/index.ts`:
 const baseConfUrl = 'https://your-confluence-instance.com/conf';
 ```
 
-**Root `.env`** — Kit token:
+**Kit token** — recommended: `npm run workflow:login` (writes it to your OS config; `telemetry.ts` reads it there automatically). ⚠️ `telemetry.ts` reads the **`KIT_TOKEN` env var**, else that login config — it does **not** auto-load root `.env` (no dotenv), so a bare `KIT_TOKEN=` line only takes effect if your shell actually exports it into the environment:
 
 ```env
 KIT_TOKEN=your_kit_token
