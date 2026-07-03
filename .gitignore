@@ -33,3 +33,7 @@ docs/specs/.kpi-history.jsonl
 # Local backups (e.g. command-file snapshots before an edit)
 *.bak
 *.bak.*
+
+# Kept local ON PURPOSE (not published to this public repo): internal design doc.
+# Ignored so `git clean -fd` can't delete it; content stays off GitHub.
+docs/design/self-training-loop.md
