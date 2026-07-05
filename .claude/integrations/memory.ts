@@ -26,6 +26,16 @@ import { generateDigest } from './feature-digest';
 const SPECS_DIR = path.join('docs', 'specs');
 const CURRENT_FEATURE_PATH = path.join(SPECS_DIR, '.current-feature');
 
+// Measurement-layer v1 (measurement-layer-v1.md §3.2, §4 trusted-writer invariant):
+// the verify verdict is NEVER writable via the general `save` path. `verified`/
+// `testsPassed`/`verify_complete` may only be set by the capture wrapper
+// (record-verify.ts recordVerify), which computes them from a real test-runner exit
+// code it observed directly. The general save path is narrative-only, so an external
+// caller cannot assert its own verification verdict. Refusal is key-based (not merely
+// phase-scoped) because saveContext merges prior payloads forward — a verdict key
+// sneaked in at an earlier phase would otherwise persist into verify_complete.
+const FORBIDDEN_VERIFY_KEYS = ['testsPassed', 'verified', 'verify_complete'] as const;
+
 interface ContextSummary {
   phase: string;
   featureName: string;
@@ -230,6 +240,25 @@ function main(): void {
       payload = JSON.parse(payloadStr);
     } catch {
       console.error('Invalid JSON payload:', payloadStr);
+      process.exit(1);
+    }
+    // Trusted-writer invariant (measurement-layer-v1.md §3.2/§4): refuse any
+    // externally-supplied verify verdict. The verdict is computed by the capture
+    // wrapper from a real exit code, never accepted here as input.
+    const smuggled = FORBIDDEN_VERIFY_KEYS.filter((k) =>
+      Object.prototype.hasOwnProperty.call(payload, k)
+    );
+    if (smuggled.length > 0) {
+      console.error(
+        `❌ Refused: the verify verdict cannot be set via 'save' (forbidden key(s): ${smuggled.join(', ')}).`
+      );
+      console.error(
+        "   `verified`/`testsPassed`/`verify_complete` are computed by the capture wrapper"
+      );
+      console.error(
+        '   (record-verify.ts) from a real test-runner exit code — never self-reported.'
+      );
+      console.error('   Narrative saves (featureName, notes, decisions, …) are still allowed.');
       process.exit(1);
     }
     saveContext(phase, payload);
