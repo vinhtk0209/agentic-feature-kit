@@ -74,10 +74,14 @@ heavy path is captured once and attested, not repeated.
 `memory.ts save verify_complete '{"testsPassed":true}'`. Change:
 
 - **`memory.ts` REFUSES externally-supplied verify state.** The `save` verb rejects any payload
-  carrying `testsPassed` / `verify_complete` / `verified` for the `verify_complete` phase (and the
-  `final_confirmed` phase). Those keys become **non-writable via the general `save` path** — an
-  attempt is an error, not a silent accept. The model may still `save` *narrative* context
-  (feature name, notes); it may **not** assert its own verification verdict.
+  carrying the keys `testsPassed` / `verify_complete` / `verified`. The refusal is **key-based, in
+  any phase** — *not* scoped to the `verify_complete` / `final_confirmed` phases. Key-based is
+  required because `saveContext` **forward-merges** each payload onto the prior one: a verdict key
+  slipped in at an earlier phase (e.g. `scope_confirmed`) would otherwise persist through the merge
+  into `verify_complete`, defeating a phase-scoped guard. Those keys are therefore **non-writable
+  via the general `save` path** — an attempt is an error, not a silent accept. (The narrative
+  `finalConfirmed` flag is a *different* key and stays writable.) The model may still `save`
+  *narrative* context (feature name, notes); it may **not** assert its own verification verdict.
 - **One trusted writer.** A single entry point — the Tier-A/Tier-B **capture wrapper** — is the only
   code allowed to set `verify_complete`. It does so by passing the **captured exit code**, not a
   boolean. Intended call shape (shape, not implementation):
