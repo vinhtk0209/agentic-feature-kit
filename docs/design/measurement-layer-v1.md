@@ -1,0 +1,277 @@
+# Measurement Layer v1 — computed `verify_complete` + a real hook (design)
+
+> **STATUS: DESIGN — FROZEN.** Review-passed; no implementation until an approved session. This doc resolves the four open questions for the
+> MVP and defines the one invariant every later phase must preserve. It does not contain code.
+> Reviewed by a human before any implementation session (same posture as `self-training-loop.md`).
+
+MVP scope is **two gaps only**: **gap#2** (a real hook that runs, instead of a narrative
+"the model should run `npx tsx …`") and **gap#1** (a `verify_complete` that is *computed* from a
+real test-runner exit code, not a string the model hands to `memory.ts`). **gap#3** (validating
+`test_status="enforced"` labels against real tests) is **Phase 2, out of scope here.**
+
+---
+
+## 1. Problem (the self-report gap)
+
+`verify_complete` is a self-written string: `memory.ts:230` `JSON.parse`s and persists whatever
+literal the model supplies — including `testsPassed:true` — so a run can declare itself done with
+tests broken or never run (this is how US-AD-095's `INDEX.md` reached `final_confirmed` on a
+hybrid). No hook or CI forces the real gates to run: `.git/hooks` is empty, and `lint-feature.ts` /
+`b11-runner.ts` — which *do* exit non-zero correctly — only execute if the model chooses to invoke
+them. The north-star `correction==0` therefore rests entirely on self-report
+(`b12-logger.ts:285` `manualCorrections:'self_reported'`), so every run-count and "proven" claim is
+unfalsifiable.
+
+---
+
+## 2. Non-goals (explicit — do not build these here)
+
+- **Option 2 / Option 3 verify signals** — AC-parsing of test output, or output-diffing against an
+  expected shape. v1's signal is the runner **exit code only** (option 1). Richer signals are a
+  future upgrade, not this MVP.
+- **gap#3 — `test_status` label validation** against a real passing test. Phase 2.
+- **CI beyond a local git hook** — no GitHub Actions / server pipeline in v1. The only automated
+  trigger is a git hook + a command-flow wrapper. (A remote backstop is discussed in §6.3 as a
+  *design hook point*, not a v1 deliverable.)
+- **Grading lesson quality / promotion decisions** — that is the 6F measurement consumer, downstream
+  of this layer. v1 only produces an *honest* verify signal for it to consume later.
+
+---
+
+## 3. Design (Q1–Q4)
+
+### 3.1 — Q1: What does the hook run, given external deps?
+
+Kit verification is **two populations of check** with opposite cost/reliability profiles, so a
+single hook that runs everything is wrong — it would be slow and flaky, and a slow/flaky
+pre-commit hook is a **design failure**: it trains the user to reach for `--no-verify`, which
+silently defeats the whole layer. Split by cost:
+
+- **Tier A — cheap, deterministic, no external deps → runs IN the git hook (`pre-commit`).**
+  Candidate: `lint-feature.ts --gate` (static: HR33 blind-cast, HR34 business-rule→util+test,
+  HR35 verified-ratio, HR36 AC-coverage + hollow-test rejection) plus `tsc`/lint. These already
+  exit non-zero correctly, need no browser / dev server / Confluence token, and finish in seconds.
+  A hook made of only Tier-A checks is fast and never flaky → no incentive to bypass.
+- **Tier B — heavy, external deps (Playwright/browser, dev server, sometimes Confluence) → NOT run
+  by the hook.** `b11-runner.ts` needs a live dev server and a browser; re-running it at commit
+  time would be slow, order-dependent, and flaky. Instead: **Tier B runs once, during the command
+  flow (at B11), through a wrapper that captures its exit code and writes a signed result record.
+  The hook READS that record; it does not re-run Tier B.**
+
+**Why read-not-rerun for Tier B:** the expensive verification already happened at B11 with a real
+browser; committing must not pay that cost again, and re-running invites nondeterminism. The hook's
+job for Tier B is *freshness + provenance*: assert a Tier-B result record exists, was written by
+the trusted wrapper (not the model), covers the files being committed, and is recent enough
+(staleness rule in §3.4). If the record is missing/stale/forged → the hook fails the commit with a
+message telling the user to run the B11 wrapper — never a silent pass.
+
+**Net:** hook = *run Tier A live* + *verify a trusted Tier-B record exists*. Fast path stays fast;
+heavy path is captured once and attested, not repeated.
+
+### 3.2 — Q2: How does the script write `verify_complete` so the model can't forge it?
+
+**Cut the model out of the trusted path (Architecture A).** Today any caller can do
+`memory.ts save verify_complete '{"testsPassed":true}'`. Change:
+
+- **`memory.ts` REFUSES externally-supplied verify state.** The `save` verb rejects any payload
+  carrying `testsPassed` / `verify_complete` / `verified` for the `verify_complete` phase (and the
+  `final_confirmed` phase). Those keys become **non-writable via the general `save` path** — an
+  attempt is an error, not a silent accept. The model may still `save` *narrative* context
+  (feature name, notes); it may **not** assert its own verification verdict.
+- **One trusted writer.** A single entry point — the Tier-A/Tier-B **capture wrapper** — is the only
+  code allowed to set `verify_complete`. It does so by passing the **captured exit code**, not a
+  boolean. Intended call shape (shape, not implementation):
+
+  ```
+  # ONLY the wrapper calls this; it passes the real exit code it observed.
+  recordVerify({
+    phase: "verify_complete",
+    feature: "<FeatureName>",
+    tierA_exit: <int>,          # lint-feature --gate + tsc exit, captured by the wrapper
+    tierB_exit: <int|null>,     # b11-runner exit, or null if Tier B legitimately skipped
+    runner_run_id: "<id>",      # ties this to a specific command run (marker stream)
+    kit_version: "<x.y.z>",
+    at: "<iso8601>"
+  })
+  # verified == (tierA_exit === 0 && (tierB_exit === 0 || tierB_exit === null-with-reason))
+  # `verified` is COMPUTED inside recordVerify from the exit codes — never accepted as input.
+  ```
+
+  `testsPassed`/`verified` is **derived here from exit codes**, never received. The distinction that
+  makes forgery impossible: the trusted writer's input is *what the runner returned*, and the
+  boolean is a pure function of that. There is no parameter through which the model can inject
+  "true".
+
+### 3.3 — Q3: What stops `--no-verify` / hook bypass?
+
+A local hook is bypassable by construction (`git commit --no-verify`), so the hook **cannot be the
+only line of defense** — it is a fast-feedback convenience. The real enforcement is **downstream, at
+the sync boundary**, where nothing the model does can skip it:
+
+- **Upgrade the existing sync guard** from "refuse if `.claude/` is dirty" (already shipped:
+  `7a5f2b2`) to **"refuse unless the change being synced is backed by a script-written
+  `verify_complete` for the current HEAD."** Concretely, the sync precondition validates the verify
+  **git object** for HEAD by **recomputing, not by trusting a flag** — see §3.4 for the object shape
+  and the three checks. Missing/mismatched/failing → refuse, with the same `--force-*`
+  conscious-override posture as the dirty guard (a distinct `--force-unverified`, so overriding
+  *dirtiness* and overriding *lack-of-verification* are separate conscious acts).
+- **Why sync, not commit, is the true gate:** commit is local and personal; **sync is the act that
+  ships to targets** — the only place a bad state escapes this repo. Putting the hard backstop there
+  means `--no-verify` at commit time only forfeits *fast feedback*, never *safety*. This reuses the
+  guard we already built and proved, so it is a small, low-risk extension rather than new
+  infrastructure.
+- **Server-side backstop = design hook point, not v1.** A remote check (dashboard/sync-report
+  rejecting an install whose run has no computed verify) is the eventual belt-and-suspenders; v1
+  leaves the seam for it (the record carries `runner_run_id` + provenance) but does not build it.
+
+**RULE — visual/overlay features MAY NOT sync on a `tierB_exit=null` verify.** Playwright is opt-out
+at B10.5, so `tierB_exit=null` (Tier B legitimately skipped) is allowed to satisfy the sync backstop
+**only for features with no visual/overlay surface.** For a visual/overlay feature — the exact class
+HR38 exists for — a `null` Tier B means the positioning/visual net never ran, so `null` does **NOT**
+satisfy the backstop: the guard refuses (override only via the conscious `--force-unverified`). This
+closes the "null door" through which US-AD-095's mispositioned-popover bug would otherwise reopen.
+
+- **Classifier (how the guard knows a feature is visual/overlay):** reuse HR38's own signal, not a
+  new label. A feature is visual/overlay if **either** (a) the HR38 overlay grep fires — its
+  components contain host-lib overlay primitives (`overlays_found > 0`), **or** (b) its
+  `ux-states.json` carries ≥1 open-state entry with a `baseline` (the HR38 artifact). If either
+  holds, `tierB_exit` MUST be `0` (a real `--visual-diff` result), never `null`, for the sync
+  backstop to pass. This keeps the classifier consistent with HR38's B5/B11 self-eval gate rather
+  than inventing a second, forgeable "is-visual" flag.
+
+### 3.4 — Provenance by git-object hash-pin (referenced by §3.1 and §3.3)
+
+Provenance must **not** be a self-declarable flag (a "written by the wrapper" boolean is exactly the
+gap#3 failure mode — a label the model can set). Replace it with a recomputed hash-pin carried in a
+**git object attached to the commit**.
+
+- **Where the record lives — a `git note` on HEAD** (namespace `refs/notes/verify`), not a tag.
+  Justification: a note is *attached to* an existing commit (it references the exact HEAD being
+  synced, which is what we want to attest), it can be added after the commit exists without
+  rewriting history, it's overwritable per-commit if a re-verify happens, and it doesn't pollute the
+  tag namespace that deploy/rollback already uses (`self-training-loop.md`, `backup/*`, `vX.Y`). A
+  tag would either need rewriting on re-verify or leak a tag per run.
+- **What the wrapper writes** (after observing the real exit codes), as the note body on HEAD:
+
+  ```
+  { tierA_exit, tierB_exit, content_hash, runner_run_id, kit_version, at }
+  # content_hash = hash over the verified feature files' current bytes (the load-bearing field)
+  ```
+
+- **How the sync guard validates — by RECOMPUTING, never by trusting a stored flag:**
+  1. **(a) exists + attached** — a `refs/notes/verify` note exists on the exact HEAD being synced.
+  2. **(b) hash matches** — `content_hash` in the note **==** the hash recomputed from the current
+     feature files *now*. **This is the load-bearing check:** a stale verify (files changed since),
+     or a verify copied from an unrelated feature, will not match and is rejected.
+  3. **(c) verified** — `verified == true`, computed from `tierA_exit`/`tierB_exit` stored in the
+     note (§3.2 rule), not read as a boolean.
+- **Why stronger than a file flag:** the model *can* create a git note — but it cannot make
+  `content_hash` match unless the feature files are actually in the verified state. Forgery shifts
+  from "edit one flag" to "make three things simultaneously consistent (exit codes + content_hash +
+  the real tree)," which a lazy or accidental forge cannot produce. (For the deliberate-forge case,
+  see the trust boundary in §3.6.)
+- **Coverage** — "the verified feature files" is the file set the wrapper actually ran against,
+  recorded alongside `content_hash`; the guard hashes that same set. A verify does not license files
+  outside its recorded set. Clock time (`at`) is metadata only — never a validity input; the
+  hash-pin, not the clock, defines freshness.
+
+### 3.5 — Q4: Migration of the 3 existing B12 runs
+
+The 3 historical runs (US-AD-093 clean, US-AD-094 clean, US-AD-095 hybrid) have **no
+computed-exit-code verify** — they predate this layer. Rule:
+
+- **Mark them `unverified` (do NOT grandfather to `verified`).** The whole point of the layer is
+  that `verified` means "a script saw exit 0"; back-dating that claim onto runs where no script did
+  would reintroduce the exact self-report we are removing.
+- Record them as `verify_source = "legacy/uncomputed"` with the honest narrative status preserved
+  (093/094 = clean-per-completion-box; 095 = hybrid). They remain **usable as history**, but they
+  do **not** count as computed-verified fuel for 6F, and they do **not** satisfy the sync backstop.
+- **Consequence (accept, don't fix):** immediately after rollout there are **zero**
+  computed-verified runs. That is correct — it makes the real state legible. The first
+  computed-verified run is produced by the next real feature run through the wrapper (ties to
+  `self-training-loop.md` §5: real marker-emitting fuel starts accruing only from here).
+
+### 3.6 — Trust boundary (what v1 does and does NOT defend)
+
+An anti-self-report doc must not itself make an unqualified self-report about its own strength.
+State the limit plainly:
+
+- **v1 DEFEATS accidental / lazy forgery.** A model that declares `testsPassed:true` without running
+  anything, or reuses an unrelated feature's verify, is killed by two independent things: the
+  `memory.ts` refusal (§3.2 — the self-report path no longer exists) and the hash-pin (§3.4 — a
+  fabricated verdict won't match the real tree). This covers **~the entire real-world failure
+  surface**, including the exact mechanism by which US-AD-095 reached `final_confirmed` (a hand-set
+  `testsPassed:true` on a run whose tests weren't computed).
+- **v1 does NOT defend against deliberate forgery by a model that controls the shell.** Such a model
+  could run the real tests, observe a failure, then hand-craft a `git note` with `exit=0` and the
+  correct `content_hash` for the current files. This is **architecturally impossible to fully
+  prevent LOCALLY**: the model orchestrates every command, so the exit code always passes through a
+  host it controls, and any local writer it can invoke it can also impersonate.
+- **The fix is the REMOTE backstop (the §3.3 seam).** Move exit-code capture off the
+  model-orchestrated host — CI, or a runner that writes the verify telemetry to Supabase via a token
+  the model never holds — so `verified` is asserted by a party the model cannot speak for. v1 leaves
+  the seam (`runner_run_id` ties a local note to a would-be remote record) but **does not build it.**
+- **Label:** local deliberate-forge resistance is a **KNOWN, ACCEPTED v1 limit.** v1's goal is to
+  make the honest path the easy path and to kill the accidental/lazy gap that actually bit us — not
+  to be adversarially unforgeable on a host the model owns.
+
+---
+
+## 4. Trusted-writer contract (the one invariant)
+
+> **`verify_complete` (and `final_confirmed`) is only ever written by the capture wrapper, and its
+> `verified` boolean is computed inside that writer as a pure function of a test-runner exit code it
+> observed directly. It is never accepted as an input from any caller, and the general `memory.ts
+> save` path refuses to set it.**
+
+Every later phase (richer signals, gap#3, remote backstop) must preserve this invariant. If any
+future change lets a caller supply the verdict, the layer is defeated regardless of how good the
+signal is.
+
+---
+
+## 5. Rollout (what lands first, how each step is proven)
+
+1. **Trusted path — `memory.ts` refusal + capture wrapper (gap#1), ONE ATOMIC change.** These MUST
+   land together, never as two sequential steps: refusing the old `save verify_complete` path *before*
+   the wrapper exists opens a window in which a real run can record verify by **neither** path (old
+   path refused, new path absent) — an even worse hole than the one we're closing. So in a single
+   merge: (a) `memory.ts` rejects any externally-supplied `verify_complete`/`testsPassed`; (b) the
+   capture wrapper + `recordVerify` (the single trusted writer) exists and computes `verified` from
+   `tierA_exit`/`tierB_exit` into the §3.4 git note. *Proven — both halves green before merge:*
+   `save verify_complete '{"testsPassed":true}'` now errors AND narrative saves still pass (half a);
+   feed the wrapper exit 0 → note `verified=true`, exit 1 → `verified=false`, and no input path sets
+   the boolean directly (half b).
+2. **`pre-commit` hook — Tier A live + Tier-B note check (gap#2).** *Proven by:* commit with a
+   passing tree succeeds fast; commit with an injected lint/type failure is blocked; commit with a
+   missing/stale Tier-B note is blocked with an actionable message. Measure hook wall-time to
+   confirm it's fast enough not to invite `--no-verify`.
+3. **Sync backstop upgrade (Q3).** Extend the shipped dirty-guard to also require a valid computed
+   verify (§3.4 recompute) for HEAD, incl. the §3.3 visual/overlay `tierB_exit=null` rule. *Proven
+   by:* dry-run sync refuses when the verify is legacy/mismatched/missing (and when a visual feature
+   has `tierB_exit=null`); passes on a genuine computed-verified run; `--force-unverified` overrides
+   consciously.
+4. **Migration pass (Q4).** Stamp the 3 legacy runs `unverified` / `legacy-uncomputed`.
+   *Proven by:* dashboard/report shows 0 computed-verified runs immediately after — the honest zero.
+
+Land step 1 as the atomic trusted path, then 2, then 3; 4 any time after 1.
+
+---
+
+## 6. Open risks
+
+- **Deliberate local forge (the residual, by design).** Per the §3.6 trust boundary, a model that
+  controls the shell can hand-craft a `git note` with `exit=0` and a matching `content_hash`. The
+  hash-pin (§3.4) defeats accidental/lazy forgery but **not** this; the accepted v1 answer is the
+  remote backstop seam (`runner_run_id`), not a local mechanism. Known, accepted — restated here so
+  it isn't mistaken for an oversight.
+- **`content_hash` coverage definition.** The load-bearing check is only as good as "which files
+  count" as the verified feature set. Needs a concrete, per-feature rule at implementation
+  (feature folder + its `ux-states.json` + any shared util it added), so a change to an in-scope
+  file invalidates the note (§3.4) and an unrelated verify can never match.
+- **`--force-unverified` / `--force-dirty` erosion.** Two override flags now exist.
+  If either becomes routine, the layer rots. Consider logging every override to the run record so
+  overrides are visible/auditable, not silent.
+- **Self-reference.** This layer's own code (`memory.ts`, the wrapper, the hook) is verified by the
+  same Tier-A checks it installs — fine for static checks, but there is no computed-verify of the
+  measurement layer itself until it runs on a real feature. Accept for v1; note it.
