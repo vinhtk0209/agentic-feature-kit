@@ -21,6 +21,10 @@
  *                              # which we honor so this stays safe.
  *   npx tsx scripts/sync-to-targets.ts --dry-run   # direct invocation
  *
+ *   # Guardrail: a real sync REFUSES to run if .claude/ has uncommitted changes,
+ *   # so raw/unproven drafts can't leak to targets (the 2026-07-04 near-miss).
+ *   npm run sync -- --force-dirty   # override the git-clean guard (conscious opt-in)
+ *
  *   npm run sync:rollback -- --target ../isu-elearner-learning   # restore last snapshot
  *   npm run sync:rollback -- --target <t> --snapshot <name>      # restore a specific one
  *   npm run sync:rollback -- --target <t> --list                 # list snapshots
@@ -342,6 +346,51 @@ function fail(msg: string): never {
 }
 
 // ---------------------------------------------------------------------------
+// Guardrail: refuse to sync an uncommitted (dirty) .claude/ working tree.
+//
+// git-clean is the only "proven-ish" signal that cannot be self-reported around:
+// verify_complete is a self-written string (memory.ts) and test_status="enforced"
+// is a self-declared label that already drifts (lesson-registry.ts). A COMMITTED
+// change has at minimum passed a deliberate human gate; a dirty-tree change has
+// passed nothing. This does NOT prove the evolution works (that is the measurement
+// layer's job) — it only stops accidental sync of raw drafts. Override with
+// --force-dirty. Skipped when SRC_REF is set: a `--ref` deploy reads source from a
+// committed git ref, not the working tree, so working-tree dirtiness is irrelevant.
+// ---------------------------------------------------------------------------
+function assertCleanClaudeTree(dryRun: boolean, forceDirty: boolean): void {
+  if (SRC_REF) return; // --ref reads a committed ref; working-tree state does not apply
+
+  let dirty: string;
+  try {
+    dirty = (git(["status", "--porcelain", "--", ".claude"], "utf8") as string).trim();
+  } catch (e) {
+    const first = (e as Error).message.split("\n")[0];
+    if (dryRun) { console.warn(`  ! could not check .claude/ git state: ${first}`); return; }
+    fail(`cannot verify .claude/ git state (${first}). Refusing to sync. Use --force-dirty to override.`);
+  }
+
+  if (!dirty) return; // clean tree → proceed
+
+  const lines = dirty.split(/\r?\n/);
+  if (forceDirty) {
+    console.warn(`\n⚠️  .claude/ has ${lines.length} uncommitted change(s) — syncing anyway (--force-dirty):`);
+    for (const l of lines) console.warn(`     ${l}`);
+    console.warn("");
+    return;
+  }
+
+  console.error(`\nERROR: .claude/ has ${lines.length} uncommitted change(s) — refusing to sync unproven/uncommitted evolutions:`);
+  for (const l of lines) console.error(`  ${l}`);
+  console.error(
+    "\nA committed change has at least passed a deliberate human gate; a dirty tree has passed nothing.\n" +
+    "This does NOT prove the change works — it only prevents accidental sync of raw drafts.\n" +
+    "Commit the change first, or re-run with --force-dirty to override consciously.\n"
+  );
+  if (dryRun) { console.warn("(dry run — a real sync would exit non-zero here.)\n"); return; }
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
 // Install reporting (Part B): after syncing a target, record which kit version
 // now lives on that repo into Supabase `installs` (upsert on `repo`).
 // ---------------------------------------------------------------------------
@@ -486,6 +535,7 @@ async function main() {
     process.argv.includes("--dry-run") ||
     process.argv.includes("--preview") ||
     process.env.npm_config_dry_run === "true";
+  const forceDirty = process.argv.includes("--force-dirty");
 
   // --ref <gitref> / --ref=<gitref>: deploy a specific kit version from git instead
   // of the working tree. Validated up front so a bad ref fails clearly, not mid-write.
@@ -500,6 +550,8 @@ async function main() {
       fail(`--ref: unknown git ref "${SRC_REF}" in ${KIT_ROOT}`);
     }
   }
+
+  assertCleanClaudeTree(dryRun, forceDirty);
 
   loadKitEnv();
   const cfg = loadConfig();
