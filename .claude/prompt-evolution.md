@@ -715,6 +715,20 @@ design images in `images/` were never diffed against `screenshots/`, so layout/l
 passed a testid-only "75% verified" gate. The diff capability remains the right tool to catch that — it
 is now invoked deliberately (`--visual-diff`) rather than forced on every run.
 
+**Lazy per-feature activation policy (2026-07-04 — the standing policy for the visual net).** We do NOT
+migrate every state's baseline to an app-screenshot up front (that is gold-plating a kit we use, not
+perfect). The runtime visual net is activated **lazily, per feature class, at run time**: when a feature
+whose class a visual-diff-dependent lesson guards is actually run, migrate that state's `baseline` from the
+design mockup (`mcp-image-NN.png`) to a **deterministic app-screenshot** (the clause-4 reduced-motion
+mechanism) and run with `--visual-diff`. **HARD RULE 38 (overlay features MUST run `--visual-diff`, and the
+gate fails unless the diff actually ran) is the template** for requiring the net per feature-class.
+**Consequence for the registry (honesty rule):** a lesson whose runtime catch is this opt-in visual net is
+enforced at **generation time** by its prompt rule *where wired*, and its runtime visual backstop is
+**opt-in / lazy — NOT default-on**. Such lessons are therefore marked `test_status="exempt"` (crediting the
+generation prompt rule) with an explicit "runtime visual net opt-in/lazy" note in `enforced_by`, and are
+**never** marked `enforced` via the visual net. Applies to **W.5, W.8, W.9**. The registry must never claim
+a net that does not fire by default.
+
 <!-- @lesson id="L-2026-06-13-002" classification="validation_rule" priority="high" root_cause="ui_ambiguity" enforced_by="lint-feature.ts:W2" test_status="enforced" -->
 ### Change W.2 — Ban i18n string-surgery + layout inline-style; require scss/design-tokens
 
@@ -733,7 +747,7 @@ is now invoked deliberately (`--visual-diff`) rather than forced on every run.
 **Where**: HR34 business-rule code guidance; B5 steps.md Step 6.5 trigger list.
 **Change**: any `count/total*100` display where `total` can be 0/absent must compute the denominator from the data (e.g. sum of the distribution categories), never `total || 1`, and clamp the result to `[0,100]` (W-d → the 500% bug). Add "percentage of total / distribution %" to the Step 6.5 trigger phrases so it becomes a tested `utils/` pure fn, not an inline expression.
 
-<!-- @lesson id="L-2026-06-13-005" classification="prompt_rule" priority="medium" root_cause="hallucination" enforced_by="none" test_status="pending" -->
+<!-- @lesson id="L-2026-06-13-005" classification="prompt_rule" priority="medium" root_cause="hallucination" enforced_by="none — gen-rule not wired; runtime visual net opt-in/lazy (see Change W.1 policy)" test_status="pending" -->
 ### Change W.5 — Spec-literal labels & section structure from image-annotations.md
 
 **Where**: B10 agent brief (reproduce structure from image-annotations.md) + B8.6/B4 label check.
@@ -770,7 +784,7 @@ Three compounding causes, each a generalizable lesson:
 2. **Text/testid assertions are structure-blind.** ACT-09 ("renders all Objective questions") asserted only `text="What is the time complexity" visible`. That passes whether each answer is a compact row OR a chart-plus-duplicate-list. "Right content, wrong structure" is invisible to text/testid checks — the exact blind spot W.1 (visual diff) exists to cover.
 3. **No component-structure fidelity gate.** image-annotations described the objective block as "answer list with ✓/✗ + bar + value" (one row per answer). Nothing checked that the rendered DOM matched that structure, or that the same data array wasn't rendered twice. Component-level fidelity lived only in the design image, which went un-diffed.
 
-<!-- @lesson id="L-2026-06-13-006" classification="prompt_rule" priority="high" root_cause="ui_ambiguity" enforced_by="playwright-runner.ts:--visual-baseline-dir" test_status="enforced" -->
+<!-- @lesson id="L-2026-06-13-006" classification="prompt_rule" priority="high" root_cause="ui_ambiguity" enforced_by="_content/agent-build.md:B10-brief-W.6" test_status="exempt" -->
 ### Change W.6 — Simple proportional bar → CSS element, NOT a charting library
 
 **Where**: B10 agent brief HARD CONSTRAINTS; B2.5 design-token notes.
@@ -794,13 +808,13 @@ Three compounding causes, each a generalizable lesson:
 
 **The deepest gap of the series — the data model was under-modeled, locking the divergence in at the type layer.** Spec Component 9.8 + mcp-11 show the Objective popup as, per question: a `Question N` / `Score: x/total` header, the question text, then **every answer option** as a full-width row — the correct answer green+✓ (even if unselected), the learner's wrong pick red+✗, the rest neutral. The implementation instead rendered a **generic table** (`# | Full Name | Correct answers | ✓/✗`) — and even mislabeled the learner's answer with `fullNameLabel` ("Full Name"), the tell of a table template copy-pasted without reading the spec. Crucially, `ObjectiveExamItem` only carried `learnerAnswer/correctAnswer/isCorrect` (scalars) — **no `options[]`, no per-question `score/maxScore`** — so the design was literally **unrenderable** from the type, not just unrendered. Fix: extended the type (`options: string[]`, `score`, `maxScore`), enriched the mock, rewrote `ObjectiveModal` to per-question option blocks (`optionsFor()` falls back to `[correctAnswer, learnerAnswer]` if BE omits `options`), added `questionLabel`/`scoreOutOf` messages + scss.
 
-<!-- @lesson id="L-2026-06-13-009" classification="prompt_rule" priority="high" root_cause="missing_validation" enforced_by="none" test_status="pending" -->
+<!-- @lesson id="L-2026-06-13-009" classification="prompt_rule" priority="high" root_cause="missing_validation" enforced_by="feature-from-confluence.md:B8.6-field-category-7 (gen-time; runtime visual net opt-in/lazy — Change W.1 policy)" test_status="exempt" -->
 ### Change W.9 — The data model must carry every field the design renders (reverse-trace UI→type)
 
 **Where**: B8.6 SELF-EVALUATE (reverse-trace UI → API fields); B5 types.ts authoring; B10 brief.
 **Change**: Before B8.6 closes, reverse-trace **every visual element** in each UI_SCREENSHOT to a field on the response type. If the design shows a *list of options* per item → the type needs an `options: T[]` array, NOT two scalars (`learnerAnswer`/`correctAnswer`); if it shows a *per-item score* → the item type needs `score`/`maxScore`. A type that drops these makes the design **unrenderable** — the gap is then invisible (the component silently degrades to whatever the thin type allows, e.g. a table) until someone opens the screen. Add to the B8.6 field-category checklist: "(d) per-item collections & per-item scores the design lists — an array/score field, not a flattened scalar." This is the type-layer sibling of W.5 (labels) and W.8 (styled containers): all three are design facts that must survive into code, and all three are caught at runtime only by the W.1 visual diff.
 
-<!-- @lesson id="L-2026-06-13-008" classification="prompt_rule" priority="high" root_cause="ui_ambiguity" enforced_by="playwright-runner.ts:--visual-baseline-dir" test_status="enforced" -->
+<!-- @lesson id="L-2026-06-13-008" classification="prompt_rule" priority="high" root_cause="ui_ambiguity" enforced_by="_content/agent-build.md:B10-brief-W.8 (gen-time; runtime visual net opt-in/lazy — Change W.1 policy)" test_status="exempt" -->
 ### Change W.8 — State shown via a styled container must BE that container, not a minimal proxy
 
 **Where**: B10 agent brief HARD CONSTRAINTS; B2.5 design-token notes.
@@ -1066,3 +1080,20 @@ measured" stays distinct from a genuine zero (which would fake the north-star ze
 **Rule going forward**: comparing versions = comparing metrics, not vibes. Any new metric MUST be
 run-scoped (ride the run's own stream/state, never a `token_id`+time join), extensible across runners,
 and NULL when unmeasured.
+
+---
+
+## 2026-07-04 — Lesson from US-AD-095 ProgressReports (manual B11 follow-up)
+
+<!-- @lesson id="L-2026-07-04-001" classification="validation_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="feature-from-confluence.md:HR38" test_status="enforced" -->
+### Improvement — Overlay open-state visual baselines (visibility assertions don't catch mispositioning)
+
+**Where**: `.claude/commands/feature-from-confluence.md` HARD RULE 38 (new); `ux-states.json` generation at B5/B10; verified by `--visual-diff` at B11.
+
+**Trigger**: US-AD-095 ProgressReports passed **16/16 browser ACs + b11_a 5/5**, yet a real layout bug shipped — the Paragon `ModalPopup` filter popover rendered at (0,0), overlapping the class header and hiding its title. Every `ac_assertion` is `visible|hidden|text` → all passed because the popover WAS visible and its text WAS present. Confirmed real, not a headless artifact: a headed-browser measurement showed the Filter button at x=1121 while the popover sat at x=0,y=0. (The bug's own root cause: `positionRef` was handed a `useRef` object instead of the DOM element — Paragon `ModalPopup` wants a `useState` callback ref; fixed separately.) It was found only by manually opening the filter and comparing bounding boxes.
+
+**Root cause of the VERIFICATION GAP (the lesson, broader than this popup)**: B11's assertion vocabulary checks existence / visibility / text, **not layout / position / overlap** — so an entire class of defects (mispositioned, overlapping, off-screen, or (0,0)-pinned overlays: popovers, dropdowns, modals, tooltips) passes silently. **Universal by mechanism**: every feature with an overlay runs the same visibility-only B11 verify, so the blind spot recurs by construction — hence promoted on first occurrence (see `docs/design/self-training-loop.md` §5.1).
+
+**Change**: HARD RULE 38 — each overlay component MUST get an OPEN-state `ux-states.json` entry WITH a deterministic visual-diff `baseline` (entrance animation disabled via a build-time-gated reduced-motion lever). Chosen over adding `anchored-to:` / `no-overlap:` assertion types because (a) the `expected` enum is LOCKED (HR17), (b) a visual-diff baseline catches ANY open-state visual defect, not just position, and (c) it reuses the existing `--visual-diff` mechanism (cheaper). **`--visual-diff` WOULD have caught US-AD-095 had the filter-open state carried a baseline.**
+
+**Verified by**: US-AD-095 worked example — post-fix the filter-open state anchored at (937,341) below the button (was (0,0)); a deterministic reduced-motion baseline gave **0.00%** unchanged / **22.71%** on a deliberate change / **0.00%** after revert (`PLAYWRIGHT-007` PASS→FAIL→PASS). Enforced by HR38's B5/B11 self-eval gate (`[B5-overlay] overlays=N covered=N`).

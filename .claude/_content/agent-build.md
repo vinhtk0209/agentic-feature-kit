@@ -72,6 +72,14 @@ Agent({
       inline icon/label can share the row. **Never** render the same domain array twice (once to feed a
       chart, once as a sibling label list) — that duplication (the W-l Exam Details smell) means a chart
       was used where a row was wanted. `lint-feature.ts` W7 warns on a domain array `.map()`'d ≥2×.
+    - **(W.8) State shown via a styled container must BE that container, not a minimal proxy**: when the
+      design conveys a status/state through a **filled colored card** (pass=green / fail=red), a **status
+      icon** (✓/✗), a **tinted panel**, or a **badge** — reproduce that container (background fill + value
+      color + icon), NOT a cheaper proxy (a 1px border instead of a fill, plain text instead of a card, a
+      missing icon). A rule like "Passed → green" means the card background + value color, not a border.
+      Render every named section heading from the spec Component list; never hardcode a user-facing label
+      inline — use an i18n descriptor with the spec's exact wording ("Learner name", not "Name"). These
+      fidelity misses are invisible to testid/text assertions — stop them here, at generation time.
 
 ╔══════════════════════════════════════════════════════════════╗
 ║  CONTAMINATION GUARD                                         ║
