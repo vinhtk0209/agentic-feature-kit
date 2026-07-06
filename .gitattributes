@@ -1,0 +1,3 @@
+# Git hook shell scripts must stay LF even on Windows autocrlf checkouts —
+# a CRLF shebang line makes /bin/sh fail with "bad interpreter" when the hook runs.
+.githooks/* text eol=lf
