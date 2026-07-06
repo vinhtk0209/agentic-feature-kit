@@ -29,10 +29,13 @@ import { execFileSync, spawnSync } from 'child_process';
 
 export const VERIFY_NOTES_REF = 'refs/notes/verify';
 
+/** The kit source-of-truth package name — one of the A1.1 repo-role markers (see assertNotKitRepo). */
+const KIT_PACKAGE_NAME = 'feature-from-confluence-kit';
+
 export interface RecordVerifyInput {
   /** The workflow phase this verdict is for. */
   phase: 'verify_complete' | 'final_confirmed';
-  /** Feature name — its spec folder (docs/specs/<feature>/) is the hash-pin scope (§3.4). */
+  /** Feature name — the TARGET repo's tested tree (src/<feature>/ + ux-states.json) is the hash-pin scope (§7 A1.1). */
   feature: string;
   /** lint-feature --gate + tsc exit code, captured by the wrapper. */
   tierA_exit: number;
@@ -82,6 +85,54 @@ function resolveRepoRoot(): string {
   }).trim();
 }
 
+/**
+ * A1.1 repo-role guard (measurement-layer-v1.md §7 A1.1). A code-verify note is a TARGET-repo
+ * fact: it attests that a target repo's tests passed and must attach to the TARGET feature commit,
+ * never kit HEAD. Attaching it to the kit source-of-truth repo is a category error (the kit has no
+ * src/<Feature>, and its HEAD is a spec/evolution commit). This module ships to targets via the
+ * sync allowlist, so it WILL run in target repos — it must self-detect the kit and hard-error only
+ * there. Refuse if EITHER marker is present (err toward refusing on any kit signal):
+ *   1. sync.config.json with a `targets` array at repoRoot — the DEFINITIONAL source-of-truth
+ *      marker (it names the repos the kit syncs TO). Not in the sync allowlist, so it never
+ *      propagates to a target; its presence uniquely identifies the kit.
+ *   2. package.json name === KIT_PACKAGE_NAME — the kit package identity. Targets keep their own
+ *      names (@edx/frontend-app-*), so this never matches a target.
+ */
+function assertNotKitRepo(repoRoot: string): void {
+  const reasons: string[] = [];
+
+  const syncConfigPath = path.join(repoRoot, 'sync.config.json');
+  if (fs.existsSync(syncConfigPath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(syncConfigPath, 'utf8'));
+      if (Array.isArray(cfg.targets)) reasons.push('sync.config.json (with targets[])');
+    } catch {
+      /* a malformed sync.config.json is not a positive kit signal — ignore */
+    }
+  }
+
+  const pkgPath = path.join(repoRoot, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      if (pkg && pkg.name === KIT_PACKAGE_NAME) {
+        reasons.push(`package.json name === "${KIT_PACKAGE_NAME}"`);
+      }
+    } catch {
+      /* ignore unreadable/invalid package.json */
+    }
+  }
+
+  if (reasons.length > 0) {
+    throw new Error(
+      `record-verify: REFUSING to write a verify note — cwd resolves to the kit source-of-truth ` +
+        `repo (${repoRoot}), detected by: ${reasons.join(', ')}. A code-verify note attests that a ` +
+        `TARGET repo's tests passed and must attach to the TARGET feature commit, never kit HEAD ` +
+        `(measurement-layer-v1.md §7 A1.1). Run the capture wrapper from the target repo.`
+    );
+  }
+}
+
 /** Resolve kit version from commands/feature-from-confluence.md PROMPT_VERSION (mirrors telemetry.ts). */
 function resolveKitVersion(repoRoot: string): string {
   try {
@@ -96,18 +147,20 @@ function resolveKitVersion(repoRoot: string): string {
 }
 
 /**
- * Per-spec-folder content hash (§3.4, hash-pin scope frozen to the spec folder). Deterministic:
- * every file under docs/specs/<feature>/ is hashed in sorted repo-relative-path order, path bytes
- * mixed in so a rename changes the hash. A stale verify (files changed since) or a verify copied
- * from an unrelated feature cannot match. Returns { hash, coverage } — coverage is the file set the
- * guard must re-hash (§3.4 "recorded alongside content_hash").
+ * Per-feature content hash over the TARGET repo's TESTED TREE (§7 A1.1, superseding §3.4's
+ * docs/specs scope). Covers:
+ *   - every file under src/<feature>/ — the feature code AND its co-located *.test.ts (v3.16 puts
+ *     unit tests at src/<feature>/utils/*.test.ts, so a recursive walk captures them), and
+ *   - docs/specs/<feature>/ux-states.json IF present — it is target-side and DEFINES the E2E
+ *     states / ac_assertions / unit_tests, so editing it changes what was verified (A1.1).
+ * Deterministic: files hashed in sorted repo-relative-path order, path bytes mixed in so a rename
+ * changes the hash. A stale verify (tested files changed since) or one copied from another feature
+ * cannot match. Returns { hash, coverage } — coverage is the file set the sync guard must re-hash.
  */
 export function computeContentHash(
   repoRoot: string,
   feature: string
 ): { hash: string; coverage: string[] } {
-  const specDir = path.join(repoRoot, 'docs', 'specs', feature);
-
   const files: string[] = [];
   const walk = (dir: string): void => {
     if (!fs.existsSync(dir)) return;
@@ -119,7 +172,13 @@ export function computeContentHash(
       else if (entry.isFile()) files.push(full);
     }
   };
-  walk(specDir);
+
+  // The tested code + its co-located tests (target repo).
+  walk(path.join(repoRoot, 'src', feature));
+
+  // ux-states.json — target-side E2E test definition (A1.1). Single file; include if present.
+  const uxStates = path.join(repoRoot, 'docs', 'specs', feature, 'ux-states.json');
+  if (fs.existsSync(uxStates) && fs.statSync(uxStates).isFile()) files.push(uxStates);
 
   // Repo-relative, forward-slash paths so the hash is stable across OSes.
   const coverage = files
@@ -143,6 +202,8 @@ export function computeContentHash(
  */
 export function recordVerify(input: RecordVerifyInput): VerifyNote {
   const repoRoot = resolveRepoRoot();
+  // A1.1 repo-role guard: never attach a code-verify note to the kit source-of-truth repo.
+  assertNotKitRepo(repoRoot);
   const { hash, coverage } = computeContentHash(repoRoot, input.feature);
 
   const note: VerifyNote = {
@@ -185,6 +246,8 @@ export function captureAndRecord(opts: {
   runner_run_id?: string;
 }): VerifyNote {
   const repoRoot = resolveRepoRoot();
+  // A1.1 repo-role guard — fail BEFORE running the tier commands if we're in the kit repo.
+  assertNotKitRepo(repoRoot);
 
   const runExit = (cmd: string): number => {
     const r = spawnSync(cmd, { cwd: repoRoot, shell: true, stdio: 'inherit' });
