@@ -279,3 +279,126 @@ Land step 1 as the atomic trusted path, then 2, then 3; 4 any time after 1.
 - **Self-reference.** This layer's own code (`memory.ts`, the wrapper, the hook) is verified by the
   same Tier-A checks it installs — fine for static checks, but there is no computed-verify of the
   measurement layer itself until it runs on a real feature. Accept for v1; note it.
+
+---
+
+## 7. Amendment A1 (2026-07-06) — split-repo correction
+
+> **STATUS: AMENDMENT to a FROZEN doc — conscious, dated, review-required.** This section
+> SUPERSEDES the specific points of §3.1, §3.3, §3.4, and §3.6 called out below. The frozen
+> §1–§6 text is left intact as the review-passed record; where A1 conflicts with it, A1 wins.
+> Trigger: the **split-repo finding** surfaced while starting Rollout step 2 (the pre-commit
+> hook) — see A1.0.
+
+### A1.0 — The finding (why the frozen §3 was wrong)
+
+§3 (all of Q1–Q4) implicitly assumed **one repo** holds the spec, the code, the tests, the hook,
+and the verify note. It does not. The workspace splits them:
+
+- **`docs/specs/<Feature>/`** (spec artifacts: `checklist.md`, `ux-states.json`, context) lives in
+  the **kit repo** (source of truth). This is what the frozen §3.4 chose to hash.
+- **`src/<Feature>/`** (the generated feature code + its `*.test.ts`) lives in a **target repo**
+  (`isu-elearner-learning` / `isu-elearner-authoring`). The kit repo has **no `src/` at all.**
+- **Tier A/B actually EXECUTE in the target repo** during the B0–B12 command flow (dev server,
+  browser, `src/<Feature>` are all there). **The real exit codes are born target-side**, so the
+  trusted verdict is a target-repo fact, not a kit-repo fact.
+
+Consequence: a single pre-commit hook in one repo cannot see both trees, and a `content_hash` over
+the kit's `docs/specs` cannot honestly pin a verdict about target-repo tests. §3.1/§3.3/§3.4/§3.6
+are corrected accordingly. (Rollout step 1 — the `memory.ts` refusal — is **unaffected**: it is
+repo-agnostic and correct either way. Only steps 2–4 rested on the collapsed-repo assumption.)
+
+### A1.1 — Supersedes §3.4: hash the tested tree, on target HEAD, with a repo-role guard
+
+- **`content_hash` scope moves from `docs/specs/<feature>/` to the TARGET repo's *tested tree*:**
+  `src/<Feature>/` code **+ its test files** (`*.test.ts`) **+ `ux-states.json` if it is target-side.**
+  Rationale: the pin must bind the verdict to *the bytes that were verified*. Hashing the spec
+  markdown produces a **false PASS** when `src/<Feature>` is edited after verify (hash unchanged →
+  stale code drift, the exact thing the pin exists to catch, slips through) and a **false FAIL**
+  when `checklist.md` is reworded with code untouched. The frozen §3.4 open-risk already gestured at
+  "feature folder + its `ux-states.json` + any shared util it added" — A1 makes that the rule and
+  removes `docs/specs` as the hash target.
+- **The note attaches to TARGET HEAD** (the feature-implementation commit), never kit HEAD. Today
+  `record-verify.ts` is repo-agnostic (`resolveRepoRoot()` = `git rev-parse --show-toplevel` of cwd;
+  `git notes add … HEAD` in that root) — it attaches wherever it happens to run.
+- **Add an explicit repo-role guard (do NOT rely on "the wrapper happens to run in the target").**
+  `recordVerify` MUST **refuse to write a verify note when cwd resolves to the kit source-of-truth
+  repo** — detected by a kit identity marker (e.g. `package.json` `name === "feature-from-confluence-kit"`,
+  or presence of `sync.config.json`), not by heuristics. Writing a code-verify note against kit HEAD
+  is a category error and must be a hard error, not a silent misattachment.
+
+### A1.2 — Supersedes §3.1: TWO non-equivalent hooks, not one
+
+The single hook of frozen §3.1 splits into two hooks in two repos with **different, non-equivalent
+jobs**. The doc states plainly: **these are not the same gate and neither pretends to be the other.**
+
+- **Kit-repo pre-commit hook = spec-integrity gate ONLY (Tier-A-*lite*).** Trigger: staged
+  `docs/specs/<Feature>/**`. Runs only checks that are real kit-side with no target state and no
+  external deps: `checklist.md` header-lock (v3.10/3.11 exact headers), `ux-states.json` schema,
+  ACT-row / AC-coverage *format*, `INDEX.md` projection consistency. It **explicitly does NOT**
+  validate a Tier-B verify note and **does NOT claim code-verify** — it cannot see target state, and
+  asserting a check it cannot perform would reintroduce the self-report this layer removes. Honest
+  scope: *"the spec artifacts I am committing are well-formed."* Nothing about whether tests passed.
+- **Target-repo pre-commit hook = the real Tier A/B gate.** Installed in target repos. Tier A =
+  `lint-feature --gate` on `src/<Feature>` (impossible kit-side); Tier B = validate the **target**
+  note (exists on target HEAD + `hash(src/<Feature> + tests)` matches + `verified === true`).
+  **Distribution:** `.githooks/` is NOT in the sync allowlist, so a hook committed in the kit does
+  not propagate. The target-repo hook must be distributed deliberately — either add its path to the
+  sync allowlist, or install it during the feature-run flow — TBD at implementation.
+
+### A1.3 — Supersedes §3.3: the sync backstop is REMOTE-dependent (fail-closed)
+
+Because the kit repo cannot read a target repo's local git note, the kit-side sync guard has **no
+local source for the target verdict.** The backstop therefore consults Supabase:
+
+- **New table `verify_records`** (Supabase), keyed by `runner_run_id` (and carrying `repo` +
+  `head_sha`), **upserted by the same best-effort REST path `telemetry.ts` already uses** for
+  `repo_runs` (anon key, `Prefer: resolution=merge-duplicates`). Columns (shape, not DDL):
+  `{ runner_run_id (pk), repo, head_sha, feature, verified, tierA_exit, tierB_exit, content_hash,
+  kit_version, created_at }`. Written target-side by the B11 wrapper right after it writes the local
+  note — closest to where the exit codes are real.
+- **Sync guard validates by querying `verify_records`** for the feature/run being shipped and
+  requiring `verified === true` for the current target HEAD — a recompute-or-refuse posture, same
+  conscious-override family as the shipped dirty-guard (`--force-unverified`).
+- **Supabase unreachable → FAIL-CLOSED.** Sync is the true backstop, not fast feedback, and it is
+  low-frequency/deliberate, so blocking on an outage is a small cost; fail-**open** would put a
+  trivially-triggerable silent hole in the one gate that must not have one, reintroducing the
+  accidental/lazy pass v1 claims to defeat (§3.6). A genuine outage is handled by a **deliberate,
+  logged `--force-unverified <reason>`**, never a silent pass. Block messages distinguish
+  "unreachable — retry or force" from "queried OK, no record — run the B11 wrapper."
+
+### A1.4 — Supersedes §3.6: the remote seam is LOAD-BEARING in v1, not future work
+
+Frozen §3.6 framed the remote backstop as a future "seam left, not built," with v1 defended purely
+locally. A1.3 changes that: **the kit-side sync backstop cannot function without the remote
+`verify_records` record**, so the remote path is a v1 dependency, not an optional upgrade. Honest
+restatement:
+
+- v1 still **DEFEATS accidental/lazy forgery** (the `memory.ts` refusal + the hash-pin on the tested
+  tree), unchanged.
+- **Against a DELIBERATE adversarial model, A1.3's remote table adds ~no resistance.** The anon key
+  needed to write `verify_records` is the **same credential `telemetry.ts` already exposes
+  target-side**, so a model controlling the target shell can forge the remote row for no more cost
+  than forging the local note — writing both artifacts is not meaningfully harder than writing one.
+  A1.3 is therefore **not** an adversarial-forgery defense, and must not be described as one.
+- **A1.3's real value is elsewhere, and is real:** (1) it gives the kit-side sync guard **verify
+  visibility it currently has ZERO of** — today the kit cannot see any target verdict at all; and
+  (2) it defeats **non-adversarial self-report** — the actual common failure mode (a run that
+  declares itself done without a computed exit code), which is exactly what bit US-AD-095. Those are
+  the wins; adversarial unforgeability is not.
+- **KNOWN, ACCEPTED v1 limit.** True adversarial resistance needs exit-code capture on a host the
+  model does not control, writing with a **secret the model never holds off-host** (CI, or a runner
+  token issued out-of-band) — a **v2** requirement. A1.3 builds the *transport* (the table +
+  `runner_run_id` linkage) that a v2 trusted writer will use, but does **not** itself constitute one.
+
+### A1.5 — Rollout impact (amends §5)
+
+- **Step 1** (`memory.ts` refusal + `record-verify.ts` writer) — DONE and unaffected, **except** the
+  A1.1 repo-role guard + hash-scope change are now pending edits to `record-verify.ts` before it is
+  wired into a run.
+- **Step 2** (pre-commit hook) — becomes **two** hooks (A1.2). Kit-repo spec-integrity hook can be
+  built and tested now; target-repo Tier A/B hook depends on the A1.1 writer changes + a
+  distribution mechanism.
+- **Step 3** (sync backstop) — now depends on the `verify_records` table + the fail-closed rule
+  (A1.3), not a purely local recompute.
+- **Step 4** (legacy migration) — unchanged.
