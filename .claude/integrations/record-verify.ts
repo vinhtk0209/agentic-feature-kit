@@ -32,6 +32,13 @@ export const VERIFY_NOTES_REF = 'refs/notes/verify';
 /** The kit source-of-truth package name — one of the A1.1 repo-role markers (see assertNotKitRepo). */
 const KIT_PACKAGE_NAME = 'feature-from-confluence-kit';
 
+// Supabase (public anon creds — RLS-protected). Hardcoded fallback mirrors telemetry.ts so the
+// target-side verify_records write works even without a .env; env vars override if present (Gap C).
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://vkuojxgvkxndftenrdno.supabase.co';
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdW9qeGd2a3huZGZ0ZW5yZG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjgwMzMsImV4cCI6MjA5NzAwNDAzM30.MrTuIuN1kghxMXu0yyOW9MtmXVY7xH0-2HSCwTKo2cU';
+
 export interface RecordVerifyInput {
   /** The workflow phase this verdict is for. */
   phase: 'verify_complete' | 'final_confirmed';
@@ -272,6 +279,65 @@ function generateRunId(): string {
   return `run-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 }
 
+/**
+ * Best-effort target-side upsert of the verdict into Supabase `verify_records` (A1.3 — the WRITE
+ * half of the remote sync backstop). Called by the CLI right after the git note is written (the CLI
+ * IS the B11-wrapper entry point). BEST-EFFORT by design: a telemetry outage must never fail a real
+ * feature run — mirrors telemetry.ts. The asymmetry is intentional: this WRITE is fail-open, but the
+ * kit-side SYNC guard that READS this table (assertVerifiedForSync) is fail-CLOSED.
+ *
+ * NOT an adversarial control (A1.4 — KNOWN, ACCEPTED v1 limit): the anon key is public, so this row
+ * is exactly as forgeable as the git note — forging both costs no more than forging one. Its job is
+ * (1) give the kit-side sync guard verify VISIBILITY it otherwise has zero of, and (2) catch
+ * NON-adversarial self-report (a run that never computed a real exit code). It does NOT make sync
+ * tamper-proof; do not describe it as security.
+ */
+export async function pushVerifyRecord(note: VerifyNote): Promise<void> {
+  try {
+    const repoRoot = resolveRepoRoot();
+    const repo = path.basename(repoRoot);
+    let head_sha = '';
+    try {
+      head_sha = (
+        execFileSync('git', ['-C', repoRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }) as string
+      ).trim();
+    } catch {
+      /* unborn branch / no HEAD yet — leave blank */
+    }
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/verify_records`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+        Connection: 'close', // avoid the Windows undici keep-alive teardown assert (see telemetry.ts)
+      },
+      body: JSON.stringify({
+        runner_run_id: note.runner_run_id,
+        repo,
+        head_sha,
+        feature: note.feature,
+        verified: note.verified,
+        // snake_case keys to match the verify_records columns (Postgres folds unquoted identifiers
+        // to lowercase; values still come from the camelCase VerifyNote fields).
+        tier_a_exit: note.tierA_exit,
+        tier_b_exit: note.tierB_exit,
+        content_hash: note.content_hash,
+        kit_version: note.kit_version,
+        created_at: note.at,
+      }),
+    });
+    if (!res.ok) {
+      console.error(`⚠️  verify_records upsert failed (${res.status}) — the sync backstop won't see this run.`);
+    } else {
+      console.log(`↑ verify_records upserted (repo=${repo}, kit_version=${note.kit_version}, verified=${note.verified}).`);
+    }
+  } catch (e) {
+    console.error(`⚠️  verify_records upsert skipped: ${(e as Error).message}`);
+  }
+}
+
 // ── CLI ──────────────────────────────────────────────────────────────────────
 
 function parseFlags(argv: string[]): Record<string, string> {
@@ -303,7 +369,7 @@ function parseExit(v: string | undefined): number | null {
   return n;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const [, , command, ...rest] = process.argv;
   const flags = parseFlags(rest);
 
@@ -332,6 +398,7 @@ function main(): void {
     });
     console.log(JSON.stringify(note, null, 2));
     console.log(`\n✅ verify note written to ${VERIFY_NOTES_REF} @ HEAD — verified=${note.verified}`);
+    await pushVerifyRecord(note);
     break;
   }
 
@@ -349,6 +416,7 @@ function main(): void {
     });
     console.log(JSON.stringify(note, null, 2));
     console.log(`\n✅ verify note written to ${VERIFY_NOTES_REF} @ HEAD — verified=${note.verified}`);
+    await pushVerifyRecord(note);
     break;
   }
 
@@ -380,5 +448,8 @@ verified is COMPUTED from exit codes inside recordVerify; it is never accepted a
 }
 
 if (process.argv[1] && /record-verify\.ts$/.test(process.argv[1].replace(/\\/g, '/'))) {
-  main();
+  main().catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  });
 }

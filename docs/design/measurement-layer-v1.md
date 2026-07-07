@@ -357,9 +357,17 @@ local source for the target verdict.** The backstop therefore consults Supabase:
   `{ runner_run_id (pk), repo, head_sha, feature, verified, tierA_exit, tierB_exit, content_hash,
   kit_version, created_at }`. Written target-side by the B11 wrapper right after it writes the local
   note — closest to where the exit codes are real.
-- **Sync guard validates by querying `verify_records`** for the feature/run being shipped and
-  requiring `verified === true` for the current target HEAD — a recompute-or-refuse posture, same
-  conscious-override family as the shipped dirty-guard (`--force-unverified`).
+- **Sync guard validates by querying `verify_records` for the kit version being shipped** —
+  `kit_version = <PROMPT_VERSION>` AND `verified === true`, with **no repo and no head_sha filter
+  (GLOBAL count)**. Rationale: `npm run sync` ships the kit **infrastructure** (`commands/`,
+  `integrations/`, `templates/`, evolutions) to *all* targets at once, not one feature to one
+  target — so there is no single "feature/run being shipped" or "current target HEAD" to pin
+  against. The correct gate is: *has this kit version produced ≥1 computed-verified run anywhere?*
+  (≥1 real `verified` row for that `kit_version`). A per-target/per-HEAD requirement would be both
+  wrong (nothing target-specific is being shipped) and unsatisfiable (the first sync of a version
+  necessarily precedes any per-target run of it). This is a recompute-or-refuse posture in the same
+  conscious-override family as the shipped dirty-guard (`--force-unverified`). *(Implemented:
+  `countVerifiedRuns()` / `assertVerifiedForSync()` in `scripts/sync-to-targets.ts`.)*
 - **Supabase unreachable → FAIL-CLOSED.** Sync is the true backstop, not fast feedback, and it is
   low-frequency/deliberate, so blocking on an outage is a small cost; fail-**open** would put a
   trivially-triggerable silent hole in the one gate that must not have one, reintroducing the

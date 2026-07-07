@@ -24,6 +24,7 @@
  *   # Guardrail: a real sync REFUSES to run if .claude/ has uncommitted changes,
  *   # so raw/unproven drafts can't leak to targets (the 2026-07-04 near-miss).
  *   npm run sync -- --force-dirty   # override the git-clean guard (conscious opt-in)
+ *   npm run sync -- --force-unverified "<reason>"   # override the A1.3 verify backstop (logged)
  *
  *   npm run sync:rollback -- --target ../isu-elearner-learning   # restore last snapshot
  *   npm run sync:rollback -- --target <t> --snapshot <name>      # restore a specific one
@@ -42,6 +43,12 @@ const KIT_ROOT = path.dirname(path.dirname(thisFile)); // scripts/ -> kit root
 const SOURCE_CLAUDE = path.join(KIT_ROOT, ".claude");
 const CONFIG_PATH = path.join(KIT_ROOT, "sync.config.json");
 const ENV_PATH = path.join(KIT_ROOT, ".env");
+
+// Public anon creds fallback (RLS-protected) — mirrors telemetry.ts so the A1.3 verify backstop can
+// query even without a .env (Gap C). loadKitEnv() may override these via process.env before the guard runs.
+const FALLBACK_SUPABASE_URL = "https://vkuojxgvkxndftenrdno.supabase.co";
+const FALLBACK_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdW9qeGd2a3huZGZ0ZW5yZG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjgwMzMsImV4cCI6MjA5NzAwNDAzM30.MrTuIuN1kghxMXu0yyOW9MtmXVY7xH0-2HSCwTKo2cU";
 
 /**
  * Minimal .env loader (no dotenv dependency). Reads the kit's OWN .env and sets
@@ -520,6 +527,126 @@ function argValue(name: string): string | null {
   return a.includes("=") ? a.slice(a.indexOf("=") + 1) : process.argv[i + 1] ?? null;
 }
 
+// ---------------------------------------------------------------------------
+// A1.3 verify backstop — remote, FAIL-CLOSED. Refuse to sync a kit version that has no
+// computed-verified run recorded in Supabase verify_records. This is the machine-enforced version
+// of the standing "don't sync an unproven evolution" rule.
+//
+// FAIL-CLOSED is the whole point and the reason this breaks the codebase's usual fail-open Supabase
+// convention (reportInstalls / telemetry both fail-open): a guard that fails open would be bypassable
+// by simply making Supabase unreachable — useless. Sync is deliberate/low-frequency, so blocking on
+// an outage is a small cost; the conscious --force-unverified override covers a genuine outage.
+//
+// NOT an adversarial control (A1.4 — KNOWN, ACCEPTED v1 LIMIT): the anon key is public, so a
+// verify_records row is exactly as forgeable as the local git note. This catches MY OWN mistakes
+// (forgot to run the verifier; a broken verifier that silently self-reports pass) — NOT a deliberate
+// forge. Its value is: no evolution reaches a target without >=1 real exit-code-based verification
+// existing for that version. Do not describe it as tamper-proof.
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve the SOURCE kit version being synced (kit's own command file, or SRC_REF), formatted
+ * major.minor + ".0" to MATCH telemetry.ts / installs / verify_records.kit_version exactly.
+ */
+function resolveSourceVersion(): string | null {
+  try {
+    const content = SRC_REF
+      ? (git(["show", `${SRC_REF}:.claude/commands/feature-from-confluence.md`], "utf8") as string)
+      : fs.readFileSync(path.join(SOURCE_CLAUDE, "commands", "feature-from-confluence.md"), "utf8");
+    const m = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
+    return m ? m[1] + ".0" : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Count computed-verified runs for a kit version in Supabase verify_records. GLOBAL — no repo filter
+ * (Gap B): an evolution is proven by >=1 verified run ANYWHERE, not per specific target. THROWS on
+ * any non-OK / network error so the caller FAILS-CLOSED (an unreachable backstop is not proof).
+ */
+export async function countVerifiedRuns(version: string): Promise<number> {
+  const url = process.env.SUPABASE_URL || FALLBACK_SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
+  const res = await fetch(
+    `${url}/rest/v1/verify_records?select=runner_run_id&kit_version=eq.${encodeURIComponent(version)}&verified=is.true&limit=1`,
+    {
+      method: "GET",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        Prefer: "count=exact",
+        Connection: "close", // Windows undici teardown (see telemetry.ts / reportInstalls)
+      },
+    }
+  );
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+  const range = res.headers.get("content-range") || "";
+  const total = Number.parseInt(range.split("/")[1] ?? "", 10);
+  return Number.isNaN(total) ? 0 : total;
+}
+
+/**
+ * A1.3 verify backstop. Mirrors assertCleanClaudeTree: FAIL-CLOSED (exit 1), a conscious
+ * --force-unverified <reason> override (logged/auditable), and dry-run softens a refusal to a warning.
+ */
+async function assertVerifiedForSync(dryRun: boolean, forceUnverified: string | null): Promise<void> {
+  // A --ref deploy ships a committed, tagged version (its own conscious gate) — skip, like the dirty guard.
+  if (SRC_REF) return;
+
+  if (forceUnverified) {
+    console.warn(`\n⚠️  --force-unverified: syncing WITHOUT a proven verify record.`);
+    console.warn(`    Reason (logged): "${forceUnverified}"`);
+    console.warn(`    This bypasses the A1.3 backstop — a conscious, auditable override.\n`);
+    return;
+  }
+
+  const version = resolveSourceVersion();
+  if (!version) {
+    const msg = "verify backstop: could not resolve the kit version (PROMPT_VERSION) being synced.";
+    if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
+    fail(`${msg}\n  Fix the command file's PROMPT_VERSION, or override with --force-unverified "<reason>".`);
+  }
+
+  let count: number;
+  try {
+    count = await countVerifiedRuns(version);
+  } catch (e) {
+    const msg = `verify backstop: cannot reach Supabase to confirm kit ${version} is verified (${(e as Error).message}).`;
+    if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
+    console.error(`\nERROR: ${msg}`);
+    console.error("  FAIL-CLOSED: an unreachable backstop is not proof. Retry when Supabase is up,");
+    console.error('  or override consciously with --force-unverified "<reason>".\n');
+    await closeFetchSockets();
+    process.exit(1);
+  }
+
+  if (count > 0) {
+    console.log(`✓ verify backstop: kit ${version} has ${count} computed-verified run(s) — sync allowed.`);
+    return;
+  }
+
+  const msg = `verify backstop: kit ${version} has NO computed-verified run (verify_records empty for it).`;
+  if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
+  console.error(`\nERROR: ${msg}`);
+  console.error(`  Run a real feature through the B11 wrapper to record a verified run for ${version}, then re-sync.`);
+  console.error('  Or override consciously with --force-unverified "<reason>".\n');
+  await closeFetchSockets();
+  process.exit(1);
+}
+
+/** Parse `--force-unverified <reason>` / `--force-unverified=<reason>`; a reason is REQUIRED when present. */
+function parseForceUnverified(): string | null {
+  const idx = process.argv.findIndex((a) => a === "--force-unverified" || a.startsWith("--force-unverified="));
+  if (idx === -1) return null;
+  const a = process.argv[idx];
+  const reason = a.includes("=") ? a.slice(a.indexOf("=") + 1) : (process.argv[idx + 1] ?? "");
+  if (!reason || reason.startsWith("--")) {
+    fail('--force-unverified requires a <reason>, e.g. --force-unverified "supabase down; verified locally"');
+  }
+  return reason;
+}
+
 async function main() {
   // A-05 rollback mode: restore a target from its .kit-backup snapshot, then exit.
   if (process.argv.includes("--rollback")) {
@@ -536,6 +663,7 @@ async function main() {
     process.argv.includes("--preview") ||
     process.env.npm_config_dry_run === "true";
   const forceDirty = process.argv.includes("--force-dirty");
+  const forceUnverified = parseForceUnverified();
 
   // --ref <gitref> / --ref=<gitref>: deploy a specific kit version from git instead
   // of the working tree. Validated up front so a bad ref fails clearly, not mid-write.
@@ -561,6 +689,10 @@ async function main() {
   );
   console.log(`source: ${SRC_REF ? `git ref ${SRC_REF} @ ${KIT_ROOT}` : SOURCE_CLAUDE}`);
   console.log(`syncPaths: ${cfg.syncPaths.join(", ")}`);
+
+  // A1.3 verify backstop (fail-closed): refuse unless the kit version being synced has >=1
+  // computed-verified run in Supabase verify_records. Runs after the dirty guard; before any write.
+  await assertVerifiedForSync(dryRun, forceUnverified);
 
   // Collect source files once (same set applies to every target).
   const relFiles = cfg.syncPaths.flatMap(collectFiles);
