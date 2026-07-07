@@ -1,0 +1,15 @@
+{
+  "_comment": "Domain-term equivalence for the Figma design-matcher. Each array is a synonym group; the first member is the canonical token every other member is folded to before matching. Add pairs here — no code change needed. Seeded from spike round 1 (Module<->Session domain-noun divergence) + generic UI verbs.",
+  "groups": [
+    ["session", "module"],
+    ["add", "create", "new", "plus"],
+    ["delete", "remove", "trash"],
+    ["edit", "update", "modify"],
+    ["instructor", "teacher", "tutor"],
+    ["input", "field", "textbox"],
+    ["dropdown", "select", "picker"],
+    ["button", "btn", "cta"],
+    ["modal", "dialog", "popup"],
+    ["panel", "drawer", "sidebar"]
+  ]
+}
