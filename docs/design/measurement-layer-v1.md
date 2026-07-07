@@ -255,10 +255,44 @@ signal is.
    by:* dry-run sync refuses when the verify is legacy/mismatched/missing (and when a visual feature
    has `tierB_exit=null`); passes on a genuine computed-verified run; `--force-unverified` overrides
    consciously.
-4. **Migration pass (Q4).** Stamp the 3 legacy runs `unverified` / `legacy-uncomputed`.
-   *Proven by:* dashboard/report shows 0 computed-verified runs immediately after — the honest zero.
+4. **Migration pass (Q4) — ✅ DONE 2026-07-07 (Option C: doc annotation, no migration).**
+   The 3 pre-layer runs are recorded here as `verify_source = "legacy/uncomputed"`, NOT migrated
+   into any verify table:
+   - **Attendance (US-AD-093)** — authoring, 2026-06-29, `verify_complete` (self-reported).
+     `verify_source = "legacy/uncomputed"`.
+   - **AssessmentGrading (US-AD-094)** — authoring, 2026-06-29, `verify_complete` (self-reported).
+     `verify_source = "legacy/uncomputed"`.
+   - **US-AD-095-ProgressReports** — authoring, 2026-07-03, `final_confirmed` (self-reported;
+     hybrid run — agent B0→B10, then manual verify B10.5→B12). `verify_source = "legacy/uncomputed"`.
 
-Land step 1 as the atomic trusted path, then 2, then 3; 4 any time after 1.
+   All three **predate the trusted-writer path** (§4): no script observed an exit code for them, so
+   none carries a computed `verified`. They remain usable as narrative history but **never satisfy
+   the sync backstop** (A1.3 counts only `verified === true` rows in `verify_records`, of which they
+   have none) and **never count as 6F self-training fuel**. That is **correct as-is, not a gap** —
+   per §3.5, back-dating `verified` onto uncomputed runs would reintroduce the exact self-report this
+   layer removes.
+
+   **Why Option C (no DB write, no target-repo file touched):**
+   - **A — stamp rows into `verify_records`:** rejected. It would need a new `verify_source` column
+     plus sentinel values for the `NOT NULL` computed columns (`tier_a_exit`, `content_hash`,
+     `verified`), contaminating a table whose entire meaning is "a script saw exit 0" with rows no
+     script produced.
+   - **B — separate `legacy_runs` table:** rejected. Table + RLS + migration overhead for 3 static
+     historical rows that never join with the guard's query (the guard counts `verified` rows; legacy
+     rows are `verified=false`/absent and are excluded regardless of where they live).
+   - **C-ctx — a `verifySource` key in each `context-summary.md`:** rejected. Safe (unknown keys are
+     tolerated, INDEX bytes unchanged) but **invisible to any actual reader** — INDEX.md would still
+     show `verify_complete ✅` with no caveat — while dirtying 3 more target-repo files for no
+     functional gain. Also `INDEX.md` is auto-generated + byte-checked by `feature-index.ts --check`
+     (wired into `test:kit` in both repos), so it is **not** a hand-annotation surface.
+   - **C-doc — annotate here only (CHOSEN):** zero parsed/generated files touched, cannot be wiped by
+     regeneration, and the design doc is the canonical record for exactly this kind of decision.
+
+   *Proven by:* `verify_records` holds **0** rows (independently re-confirmed via anon SELECT,
+   `content-range: */0`) → kit_version 3.18.0 has zero computed-verified runs → the honest zero. The
+   first computed-verified run will come from the next real feature run through the wrapper.
+
+Land step 1 as the atomic trusted path, then 2, then 3; 4 (done — Option C doc annotation) required no code.
 
 ---
 
