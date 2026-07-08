@@ -116,7 +116,19 @@ export function extractInterfaces(src: string): Map<string, Shape> {
 
 // ─── api.ts → endpoint → return type ─────────────────────────────────────────────
 
-export interface RouteType { method: string; path: string; typeName: string; isArray: boolean; }
+export interface RouteType {
+  method: string;
+  path: string;
+  typeName: string;
+  isArray: boolean;
+  /**
+   * Raw resolved URL BEFORE `normalizePath` (query string + `${param}` placeholders intact).
+   * `path` is normalized for comparison (params→`:p`, query stripped) and cannot drive an `.http`
+   * request line; `rawPath` is the emit-ready source for the baseline `.http` generator. Optional:
+   * the contract-probe verifier never reads it — only `baseline-http-gen.ts` does.
+   */
+  rawPath?: string;
+}
 
 export function normalizePath(tpl: string): string {
   const i = tpl.indexOf('/api');
@@ -248,7 +260,7 @@ export function parseApiReturnTypes(apiText: string): RouteType[] {
     if (!call) return;
     const url = resolveUrl(call.urlArg);
     if (url === null) return;
-    out.push({ method: call.method, path: normalizePath(url), typeName: rt.typeName, isArray: rt.isArray });
+    out.push({ method: call.method, path: normalizePath(url), typeName: rt.typeName, isArray: rt.isArray, rawPath: url });
   };
 
   sf.forEachChild((node) => {
