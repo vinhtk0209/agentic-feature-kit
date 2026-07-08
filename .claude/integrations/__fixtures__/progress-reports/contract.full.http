@@ -1,0 +1,91 @@
+### Progress & Reports — API Contract (US-AD-095)
+### CONTRACT: FE_ONLY — endpoints inferred from spec; verify against backend when available.
+### Base URL host only (HR26): {{baseUrl}} = {{API_BASE_URL}}  (e.g. https://studio.example.com)
+### All /api/... path segments appear literally below.
+
+@baseUrl = {{API_BASE_URL}}
+@class_id = 1
+@assessment_id = all
+
+### 1. Class Progress Overview (KPIs + exam list + assessment availability)
+# Used by: ProgressReports.tsx (page load)
+# React Query key: ['progressReports', classId, 'overview']
+# FE calls: ✅
+GET {{baseUrl}}/api/admin/v1/classes/{{class_id}}/progress-reports/overview
+Accept: application/json
+
+### 2. Assessment Analytics (status donut + performance buckets + over-time) — reloads on filter
+# Used by: AssessmentSection.tsx
+# React Query key: ['progressReports', classId, 'analytics', assessmentId]
+# FE calls: ✅ (enabled only when hasPublishedAssessment)
+GET {{baseUrl}}/api/admin/v1/classes/{{class_id}}/progress-reports/assessment-analytics?assessment_id={{assessment_id}}
+Accept: application/json
+
+### 3. Learner Detail Metrics (table) — reflects current assessment filter
+# Used by: LearnerDetailTable.tsx
+# React Query key: ['progressReports', classId, 'learners', assessmentId]
+# FE calls: ✅
+GET {{baseUrl}}/api/admin/v1/classes/{{class_id}}/progress-reports/learners?assessment_id={{assessment_id}}
+Accept: application/json
+
+### 4. Export Report (PDF via server; CSV generated client-side) — mock
+# Used by: ExportButtons.tsx (PDF button)
+# FE calls: ✅ (format=pdf); format=csv handled client-side, no request
+POST {{baseUrl}}/api/admin/v1/classes/{{class_id}}/progress-reports/export
+Content-Type: application/json
+
+{
+  "format": "pdf",
+  "assessment_id": "all"
+}
+
+### =====================================================================
+### EXPECTED RESPONSE SHAPES  (source of truth for data/types.ts)
+### =====================================================================
+
+# --- Endpoint 1: GET /progress-reports/overview ---
+# ProgressOverview {
+#   completionRate: number;          // 0-100, class-level (learning completion only); 0 when totalEnrolled=0
+#   attendanceRate: number;          // 0-100
+#   totalLearners: number;
+#   totalEnrolled: number;
+#   hasPublishedAssessment: boolean; // false → hide filter + all assessment components (AC4)
+#   exams: ExamOption[];             // published + assigned assessments only
+# }
+# ExamOption { id: string; name: string; }
+
+# --- Endpoint 2: GET /progress-reports/assessment-analytics ---
+# AssessmentAnalytics {
+#   assessmentId: string;            // 'all' or specific exam id
+#   hasSubmissions: boolean;         // false → hide charts + empty state (AC7)
+#   status: StatusBreakdown;
+#   scoreDistribution: ScoreBucket[];
+#   overTime: OverTimePoint[];
+# }
+# StatusBreakdown {
+#   passed: number;                  // count learners
+#   incomplete: number;
+#   notAttempted: number;
+#   totalLearners: number;           // donut center value
+# }
+# ScoreBucket { label: string; min: number; max: number | null; count: number; }  // e.g. {label:'5s',min:0,max:5,count:...}
+# OverTimePoint { date: string; count: number; }  // date=YYYY-MM-DD, count=submissions that day
+
+# --- Endpoint 3: GET /progress-reports/learners ---
+# LearnerMetric[] where LearnerMetric {
+#   id: string;
+#   no: number;                      // row sequence
+#   learnerId: string;
+#   learnerName: string;
+#   progressPct: number;             // learner completion % (learner-level, distinct from class completionRate)
+#   attendancePct: number;
+#   score: LearnerScore | null;      // null → display "—" (not attempted)
+#   assessmentStatus: LearnerAssessmentStatus;
+#   atRisk: boolean;                 // informational signal (BR7)
+#   assessmentDetailUrl: string;     // nav target for learner-name click (AC17); in-class scope
+# }
+# LearnerScore { actual: number; max: number; }   // display "actual/max"
+# LearnerAssessmentStatus = 'Completed' | 'Incomplete' | 'Not Attempted'
+
+# --- Endpoint 4: POST /progress-reports/export ---
+# ExportResult { fileUrl: string; format: 'csv' | 'pdf'; }

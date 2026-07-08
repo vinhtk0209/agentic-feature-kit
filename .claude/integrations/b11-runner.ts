@@ -30,6 +30,7 @@ import { execSync, spawnSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { resolveRoutes, parseUxStates } from './ux-states';
+import { resolveContractHttp } from './contract-probe';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -297,11 +298,10 @@ function runCoverageGate(): { coverageErrors: number; coverageSummary: string } 
 function runContractProbe(): { contractErrors: number; contractWarnings: number; contractSummary: string } {
   if (!featurePath) return { contractErrors: 0, contractWarnings: 0, contractSummary: 'contract=skipped (no --feature-path)' };
   const probe = path.join(integrationsDir, 'contract-probe.ts');
-  let httpFile = '';
-  try {
-    const hit = fs.readdirSync(specsDir).find((f) => f.endsWith('.http'));
-    if (hit) httpFile = path.join(specsDir, hit);
-  } catch { /* no specs dir */ }
+  // The flagship writes the contract to docs/components/<Feature>/<Feature>.full.http (B8.6);
+  // resolveContractHttp looks there first (prefer *.full.http), with docs/specs/<Feature>/ as fallback.
+  const componentsDir = path.join(cwd, 'docs', 'components', featureName);
+  const httpFile = resolveContractHttp(componentsDir, specsDir);
   const typesFile = [path.join(cwd, featurePath, 'data', 'types.ts'), path.join(cwd, featurePath, 'types.ts')].find((p) => fs.existsSync(p)) ?? '';
   const apiFile = [path.join(cwd, featurePath, 'data', 'api.ts'), path.join(cwd, featurePath, 'api.ts')].find((p) => fs.existsSync(p)) ?? '';
   if (!fs.existsSync(probe) || !httpFile || !typesFile || !apiFile) {

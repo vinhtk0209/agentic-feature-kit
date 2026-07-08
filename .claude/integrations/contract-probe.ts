@@ -37,6 +37,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import * as ts from 'typescript';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -124,16 +125,168 @@ export function normalizePath(tpl: string): string {
   return p.split(/[?\s]/)[0].replace(/\/+$/, '');
 }
 
-export function parseApiReturnTypes(apiText: string): RouteType[] {
-  const out: RouteType[] = [];
-  const chunks = apiText.split(/export const /).slice(1);
-  for (const chunk of chunks) {
-    const ret = chunk.match(/:\s*Promise<\s*([A-Za-z0-9_]+)\s*(\[\])?\s*>/);
-    const url = chunk.match(/\.(get|delete|post|put|patch)\(\s*`([^`]+)`/);
-    if (!ret || !url) continue;
-    out.push({ method: url[1].toUpperCase(), path: normalizePath(url[2]), typeName: ret[1], isArray: !!ret[2] });
+const HTTP_METHODS = new Set(['get', 'post', 'put', 'delete', 'patch']);
+
+/** Raw text of a template/string literal with the outer delimiters stripped, `${…}` preserved. */
+function literalText(node: ts.Node): string | null {
+  if (
+    ts.isTemplateExpression(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    ts.isStringLiteral(node)
+  ) {
+    let t = node.getText();
+    const first = t[0];
+    const last = t[t.length - 1];
+    if ((first === '`' || first === "'" || first === '"') && last === first) t = t.slice(1, -1);
+    return t;
+  }
+  return null;
+}
+
+/** First `return <template/string>` in a block, if any (URL-builder helpers use this shape). */
+function returnLiteral(block: ts.Block): string | null {
+  for (const stmt of block.statements) {
+    if (ts.isReturnStatement(stmt) && stmt.expression) {
+      const t = literalText(stmt.expression);
+      if (t !== null) return t;
+    }
+  }
+  return null;
+}
+
+/** Textually expand `${helper(...)}` occurrences using the helper-template map (bounded recursion). */
+function expandTemplate(tpl: string, helpers: Map<string, string>): string {
+  let out = tpl;
+  for (let i = 0; i < 10; i += 1) {
+    let changed = false;
+    out = out.replace(/\$\{\s*([A-Za-z0-9_]+)\s*\([^}]*\)\s*\}/g, (whole, fn) => {
+      if (helpers.has(fn)) { changed = true; return helpers.get(fn) as string; }
+      return whole;
+    });
+    if (!changed) break;
   }
   return out;
+}
+
+/**
+ * api.ts → endpoint return types (TS Compiler API — NOT regex).
+ *
+ * Handles BOTH real-feature convention (`export async function getX(): Promise<T>` + a URL-builder
+ * helper call `getXUrl(id)`) AND the older inline convention (`export const getX = async (): Promise<T>
+ * => { …get(`…`)… }`). URL-builder helpers are resolved to their literal path so `normalizePath`
+ * yields the same path the `.http` request line does. Output interface is unchanged (RouteType[]).
+ */
+export function parseApiReturnTypes(apiText: string): RouteType[] {
+  const sf = ts.createSourceFile('api.ts', apiText, ts.ScriptTarget.Latest, true);
+
+  // Pass 1: collect URL-builder helpers (const arrow / function returning a single template/string).
+  const helpers = new Map<string, string>();
+  sf.forEachChild((node) => {
+    if (ts.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.initializer && ts.isArrowFunction(decl.initializer)) {
+          const body = decl.initializer.body;
+          const t = ts.isBlock(body) ? returnLiteral(body) : literalText(body);
+          if (t !== null) helpers.set(decl.name.text, t);
+        }
+      }
+    }
+    if (ts.isFunctionDeclaration(node) && node.name && node.body) {
+      const t = returnLiteral(node.body);
+      if (t !== null) helpers.set(node.name.text, t);
+    }
+  });
+
+  // Pass 2: collect endpoints (function-likes with a Promise<T> return type + an http-method call).
+  const out: RouteType[] = [];
+
+  const returnTypeInfo = (typeNode: ts.TypeNode | undefined): { typeName: string; isArray: boolean } | null => {
+    if (!typeNode || !ts.isTypeReferenceNode(typeNode)) return null;
+    if (typeNode.typeName.getText() !== 'Promise' || !typeNode.typeArguments || !typeNode.typeArguments[0]) return null;
+    let inner: ts.TypeNode = typeNode.typeArguments[0];
+    let isArray = false;
+    if (ts.isArrayTypeNode(inner)) { isArray = true; inner = inner.elementType; }
+    else if (ts.isTypeReferenceNode(inner) && inner.typeName.getText() === 'Array' && inner.typeArguments?.[0]) {
+      isArray = true; inner = inner.typeArguments[0];
+    }
+    const typeName = ts.isTypeReferenceNode(inner) ? inner.typeName.getText() : inner.getText();
+    return { typeName, isArray };
+  };
+
+  const findHttpCall = (body: ts.Node): { method: string; urlArg: ts.Expression } | null => {
+    let hit: { method: string; urlArg: ts.Expression } | null = null;
+    const visit = (n: ts.Node): void => {
+      if (hit) return;
+      if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)) {
+        const m = n.expression.name.text.toLowerCase();
+        if (HTTP_METHODS.has(m) && n.arguments.length > 0) {
+          hit = { method: m.toUpperCase(), urlArg: n.arguments[0] };
+          return;
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(body);
+    return hit;
+  };
+
+  const resolveUrl = (arg: ts.Expression): string | null => {
+    // Helper call: getXUrl(...) → expand its template.
+    if (ts.isCallExpression(arg) && ts.isIdentifier(arg.expression) && helpers.has(arg.expression.text)) {
+      return expandTemplate(helpers.get(arg.expression.text) as string, helpers);
+    }
+    // Inline template/string literal.
+    const t = literalText(arg);
+    if (t !== null) return expandTemplate(t, helpers);
+    return null;
+  };
+
+  const handle = (typeNode: ts.TypeNode | undefined, body: ts.Node | undefined): void => {
+    const rt = returnTypeInfo(typeNode);
+    if (!rt || !body) return;
+    const call = findHttpCall(body);
+    if (!call) return;
+    const url = resolveUrl(call.urlArg);
+    if (url === null) return;
+    out.push({ method: call.method, path: normalizePath(url), typeName: rt.typeName, isArray: rt.isArray });
+  };
+
+  sf.forEachChild((node) => {
+    if (ts.isFunctionDeclaration(node) && node.body) {
+      handle(node.type, node.body);
+    }
+    if (ts.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (decl.initializer && (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))) {
+          handle(decl.initializer.type, decl.initializer.body);
+        }
+      }
+    }
+  });
+
+  return out;
+}
+
+// ─── .http contract-file resolution (B11 lookup) ─────────────────────────────────
+
+/** Pick the best `.http` from a filename list: prefer `*.full.http`, else any `*.http`, else ''. */
+export function pickHttpFile(files: string[]): string {
+  return files.find((f) => f.endsWith('.full.http')) ?? files.find((f) => f.endsWith('.http')) ?? '';
+}
+
+/**
+ * Resolve a feature's `.http` contract for the B11 probe. The flagship writes it to
+ * `docs/components/<Feature>/<Feature>.full.http` (B8.6), so look there first; fall back to
+ * `docs/specs/<Feature>/`. Returns '' if neither has one.
+ */
+export function resolveContractHttp(componentsDir: string, specsDir: string): string {
+  const inDir = (dir: string): string => {
+    let files: string[];
+    try { files = fs.readdirSync(dir); } catch { return ''; }
+    const hit = pickHttpFile(files);
+    return hit ? path.join(dir, hit) : '';
+  };
+  return inDir(componentsDir) || inDir(specsDir);
 }
 
 // ─── .http → endpoints + mock JSON ───────────────────────────────────────────────
@@ -309,9 +462,163 @@ export function detectSuspectValues(
   }
 }
 
+// ─── EXPECTED RESPONSE SHAPES → contract shapes (TS-prose format, shape-vs-shape) ──
+
+/**
+ * Parse the `### EXPECTED RESPONSE SHAPES` section of a flagship-generated `.http` into the same
+ * Shape/FieldType model `extractInterfaces` produces. It normalizes the comment-prefixed TS prose
+ * back into compilable TS and reuses `extractInterfaces` (so the field parsing is identical to the
+ * types.ts side). Returns an empty map if the section is absent. `type X = union` aliases stay
+ * unmodeled — the same known caveat as extractInterfaces.
+ */
+export function parseExpectedShapes(httpText: string): Map<string, Shape> {
+  const lines = httpText.replace(/\r\n/g, '\n').split('\n');
+  const start = lines.findIndex((l) => /EXPECTED RESPONSE SHAPES/i.test(l));
+  if (start < 0) return new Map();
+
+  const body: string[] = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const stripped = lines[i].replace(/^\s*#+\s?/, '').replace(/^\s*\/\/\s?/, '');
+    const trimmed = stripped.trim();
+    if (/^-{2,}/.test(trimmed)) continue; // --- Endpoint N: … --- markers
+    if (/^={3,}/.test(trimmed)) continue; // ===== decorators
+    body.push(stripped);
+  }
+
+  let src = body.join('\n');
+  // `Name[] where Name {` → `Name {`  (array-response header form)
+  src = src.replace(/^\s*[A-Za-z0-9_]+\s*\[\]\s+where\s+([A-Za-z0-9_]+\s*\{)/gm, '$1');
+  // bare `Name {` opener (no keyword) → `interface Name {`
+  src = src.replace(/^(\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*\{)/gm, '$1interface $2$3');
+  // `Name = …` type alias → `type Name = …` (keeps it compilable; extractInterfaces ignores it)
+  src = src.replace(/^(\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*=\s*)/gm, '$1type $2$3');
+
+  return extractInterfaces(src);
+}
+
+function fmtFieldType(ft: FieldType): string {
+  if (ft.kind === 'primitive') return ft.name;
+  if (ft.kind === 'array') return `${fmtFieldType(ft.element)}[]`;
+  return ft.name;
+}
+
+/** Type-vs-type field compare (contract field vs types.ts field). Advisory: unresolvable refs skip. */
+function compareFieldType(
+  endpoint: string, pathStr: string, ct: FieldType, tt: FieldType,
+  contractShapes: Map<string, Shape>, typesShapes: Map<string, Shape>,
+  findings: ContractFinding[], seen: Set<string>, stats: { n: number },
+): void {
+  if (ct.kind === 'array' || tt.kind === 'array') {
+    if (ct.kind !== 'array' || tt.kind !== 'array') {
+      pushUnique(findings, { endpoint, level: 'error', kind: 'type_mismatch', path: pathStr, msg: `contract ${fmtFieldType(ct)} vs data/types.ts ${fmtFieldType(tt)} (array mismatch)` });
+      return;
+    }
+    compareFieldType(endpoint, `${pathStr}[0]`, ct.element, tt.element, contractShapes, typesShapes, findings, seen, stats);
+    return;
+  }
+  if (ct.kind === 'primitive' && tt.kind === 'primitive') {
+    if (ct.name === 'unknown' || tt.name === 'unknown') return; // e.g. a string-literal union — unresolvable, skip
+    if (ct.name !== tt.name) {
+      pushUnique(findings, { endpoint, level: 'error', kind: 'type_mismatch', path: pathStr, msg: `contract expects ${ct.name} but data/types.ts has ${tt.name}` });
+    }
+    return;
+  }
+  if (ct.kind === 'ref' && tt.kind === 'ref' && ct.name === tt.name) {
+    compareShapeVsShape(endpoint, pathStr, contractShapes, typesShapes, ct.name, findings, seen, stats);
+    return;
+  }
+  // ref-vs-primitive or differing ref names (e.g. a `type` alias like AssessmentFilterValue) → skip.
+}
+
+/**
+ * Compare a contract interface against the data/types.ts interface of the same name, field by field.
+ * Contract = source of truth: a contract field missing from types.ts is an error; a types.ts field the
+ * contract doesn't declare is a warn. Skips silently if either side's interface can't be resolved.
+ * `stats.n` counts fields present on BOTH sides — the real like-for-like verifications.
+ */
+export function compareShapeVsShape(
+  endpoint: string, pathStr: string,
+  contractShapes: Map<string, Shape>, typesShapes: Map<string, Shape>,
+  typeName: string, findings: ContractFinding[], seen: Set<string>, stats: { n: number },
+): void {
+  const cShape = contractShapes.get(typeName);
+  const tShape = typesShapes.get(typeName);
+  if (!cShape || !tShape) return; // unresolvable on one side — advisory-safe skip
+  const guard = `${typeName}@${pathStr}`;
+  if (seen.has(guard)) return;
+  seen.add(guard);
+
+  for (const [fname, cField] of cShape) {
+    const here = pathStr ? `${pathStr}.${fname}` : fname;
+    const tField = tShape.get(fname);
+    if (!tField) {
+      pushUnique(findings, { endpoint, level: 'error', kind: 'missing', path: here, msg: `contract declares "${fname}" but data/types.ts does not model it` });
+      continue;
+    }
+    stats.n += 1; // present on both sides — a real field verification
+    compareFieldType(endpoint, here, cField.type, tField.type, contractShapes, typesShapes, findings, seen, stats);
+  }
+  for (const [fname] of tShape) {
+    if (!cShape.has(fname)) {
+      const here = pathStr ? `${pathStr}.${fname}` : fname;
+      pushUnique(findings, { endpoint, level: 'warn', kind: 'extra', path: here, msg: `data/types.ts models "${fname}" which the contract does not declare` });
+    }
+  }
+}
+
+/**
+ * Shape-vs-shape probe for the real flagship `.http` format (`### EXPECTED RESPONSE SHAPES`).
+ * The `.http` carries TS response shapes (source of truth for data/types.ts) rather than mock JSON,
+ * so this compares contract interfaces against the generated data/types.ts interfaces per endpoint.
+ */
+function probeShapeMode(input: ProbeInput): { findings: ContractFinding[]; verifiedFields: number } {
+  const typesShapes = extractInterfaces(input.typesText);
+  const contractShapes = parseExpectedShapes(input.httpText);
+  const routes = parseApiReturnTypes(input.apiText);
+  const endpoints = parseHttp(input.httpText);
+  const findings: ContractFinding[] = [];
+  const stats = { n: 0 };
+
+  for (const ep of endpoints) {
+    if (input.getOnly && ep.method !== 'GET') continue;
+    const label = `${ep.method} ${ep.path}`;
+    const route = routes.find((r) => r.method === ep.method && r.path === ep.path);
+    if (!route) {
+      findings.push({ endpoint: label, level: 'warn', kind: 'unmapped', path: '', msg: 'no matching api.ts return type for this endpoint' });
+      continue;
+    }
+    if (!contractShapes.has(route.typeName)) {
+      findings.push({ endpoint: label, level: 'info', kind: 'no_response', path: '', msg: `no EXPECTED RESPONSE SHAPES entry for ${route.typeName}` });
+      continue;
+    }
+    if (!typesShapes.has(route.typeName)) {
+      findings.push({ endpoint: label, level: 'warn', kind: 'unmapped', path: '', msg: `api.ts returns ${route.typeName} but data/types.ts has no such interface` });
+      continue;
+    }
+    compareShapeVsShape(label, '', contractShapes, typesShapes, route.typeName, findings, new Set(), stats);
+  }
+  return { findings, verifiedFields: stats.n };
+}
+
 // ─── Probe ───────────────────────────────────────────────────────────────────────
 
+/**
+ * Dispatch by `.http` format: a `# Mock response:` block → the value-vs-type path (legacy / sample-app
+ * format); otherwise a `### EXPECTED RESPONSE SHAPES` section → the shape-vs-shape path (real flagship
+ * format). `probeContract` keeps its original signature for callers that only need findings.
+ */
+export function probeContractDetailed(input: ProbeInput): { findings: ContractFinding[]; verifiedFields: number } {
+  const hasMockResponse = /#\s*Mock response:/i.test(input.httpText);
+  const hasExpectedShapes = /EXPECTED RESPONSE SHAPES/i.test(input.httpText);
+  if (!hasMockResponse && hasExpectedShapes) return probeShapeMode(input);
+  return { findings: probeValueMode(input), verifiedFields: 0 };
+}
+
 export function probeContract(input: ProbeInput): ContractFinding[] {
+  return probeContractDetailed(input).findings;
+}
+
+function probeValueMode(input: ProbeInput): ContractFinding[] {
   const interfaces = extractInterfaces(input.typesText);
   const routes = parseApiReturnTypes(input.apiText);
   const endpoints = parseHttp(input.httpText);
@@ -376,7 +683,7 @@ if (process.argv[1] && /contract-probe\.ts$/.test(process.argv[1].replace(/\\/g,
     console.error('Usage: contract-probe.ts --http <.http> --types <types.ts> --api <api.ts> [--get-only] [--gate] [--json]');
     process.exit(2);
   }
-  const findings = probeContract({
+  const { findings, verifiedFields } = probeContractDetailed({
     httpText: fs.readFileSync(httpPath, 'utf-8'),
     typesText: fs.readFileSync(typesPath, 'utf-8'),
     apiText: fs.readFileSync(apiPath, 'utf-8'),
@@ -386,17 +693,17 @@ if (process.argv[1] && /contract-probe\.ts$/.test(process.argv[1].replace(/\\/g,
   const warns = findings.filter((f) => f.level === 'warn');
 
   if (process.argv.includes('--json')) {
-    console.log(JSON.stringify({ errors: errors.length, warnings: warns.length, findings }, null, 2));
+    console.log(JSON.stringify({ errors: errors.length, warnings: warns.length, verifiedFields, findings }, null, 2));
   } else {
     console.log(`\n🔌 contract-probe — ${httpPath}\n`);
     if (findings.length === 0) {
-      console.log('   ✅ contract matches types for all mapped endpoints\n');
+      console.log(`   ✅ contract matches types for all mapped endpoints (${verifiedFields} field(s) verified)\n`);
     } else {
       for (const f of findings) {
         const icon = f.level === 'error' ? '❌' : f.level === 'warn' ? '⚠️ ' : 'ℹ️ ';
         console.log(`   ${icon} [${f.kind}] ${f.endpoint}${f.path ? ` · ${f.path}` : ''}\n        ${f.msg}`);
       }
-      console.log(`\n   ${errors.length} error(s), ${warns.length} warning(s)\n`);
+      console.log(`\n   ${errors.length} error(s), ${warns.length} warning(s), ${verifiedFields} field(s) verified\n`);
     }
   }
   process.exit(process.argv.includes('--gate') && errors.length > 0 ? 1 : 0);
