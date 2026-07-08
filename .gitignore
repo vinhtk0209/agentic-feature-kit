@@ -37,3 +37,13 @@ docs/specs/.kpi-history.jsonl
 # Kept local ON PURPOSE (not published to this public repo): internal design doc.
 # Ignored so `git clean -fd` can't delete it; content stays off GitHub.
 docs/design/self-training-loop.md
+
+# NOTE — sync-target tooling tracking (informational; does NOT affect this repo's ignores).
+# This kit's .claude/ toolchain is the source of truth here and IS committed. The two consuming
+# repos handle the SYNCED copy differently, per their own .gitignore — know this before syncing:
+#   - isu-elearner-learning  → TRACKS .claude/ (synced kit files are committed on its branch).
+#   - isu-elearner-authoring → GITIGNORES the kit toolchain (.claude/integrations|templates|_content,
+#     the synced commands, prompt-evolution.md). There it is LOCAL-ONLY/untracked: `npm run sync` or a
+#     manual copy updates the working-tree files (fix is live immediately), but there is NO commit and
+#     `git add` refuses without -f. Don't force-add against that intent, and don't expect `git restore`
+#     to bring those files back — re-run sync/copy from the kit instead.
