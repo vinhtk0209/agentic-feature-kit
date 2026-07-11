@@ -2153,7 +2153,7 @@ Log `[B11-coverage] ac_covered=N/M unit=K e2e=J errors=E` → `recovery.log`. Do
    `docs/specs/<FeatureName>/checklist.md` — include updated count in final summary.
 4. Save context:
    ```bash
-   npx tsx .claude/integrations/memory.ts save verify_complete '{"featureName":"<name>","testsPassed":true}'
+   npx tsx .claude/integrations/memory.ts save verify_complete '{"featureName":"<name>"}'
    ```
 5. **(v3.17 — Change T.2 BE-PENDING tracking)** Scan `docs/specs/<FeatureName>/checklist.md` for any ACT rows that contain `<!-- enforced-by: BE -->`. If **any** exist, create `docs/specs/<FeatureName>/BE-PENDING.md`:
 
