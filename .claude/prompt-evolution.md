@@ -1097,3 +1097,132 @@ and NULL when unmeasured.
 **Change**: HARD RULE 38 — each overlay component MUST get an OPEN-state `ux-states.json` entry WITH a deterministic visual-diff `baseline` (entrance animation disabled via a build-time-gated reduced-motion lever). Chosen over adding `anchored-to:` / `no-overlap:` assertion types because (a) the `expected` enum is LOCKED (HR17), (b) a visual-diff baseline catches ANY open-state visual defect, not just position, and (c) it reuses the existing `--visual-diff` mechanism (cheaper). **`--visual-diff` WOULD have caught US-AD-095 had the filter-open state carried a baseline.**
 
 **Verified by**: US-AD-095 worked example — post-fix the filter-open state anchored at (937,341) below the button (was (0,0)); a deterministic reduced-motion baseline gave **0.00%** unchanged / **22.71%** on a deliberate change / **0.00%** after revert (`PLAYWRIGHT-007` PASS→FAIL→PASS). Enforced by HR38's B5/B11 self-eval gate (`[B5-overlay] overlays=N covered=N`).
+
+---
+
+## 2026-07-09 — Change V.1: B2.5 wires the existing (previously unwired) `figma-rest-source.ts` as the PREFERRED token source, worked example: US-LE-019 `CourseHeader`
+
+### Change V.1 — Figma-sourced design tokens take priority over screenshot estimation in B2.5
+
+**Where**: `.claude/_content/images.md` — new **Step 0** inserted before B2.5's existing screenshot-based
+`Process` (renamed to "Process (fallback)"), plus an amendment to the "Determinism rules" section to
+allow a Figma-sourced palette to exceed the fixed 5-color count when the live source has more real
+distinct tokens. Wires `.claude/integrations/figma-rest-source.ts` (`FigmaRestSource.resolveCluster`,
+already built for the `design-to-ui` roadmap but explicitly marked "NOT wired into … the flagship yet
+(Phase 2)" in its own header) into the flagship for the first time — a narrower, B2.5-only wiring than
+the full D0/`design-to-ui` roadmap those hooks were designed for.
+
+**Why**: a live run of the flagship on `isu-elearner-learning` (feature `US-LE-019-AttendanceCheckin`)
+built a `CourseHeader` component from a spec that included a Figma link, but B2.5 (as it existed before
+this change) has NO Figma-awareness at all — it only ever estimates tokens by having the model look at
+a flattened screenshot. Two independent, confirmed root causes produced a visibly wrong header once the
+user pointed out the mismatch and it was checked against the live Figma file via `figma-rest-source.ts`
+run manually (`FIGMA_TOKEN` was available from a prior spike, `.env.figma-spike` at the workspace root):
+  1. **Spec prose quoted a stale hex.** Component 2.1.2 said "navy blue (#1C2B4A) hero background" —
+     B2.5 trusted this literal value. The real Figma node's hero fill is
+     `linear-gradient(180deg, #1569ae, #00569c)` — not navy, not flat, wrong angle too when a gradient
+     was hand-approximated later at implementation time.
+  2. **Screenshot estimation is imprecise for exact values even without a stale prose hex to blame.**
+     The H1 title was estimated "≈28px" by eye from the PNG; Figma's exact `style.fontSize` is `32`
+     (`letterSpacing: -0.64`). Three more tokens (accent orange, section-badge blue, status-pill fill)
+     were each off by a similar margin — every one confirmable in raw Figma node JSON but not reliably
+     recoverable from a raster screenshot.
+  This is not a one-off mistake in that single run — it is a **structural gap**: B2.5 had a real,
+  already-built Figma REST integration sitting unused in the same repo the whole time, and never called
+  it. Any future feature with a Figma link in its spec would hit the same two failure modes.
+
+**What**: when `raw-spec.md` contains a `figma.com/design/` or `figma.com/file/` URL AND `FIGMA_TOKEN`
+is set, B2.5 Step 0 now runs `figma-rest-source.ts` FIRST and treats its output as ground truth,
+overriding both the spec prose's own claimed values and any prior/fallback screenshot estimate. Every
+prose-vs-Figma contradiction found gets logged explicitly (`[B2.5-figma] prose-vs-figma-mismatch
+field=<name> prose=<value> figma=<value>`) rather than silently resolved, so a human can also notice the
+spec document itself is stale. Falls back to the existing screenshot Process unchanged when no Figma URL
+is present or `FIGMA_TOKEN` is missing — this is additive, not a breaking change to the existing path.
+
+**Verified by**: the `isu-elearner-learning` worked example — re-fetched the same Figma node
+(`QwSquTxduuodo0r4tIqiNq`, node `6713-66557`) via `figma-rest-source.ts`'s underlying REST calls,
+confirmed the exact gradient stops / font size / 3 additional accent colors, corrected
+`visual-properties.md` + the feature's `.scss` to match, and documented the full root-cause chain in that
+feature's `recovery.log` (`[B12-figma-audit]` entry, `isu-elearner-learning` repo, same date). NOT yet
+run through the kit's own `test:integration` / `version:check` suite from this session — the target repo
+(`isu-elearner-learning`) does not carry `.claude/_content/*.md` as an editable copy (it's sync-only), so
+this change lives only in the source-of-truth kit until the next `npm run sync`. **PROMPT_VERSION left
+at v3.19** — this change did not bump it, deferring to whoever finalizes the in-flight D-cross-2 (Change
+U.1) version bump above so the two don't collide; a maintainer should fold both into one version bump
+(v3.20) when both are ready to release together.
+
+---
+
+## 2026-07-10 — Change V.4: B2.5 must also resolve ICON identity from Figma, not just color/typography — worked example: US-LE-019 `CourseOverview` icons
+
+<!-- @lesson id="L-2026-07-10-001" classification="prompt_rule" priority="high" root_cause="missing_project_knowledge" enforced_by=".claude/_content/images.md:B2.5-Step-0.5" test_status="exempt" -->
+### Change V.4 — Icon selection needs its own Figma-sourced resolution step; metadata alone is not enough for un-componentized vectors
+
+**Where**: `.claude/_content/images.md` — new **Step 0.5** inserted directly after Step 0 (Change V.1) in
+B2.5, applied in this session (unlike V.2/V.3 above, which are still worked-example-only proposals).
+Concretely demonstrated in `isu-elearner-learning`:
+`src/pages/course-dashboard/{CourseHeader,CourseUnitRow,CourseTools,CourseDashboard,
+StartResumeBanner}.tsx` (5 icon swaps).
+
+**Why**: Change V.1 (2026-07-09, same feature) fixed color/typography by wiring `figma-rest-source.ts`
+into B2.5 Step 0 — but that fix only covers `tokens.colors` / `tokens.textStyles`. A follow-up request on
+the SAME feature ("icons chưa được export từ Figma nên có vài chỗ không đúng") surfaced a **fourth,
+distinct failure mode**, structurally different from V.1/V.2/V.3: icon identity was never resolved from
+Figma at all, at any point in the pipeline. Two independent root causes, both confirmed by actually
+fetching the live Figma node (`QwSquTxduuodo0r4tIqiNq`, node `6713-66557`) and cross-checking against the
+5 icons the implementation had picked:
+  1. **Spec prose used the wrong icon vocabulary.** The processed spec (`processed.md`) described unit-type
+     icons with Tabler-style names (`ti-player-play`, `ti-file-text`, `ti-puzzle`) that do not correspond
+     1:1 to what the Figma file (or the target UI library, `@openedx/paragon/icons`, a Material-icon
+     derivative) actually contains. Taking "puzzle" literally, the implementation picked Paragon's `Quiz`
+     icon (a question-mark glyph) for the quiz unit type — the real Figma layer is a **pencil/edit** icon.
+     Same failure class as Change V.1's stale-hex finding ("spec prose lies"), now confirmed for icon names.
+  2. **`FigmaRestSource` never fetches image data — `toScreenModel()` hard-codes `assets: []`**, and even
+     its node-tree walk only gives a usable name when an icon sits on a named component `INSTANCE` (e.g.
+     `vuesax/linear/play`). Of 60 icon-shaped nodes on this one screen, **38 were raw, un-componentized
+     vector art** (`rawName: "Icon"`/`"Vector"`/`"Union"`, no named ancestor) — completely anonymous in the
+     metadata Step 0 already fetches. `figma-rest-source.ts`'s own file header flags image export as
+     "a later concern (Phase 2)," so even a correctly-Figma-aware B2.5 pass (post-V.1) had no way to resolve
+     these 38 nodes — it silently fell through to prose/screenshot guessing for exactly the icons that most
+     needed a live source. This is universal by mechanism: any design file with hand-drawn (non-componentized)
+     icon layers — common in most real Figma files — hits the same blind spot, not just this one screen.
+  Net effect confirmed by cross-checking against the target icon library (every replacement icon below
+  already existed in `@openedx/paragon/icons` — this was purely a **wrong-selection** bug, never a
+  missing-icon problem, so the fix required zero new icon assets):
+  - Quiz unit-type icon: `Quiz` (question mark) → **`Edit`** (pencil) — real Figma layer.
+  - "Launch Tour" sidebar tool icon: `Lightbulb` → **`Compass`** — real Figma layer (spec prose said
+    `ti-bulb`, which was simply wrong once checked against the live file).
+  - Course-level meta-bar icon: `SignalCellularAlt` (signal bars, a guess with no spec/Figma basis found)
+    → **`BarChart`** — real Figma layer.
+  - Collapse-all button icon: `ExpandLess`/`ExpandMore` (single chevron) → **`KeyboardDoubleArrowUp`/
+    `KeyboardDoubleArrowDown`** (double chevron) — real Figma layer; visually distinct from the
+    per-section single-chevron toggle, which uses a different Figma layer and was already correct.
+  - "Start Course"/"Continue" button: had no icon at all → added **`PlayArrow`** — a Figma-confirmed
+    `vuesax/linear/play` node inside the button, a separate node from the banner's decorative rocket icon
+    (`Rocket`, already correct pre-fix, and left unchanged).
+
+**What**: new B2.5 **Step 0.5** (`.claude/_content/images.md`, right after Step 0): whenever Step 0 runs
+(a Figma source was resolved) and the screen has icon-shaped UI, walk the same already-fetched node tree
+for `VECTOR`/`BOOLEAN_OPERATION`/icon `INSTANCE` nodes; for each, check for a named ancestor `INSTANCE`
+(reliable identity, e.g. `vuesax/linear/play`) — if none exists, export the node as a PNG via
+`GET /v1/images/<fileKey>?ids=...&format=png&scale=4` (called directly with curl; `figma-rest-source.ts`
+does not implement this yet, and Step 0.5 does not block on that gap being closed first) and visually
+match it against the target UI library's icon set. Never assign an icon from spec prose's own icon-name
+text when a Figma source is available — prose names are frequently drawn from a different icon library.
+Log `[B2.5-figma] icons_resolved=N via_named_instance=A via_image_export=B unresolved=C` to
+`recovery.log`; unresolved is a soft flag, not a hard blocker.
+
+**Verified by**: re-fetched the live Figma node, found 60 icon-shaped nodes (22 named-instance-resolvable,
+38 requiring image export), image-exported and visually matched all 38, applied the 5 confirmed fixes
+above. `npx tsc --noEmit` clean on all 5 touched files; existing `courseMeta.test.ts` 13/13 still green
+(icon identity doesn't touch business logic — no test changes needed). Documented in the feature's
+`recovery.log`.
+
+**Status — applied to `.claude/_content/images.md` (new Step 0.5), NOT yet reflected in
+`feature-from-confluence.md`'s own `PROMPT_VERSION` line (left at v3.19)**: same deferral as Change V.1 —
+this, V.1, V.2, V.3, and the in-flight D-cross-2 Change U.1 should be folded into one v3.20 release bump
+together by a maintainer, rather than each incrementing separately. Kit repo still has the unrelated
+uncommitted `D-cross-2` work in the working tree; this entry sits alongside it pending that maintainer
+pass. `npm run sync` was run after this change to push `images.md` to `isu-elearner-learning` (see that
+repo's git history for the synced copy) — the flagship command file itself was not touched, so no
+functional risk to already-in-flight kit runs.
