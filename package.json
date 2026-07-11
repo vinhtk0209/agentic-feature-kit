@@ -56,6 +56,7 @@
     "test:contract-probe": "npx tsx .claude/integrations/contract-probe.test.ts",
     "test:contract-probe-realfile": "npx tsx .claude/integrations/contract-probe.realfile.test.ts",
     "test:baseline-http-gen": "npx tsx .claude/integrations/baseline-http-gen.test.ts",
+    "test:d-cross-2": "npx tsx .claude/integrations/d-cross-2.test.ts",
     "test:learned-config": "npx tsx .claude/integrations/learned-config.test.ts",
     "test:friction-meter": "npx tsx .claude/integrations/friction-meter.test.ts",
     "test:feature-index": "npx tsx .claude/integrations/feature-index.test.ts",
@@ -72,7 +73,7 @@
     "test:playwright-runner": "npx tsx .claude/integrations/playwright-runner.test.ts",
     "test:design-matcher": "npx tsx .claude/integrations/design-matcher.test.ts",
     "test:figma-rest-source": "npx tsx .claude/integrations/figma-rest-source.test.ts",
-    "test:kit": "npm run test:lint-feature && npm run test:ownership && npm run test:integration && npm run test:eval-feature && npm run test:eval-ab && npm run test:eval-regression && npm run test:lesson-registry && npm run test:improve-trigger && npm run test:prompt-budget && npm run test:contract-probe && npm run test:contract-probe-realfile && npm run test:baseline-http-gen && npm run test:learned-config && npm run test:friction-meter && npm run test:feature-index && npm run test:feature-digest && npm run test:memory && npm run test:regression-corpus && npm run test:corpus-manager && npm run test:model-config && npm run test:hooks && npm run test:changelog && npm run test:sync-rollback && npm run test:build-copilot && npm run test:telemetry && npm run test:playwright-runner && npm run test:design-matcher && npm run test:figma-rest-source && npm run version:check && npm run workflow:index -- --check && npx tsx .claude/integrations/prompt-budget.ts --gate && npm run check:lessons-sync",
+    "test:kit": "npm run test:lint-feature && npm run test:ownership && npm run test:integration && npm run test:eval-feature && npm run test:eval-ab && npm run test:eval-regression && npm run test:lesson-registry && npm run test:improve-trigger && npm run test:prompt-budget && npm run test:contract-probe && npm run test:contract-probe-realfile && npm run test:baseline-http-gen && npm run test:d-cross-2 && npm run test:learned-config && npm run test:friction-meter && npm run test:feature-index && npm run test:feature-digest && npm run test:memory && npm run test:regression-corpus && npm run test:corpus-manager && npm run test:model-config && npm run test:hooks && npm run test:changelog && npm run test:sync-rollback && npm run test:build-copilot && npm run test:telemetry && npm run test:playwright-runner && npm run test:design-matcher && npm run test:figma-rest-source && npm run version:check && npm run workflow:index -- --check && npx tsx .claude/integrations/prompt-budget.ts --gate && npm run check:lessons-sync",
     "test": "npm run test:kit"
   },
   "devDependencies": {

@@ -3,7 +3,7 @@ description: Turn a Confluence page, PDF, or Word spec into convention-compliant
 ---
 
 <!--
-  feature-from-confluence — Claude Code Edition v3.18
+  feature-from-confluence — Claude Code Edition v3.19
   © 2026 claude-workflow-kit contributors. MIT Licence — see repository root.
 -->
 
@@ -17,7 +17,7 @@ PARALLEL_MODE:    true          # B5/B10/B11 may spawn subagents in parallel
 SHELL_PERSISTENT: true          # Bash tool keeps cwd & env between calls
 PYTHON_AVAILABLE: true          # may invoke .claude/integrations/browser-use-wrapper.py at B11 fallback
 AUTOLINT_HOOK:    true          # PostToolUse hook lints on every Edit/Write (settings.local.json)
-PROMPT_VERSION:   v3.18
+PROMPT_VERSION:   v3.19
 COPILOT_SUPPORT: false          # Copilot edition not maintained — Claude Code only
 ```
 
@@ -387,7 +387,7 @@ Applies at: **B1** (parse fail), **B2** (image download fail), **B3** (SpecKit f
 
 ## HARD RULES
 
-1. **NEVER** proceed past confirm gates (B4, B6, B8, B9, B10.5) without explicit user response
+1. **NEVER** proceed past confirm gates (B4, B6, B8, B9, B10.5 — plus the conditional D-cross-2 gate when it reaches a `breaking`/`error` verdict, see HR39) without explicit user response
 2. **NEVER** auto-classify task type (LEGACY/BASELINE/NEW) without showing the classification result to user first
 3. **ONLY** accept `"yes"`, `"y"`, or `"confirm"` (case-insensitive) at B9 — responses like "ok", "sure", "go ahead", "let's do it" do NOT count
 4. **NEVER** skip `⚠️ Image failed` markers — every failed image must be flagged inline in processed.md
@@ -429,6 +429,7 @@ Applies at: **B1** (parse fail), **B2** (image download fail), **B3** (SpecKit f
 36. **(v3.16 — Change S.10 Full AC + description test coverage)** Every Acceptance-Criteria item AND every distinct described behavior in the spec MUST be covered by ≥1 automated test before B12 prints done. **Unit tests** (Jest) cover logic / business / display rules (`utils/`, pure fns); **E2E tests** (Playwright via `ux-states.json` `ac_assertions[]` / `states[]`) cover UI, interactions, and visible-state ACs. Each ACT row in `checklist.md` MUST map to ≥1 of: a `ux-states.json` `ac_assertions[].ac_id`, a `unit_tests[].ac_id`, or a `*.test.ts` referencing the ACT id. **B5 generates these test cases up front** (stubs derived from the ACT/UI rows — not retrofitted at the end); B10 implements them; B11 runs the AC-coverage gate (below) + the Jest suite + Playwright. For ACs the FE cannot exercise (system / backend-only), mark the checklist row `<!-- enforced-by: BE -->` to exclude it from the FE coverage denominator. Target: **100% of FE-testable ACT rows covered**. Enforced by `lint-feature.ts --gate` at B11; B12 reports `AC <covered>/<total>`. Log `[B11-coverage] ac_covered=N/M unit=K e2e=J`. **Anti-fake-test**: `lint-feature.ts` does NOT credit hollow tests — a `*.test.ts` with no `expect(`, an `ac_assertions[]` entry with no `expected`, or a `unit_tests[]` entry with no `grep`/`test_file` is rejected and does not count toward coverage.
 37. **(v3.17 — Change T.1 No auto-commit/push)** **NEVER** run `git commit` or `git push` at any workflow phase — including B10, B11, B12, and all sub-steps — unless the user has typed an **explicit commit instruction** in their most recent message (e.g. "commit", "push", "commit this", "tạo commit"). **Gate answers do NOT count**: answering "yes" to B9, B10.5, or any other gate question is authorization to proceed with the *workflow step*, NOT authorization to commit. The workflow MUST leave all changes in the working tree and notify the user that implementation is ready — then stop and wait. Proposed commit messages are fine to display; running `git commit` is not. Violation: if this rule is broken, the user MUST be offered an immediate `git reset HEAD~1` (soft) to undo, and this rule must be reinforced in both the command file and the memory system. Log: `[B10/B12] commit=deferred reason=awaiting-explicit-user-instruction`.
 38. **(v3.18 — Overlay open-state visual baseline; lesson `L-2026-07-04-001`)** Any component that renders an **overlay** — popover / dropdown / modal / tooltip / date-picker / menu (host-lib primitives, e.g. Paragon `ModalPopup`/`Dropdown`/`Modal`, MUI `Popover`/`Menu`/`Dialog`, Ant `Dropdown`/`Popover`/`Modal`; set `ui_library` in CLAUDE.md) — MUST get a dedicated **OPEN-state** entry in `ux-states.json` whose steps open the overlay, AND that state MUST carry a `baseline` (a captured app-screenshot visual-diff baseline). **Rationale**: `ac_assertions` (`visible|hidden|text|…`) confirm an element EXISTS, not that it is correctly POSITIONED — a mispositioned/overlapping overlay (e.g. a popover pinned at (0,0) over the header) passes every visibility assertion while shipping a real layout bug (US-AD-095: 16/16 ACs green, filter popover at 0,0). Visual-diff of the OPEN state catches this class; `visible`-only does not. **Do NOT add new `expected` assertion types** (the enum is LOCKED — HR17); this is baseline COVERAGE of open states, not new positioning vocabulary. The baseline MUST be captured **deterministically**: disable entrance/transition animation for the capture via a **test-gated, build-time-excluded** reduced-motion lever (e.g. `?prReducedMotion=1` gated on `process.env.NODE_ENV !== 'production'` so it cannot exist in a prod bundle) — a fixed `wait` catches animation mid-flight and makes the baseline flaky. **B5** generates the open-state stub (steps that open the overlay + `baseline` path) per overlay component; **B10** wires real selectors + the reduced-motion lever; **B11** captures/diffs it. **A baseline that is never diffed catches nothing** — and visual-diff is opt-in / default-off (Change W.1) — so for a feature with ≥1 overlay component the B11 Playwright verification **MUST be invoked with `--visual-diff`** so the open-state baselines are actually diffed. This is a **scoped** requirement (overlay features only) — it does NOT change the global visual-diff default, and it satisfies Change W.1's "no re-enable as mandatory without an explicit user decision" (this rule is that decision, bounded to overlays). **Self-eval gate (B5 + B11) — NOT satisfied by a baseline file existing; it requires the diff to have RUN**: (1) grep the feature's components for the host lib's overlay primitives → `overlays_found`; (2) assert `ux-states.json` has ≥1 open-state carrying a `baseline` per overlay → `overlays_covered`; (3) assert each overlay open-state produced a real `PLAYWRIGHT-007` visualDiff **result** (a pass, or a numeric diff%) — NOT `skipped — visual diff is opt-in` → `overlays_diffed`. **STOP if `overlays_found > 0` AND ( `overlays_covered < overlays_found` OR the run did not pass `--visual-diff` OR `overlays_diffed < overlays_found` )** — a baseline with no diff, or a diff that was skipped, FAILS the gate (the overlay's positioning is unverified). Log `[B5-overlay] overlays=N covered=N`; at B11 `[B11-overlay] overlays=N diffed=N` on success, or `[B11-overlay] visual_diff=SKIPPED overlays=N unverified` on the STOP. Do not silently pass on "baseline exists" alone.
+39. **(v3.19 — Change U.1 D-cross-2 ENHANCE reconciliation)** After **B4** (and before B5), RUN the **D-cross-2** step ONLY when BOTH hold: (i) `context-summary.contractStatus == REAL`, AND (ii) the target feature already has **frozen code on disk** — BOTH `src/<feature-folder>/data/api.ts` AND `src/<feature-folder>/data/types.ts` exist (an ENHANCE of an existing feature, NOT a CREATE — a CREATE has no `data/` yet at B4). If either condition is false → **skip silently** (`⏭️`, dropped from the Progress `total`); normal flagship behavior is unchanged. When it runs, it reconciles the frozen code (BEFORE = `baseline-http-gen`) against the REAL contract (AFTER) via the shared binary `.claude/integrations/d-cross-2.ts` (reuses `parseExpectedShapes`/`compareShapeVsShape` — NEVER inline the diff, HR16), emitting `docs/components/<FeatureName>/RECONCILE.json` (deterministic source) + `RECONCILE.md` (pure projection). It is a **parallel report**: it NEVER feeds B8.6 (HR32 still adopts the REAL contract verbatim) and NEVER auto-edits code (§7 never-auto-edit). Verdict handling: `breaking` → **STOP gate** (NOT `--auto`-advanceable — it is not in the AUTONOMY subset); `error` → fail-closed, surface the machine `reason` code and wait (the (b) wrong-invocation code `not-enhance-no-existing-code` is distinct from the (a) data-problem codes `missing-declared-contract`/`malformed-existing-code`/`malformed-contract`/`same-source-degeneracy`/`vacuous-no-compared-shapes`); `clean`/`changes` → advisory one-liner, continue to B5. Log `[D-cross-2] verdict=<v> added=N removed=N type_changed=N optionality_changed=N breaking=N` or `[D-cross-2] skipped reason=<not-real|no-existing-code>`.
 
 ---
 
@@ -464,7 +465,7 @@ Log `[autonomy] gate=BX action=auto-pass score=N% mode=<mode>` → `recovery.log
 
 ## PROGRESS DISPLAY
 
-**Print at the start of every step** (B0, B0.5, B1, B2, B3, B4, B5, B6, B6.5, B7, B8, B8.5, B8.6, B9, B9.5, B9.6, B10, B10.5, B11, B12, B12.5, B12.6, B12.8) before doing anything else in that step.
+**Print at the start of every step** (B0, B0.5, B1, B2, B3, B4, D-cross-2 *(conditional — ENHANCE+REAL only)*, B5, B6, B6.5, B7, B8, B8.5, B8.6, B9, B9.5, B9.6, B10, B10.5, B11, B12, B12.5, B12.6, B12.8) before doing anything else in that step.
 
 ### Format
 
@@ -472,13 +473,14 @@ Steps are grouped into **8 phases** so the user sees at a glance where they are 
 
 ```text
 ╔════════════════════════════════════════════════════════════════════════╗
-║  /feature-from-confluence · v3.18   ▶ B2 — Download Images              ║
+║  /feature-from-confluence · v3.19   ▶ B2 — Download Images              ║
 ║  Feature: <FeatureName>   ·   Mode: <SIMPLE|MEDIUM|COMPLEX> (score N)   ║
 ║  Progress: ███████░░░░░░░░░░░░░░░░░  3 / 26 steps   ·   🛑 next: B4     ║
 ╠════════════════════════════════════════════════════════════════════════╣
 ║  ① INTAKE     ✅ B0 Spec+Type   ✅ B0.5 Pre-flight                      ║
 ║               ✅ B1 Process     ▶  B2 Images       ⬜ B3 SpecKit Lens   ║
 ║  ② SCOPE      🛑 ⬜ B4 Confirm Scope                                    ║
+║               🛑 ⬜ D-cross-2 Reconcile (ENHANCE+REAL only)             ║
 ║  ③ DESIGN     ⬜ B5 3 Files    🛑 ⬜ B6 Confirm Files                   ║
 ║               🛑 ⬜ B6.5 Design Review (COMPLEX only)   ⬜ B7 Plan       ║
 ║  ④ APPROVE    🛑 ⬜ B8 Confirm Plan   ⬜ B8.5 Conflicts                 ║
@@ -508,7 +510,7 @@ Steps are grouped into **8 phases** so the user sees at a glance where they are 
 | `⬜` | Pending — not yet reached |
 | `⏭️` | Skipped — bypassed by DYNAMIC DECOMPOSE or user chose [S] |
 | `❌` | Failed — step failed after 3 attempts (★7 awaiting user) |
-| `🛑` | STOP gate — step requires user input before continuing (B4, B6, B6.5, B8, B9, B10.5) |
+| `🛑` | STOP gate — step requires user input before continuing (B4, B6, B6.5, B8, B9, B10.5; + D-cross-2 when it reaches a `breaking`/`error` verdict — conditional) |
 
 ### Rules
 
@@ -531,7 +533,7 @@ prose. Print it verbatim on its own line (replace `<BX>` with the current step i
 - One marker per step, every step (including automatic ones). The sidecar counts **distinct**
   `phase` values, so re-printing the same step (e.g. after a retry) does not inflate the count.
 - Keep it a single short line — do not wrap or pretty-print the JSON (the sidecar parses one line).
-- **At a STOP gate (`🛑` — B4 / B6 / B6.5 / B8 / B9 / B10.5): emit an ADDITIONAL marker carrying
+- **At a STOP gate (`🛑` — B4 / B6 / B6.5 / B8 / B9 / B10.5 / D-cross-2 when breaking|error): emit an ADDITIONAL marker carrying
   `"awaiting":"gate"` immediately BEFORE the gate question** (before the "no output, wait for user
   response" pause), on its own line:
   ```text
@@ -1436,6 +1438,61 @@ Log: `[B3-speckit-lenses] lenses=4 file=docs/specs/<FeatureName>/speckit-lenses.
 > **STOP GATE — no output, wait for user response.**
 
 After user responds: run **★5 CONTEXT SUMMARY** → save to `docs/specs/<FeatureName>/context-summary.md`.
+
+---
+
+## D-cross-2 — Design ↔ Existing-contract Reconciliation *(conditional STOP gate — ENHANCE + REAL only; HR39)*
+
+**Print PROGRESS DISPLAY** (current: `▶ D-cross-2`) before doing any action.
+
+> **Additive, conditional, off by default (HR39).** This step **runs ONLY** when BOTH hold; otherwise **skip silently** — mark it `⏭️`, emit no output, open no gate, and drop it from the Progress `total`:
+> 1. `context-summary.contractStatus == REAL`, **AND**
+> 2. the target feature already has **frozen code on disk** — BOTH `src/<feature-folder>/data/api.ts` **AND** `src/<feature-folder>/data/types.ts` exist (this is an **ENHANCE** of an existing feature, not a CREATE — a CREATE has no `data/` yet at this point).
+>
+> Log the skip: `[D-cross-2] skipped reason=<not-real|no-existing-code>` and continue to B5.
+>
+> **Purpose.** Deterministically reconcile what the frozen code models **today** (BEFORE) against the **REAL** target contract the redesign requires (AFTER), so a human can *additively* update `data/types.ts` + `data/api.ts`. It is a **parallel report** — it does **NOT** feed B8.6 (HR32 still adopts the REAL contract verbatim) and **NEVER auto-edits code** (§7 never-auto-edit).
+
+### Process
+
+1. **Resolve inputs:**
+   - **BEFORE** = `baseline-http-gen(src/<feature-folder>/data/api.ts + data/types.ts)` — synthesized by the tool (do not hand-write it).
+   - **AFTER** = the REAL contract recorded at B4 (`[B4-contract] status=REAL source=<path>`). If that path is not a resolvable `.http`, fall back to `resolveContractHttp(docs/components/<FeatureName>, docs/specs/<FeatureName>)` — the **same** lookup B11 uses.
+2. **Run the shared binary** (NEVER inline the diff — HR16):
+   ```bash
+   npx tsx .claude/integrations/d-cross-2.ts \
+     --api   src/<feature-folder>/data/api.ts \
+     --types src/<feature-folder>/data/types.ts \
+     --feature <FeatureName> \
+     --after <REAL-contract-path> \
+     --components docs/components/<FeatureName> \
+     --specs      docs/specs/<FeatureName>
+   ```
+   It writes `docs/components/<FeatureName>/RECONCILE.json` (deterministic source) + `RECONCILE.md` (pure projection) and exits non-zero on `breaking`/`error`.
+3. **Read `verdict` from RECONCILE.json** and branch:
+   - **`clean` / `changes`** → advisory. Print a one-line summary + point to `RECONCILE.md`, then **CONTINUE to B5** (no stop). For `changes`, the added/optional fields are a human TODO for `types.ts`/`api.ts` — they do NOT block.
+   - **`error`** → **fail-closed STOP.** Print the machine `reason` code and do NOT silently continue. Distinguish cause **(b)** wrong-invocation (`not-enhance-no-existing-code`) from the cause **(a)** data-problem codes (`missing-declared-contract` / `malformed-existing-code` / `malformed-contract` / `same-source-degeneracy` / `vacuous-no-compared-shapes`), and ask how to proceed.
+   - **`breaking`** → **STOP gate** (below).
+
+Log: `[D-cross-2] verdict=<v> added=N removed=N type_changed=N optionality_changed=N breaking=N`.
+
+### STOP gate *(only when verdict == `breaking` or `error`)*
+
+**Emit the STOP-gate machine marker** (`"awaiting":"gate"`, see PROGRESS DISPLAY) immediately before the question.
+
+```
+🛑 D-cross-2 — breaking contract changes vs existing code — [FeatureName]
+
+The REAL target contract requires changes the frozen code cannot satisfy without edits:
+[list each breaking change: `path` — kind (before → after)]
+
+Full table: docs/components/<FeatureName>/RECONCILE.md
+The code is frozen — a human must additively update data/types.ts + data/api.ts (never auto-applied).
+
+[Continue — I'll reconcile the code manually] / [Stop — revisit scope]
+```
+
+> **STOP GATE — no output, wait for user response.** HARD RULE 1 applies. `--auto` does **NOT** auto-advance this gate — it is not in the AUTONOMY subset (`B4, B6, B6.5, B8`).
 
 ---
 
