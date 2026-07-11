@@ -1226,3 +1226,60 @@ uncommitted `D-cross-2` work in the working tree; this entry sits alongside it p
 pass. `npm run sync` was run after this change to push `images.md` to `isu-elearner-learning` (see that
 repo's git history for the synced copy) — the flagship command file itself was not touched, so no
 functional risk to already-in-flight kit runs.
+
+---
+
+## 2026-07-10 — Change V.5: `context-summary.md` `pendingSteps` never gets cleared after the last confirm gate — HARD RULE 40, worked example: US-LE-019 `AttendanceCheckin`
+
+<!-- @lesson id="L-2026-07-10-002" classification="prompt_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="feature-from-confluence.md:HR40 (B12 Step 4.5)" test_status="exempt" -->
+### Change V.5 — `final_confirmed` is a gate, not the finish line; nothing ever recorded that B9.5–B12 actually ran
+
+**Where**: `.claude/commands/feature-from-confluence.md` — new **HARD RULE 40**, amended ★5 CONTEXT
+SUMMARY example payloads (`final_confirmed` now includes its real `pendingSteps` snapshot instead of
+omitting the key; new `done` phase example), and new **B12 Step 4.5** ("Finalize context summary").
+Applied directly to the flagship command file this session (same posture as Change V.1/V.4).
+
+**Why**: the user noticed `docs/specs/US-LE-019-AttendanceCheckin/context-summary.md` still listed
+`pendingSteps: [B8.5, B8.6, B9, B9.5, B9.6, B10, B10.5, B11, B12]` even though `checklist.md` and
+`recovery.log` in the same folder clearly showed B11 (Playwright verify) had run, found bugs, and
+those bugs were fixed and re-verified — i.e. the feature was actually done, but its own memory file
+insisted 9 steps were still pending. Root cause traced in `memory.ts`/`feature-from-confluence.md`:
+  1. ★5 CONTEXT SUMMARY (before this change) only documented save points for the human confirm GATES —
+     B4, B6, B8, B9 (`final_confirmed`). `final_confirmed` fires once, early, right after the plan is
+     approved — it does NOT mean the workflow is finished; B9.5 through B12 (implementation, verify,
+     done) all still run afterward, unattended, with no further gate.
+  2. `saveContext()` (`memory.ts`) only ever writes what it's told — `pendingSteps` is not derived or
+     auto-pruned as steps complete; it is whatever array the caller passed in the most recent `save`
+     call. Since no save call existed anywhere after `final_confirmed`, whatever `pendingSteps` snapshot
+     existed at that one gate was **frozen forever** — permanently describing "not yet run" state for
+     work that, by the time a human reads the file, has already completed.
+  This is universal by mechanism, not specific to this feature: every BASELINE/COMPLEX run that reaches
+  `final_confirmed` and then continues through B9.5–B12 (the normal path — that's most runs) ends up
+  with a stale, misleadingly-pending `context-summary.md` the moment B12 finishes, because nothing in
+  the documented save points ever runs again after the gate. A human or a future Claude session reading
+  this file to "resume from last confirmed step" (per the file's own header) would wrongly conclude 9
+  steps of work still need to happen.
+
+**What**: **HARD RULE 40** — `context-summary.md`'s `pendingSteps` must reach `[]` by the time the
+workflow is actually done. Two changes: (1) the `final_confirmed` example payload now explicitly
+includes its real `pendingSteps` (previously the example omitted the key entirely, which read as "no
+guidance on what to put here" rather than "here's what's still outstanding at this gate"); (2) new B12
+Step 4.5 makes a **required** `memory.ts save done` call with `pendingSteps: []` once B12's own steps
+(access guide, artifacts map, telemetry) finish — this is the only write after `final_confirmed`, so it
+is the only thing that can ever close the loop. Chosen over auto-pruning inside `memory.ts` itself
+(e.g. inferring "done" steps from `checklist.md`) because that would require `memory.ts` to parse and
+trust another file's contents as ground truth for its own state — an explicit save from the step that
+actually knows it just finished is simpler and matches how every other phase transition already works.
+
+**Verified by**: ran the new call for the real stale feature —
+`npx tsx .claude/integrations/memory.ts save done '{"featureName":"US-LE-019-AttendanceCheckin","finalConfirmed":true,"pendingSteps":[]}'`
+— confirmed `context-summary.md` now shows `phase: done`, `Pending Steps: _None_`, and `INDEX.md`
+(regenerated automatically by the same save call, per its existing `regenerateIndex()` hook) now shows
+`US-LE-019-AttendanceCheckin | done | BASELINE | — | ✅ | 2026-07-10` instead of whatever stale phase
+was there before.
+
+**Status — applied to `feature-from-confluence.md` in both the kit and `isu-elearner-learning`
+(surgical two-hunk copy, not a full `npm run sync`, for the same reason as Change V.4: the kit repo
+still has unrelated uncommitted `D-cross-2` work staged in the same file that must not leak to the
+target)**. `PROMPT_VERSION` left at v3.19 — same deferral as V.1/V.4, folds into the pending v3.20
+release bump alongside V.1, V.2, V.3, V.4, and D-cross-2 Change U.1.

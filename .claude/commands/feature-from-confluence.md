@@ -292,7 +292,7 @@ Explicitly declared parallel tasks run concurrently:
 
 ### ★5 CONTEXT SUMMARY
 
-After each confirm gate (B4, B6, B8, B9), persist context via the memory integration:
+After each confirm gate (B4, B6, B8, B9) **and once at B12 completion (HARD RULE 40)**, persist context via the memory integration:
 
 ```bash
 npx tsx .claude/integrations/memory.ts save <phase> '<json-payload>'
@@ -312,12 +312,31 @@ npx tsx .claude/integrations/memory.ts save files_confirmed \
 npx tsx .claude/integrations/memory.ts save plan_confirmed \
   '{"featureName":"UserProfile","pendingSteps":["B9","B9.5","B10","B11","B12"]}'
 
-# After B9 (final confirmed)
+# After B9 (final confirmed) — pendingSteps still lists everything from B9.5 onward because
+# none of it has run yet at this point. This snapshot goes stale the moment B9.5+ actually
+# execute unless something clears it later — see the B12 save below (HARD RULE 40).
 npx tsx .claude/integrations/memory.ts save final_confirmed \
-  '{"featureName":"UserProfile","finalConfirmed":true}'
+  '{"featureName":"UserProfile","finalConfirmed":true,"pendingSteps":["B9.5","B10","B10.5","B11","B12"]}'
+
+# After B12 (workflow actually done — HARD RULE 40). REQUIRED, not optional: this is the only
+# save call after final_confirmed, so it is the only thing that can ever clear the stale
+# pendingSteps snapshot the final_confirmed save left behind.
+npx tsx .claude/integrations/memory.ts save done \
+  '{"featureName":"UserProfile","finalConfirmed":true,"pendingSteps":[]}'
 ```
 
 The file `docs/specs/<FeatureName>/context-summary.md` is created/updated by the integration. Do NOT write it manually.
+
+**(HARD RULE 40 — pendingSteps must reach empty)**: `final_confirmed` is a human confirm GATE, not
+the end of the workflow — B9.5 through B12 all still run after it, unattended. Every documented save
+example before this rule only covered gates through B9, so `pendingSteps` as saved at `final_confirmed`
+necessarily lists B9.5–B12 as still-pending — because they are, at that moment. Nothing in the workflow
+ever called `memory.ts save` again afterward, so that snapshot was permanently frozen: a feature could
+finish B12 (implementation, tests green, Playwright verified, post-verify fixes applied) and its
+`context-summary.md` would keep claiming B9.5–B12 were still pending, indefinitely, misleading anyone
+who reads it to resume or audit the feature. B12 Step 4.5 (below) closes this loop — it is the single
+required last write, and `pendingSteps: []` there is a factual claim ("everything through B12 ran"),
+never a placeholder.
 
 **On context pressure or after an auto-compaction (mid-run):** the workflow's durable state lives on disk, not in chat history — do NOT assume earlier messages are intact. Re-orient by running `npx tsx .claude/integrations/memory.ts load` (current phase + decisions) and reading the active `docs/specs/<FeatureName>/` folder (recovery.log, artifacts), then continue from the last saved phase. This keeps a compaction from silently losing position or repeating a completed step. To stay resilient between gates, prefer referencing on-disk artifacts (spec, screenshots, lens outputs) by path over re-pasting their full contents into context.
 
@@ -2299,6 +2318,22 @@ npx tsx .claude/integrations/telemetry.ts feature <FeatureName> || true
 ```
 
 Never blocks — logs a completed feature build to the telemetry backend; errors are silently ignored.
+
+### Step 4.5 — Finalize context summary *(REQUIRED — HARD RULE 40)*
+
+The `final_confirmed` save (★5, after B9) necessarily left `pendingSteps` listing B9.5–B12, because
+none of them had run yet at that point — and no step between B9 and here ever saved again. Close the
+loop now that B12 has actually finished, so `context-summary.md` stops claiming completed work is
+still pending:
+
+```bash
+npx tsx .claude/integrations/memory.ts save done \
+  '{"featureName":"<FeatureName>","finalConfirmed":true,"pendingSteps":[]}'
+```
+
+Run this even if B12's Step 1–4 above hit a non-fatal issue that was already surfaced to the user —
+`pendingSteps: []` records that the *workflow* reached B12, not that every check passed; verification
+status itself lives in `checklist.md` / the digest, not in this flag.
 
 ---
 
