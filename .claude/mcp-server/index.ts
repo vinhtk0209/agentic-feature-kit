@@ -177,7 +177,7 @@ async function downloadPageImages(
     // Non-fatal — fall back to original URLs
   }
 
-  const rawImageUrls = extractImageUrls(html, baseConfUrl).slice(0, 10);
+  const rawImageUrls = extractImageUrls(html, baseConfUrl).slice(0, 50);
   const imageUrls = rawImageUrls.map((imgUrl) => {
     const m = imgUrl.match(/\/download\/attachments\/embedded-page\/[^/]+\/[^/]+\/([^?#]+)/);
     if (!m) return imgUrl;
