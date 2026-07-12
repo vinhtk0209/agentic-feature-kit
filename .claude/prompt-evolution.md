@@ -1549,3 +1549,22 @@ same one-line fix already applied in `isu-elearner-learning`'s local copy. `PROM
 this is an MCP server bugfix, not a `feature-from-confluence.md` prompt change, so it does not bump the kit's
 prompt version. Confirmed `sync.config.json`'s `syncPaths` includes `"mcp-server/index.ts"` — this fix
 reaches both target repos automatically on the next `npm run sync`, no extra step needed.
+
+---
+
+## 2026-07-12 — v3.21: wire `record-verify` capture into B11 as the trusted verify-record gate (Measurement Layer — the sync unblocker)
+
+<!-- @lesson id="L-2026-07-12-001" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by=".claude/integrations/record-verify.test.ts" test_status="enforced" -->
+### Change W.1 — B11 now WRITES the trusted verify record; before this, nothing did (sync could never unblock)
+
+**Where**: `.claude/commands/feature-from-confluence.md` B11 "After agents return" — new terminal step 6 issuing `record-verify.ts capture` from the TARGET repo; `PROMPT_VERSION v3.20 → v3.21` (+ copyright header, progress banner, README, `package.json` 3.20.0→3.21.0). Design: `docs/design/measurement-layer-b11-wire.md`. Tests: new `record-verify.test.ts` (15) + `test:record-verify` in `test:kit`.
+
+**Why**: the Measurement Layer shipped `record-verify.ts` as the single trusted `verify_records` writer and the kit-side sync guard (`assertVerifiedForSync`) reads that table fail-closed — but `record-verify` was **never called anywhere** in the flagship (grep-confirmed zero matches). So no `verified=true` row could ever be produced and `npm run sync` was blocked forever, not by policy but by a missing wire. This closes that gap (the 2026-07-12 HARD PREREQUISITE).
+
+**What**: after both agents return and the coverage gate passes, B11 runs `record-verify.ts capture --feature <F> --tierA-cmd "lint-feature … --gate" --tierB-cmd "b11-runner <F>"` from the target repo root. `capture` (not `record`) was chosen so `verified` is computed from **real tier exit codes the wrapper observes directly** — never a value the model supplies. `record` was rejected because Tier B (Agent B) is a subagent narrative with no reusable exit code, so `record --tierB <int>` would reintroduce the model-supplies-verdict hole the layer exists to close. Cost accepted: one extra headless Playwright pass.
+
+**§5 fail-closed contract** (two opposite postures): wrapper exit ≠ 0 (note write failed / `assertNotKitRepo` fired / tier unspawnable) → **STOP, no B12, no success banner**; exit 0 + `verified:false` → route to rollback (B12 is gated on `verified === true`, never on "the record wrote"); the Supabase `pushVerifyRecord` stays **best-effort/fail-open** so a telemetry outage never fails a real run — but B11 then warns **sync is still BLOCKED** until the `verify_records` row lands (the guard that reads it is fail-CLOSED).
+
+**Also (Change W.2)**: `pre-commit-target.ts`'s target-side verify-gate messages now print the **literal** `record-verify.ts capture …` command per feature instead of the abstract "run the B11 wrapper" (`measurement-layer-b11-wire.md §4`); the "B11 wrapper" IS that CLI, no separate script. Target hooks installed in both `isu-elearner-learning` and `tempp/isu-elearner-authoring` (`.git/hooks/pre-commit` via `install-hooks.ts`) — the missing links the 2026-07-12 audit found absent.
+
+**Verified by**: `version:check` ✅ (all stamps v3.21), `prompt-budget --gate` ✅ (exit 0), `test:record-verify` ✅ (15/15 — §5(a) note-write failure throws, §5(b) failing tier → verified=false, §5(c) push fail-open + guard fail-closed, A1.1 kit refusal, content_hash scope/rename, concrete-command hook message), `test:integration` ✅ (7/7). NOT synced — this is precisely the change whose first real B11 run produces the first `verified=true` row that unblocks sync.
