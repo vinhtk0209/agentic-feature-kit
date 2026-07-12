@@ -1568,3 +1568,18 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 **Also (Change W.2)**: `pre-commit-target.ts`'s target-side verify-gate messages now print the **literal** `record-verify.ts capture …` command per feature instead of the abstract "run the B11 wrapper" (`measurement-layer-b11-wire.md §4`); the "B11 wrapper" IS that CLI, no separate script. Target hooks installed in both `isu-elearner-learning` and `tempp/isu-elearner-authoring` (`.git/hooks/pre-commit` via `install-hooks.ts`) — the missing links the 2026-07-12 audit found absent.
 
 **Verified by**: `version:check` ✅ (all stamps v3.21), `prompt-budget --gate` ✅ (exit 0), `test:record-verify` ✅ (15/15 — §5(a) note-write failure throws, §5(b) failing tier → verified=false, §5(c) push fail-open + guard fail-closed, A1.1 kit refusal, content_hash scope/rename, concrete-command hook message), `test:integration` ✅ (7/7). NOT synced — this is precisely the change whose first real B11 run produces the first `verified=true` row that unblocks sync.
+
+---
+
+## 2026-07-12 — Change W.3 (FINDING, not yet applied): `content_hash` single-feature-string breaks for features whose src folder ≠ docs/specs name
+
+<!-- @lesson id="L-2026-07-12-002" classification="validation_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change W.3 — `record-verify` needs a separate code-path vs spec-name, or the hash silently under-covers deeply-nested features
+
+**Where**: `.claude/integrations/record-verify.ts` `computeContentHash(repoRoot, feature)` (walks `src/<feature>` AND looks for `docs/specs/<feature>/ux-states.json` under the SAME `feature` string) + `pre-commit-target.ts` `featureFromStaged` (returns `parts[1]` for `src/…`). **Not yet applied — surfaced while preparing the first verified=true B11 run (Block 5) and left as a finding for a design decision.**
+
+**Why**: the layer assumes a feature's code lives at `src/<feature>` (depth 1) and its spec at `docs/specs/<feature>/`, co-named. That holds for the flat learning-style examples but **breaks on the authoring OpenedX layout**: US-AD-095's code is at `src/studio-home/tabs-section/class-management/tabs/ProgressReports/` (depth 6) while its spec is `docs/specs/US-AD-095-ProgressReports/`. No single `--feature` value addresses both: passing the nested src path hashes the code but misses `ux-states.json` (there is no `docs/specs/studio-home/.../ux-states.json`); passing `US-AD-095-ProgressReports` finds `ux-states.json` but hashes **zero** code (no `src/US-AD-095-ProgressReports`) — a hash that a code change can't invalidate, defeating the staleness guard. Separately, `featureFromStaged` derives `studio-home` from the src paths, so the installed pre-commit hook's `note.feature` comparison would mismatch on a real commit.
+
+**What (proposed)**: give `record-verify` (and the hook) an explicit code-path independent of the spec-name — e.g. `--feature-path src/<nested>` for the `src` hash walk + `--feature <spec-name>` for `docs/specs/<spec-name>/ux-states.json` — mirroring `b11-runner`'s existing `--feature-path`. `computeContentHash` would take both. Until then, the first clean row should either (a) come from a feature whose src folder is depth-1 and co-named with its spec (unambiguous), or (b) consciously accept code-only hash coverage by passing the nested src path as `--feature` (documented in the run).
+
+**Verified by**: grounded read of `record-verify.ts:167-203` (single `feature` string for both walks) + on-disk confirmation that `src/studio-home/.../ProgressReports` and `docs/specs/US-AD-095-ProgressReports` do not share a `<feature>` name and `docs/specs/studio-home` does not exist. No code changed — finding only.
