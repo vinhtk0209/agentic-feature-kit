@@ -1677,3 +1677,18 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 **What (proposed)**: audit for any downstream consumer that reads `phase` as a pass/fail signal (expect none); optionally derive it from `verified` only if trivial and non-risky. Otherwise document it as a known cosmetic label.
 
 **Verified by**: `record-verify.ts:309/:365`. No code changed.
+
+---
+
+## 2026-07-12 — v3.23: fix Y.1 (b11-runner exit gate) — the critical false-proof close
+
+<!-- @lesson id="L-2026-07-12-008" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by=".claude/integrations/b11-runner.test.ts" test_status="enforced" -->
+### Change Y.4 — b11-runner exit now gates on the Playwright verdict; both links of the join are pure + attack-tested
+
+**Where**: `.claude/integrations/b11-runner.ts` (extract `computeB11B` + `computeGatesPass`, wire `main()` through both, `isCli` guard) + new `.claude/integrations/b11-runner.test.ts` (15) in `test:kit`. Bumps `PROMPT_VERSION v3.22 → v3.23` (+ all stamps + `package.json`). Design: `docs/design/measurement-layer-b11-gate-and-version-bootstrap.md`. Implements lesson L-2026-07-12-005 (Y.1).
+
+**Why**: `b11-runner.ts:441` computed `gatesPass = b11_a === 'pass' && coverageErrors === 0` — the Playwright verdict `b11_b` was excluded, so a failing Playwright run `process.exit(0)`, `record-verify` read 0 → `verified=true` false-proved (`verify_records run-1783868360863-827b5cdd`, disk-confirmed). The exact "exit code ≠ verdict" hole the measurement layer exists to close, one layer deeper.
+
+**What**: `computeGatesPass = b11_a === 'pass' && coverageErrors === 0 && b11_b !== 'fail'` ('skip' stays valid for Tier-B-less features). The route→b11_b derivation is also extracted (`computeB11B`) and tested directly, because the bug lived at the JOIN between two values, not in either value — testing only the gate would leave the route→b11_b link unverified (the same gap one layer deeper).
+
+**Verified by**: `version:check` ✅ (v3.23), `prompt-budget --gate` ✅ (0), `test:b11-runner` ✅ (15/15 — computeB11B all/some-fail/skip; computeGatesPass full matrix incl. `(pass,0,fail)→exit1` and `(pass,0,skip)→exit0`; end-to-end join failing-route→b11_b=fail→gatesPass=false→exit1), `test:record-verify` ✅ (26/26, §5 re-proved incl. tierB exit1→verified=false). A real browser-driven Playwright run is NOT unit-tested (no browser in the deterministic suite — that integration is the Block-5 capture). Ships byte-identical to both targets alongside the v3.23 command file (Y.2). NOT synced.
