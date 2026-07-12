@@ -1100,6 +1100,22 @@ and NULL when unmeasured.
 
 ---
 
+## 2026-07-09 — v3.19: D-cross-2 wired into the flagship after B4 (design-to-ui roadmap step 3, Phase-2 hook #3)
+
+### Change U.1 — D-cross-2 ENHANCE reconciliation step (conditional, after B4)
+
+**Where**: `.claude/commands/feature-from-confluence.md` — new **HARD RULE 39** + new step section "**D-cross-2 — Design ↔ Existing-contract Reconciliation**" between B4 and B5; PROGRESS DISPLAY step list + phase ② + STOP-gate legends; `PROMPT_VERSION v3.18 → v3.19`. Shared binary: `.claude/integrations/d-cross-2.ts` (built + tested 2026-07-09, 19/19). Design: `design-to-ui-agent-architecture.md` §3 hook #3 + §4 + §13.
+
+**Why**: §13 designed the ENHANCE field-diff engine and it was implemented + tested standalone; this wires it into the flagship as the design's **hook #3** ("gọi D-cross-2 ngay sau B4, chỉ khi contractStatus == REAL"). Hooks #1/#2/#4/#5 (D0/D0.5, flag-gated) remain unwired — hook #3 gates on `contractStatus` (already set at B4) so it lands independently.
+
+**What**: after B4, RUN D-cross-2 ONLY when `contractStatus == REAL` **AND** the target feature already has frozen code on disk (`src/<feature-folder>/data/api.ts` + `data/types.ts` both exist = an ENHANCE, not a CREATE). Otherwise skip silently (`⏭️`, dropped from Progress `total`) → normal flagship behavior unchanged. It diffs BEFORE (`baseline-http-gen` of the frozen code) vs AFTER (the REAL contract), emits `docs/components/<F>/RECONCILE.json` (source) + `RECONCILE.md` (projection), and is a **parallel report** (never feeds B8.6 — HR32 verbatim; never auto-edits — §7). Verdict: `breaking` → STOP gate (not `--auto`-advanceable); `error` → fail-closed, surface the machine `reason` (the (b) wrong-invocation `not-enhance-no-existing-code` is distinct from the (a) data-problem codes); `clean`/`changes` → advisory, continue.
+
+**Trigger decisions (user-confirmed 2026-07-09)**: (1) fire on REAL **+ existing code on disk** (genuine ENHANCE), not REAL-alone; (2) `breaking` **halts** as a STOP gate (per §4); (3) bump to **v3.19**.
+
+**Verified by**: `version:check` ✅ (all stamps v3.19), `prompt-budget --gate` ✅ (exit 0; the new step is 3.8 KB), `test:integration` ✅ (7/7 — command-file structure intact), `test:d-cross-2` ✅ (19/19). NOT committed, NOT synced — `npm run sync` still fail-closed pending the first `verified=true` B11 row.
+
+---
+
 ## 2026-07-09 — Change V.1: B2.5 wires the existing (previously unwired) `figma-rest-source.ts` as the PREFERRED token source, worked example: US-LE-019 `CourseHeader`
 
 ### Change V.1 — Figma-sourced design tokens take priority over screenshot estimation in B2.5
@@ -1150,6 +1166,138 @@ this change lives only in the source-of-truth kit until the next `npm run sync`.
 at v3.19** — this change did not bump it, deferring to whoever finalizes the in-flight D-cross-2 (Change
 U.1) version bump above so the two don't collide; a maintainer should fold both into one version bump
 (v3.20) when both are ready to release together.
+
+---
+
+## 2026-07-09 — Change V.2: B10/B11 should also wire rich dev-mock data for PROVISIONAL fields when a Figma/UI_SCREENSHOT reference exists — worked example: US-LE-019 `CourseOverview`, follow-up to Change V.1
+
+### Change V.2 — Visual verification against a design reference needs a fully-populated render, not the sparse real backend
+
+**Where**: proposed amendment to `## HARD RULE 32` (contractStatus) and/or B10's checklist-per-file section
+in `.claude/commands/feature-from-confluence.md` — **not yet applied to the flagship command file this
+session** (see Verified-by / Status below for why). Concretely demonstrated in the target repo
+`isu-elearner-learning`: `src/data/services/course-dashboard/api.ts` (mapper bug fix),
+`src/pages/course-dashboard/CourseTools.tsx` + `course-dashboard.scss` (icon chip), new
+`src/course-home/data/__factories__/courseDashboardOutline.factory.js` wired into the repo's existing
+`src/course-home/data/mockSetup.js` (`USE_MOCK_DATA` + `axios-mock-adapter` + rosie factory convention).
+
+**Why**: Change V.1 (above, same date) fixed the *color/typography* half of a Figma mismatch by pulling
+live design tokens instead of estimating from a screenshot. A follow-up request on the SAME feature asked
+to also fix layout/icons and "show all fields" — and re-investigation surfaced a **second, distinct
+failure mode** Change V.1 didn't cover: even with 100% correct UI code and correct colors, the page
+rendered *visually sparse* (empty meta bar, "0 hours", disabled buttons) because:
+  1. A genuine mapper bug — `mapOutlineToCourseDashboard` never read `org`/`number`/`enrollment_count`
+     from the raw response at all (not even declared on the raw input type, despite being declared on
+     the *output* type). No amount of mock or real backend data could ever have surfaced this — it's a
+     silent field-drop, invisible to `HARD RULE 33`'s cast-ban check because there's no cast to catch,
+     just a missing field in an object literal.
+  2. A **contractStatus=PROVISIONAL data-availability gap** (working as designed, but visually
+     indistinguishable from a bug during manual/screenshot verification) — `duration_seconds`/
+     `word_count`/`question_count`/`level`/`language`/`course_mode`/`intro_video_url`/`calendar_sessions`
+     are all correctly marked PROVISIONAL and correctly default-safe in the mapper, but the REAL backend
+     doesn't populate any of them yet — so hitting the real endpoint during B11/manual QA always renders
+     an empty-looking page regardless of code correctness. A screenshot-diff or by-eye comparison against
+     a Figma reference is **meaningless** without real data to compare — you can't tell "code is fine,
+     backend just hasn't shipped these fields" apart from "code is broken" just by looking.
+  This is not a one-off: any PROVISIONAL-contract feature with a design reference (Figma link or
+  UI_SCREENSHOT) will hit the same wall — B11's visual verification step has nothing meaningful to render
+  against until *someone* populates the provisional fields locally.
+
+**What (proposed, not yet wired into the flagship)**: when `contractStatus=PROVISIONAL` (HARD RULE 32)
+AND the spec has a Figma link or ≥1 UI_SCREENSHOT annotation, B10 (or a new conditional sub-step) should:
+  1. **Grep the mapper for silently-dropped fields** — for every field declared on the *output* type but
+     not assigned in the mapper's return object, either wire it from the raw input or flag it explicitly
+     — this is a cheap, mechanical check (`grep` the mapper function body for each output-type field name)
+     that would have caught the `org`/`number`/`enrollment_count` bug immediately, independent of any
+     mock work.
+  2. **Detect the target repo's existing dev-mock convention** before inventing one — grep for an existing
+     `USE_MOCK*` flag / `axios-mock-adapter` wiring / factory pattern (this repo's is
+     `mockConfig.js`+`mockSetup.js`+`rosie` `__factories__/`) vs. a dead/unused one (this repo also had an
+     orphaned `src/devMock.js`, never imported anywhere — a trap for an agent that greps naively for "mock"
+     and picks the more elaborate-looking but actually-unused file). Prefer extending the wired convention;
+     never invent a new one, never resurrect a dead one.
+  3. **Populate PROVISIONAL fields to match the design reference's own numbers** where the reference shows
+     concrete values (e.g. Figma mockup literally says "6 hours total · 14 lessons · 348 enrolled" — the
+     dev-mock should produce exactly those numbers via the real BR formulas, not arbitrary placeholders),
+     so a screenshot-diff against that same reference is a meaningful, apples-to-apples comparison.
+  4. Never flip the mock flag's *default* — it stays a manual, explicitly-toggled local QA aid, reverted
+     before the pass ends. B11's own scripted verification should toggle it programmatically for the
+     duration of its run, not rely on a human remembering to revert it (this session did revert manually,
+     but the human user prompted for it — a future automated B11 run should not depend on that).
+
+**Verified by**: the `isu-elearner-learning` worked example — `npx tsc --noEmit` clean on all touched
+files, `courseMeta.test.ts` 13/13 still passing, and a live `playwright-runner.ts` screenshot with the
+mock flag on showed the meta bar/quick-info-panel/banner/sections/icon-chips all rendering with real data
+matching the Figma reference closely (compare
+`isu-elearner-learning:docs/specs/US-LE-019-AttendanceCheckin/images/verify-pass2-rich-mock.png` against
+`...figma-source-full-page.png`). One generic `PLAYWRIGHT-004` "error alert visible" check false-positived
+on an unrelated, empty, hidden global `.toast-container` (`[role="alert"]` is too broad a selector for
+that check) — noted but not itself part of this lesson.
+
+**Status — NOT applied to the flagship command file, NOT committed, NOT synced this session**: unlike
+Change V.1 (which made a concrete, scoped edit to `.claude/_content/images.md`'s B2.5), this Change V.2 is
+recorded as a **worked-example lesson only** — the proposed amendment (a new B10 sub-step, exact wording
+and placement TBD) was not drafted into `feature-from-confluence.md` in this session; a maintainer should
+turn the "What" section above into an actual amendment (likely a new numbered item under HARD RULE 32, or
+a new B10 checklist-per-file bullet) before the next version bump. As with Change V.1, the kit repo
+currently has unrelated uncommitted work (`D-cross-2`) blocking `npm run sync` — this entry is left in the
+working tree for the user to commit/sync on their own timeline, alongside Change V.1.
+
+---
+
+## 2026-07-09 — Change V.3: B10 must place components at the Figma-indicated NESTING LEVEL, not just get their own internal styling right — worked example: US-LE-019 tab bar
+
+### Change V.3 — Sibling-vs-nested placement is a distinct fidelity dimension from color/spacing tokens
+
+**Where**: proposed amendment to the B6.5 Design Review "Component Decomposition" section and/or the B10
+per-file checklist in `.claude/commands/feature-from-confluence.md` — **not yet applied**, worked-example
+lesson only (see Status below), same posture as Change V.2. Concretely demonstrated in
+`isu-elearner-learning`: `src/pages/course-dashboard/CourseHeader.tsx` (now accepts
+`tabs`/`activeTabKey`/`onTabSelect` and renders `CourseTabs` internally, nested inside its own `__main`
+column), `CourseDashboard.tsx` (no longer renders `CourseTabs` as a standalone sibling after
+`CourseHeader`), `course-dashboard.scss` (`.course-dashboard-tabs` restyled for a blue-background parent:
+translucent-white inactive text, white+bold active text, translucent border, un-stretched compact-width
+tab buttons instead of full-width equal-flex).
+
+**Why**: Change V.1 fixed *token values* (wrong hex/px). Change V.2 fixed *data completeness* (fields
+silently dropped or unpopulated). This is a **third, distinct failure mode**: the component was
+internally correct — right colors (post-V.1), right icons, right text — but placed at the **wrong nesting
+level** in the render tree. `CourseHeader` and `CourseTabs` were built and styled as two independent
+sibling components, each individually matching their own piece of the Figma reference in isolation. But
+Figma's node tree shows the tab bar ("Inner Navigation Tabs") as a **child of the same 792px-wide "Hero
+Content" frame** that holds the title and meta bar — i.e., nested *inside* the hero's blue gradient
+background, not a separate section below it. Building two correct-looking components that are wired as
+siblings instead of parent/child produced a page that was pixel-close in every individual component
+screenshot, yet structurally wrong: the tab bar rendered in the white content area on dark text instead of
+inside the blue hero on light text. **A component-by-component visual check does not catch this** — each
+piece can look "right" in isolation while the composition is wrong. Only a full-page screenshot compared
+against the full-page Figma render surfaces it (which is what caught this, on a second user-prompted pass,
+not the first color-focused pass).
+
+**What (proposed, not yet wired into the flagship)**: at B6.5 (Design Review) component decomposition,
+when a Figma/UI_SCREENSHOT reference is available, explicitly determine each component's **parent** in the
+design's own node tree (or the screenshot's visual containment), not just its own internal properties —
+call this out as a piece of the Design Review's Component Decomposition alongside props/state, not left
+implicit. At B10 implementation, before marking a component "done," check whether the design shows it
+sharing a background/container with a sibling from the spec's component list (e.g. "tab bar sits inside
+the hero," "unit row sits inside the section card") — if so, the code must nest them the same way, not
+compose them as independent siblings that each separately reproduce a slice of the right look. A useful
+mechanical proxy: if two components in the same screen share a background color/gradient in the design but
+are implemented as CSS-independent siblings (each with its own background rule) rather than one being
+visually contained by the other, that's a signal to re-check nesting against the design tree.
+
+**Verified by**: the `isu-elearner-learning` worked example — `npx tsc --noEmit` clean, `courseMeta.test.ts`
+13/13 still passing, `eslint` clean on touched files, and a live `playwright-runner.ts` full-page
+screenshot confirming the tab bar now renders inside the blue hero, left-aligned, translucent-white/white
+text, matching the Figma reference (compare
+`isu-elearner-learning:docs/specs/US-LE-019-AttendanceCheckin/images/verify-pass3-tabs-in-header.png`
+against `...figma-source-full-page.png`).
+
+**Status — NOT applied to the flagship command file, NOT committed, NOT synced this session**: recorded as
+a worked-example lesson only, same posture as Change V.2 above — a maintainer should turn the "What"
+section into an actual B6.5/B10 amendment before the next version bump. Kit repo still has the unrelated
+uncommitted `D-cross-2` work blocking `npm run sync`; this entry is left in the working tree alongside
+Change V.1 and V.2 for the user to commit/sync on their own timeline.
 
 ---
 
@@ -1283,3 +1431,121 @@ was there before.
 still has unrelated uncommitted `D-cross-2` work staged in the same file that must not leak to the
 target)**. `PROMPT_VERSION` left at v3.19 — same deferral as V.1/V.4, folds into the pending v3.20
 release bump alongside V.1, V.2, V.3, V.4, and D-cross-2 Change U.1.
+
+---
+
+## 2026-07-10 — Change V.6: two lessons from a live re-verification pass on US-LE-019's `⚠️` checklist rows
+
+<!-- @lesson id="L-2026-07-10-003" classification="validation_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change V.6a — B11-postfix must re-check EVERY checklist row describing the same behavior, not just the ACT-XX row it was triggered from
+
+**Where**: proposed amendment to the B11 "After agents return" postfix step (near HARD RULE area covering
+the 2026-06-23 checklist-summary work) in `.claude/commands/feature-from-confluence.md` — **not yet
+applied**, worked-example lesson only, same posture as Change V.2/V.3.
+
+**Why**: on this feature, the original B11-refollow pass (2026-07-09) found and live-verified several bugs,
+correctly updating their own `ACT-XX` rows to `✅`. But three OTHER rows — `UI-08` (collapse-all button),
+`UI-11` (Course Tools panel), `PLAYWRIGHT-006` (tab/section switching) — describe the exact same underlying
+interactions as `ACT-10`, `ACT-13`, and `ACT-07`/`ACT-09`/`ACT-10` respectively, and were left frozen at
+their pre-fix `⚠️` wording (e.g. UI-11 still said `"Add to my Calendar" is permanently disabled` a full day
+after ACT-13 fixed and live-confirmed exactly that button was enabled). A user reading the checklist top-to-
+bottom sees direct self-contradictions between rows describing the same click. This is not one-off: the
+checklist's own structure (§UI Verification / §ACT / §Playwright Verify) deliberately has multiple rows
+covering the same interaction from different angles (a UI row for "does it render", an ACT row for "does the
+full interaction work", a Playwright row for "does the page not crash") — any fix discovered while verifying
+ONE of those rows will, by construction, leave the others stale unless the fix step explicitly cross-checks.
+
+**What (proposed)**: when B11-postfix (or a manual post-fix pass) updates any checklist row from `⚠️`/`❌` to
+`✅`, grep `checklist.md` for other rows referencing the same component/selector/behavior (component name in
+the UI table, same route/interaction in the Playwright table) and update them together in the same edit,
+with a short cross-reference note (`"see ACT-NN"`) rather than independently re-describing the same fact.
+
+**Verified by**: the `isu-elearner-learning` worked example — found and synced all 3 stale rows in one pass
+(2026-07-10), each cross-referencing the ACT-XX row that already proved the behavior live.
+
+<!-- @lesson id="L-2026-07-10-004" classification="prompt_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change V.6b — `onSuccess: setState(toast) + navigate()` in the same tick means the toast is never actually painted, not just hard to test
+
+**Where**: proposed addition to `docs/CODING-CONVENTION.md` "Error Handling / UX States" section and/or a
+new B10 implementation-checklist bullet in `.claude/commands/feature-from-confluence.md` — **not yet
+applied**, worked-example lesson only.
+
+**Why**: `ACT-03` (US-LE-019) was marked `⚠️` for two straight sessions with the same note — "toast text not
+captured, navigation raced past it in the test" — treated as a test-observability gap (flaky Playwright
+timing). Investigating it properly this session (delayed-poll + concurrent-poll + mocked-response attempts,
+all still racing) revealed the real cause: `CourseDashboard.tsx`'s mutation `onSuccess` called
+`setAttendanceToast({ show: true, ... })` and `navigate(coursewareUrl)` **synchronously in the same
+handler**, with `navigate()` unmounting the entire page (Toast included) before React ever committed/painted
+the toast state. This is not a test artifact — a real user clicking "Start Course" never sees "Check-in
+successful!" either, only a redirect. The AC's own wording ("check-in dialog ... → navigate to first
+accessible unit") implies a *visible, sequential* two-step UX, which the code never actually produced. This
+pattern — show a success toast, then immediately navigate away in the same callback — is generic enough to
+recur in any future generated feature with a "submit → confirm → redirect" flow (form submissions, any
+mutation with both a toast and a follow-up navigation), so it is worth calling out as its own convention
+rule, not just fixed once here.
+
+**What (proposed)**: add a coding-convention rule: whenever a mutation's `onSuccess` (or equivalent) both
+shows a toast/confirmation AND navigates away, the navigate must be deferred (e.g. `setTimeout` matched to a
+named delay constant, or gated on the toast's own `onClose`) so the confirmation is guaranteed to paint
+before unmount — never call `navigate()` synchronously in the same handler tick as the toast's `setState`.
+
+**Fix applied in the worked example**: `src/pages/course-dashboard/CourseDashboard.tsx` — added
+`CHECK_IN_SUCCESS_TOAST_DELAY_MS = 1500` and wrapped the `navigate()` call in `window.setTimeout(...,
+CHECK_IN_SUCCESS_TOAST_DELAY_MS)`. Live re-verified: toast text now captured exactly
+("Check-in successful! Welcome to today's session.") before navigation occurs.
+
+**Status — NOT applied to `feature-from-confluence.md`/`CODING-CONVENTION.md` this session (worked-example
+lesson only, same posture as V.2/V.3)**. The one thing that WAS applied directly (not proposed) is the actual
+product-code fix in `isu-elearner-learning`, and the checklist row corrections from Change V.6a, both
+documented in that repo's `recovery.log` (`[B12-postfix-recheck]`, 2026-07-10).
+
+---
+
+## 2026-07-10 — `save_confluence_images` silently dropped 27/37 images (hardcoded 10-image cap)
+
+**Source**: worked example `US-LE-031-CoursePlayerMultiFormat` (`isu-elearner-learning`). B2 image fetch
+reported "Saved 10/10 image(s)" for a Confluence page that actually embeds 37 distinct images — the tool's
+own success message made the truncation invisible (100% of what it *tried* to save succeeded, so nothing
+looked wrong). The 27 dropped images included the 4 newest "Enhance UI/UX" (V.22 revision) screenshots —
+the actual target redesign mockups — while 33 older/lower-value images (including duplicate check-icon SVGs)
+were kept. User caught the gap by noticing the redesign reference images weren't among the 10 that landed.
+
+<!-- @lesson id="L-2026-07-10-001" classification="code_bug" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="fixed" -->
+### Root cause
+
+`.claude/mcp-server/index.ts`, `downloadPageImages()`:
+```ts
+const rawImageUrls = extractImageUrls(html, baseConfUrl).slice(0, 10);
+```
+A hardcoded `.slice(0, 10)` on the extracted `<img src="...">` URL list — unrelated to Confluence's own
+`limit=50` attachment-list pagination used two lines above it for the attachment-map workaround. The 10-cap
+predates pages with >10 embedded images and was never revisited. Confirmed via direct HTML extraction on the
+live page: 43 raw `<img>` matches → 37 unique after dedup/emoticon-filter → only the first 10 (document
+order) were ever fetched.
+
+### Fix applied
+
+Changed the cap to `.slice(0, 50)` (matching the attachment-list `limit=50` already used in the same
+function, so both numbers stay in sync going forward). Also discovered but **not yet fixed** — worth a
+follow-up: `extractImageUrls` does not de-duplicate (the same image can appear twice in `html`, e.g. a
+"collapse" icon reused in two places), so `imageResults.length` in the tool's saved-count message can
+slightly overcount unique images. Low priority — did not affect this worked example's outcome once the cap
+was raised.
+
+### Operational note — process-reload gotcha
+
+Editing `.claude/mcp-server/index.ts` did **not** take effect on the next tool call — the MCP server is a
+long-running `npx tsx` subprocess spawned once per session, so an on-disk edit is invisible until the
+process actually restarts. A full Claude Code restart was required before `save_confluence_images` picked up
+the fix; even then, on `isu-elearner-learning` specifically the re-fetch *still* reported "10/10" post-restart
+(cause unconfirmed — possibly a stale process reused across restart in that environment). The reliable
+fallback used to unblock the worked example: a standalone one-off script replicating `downloadPageImages()`'s
+attachment-map logic, run directly via `npx tsx`, bypassing the long-running MCP process entirely. **Any
+future fix to a running MCP server's source file should be verified end-to-end (not just "saved"), and a
+standalone-script bypass is a legitimate fallback when a restart doesn't visibly take effect.**
+
+**Status — APPLIED directly** (not proposed) to `.claude/mcp-server/index.ts` in this kit repo, mirroring the
+same one-line fix already applied in `isu-elearner-learning`'s local copy. `PROMPT_VERSION` left unchanged —
+this is an MCP server bugfix, not a `feature-from-confluence.md` prompt change, so it does not bump the kit's
+prompt version. Confirmed `sync.config.json`'s `syncPaths` includes `"mcp-server/index.ts"` — this fix
+reaches both target repos automatically on the next `npm run sync`, no extra step needed.
