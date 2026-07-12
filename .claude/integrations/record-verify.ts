@@ -16,10 +16,10 @@
  *     commands, captures their real exit codes, then calls recordVerify. No boolean crosses
  *     the boundary; only exit codes do.
  *
- * CLI:
- *   npx tsx .claude/integrations/record-verify.ts record  --feature <F> --tierA <int> [--tierB <int|null>] [--run-id <id>] [--kit-version <v>]
- *   npx tsx .claude/integrations/record-verify.ts capture --feature <F> --tierA-cmd "<cmd>" [--tierB-cmd "<cmd>"] [--run-id <id>]
- *   npx tsx .claude/integrations/record-verify.ts show    [--feature <F>]   # print the note on HEAD
+ * CLI (W.3 v3.22 — separate code-path + spec-name; the single `--feature` string is removed):
+ *   npx tsx .claude/integrations/record-verify.ts record  --feature-path <src/dir> [--spec-name <folder>] --tierA <int> [--tierB <int|null>] [--run-id <id>] [--kit-version <v>]
+ *   npx tsx .claude/integrations/record-verify.ts capture --feature-path <src/dir> [--spec-name <folder>] --tierA-cmd "<cmd>" [--tierB-cmd "<cmd>"] [--run-id <id>]
+ *   npx tsx .claude/integrations/record-verify.ts show    # print the note on HEAD
  */
 
 import * as fs from 'fs';
@@ -42,8 +42,18 @@ const SUPABASE_ANON_KEY =
 export interface RecordVerifyInput {
   /** The workflow phase this verdict is for. */
   phase: 'verify_complete' | 'final_confirmed';
-  /** Feature name — the TARGET repo's tested tree (src/<feature>/ + ux-states.json) is the hash-pin scope (§7 A1.1). */
-  feature: string;
+  /**
+   * Repo-relative path to the feature's LEAF code dir — e.g.
+   * `src/studio-home/tabs-section/class-management/tabs/ProgressReports` (W.3 split, v3.22). The hash
+   * walks this tree; it is validated as a leaf feature dir (assertLeafFeatureDir) first.
+   */
+  codePath: string;
+  /**
+   * The flat `docs/specs/<specName>/` folder name — e.g. `US-AD-095-ProgressReports` — whose
+   * `ux-states.json` is folded into the hash. `null` only when Tier B was skipped (no E2E states to
+   * pin); a non-null tierB_exit with a missing ux-states.json is refused (§7.2).
+   */
+  specName: string | null;
   /** lint-feature --gate + tsc exit code, captured by the wrapper. */
   tierA_exit: number;
   /** b11-runner exit code, or null if Tier B was legitimately skipped (§3.3). */
@@ -59,7 +69,12 @@ export interface RecordVerifyInput {
 /** The note body written to refs/notes/verify (§3.4). */
 export interface VerifyNote {
   phase: string;
+  /** Human/DB label — derived (= spec_name, or codePath basename when spec_name is null). Never a hash input. */
   feature: string;
+  /** NEW (W.3 v3.22): the exact repo-relative code dir the hash walked. The hook recomputes with this. */
+  code_path: string;
+  /** NEW (W.3 v3.22): the exact docs/specs folder whose ux-states.json was hashed, or null if none. */
+  spec_name: string | null;
   tierA_exit: number;
   tierB_exit: number | null;
   /** COMPUTED from exit codes (§3.2) — never received. */
@@ -153,21 +168,76 @@ function resolveKitVersion(repoRoot: string): string {
   return '3.18.0';
 }
 
+/** Recursively list every `data/` directory at-or-under `root` (the kit's per-feature marker). */
+function findDataDirs(root: string): string[] {
+  const out: string[] = [];
+  const walk = (dir: string): void => {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.name === 'data') out.push(full);
+      else walk(full);
+    }
+  };
+  walk(root);
+  return out;
+}
+
 /**
- * Per-feature content hash over the TARGET repo's TESTED TREE (§7 A1.1, superseding §3.4's
- * docs/specs scope). Covers:
- *   - every file under src/<feature>/ — the feature code AND its co-located *.test.ts (v3.16 puts
- *     unit tests at src/<feature>/utils/*.test.ts, so a recursive walk captures them), and
- *   - docs/specs/<feature>/ux-states.json IF present — it is target-side and DEFINES the E2E
- *     states / ac_assertions / unit_tests, so editing it changes what was verified (A1.1).
+ * W.3 over-broad-path guard (v3.22, measurement-layer-content-hash-split.md §7.4). HARD REFUSAL via a
+ * POSITIVE property, NOT a denylist: a valid `codePath` is a LEAF feature dir — it owns exactly one
+ * `data/` layer (the kit's per-feature convention, HR32/33) and that `data/` sits directly at
+ * `codePath/data`. A framework MODULE dir (e.g. `src/studio-home`) has no `data/` at its own root and
+ * many nested feature `data/` dirs → throws, regardless of name (so a novel/unknown module dir is
+ * caught by the same rule). An empty/non-feature dir has zero `data/` → throws. Folded into
+ * computeContentHash so the writer and the pre-commit hook enforce it identically.
+ */
+export function assertLeafFeatureDir(repoRoot: string, codePath: string): void {
+  const abs = path.join(repoRoot, codePath);
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isDirectory()) {
+    throw new Error(`record-verify: codePath "${codePath}" does not exist or is not a directory (§7.1).`);
+  }
+  const dataDirs = findDataDirs(abs).map((d) => path.relative(repoRoot, d).split(path.sep).join('/')).sort();
+  const own = `${codePath.split(path.sep).join('/').replace(/\/$/, '')}/data`;
+  if (dataDirs.length === 0) {
+    throw new Error(
+      `record-verify: codePath "${codePath}" is not a leaf feature dir — no data/ layer found under it ` +
+        `(§7.4). Pass the LEAF feature folder (the one whose own data/api.ts is the frozen contract).`
+    );
+  }
+  if (!dataDirs.includes(own)) {
+    throw new Error(
+      `record-verify: codePath "${codePath}" is a module/container dir, not a leaf feature — its own ` +
+        `${own} does not exist; data/ found only in nested sub-dir(s): ${dataDirs.join(', ')} (§7.4).`
+    );
+  }
+  if (dataDirs.length > 1) {
+    throw new Error(
+      `record-verify: codePath "${codePath}" contains nested sub-feature(s) — multiple data/ layers: ` +
+        `${dataDirs.join(', ')}. Pass a single leaf feature dir (§7.4).`
+    );
+  }
+}
+
+/**
+ * Per-feature content hash over the TARGET repo's TESTED TREE (§7 A1.1; W.3 split v3.22 — code and
+ * spec locations are now supplied independently instead of derived from one `feature` string). Covers:
+ *   - every file under `codePath/` — the feature code AND its co-located *.test.ts (recursive walk), and
+ *   - `docs/specs/<specName>/ux-states.json` IF `specName` is given and the file exists — target-side,
+ *     DEFINES the E2E states / ac_assertions / unit_tests, so editing it changes what was verified (A1.1).
+ * FAIL-CLOSED: `assertLeafFeatureDir` first (§7.4), then a walk that must yield ≥1 file (§7.1) — a
+ * missing/empty codePath throws rather than silently hashing a partial (or spec-only) tree.
  * Deterministic: files hashed in sorted repo-relative-path order, path bytes mixed in so a rename
- * changes the hash. A stale verify (tested files changed since) or one copied from another feature
- * cannot match. Returns { hash, coverage } — coverage is the file set the sync guard must re-hash.
+ * changes the hash. Returns { hash, coverage } — coverage is the file set the sync guard must re-hash.
  */
 export function computeContentHash(
   repoRoot: string,
-  feature: string
+  scope: { codePath: string; specName: string | null }
 ): { hash: string; coverage: string[] } {
+  // §7.4 over-broad guard + §7.1 existence — both writer and hook run this identically.
+  assertLeafFeatureDir(repoRoot, scope.codePath);
+
   const files: string[] = [];
   const walk = (dir: string): void => {
     if (!fs.existsSync(dir)) return;
@@ -180,12 +250,18 @@ export function computeContentHash(
     }
   };
 
-  // The tested code + its co-located tests (target repo).
-  walk(path.join(repoRoot, 'src', feature));
+  // The tested code + its co-located tests (target repo), rooted at the LEAF feature dir.
+  walk(path.join(repoRoot, scope.codePath));
+
+  if (files.length === 0) {
+    throw new Error(`record-verify: codePath "${scope.codePath}" hashed zero files (§7.1) — refusing an empty tree.`);
+  }
 
   // ux-states.json — target-side E2E test definition (A1.1). Single file; include if present.
-  const uxStates = path.join(repoRoot, 'docs', 'specs', feature, 'ux-states.json');
-  if (fs.existsSync(uxStates) && fs.statSync(uxStates).isFile()) files.push(uxStates);
+  if (scope.specName) {
+    const uxStates = path.join(repoRoot, 'docs', 'specs', scope.specName, 'ux-states.json');
+    if (fs.existsSync(uxStates) && fs.statSync(uxStates).isFile()) files.push(uxStates);
+  }
 
   // Repo-relative, forward-slash paths so the hash is stable across OSes.
   const coverage = files
@@ -211,11 +287,29 @@ export function recordVerify(input: RecordVerifyInput): VerifyNote {
   const repoRoot = resolveRepoRoot();
   // A1.1 repo-role guard: never attach a code-verify note to the kit source-of-truth repo.
   assertNotKitRepo(repoRoot);
-  const { hash, coverage } = computeContentHash(repoRoot, input.feature);
+
+  // §7.2 fail-closed: if Tier B actually ran (non-null exit), it tested E2E states that MUST be
+  // pinned — the spec's ux-states.json has to exist. A null Tier B (skipped) may legitimately have
+  // no spec. This guards against a Tier-B pass whose tested states are not covered by the hash.
+  if (input.tierB_exit !== null) {
+    if (!input.specName) {
+      throw new Error(`record-verify: Tier B ran (exit ${input.tierB_exit}) but no --spec-name given — its E2E states cannot be hash-pinned (§7.2).`);
+    }
+    const uxStates = path.join(repoRoot, 'docs', 'specs', input.specName, 'ux-states.json');
+    if (!fs.existsSync(uxStates)) {
+      throw new Error(`record-verify: Tier B ran but docs/specs/${input.specName}/ux-states.json is missing — refusing to record an unpinned E2E verify (§7.2).`);
+    }
+  }
+
+  const { hash, coverage } = computeContentHash(repoRoot, { codePath: input.codePath, specName: input.specName });
+  // Derived display/DB label only (never a hash input) — spec name, else the code dir's basename.
+  const label = input.specName ?? input.codePath.split(/[\\/]/).filter(Boolean).pop() ?? input.codePath;
 
   const note: VerifyNote = {
     phase: input.phase,
-    feature: input.feature,
+    feature: label,
+    code_path: input.codePath.split(path.sep).join('/'),
+    spec_name: input.specName,
     tierA_exit: input.tierA_exit,
     tierB_exit: input.tierB_exit,
     // Derived, not received. This is the whole point of the layer.
@@ -247,7 +341,8 @@ export function recordVerify(input: RecordVerifyInput): VerifyNote {
  */
 export function captureAndRecord(opts: {
   phase?: 'verify_complete' | 'final_confirmed';
-  feature: string;
+  codePath: string;
+  specName: string | null;
   tierACmd: string;
   tierBCmd?: string | null;
   runner_run_id?: string;
@@ -268,7 +363,8 @@ export function captureAndRecord(opts: {
 
   return recordVerify({
     phase: opts.phase ?? 'verify_complete',
-    feature: opts.feature,
+    codePath: opts.codePath,
+    specName: opts.specName,
     tierA_exit,
     tierB_exit,
     runner_run_id: opts.runner_run_id,
@@ -318,6 +414,10 @@ export async function pushVerifyRecord(note: VerifyNote): Promise<void> {
         repo,
         head_sha,
         feature: note.feature,
+        // W.3 v3.22 — code_path/spec_name columns (migrations/0004). Additive; if the migration is not
+        // yet applied the POST 400s and the fail-open catch below keeps the local note valid.
+        code_path: note.code_path,
+        spec_name: note.spec_name,
         verified: note.verified,
         // snake_case keys to match the verify_records columns (Postgres folds unquoted identifiers
         // to lowercase; values still come from the camelCase VerifyNote fields).
@@ -375,8 +475,8 @@ async function main(): Promise<void> {
 
   switch (command) {
   case 'record': {
-    if (!flags.feature) {
-      console.error('Usage: record-verify.ts record --feature <F> --tierA <int> [--tierB <int|null>]');
+    if (!flags['feature-path']) {
+      console.error('Usage: record-verify.ts record --feature-path <src/dir> [--spec-name <docs/specs folder>] --tierA <int> [--tierB <int|null>]');
       process.exit(1);
     }
     if (flags.tierA === undefined) {
@@ -390,7 +490,8 @@ async function main(): Promise<void> {
     }
     const note = recordVerify({
       phase: (flags.phase as 'verify_complete' | 'final_confirmed') ?? 'verify_complete',
-      feature: flags.feature,
+      codePath: flags['feature-path'],
+      specName: flags['spec-name'] ?? null,
       tierA_exit,
       tierB_exit: parseExit(flags.tierB),
       runner_run_id: flags['run-id'],
@@ -403,13 +504,14 @@ async function main(): Promise<void> {
   }
 
   case 'capture': {
-    if (!flags.feature || !flags['tierA-cmd']) {
-      console.error('Usage: record-verify.ts capture --feature <F> --tierA-cmd "<cmd>" [--tierB-cmd "<cmd>"]');
+    if (!flags['feature-path'] || !flags['tierA-cmd']) {
+      console.error('Usage: record-verify.ts capture --feature-path <src/dir> [--spec-name <docs/specs folder>] --tierA-cmd "<cmd>" [--tierB-cmd "<cmd>"]');
       process.exit(1);
     }
     const note = captureAndRecord({
       phase: (flags.phase as 'verify_complete' | 'final_confirmed') ?? 'verify_complete',
-      feature: flags.feature,
+      codePath: flags['feature-path'],
+      specName: flags['spec-name'] ?? null,
       tierACmd: flags['tierA-cmd'],
       tierBCmd: flags['tierB-cmd'] ?? null,
       runner_run_id: flags['run-id'],
@@ -435,9 +537,12 @@ async function main(): Promise<void> {
   default:
     console.log(`
 Usage:
-  npx tsx .claude/integrations/record-verify.ts record  --feature <F> --tierA <int> [--tierB <int|null>] [--run-id <id>] [--kit-version <v>]
-  npx tsx .claude/integrations/record-verify.ts capture --feature <F> --tierA-cmd "<cmd>" [--tierB-cmd "<cmd>"] [--run-id <id>]
+  npx tsx .claude/integrations/record-verify.ts record  --feature-path <src/dir> [--spec-name <folder>] --tierA <int> [--tierB <int|null>] [--run-id <id>] [--kit-version <v>]
+  npx tsx .claude/integrations/record-verify.ts capture --feature-path <src/dir> [--spec-name <folder>] --tierA-cmd "<cmd>" [--tierB-cmd "<cmd>"] [--run-id <id>]
   npx tsx .claude/integrations/record-verify.ts show    # print the verify note on HEAD
+
+--feature-path is the LEAF feature code dir (e.g. src/studio-home/.../ProgressReports); --spec-name is
+the flat docs/specs folder (e.g. US-AD-095-ProgressReports). content_hash covers both (W.3 v3.22).
 
 record  — writer: given captured exit codes, compute verified + write the git note.
 capture — wrapper: run the tier commands, capture their exit codes, then write the note.

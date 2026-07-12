@@ -2184,16 +2184,20 @@ Log `[B11-coverage] ac_covered=N/M unit=K e2e=J errors=E` → `recovery.log`. Do
 
    Log: `[B11-be-pending] count=N → docs/specs/<FeatureName>/BE-PENDING.md` → `recovery.log`.
 
-6. **(v3.21 — Measurement Layer: write the trusted verify record — THE sync-unblock gate)** This is the ONLY sanctioned writer of the `verified` verdict (`docs/design/measurement-layer-b11-wire.md`; `record-verify.ts` is the single trusted writer, `memory.ts` in step 4 is narrative-only). Run the `capture` wrapper **from the TARGET repo root** (where `src/<feature>` lives — it hard-errors via `assertNotKitRepo` if run in the kit). It RE-RUNS the tiers and computes `verified` from their real exit codes — the model never supplies the verdict:
+6. **(v3.22 — Measurement Layer: write the trusted verify record — THE sync-unblock gate)** This is the ONLY sanctioned writer of the `verified` verdict (`docs/design/measurement-layer-b11-wire.md` + `…-content-hash-split.md`; `record-verify.ts` is the single trusted writer, `memory.ts` in step 4 is narrative-only). Run the `capture` wrapper **from the TARGET repo root** (where the code lives — it hard-errors via `assertNotKitRepo` if run in the kit). It RE-RUNS the tiers and computes `verified` from their real exit codes — the model never supplies the verdict. **W.3 split (v3.22):** pass the LEAF code dir and the flat spec folder separately so `content_hash` covers BOTH the (possibly deeply-nested) code tree AND `ux-states.json` in full — `--feature-path` = the actual `src/<…>/<Feature>` folder B10 wrote (arbitrary depth), `--spec-name` = the flat `docs/specs/<FeatureName>` folder:
 
    ```bash
-   # Tier B command included only when PLAYWRIGHT_OPTED_IN = true; OMIT --tierB-cmd when Agent B was
-   # skipped (opt-out / dev-server unavailable) → tierB_exit = null (a skipped Tier B is not a failure).
+   # OMIT --tierB-cmd when Agent B was skipped (opt-out / dev-server unavailable) → tierB_exit = null
+   # (a skipped Tier B is not a failure). Keep --spec-name whenever docs/specs/<FeatureName> exists so
+   # ux-states.json is hash-covered; if Tier B RAN, --spec-name + its ux-states.json are REQUIRED (§7.2).
    npx tsx .claude/integrations/record-verify.ts capture \
-     --feature <FeatureName> \
+     --feature-path src/<feature-folder> \
+     --spec-name <FeatureName> \
      --tierA-cmd "npx tsx .claude/integrations/lint-feature.ts src/<feature-folder> --checklist docs/specs/<FeatureName>/checklist.md --ux-states docs/specs/<FeatureName>/ux-states.json --response-transform <PROJECT_CTX.response_transform> --min-verified 0.6 --gate" \
-     --tierB-cmd "npx tsx .claude/integrations/b11-runner.ts <FeatureName>"
+     --tierB-cmd "npx tsx .claude/integrations/b11-runner.ts <FeatureName> --feature-path src/<feature-folder>"
    ```
+
+   `--feature-path` must be the LEAF feature dir (its own `data/` is the frozen contract); a module/container dir is refused (`assertLeafFeatureDir`, §7.4).
 
    **§5 FAIL-CLOSED CONTRACT (two opposite postures — do not conflate):**
    - **Wrapper exit ≠ 0** (git-note write failed, `assertNotKitRepo` fired, or a tier could not be spawned) → the verify record was **NOT written**. **STOP. Do NOT proceed to B12. Do NOT print any success banner.** Surface the raw error and route to the failure options below. A missing note = no verified state, full stop.
