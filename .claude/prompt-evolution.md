@@ -1692,3 +1692,33 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 **What**: `computeGatesPass = b11_a === 'pass' && coverageErrors === 0 && b11_b !== 'fail'` ('skip' stays valid for Tier-B-less features). The route→b11_b derivation is also extracted (`computeB11B`) and tested directly, because the bug lived at the JOIN between two values, not in either value — testing only the gate would leave the route→b11_b link unverified (the same gap one layer deeper).
 
 **Verified by**: `version:check` ✅ (v3.23), `prompt-budget --gate` ✅ (0), `test:b11-runner` ✅ (15/15 — computeB11B all/some-fail/skip; computeGatesPass full matrix incl. `(pass,0,fail)→exit1` and `(pass,0,skip)→exit0`; end-to-end join failing-route→b11_b=fail→gatesPass=false→exit1), `test:record-verify` ✅ (26/26, §5 re-proved incl. tierB exit1→verified=false). A real browser-driven Playwright run is NOT unit-tested (no browser in the deterministic suite — that integration is the Block-5 capture). Ships byte-identical to both targets alongside the v3.23 command file (Y.2). NOT synced.
+
+---
+
+## 2026-07-12 — Change Z.1 (⛔ Tier-B environment blocker): b11-runner never passes --disable-web-security → cannot honestly verify any api.fpt-apps.com route
+
+<!-- @lesson id="L-2026-07-12-009" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change Z.1 — Tier B (Playwright) CORS-blocks every backend-calling route because the existing bypass is not wired
+
+**Where**: `.claude/integrations/b11-runner.ts` `runPlaywrightForRoute` (builds the playwright-runner cmd without `--disable-web-security`) vs `.claude/integrations/playwright-runner.ts:883-889` (supports `--disable-web-security`, comment names `api.fpt-apps.com`) + `:1221` (`args.includes('--disable-web-security')`). **NOT fixed — design-first, its own session.**
+
+**Why (proven on disk 2026-07-12)**: with the Y.1 honest gate in place, a real Tier B pre-check on AssessmentGrading returned `b11_b='fail'`, `PLAYWRIGHT-002` CORS (`api.fpt-apps.com` blocked from `localhost:1999`), 0/1 routes. b11-runner launches Playwright WITH web security (never passes the flag), so the browser CORS-blocks the cross-origin backend. This is **universal**: every feature whose routes call `api.fpt-apps.com` fails Tier B for the same environmental reason — so under the honest gate, **no such feature can produce a legitimate `verified=true`**. Combined with the discovery that all persisted `.b11-result.json` are `skip`/`fail` and both "clean autonomous runs" (US-AD-093 Attendance, US-AD-094 AssessmentGrading) were false-proven by the pre-Y.1 exit bug: **no feature has EVER passed Tier B honestly.**
+
+**What (proposed, design-first — must answer BOTH layers first)**: (1) prove whether `--disable-web-security` faithfully mirrors how PRODUCTION reaches the backend (same-origin / proxy / real CORS headers) — if prod never hits CORS, disabling web security in test simulates a non-existent condition (subtly false verification); the honest fix may be to run Playwright through the same proxy/origin prod uses. (2) Confirm auth/storageState: does a fresh Playwright context carry the logged-in session, or will fixing CORS surface a 401 next? Cover CORS AND auth as ONE fix.
+
+**Verified by**: grounded read of `b11-runner.ts` (no `--disable-web-security`) + `playwright-runner.ts:883-889` + the real Tier-B pre-check output. No code changed.
+
+---
+
+## 2026-07-12 — Change Z.2 (downstream of Z.1): AC-assertion counts non-deterministic (5/9 ↔ 3/9) because a CORS-blocked API + domcontentloaded render partially
+
+<!-- @lesson id="L-2026-07-12-010" classification="validation_rule" priority="medium" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change Z.2 — Tier B AC assertions flake when the page can't load its API data; secondary domcontentloaded-vs-networkidle risk
+
+**Where**: `.claude/integrations/playwright-runner.ts:912` (`page.goto(..., { waitUntil: 'domcontentloaded' })`, not `networkidle`) + the fixed-timeout `waitForSelector` steps (`:716-717`, 10s). b11-runner writes the checklist Playwright rows itself (`updateChecklistPlaywright`) so the varying numbers are its own output, NOT external live-editing. **NOT fixed.**
+
+**Why**: AssessmentGrading's AC count varied 5/9 → 3/9 across identical b11-runner runs. Root cause is Z.1: with `api.fpt-apps.com` CORS-blocked and navigation waiting only for `domcontentloaded`, data-dependent elements (charts/tables) render partially and non-deterministically, so fixed-timeout assertions flake. The instability is a SYMPTOM of the missing CORS wiring, not independent flakiness.
+
+**What (proposed)**: expect fixing Z.1 to stabilize the counts; separately decide whether data-dependent routes should wait for `networkidle` (or an explicit data-loaded selector) rather than `domcontentloaded`, to remove the residual timing flakiness once the API is reachable.
+
+**Verified by**: `playwright-runner.ts:912` + the two runs' checklist/`.b11-result.json` (b11-runner-authored, mtimes 1s apart). No code changed.
