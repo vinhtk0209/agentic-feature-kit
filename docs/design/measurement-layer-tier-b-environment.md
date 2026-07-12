@@ -1,5 +1,19 @@
 # Measurement Layer v1 — Tier B verification environment (CORS + auth) (design)
 
+> ⚠️ **VERIFICATION RESULT (2026-07-12, blocking — supersedes the CORS emphasis below).** A live
+> read-only probe (Change Z.3, lesson L-2026-07-12-011) **DISPROVED the CORS hypothesis**: an OPTIONS
+> preflight to `api.fpt-apps.com` with `Origin: http://localhost:1999` returned **200 with
+> `access-control-allow-origin: http://localhost:1999`** — the backend explicitly whitelists the dev
+> origin and does NO server-side 403. A plain GET returned **401**. `injectAuthTokens`
+> (`playwright-runner.ts:297`) needs `PLAYWRIGHT_ACCESS_TOKEN`, which is **absent** from authoring's
+> `.env.playwright` → Tier B ran UNAUTHENTICATED → 401 → cross-origin login redirect → mislabeled
+> "PLAYWRIGHT-002 CORS". **The real blocker is a missing auth token, NOT CORS.** `--disable-web-security`
+> (§1) addresses a non-existent block and is DEMOTED. **Revised direction: AUTH-FIRST** — populate a fresh
+> `PLAYWRIGHT_ACCESS_TOKEN` (credential/env task), add the fail-closed token preflight (§2), keep §4
+> (assert real data reached — would have caught the empty 401 pass). The decisive test is a Tier-B re-run
+> WITH the token populated; only if a genuine CORS block then appears on some host is §1 revisited. §1
+> below is retained for record but is no longer the primary fix.
+>
 > **Status: DESIGN ONLY — no code written. Targets kit v3.24.** Produced 2026-07-12 (session 2).
 > Fixes Z.1 (Tier-B CORS wiring blocker) + Z.2 (assertion instability), lessons L-2026-07-12-009/010.
 > Context: with the Y.1 honest gate live, a real Tier B pre-check proved **no feature has ever passed

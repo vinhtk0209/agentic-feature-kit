@@ -1722,3 +1722,32 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 **What (proposed)**: expect fixing Z.1 to stabilize the counts; separately decide whether data-dependent routes should wait for `networkidle` (or an explicit data-loaded selector) rather than `domcontentloaded`, to remove the residual timing flakiness once the API is reachable.
 
 **Verified by**: `playwright-runner.ts:912` + the two runs' checklist/`.b11-result.json` (b11-runner-authored, mtimes 1s apart). No code changed.
+
+---
+
+## 2026-07-12 — Change Z.3 (VERIFICATION RESULT — corrects Z.1/Z.2 emphasis): the Tier-B blocker is a MISSING AUTH TOKEN, not CORS
+
+<!-- @lesson id="L-2026-07-12-011" classification="automated_gate" priority="high" root_cause="missing_project_knowledge" enforced_by="none" test_status="pending" -->
+### Change Z.3 — a real read-only probe DISPROVES the CORS hypothesis: `api.fpt-apps.com` explicitly allows `localhost:1999`; the failure is an unauthenticated 401 mislabeled as CORS
+
+**Where**: verified against the live backend + `.claude/integrations/playwright-runner.ts:297` (`injectAuthTokens` reads `PLAYWRIGHT_ACCESS_TOKEN`, returns false if absent) + `tempp/isu-elearner-authoring/.env.playwright` (has `PLAYWRIGHT_REFRESH_TOKEN` + `PLAYWRIGHT_TOKEN_EXPIRES_AT`, **NO `PLAYWRIGHT_ACCESS_TOKEN`**). **NOT fixed.**
+
+**Why (real probe, 2026-07-12, read-only, no auth)**: an OPTIONS CORS-preflight to
+`https://api.fpt-apps.com/isu-elearner/api/admin/v1/classes/1/grading/` with `Origin: http://localhost:1999`
+returned **HTTP 200** with `access-control-allow-origin: http://localhost:1999`, `access-control-allow-credentials: true`,
+`vary: Origin` — i.e. the gateway **explicitly whitelists the localhost dev origin** (dynamic per-origin) and does
+**no** server-side origin 403. A plain GET (no token) returned **HTTP 401**. Since `injectAuthTokens` finds no
+`PLAYWRIGHT_ACCESS_TOKEN`, Tier B runs **unauthenticated** → 401 on every call → the app redirects to a cross-origin
+login → surfaces as "PLAYWRIGHT-002 CORS". **The CORS label is a misdiagnosis of an auth failure.**
+
+**Impact on Z.1 design**: `--disable-web-security` (the Z.1 fix) addresses a CORS block that does not exist for this
+origin — it would silence the auth-redirect symptom while the real 401 (empty data) persisted. This is the exact
+"silence the symptom / fix one, fail on the next" trap the honest-gate work exists to prevent; verifying-not-assuming
+caught it before implementation. **Revised direction (design must change): AUTH-FIRST** — populate a fresh
+`PLAYWRIGHT_ACCESS_TOKEN` in the target's `.env.playwright` (a credential/env task, not code), add the fail-closed
+token preflight (STOP if missing/stale), and keep §4 (assert the backend was REACHED with real data) — §4 would have
+caught the empty-data-from-401 pass. `--disable-web-security` is DEMOTED to "only if a real CORS block is proven on
+some host after auth is fixed" — the decisive test is a Tier-B re-run WITH the access token populated.
+
+**Verified by**: live OPTIONS 200 + allow-origin header, GET 401, `playwright-runner.ts:297`, and the `.env.playwright`
+key scan. No code changed. (`missing_project_knowledge`: the CORS misread came from not probing the backend first.)
