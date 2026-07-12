@@ -47,6 +47,17 @@ const KIT_ROOT = process.cwd();
 const git = (cwd: string, args: string[]) =>
   spawnSync('git', args, { cwd, encoding: 'utf8' });
 
+/**
+ * Run a kit .ts script via `npx tsx` from an arbitrary cwd. Uses a single shell command string with
+ * the (space-containing) absolute script path double-quoted — passing it in an args array with
+ * shell:true splits on the space in "DEV AZURE" and yields ERR_MODULE_NOT_FOUND. shell:true is
+ * needed on win32 so `npx` (npx.cmd) resolves.
+ */
+function runTsx(scriptRel: string, argStr: string, cwd: string) {
+  const abs = path.join(KIT_ROOT, scriptRel);
+  return spawnSync(`npx tsx "${abs}" ${argStr}`, { cwd, encoding: 'utf8', shell: true });
+}
+
 /** A throwaway git repo that is NOT the kit (no sync.config.json, non-kit package name). */
 function makeTargetRepo(withCommit: boolean): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rv-target-'));
@@ -98,13 +109,11 @@ async function main(): Promise<void> {
   await test('§5(a) CLI: `record` against a no-HEAD repo exits ≠ 0 (no success, no B12)', () => {
     const dir = makeTargetRepo(false);
     try {
-      const r = spawnSync(
-        'npx', ['tsx', path.join(KIT_ROOT, '.claude/integrations/record-verify.ts'),
-          'record', '--feature', 'demo', '--tierA', '0', '--tierB', '0'],
-        { cwd: dir, encoding: 'utf8', shell: process.platform === 'win32' }
-      );
+      const r = runTsx('.claude/integrations/record-verify.ts', 'record --feature demo --tierA 0 --tierB 0', dir);
+      const out = `${r.stdout || ''}${r.stderr || ''}`;
       assert(r.status !== 0, `CLI must exit non-zero on note-write failure, got status=${r.status}`);
-      assert(!/verify note written/.test(r.stdout || ''), 'CLI must NOT print the success banner when the note failed');
+      assert(/git notes add failed/.test(out), `CLI must fail for the note-write reason, not a spawn error; got:\n${out}`);
+      assert(!/verify note written/.test(out), 'CLI must NOT print the success banner when the note failed');
     } finally {
       rm(dir);
     }
@@ -277,6 +286,25 @@ async function main(): Promise<void> {
     assert(/verified === true/.test(cmd), 'B11 must gate B12 on verified === true, not "record wrote"');
     assert(/Do NOT proceed to B12/.test(cmd), 'B11 must STOP (no B12) on a non-zero wrapper exit');
     assert(/sync is still BLOCKED/.test(cmd), 'B11 must warn sync stays blocked on a push failure');
+  });
+
+  await test('canary-2: pre-commit-target hook FAILS with the CONCRETE record-verify capture command (not "the B11 wrapper")', () => {
+    const dir = makeTargetRepo(true);
+    try {
+      // Stage a feature file so the hook has a feature to check but there is NO verify note on HEAD.
+      fs.mkdirSync(path.join(dir, 'src', 'demo'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'src', 'demo', 'index.tsx'), 'export const A = 1;\n');
+      git(dir, ['add', '-A']);
+      const r = runTsx('.claude/integrations/pre-commit-target.ts', '', dir);
+      const out = `${r.stdout || ''}${r.stderr || ''}`;
+      assert(r.status === 1, `hook must block (exit 1) with a feature staged + no verify note, got ${r.status}`);
+      assert(/record-verify\.ts capture --feature demo/.test(out),
+        `hook message must name the concrete capture command; got:\n${out}`);
+      assert(/b11-runner\.ts demo/.test(out), 'the concrete command must include the Tier B runner');
+      assert(!/run the B11 wrapper\b/.test(out), 'the abstract "run the B11 wrapper" phrasing must be gone');
+    } finally {
+      rm(dir);
+    }
   });
 
   await test('no-drift: pre-commit-target.ts imports computeContentHash from record-verify (single source)', () => {

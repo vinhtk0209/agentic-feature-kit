@@ -50,6 +50,23 @@ function readVerifyNote(): string | null {
   return out ? out : null;
 }
 
+/**
+ * The concrete "B11 wrapper" command (measurement-layer-b11-wire.md §4). The abstract phrase "run
+ * the B11 wrapper" is exactly THIS `record-verify.ts capture` CLI — named concretely so a developer
+ * who hits this gate outside a flagship run can reproduce the verify by hand and re-commit. Omit
+ * `--tierB-cmd` if Playwright was opted out (Tier B = null is not a failure). `lint-feature`
+ * defaults `--response-transform` when the flag is absent.
+ */
+function b11WrapperCmd(feature: string): string {
+  return (
+    `npx tsx .claude/integrations/record-verify.ts capture --feature ${feature} ` +
+    `--tierA-cmd "npx tsx .claude/integrations/lint-feature.ts src/${feature} ` +
+    `--checklist docs/specs/${feature}/checklist.md --ux-states docs/specs/${feature}/ux-states.json ` +
+    `--min-verified 0.6 --gate" ` +
+    `--tierB-cmd "npx tsx .claude/integrations/b11-runner.ts ${feature}"`
+  );
+}
+
 function main(): void {
   const started = Date.now();
   const root = repoRoot();
@@ -85,26 +102,28 @@ function main(): void {
   // ── Tier B — READ + validate the verify note on HEAD (no re-run) ──
   const raw = readVerifyNote();
   if (raw === null) {
+    const f0 = features.values().next().value as string;
     problems.push({
       msg: 'Tier B: no verify record (refs/notes/verify note) on HEAD',
-      fix: 'run the B11 wrapper to produce a fresh verify record, then re-commit.',
+      fix: `produce a fresh verify record, then re-commit:\n        ${b11WrapperCmd(f0)}`,
     });
   } else {
     let note: Record<string, unknown> | null = null;
     try { note = JSON.parse(raw) as Record<string, unknown>; } catch {
+      const f0 = features.values().next().value as string;
       problems.push({ msg: 'Tier B: verify note on HEAD is not valid JSON',
-        fix: 'run the B11 wrapper to rewrite a fresh verify record, then re-commit.' });
+        fix: `rewrite a fresh verify record, then re-commit:\n        ${b11WrapperCmd(f0)}` });
     }
     if (note) {
       if (note.verified !== true) {
         problems.push({ msg: `Tier B: verify record says verified=${JSON.stringify(note.verified)} (tests did not pass)`,
-          fix: 'fix the failing tests and re-run the B11 wrapper, then re-commit.' });
+          fix: `fix the failing tests, then re-run:\n        ${b11WrapperCmd(String(note.feature))}` });
       }
       // Every staged feature must be the one this note attests (a note covers one feature/HEAD).
       for (const f of features) {
         if (f !== note.feature) {
           problems.push({ msg: `Tier B: feature "${f}" is staged but the verify note covers "${String(note.feature)}"`,
-            fix: `run the B11 wrapper for "${f}", then re-commit.` });
+            fix: `run the verify wrapper for "${f}", then re-commit:\n        ${b11WrapperCmd(f)}` });
         }
       }
       // Staleness — recompute the tested-tree hash for the note's feature and compare.
@@ -113,7 +132,7 @@ function main(): void {
         if (hash !== note.content_hash) {
           problems.push({
             msg: `Tier B: content_hash mismatch for "${note.feature}" — tested files changed since verify (STALE)`,
-            fix: 're-run the B11 wrapper to re-verify the current code/ux-states, then re-commit.',
+            fix: `re-verify the current code/ux-states, then re-commit:\n        ${b11WrapperCmd(note.feature)}`,
           });
         }
       }
