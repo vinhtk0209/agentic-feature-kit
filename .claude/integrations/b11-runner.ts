@@ -54,15 +54,41 @@ interface B11Result {
   summary: string;
 }
 
+/**
+ * FIRST link of the two-link join (Y.1 / measurement-layer-b11-gate-and-version-bootstrap.md §1):
+ * derive the Playwright verdict `b11_b` from the raw per-route results. Pure + exported so the
+ * derivation itself is attack-testable (the previous bug lived at the JOIN between values, so both
+ * links are tested, not just the gate). `tierBRan` = Playwright actually executed (not opted out AND
+ * ≥1 route). A skipped Tier B is 'skip' (a valid, non-failing outcome, never 'fail').
+ */
+export function computeB11B(routeResults: ReadonlyArray<{ passed: boolean }>, tierBRan: boolean): 'pass' | 'fail' | 'skip' {
+  if (!tierBRan || routeResults.length === 0) return 'skip';
+  return routeResults.every((r) => r.passed) ? 'pass' : 'fail';
+}
+
+/**
+ * SECOND link of the join (Y.1 — THE fix): the process exit gate. `b11_b === 'fail'` now GATES the
+ * exit (the bug was its omission — a failing Playwright run exited 0 and false-proved verified=true).
+ * `'skip'` stays valid (Tier-B-less / opt-out features). Pure + exported so the full matrix is proven.
+ * The caller maps `process.exit(gatesPass ? 0 : 1)`.
+ */
+export function computeGatesPass(b11_a: 'pass' | 'fail', coverageErrors: number, b11_b: 'pass' | 'fail' | 'skip'): boolean {
+  return b11_a === 'pass' && coverageErrors === 0 && b11_b !== 'fail';
+}
+
 // ─── Args ────────────────────────────────────────────────────────────────────
 
+// True only when b11-runner.ts is the CLI entry point — NOT when imported (b11-runner.test.ts imports
+// computeB11B/computeGatesPass). Guards the arg-required exit + main() so a test import is side-effect-free.
+const isCli = !!(process.argv[1] && /b11-runner\.ts$/.test(process.argv[1].replace(/\\/g, '/')));
+
 const args = process.argv.slice(2);
-if (args.length === 0) {
+if (isCli && args.length === 0) {
   console.error('Usage: npx tsx b11-runner.ts <featureName> [--feature-path <path>] [--no-playwright]');
   process.exit(1);
 }
 
-const featureName = args[0];
+const featureName = args[0] ?? ''; // '' only on a non-CLI import (main() never runs then)
 const featurePathIdx = args.indexOf('--feature-path');
 const featurePath = featurePathIdx >= 0 ? args[featurePathIdx + 1] : null;
 const noPlaywright = args.includes('--no-playwright');
@@ -382,17 +408,15 @@ async function main(): Promise<void> {
   const { contractErrors, contractWarnings, contractSummary } = runContractProbe();
 
   // Playwright
-  let b11_b: 'pass' | 'fail' | 'skip' = 'skip';
-  let routeResults: RouteResult[] = [];
-
-  if (!noPlaywright && routes.length > 0) {
+  const routeResults: RouteResult[] = [];
+  const tierBRan = !noPlaywright && routes.length > 0;
+  if (tierBRan) {
     for (const route of routes) {
       routeResults.push(await runPlaywrightForRoute(route, playwrightTimeoutMs));
     }
-    b11_b = routeResults.every((r) => r.passed) ? 'pass' : 'fail';
-  } else if (!noPlaywright && routes.length === 0) {
-    b11_b = 'skip';
   }
+  // Link 1: routeResults → b11_b (pure, tested).
+  const b11_b = computeB11B(routeResults, tierBRan);
 
   // Update checklist
   const checklistUpdated = routeResults.length > 0
@@ -435,14 +459,20 @@ async function main(): Promise<void> {
   } catch { /* non-fatal — stdout JSON remains the primary contract */ }
 
   console.log(JSON.stringify(result, null, 2));
-  // Hard gates: static analysis (b11_a) AND AC coverage (HR33/34/35/36). Playwright
-  // (b11_b) keeps its own retry loop and 'skip' is a valid outcome, so it is reported
-  // in the JSON but does not gate the exit code.
-  const gatesPass = b11_a === 'pass' && coverageErrors === 0;
+  // Hard gates (Y.1 fix): static analysis (b11_a) AND AC coverage (HR33/34/35/36) AND Playwright
+  // (b11_b !== 'fail'). A FAILING Playwright run now gates the exit (its prior omission let a
+  // Playwright-failing run exit 0 and false-prove verified=true — the exact "exit code ≠ verdict"
+  // hole the measurement layer exists to close). 'skip' stays valid (Tier-B-less / opt-out features).
+  // Link 2: b11_a + coverage + b11_b → exit code (pure, full-matrix tested).
+  const gatesPass = computeGatesPass(b11_a, coverageErrors, b11_b);
   process.exit(gatesPass ? 0 : 1);
 }
 
-main().catch((err) => {
-  console.error(JSON.stringify({ error: String(err) }));
-  process.exit(1);
-});
+// Run main() only as the CLI entry point — NOT when imported (b11-runner.test.ts imports the pure
+// computeB11B / computeGatesPass fns). Mirrors record-verify.ts's guard.
+if (isCli) {
+  main().catch((err) => {
+    console.error(JSON.stringify({ error: String(err) }));
+    process.exit(1);
+  });
+}
