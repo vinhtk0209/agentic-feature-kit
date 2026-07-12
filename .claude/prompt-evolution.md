@@ -1751,3 +1751,18 @@ some host after auth is fixed" — the decisive test is a Tier-B re-run WITH the
 
 **Verified by**: live OPTIONS 200 + allow-origin header, GET 401, `playwright-runner.ts:297`, and the `.env.playwright`
 key scan. No code changed. (`missing_project_knowledge`: the CORS misread came from not probing the backend first.)
+
+---
+
+## 2026-07-12 — Change Z.4 (BACKLOG, off critical path — don't fix now): PLAYWRIGHT-002 mislabels ANY missing-ACAO response (incl. 5xx) as "CORS"
+
+<!-- @lesson id="L-2026-07-12-012" classification="validation_rule" priority="medium" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change Z.4 — the Playwright runner reports "CORS" for any response lacking an Access-Control-Allow-Origin header, hiding the real status code (401/500) — caused 4 mis-diagnoses this session
+
+**Where**: `.claude/integrations/playwright-runner.ts` (the `PLAYWRIGHT-002` check that flags cross-origin/CORS failures). **NOT fixed — backlog.**
+
+**Why**: a backend `500` (or `401`, or a not-deployed `404`) returns NO `Access-Control-Allow-Origin` header, so the browser surfaces it as a CORS error; `PLAYWRIGHT-002` propagates that label without the HTTP status. This session that single mislabel sent us down FOUR wrong paths (mock, auth, CORS-flag, env) before a direct probe showed `api.fpt-apps.com` explicitly allows `localhost:1999` (OPTIONS 200 + ACAO header) and the real faults were `401` (missing `PLAYWRIGHT_ACCESS_TOKEN`) then a genuine backend `500` on certificate/preview. Chasing the label instead of the status code is the failure mode.
+
+**What (proposed)**: `PLAYWRIGHT-002` should capture and surface the actual HTTP **status code** of the failing request (via `page.on('response')` / the navigation response), and only call it "CORS" when a 2xx response is actually blocked by a missing ACAO header — distinguishing a true browser CORS block from a 4xx/5xx that merely lacks the header. A backend 500 must read as "backend 500", not "CORS/env".
+
+**Verified by**: this session's probe (OPTIONS 200 w/ ACAO, GET 401) + the confirmed certificate/preview 500. No code changed.
