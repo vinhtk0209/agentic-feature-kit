@@ -1596,3 +1596,18 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 **What (proposed)**: give `record-verify` (and the hook) an explicit code-path independent of the spec-name — e.g. `--feature-path src/<nested>` for the `src` hash walk + `--feature <spec-name>` for `docs/specs/<spec-name>/ux-states.json` — mirroring `b11-runner`'s existing `--feature-path`. `computeContentHash` would take both. Until then, the first clean row should either (a) come from a feature whose src folder is depth-1 and co-named with its spec (unambiguous), or (b) consciously accept code-only hash coverage by passing the nested src path as `--feature` (documented in the run).
 
 **Verified by**: grounded read of `record-verify.ts:167-203` (single `feature` string for both walks) + on-disk confirmation that `src/studio-home/.../ProgressReports` and `docs/specs/US-AD-095-ProgressReports` do not share a `<feature>` name and `docs/specs/studio-home` does not exist. No code changed — finding only.
+
+---
+
+## 2026-07-12 — v3.22: implement the W.3 content_hash split (code-path + spec-name) — the Block-5 prerequisite
+
+<!-- @lesson id="L-2026-07-12-003" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by=".claude/integrations/record-verify.test.ts" test_status="enforced" -->
+### Change W.4 — `computeContentHash({ codePath, specName })`: full hash coverage for deeply-nested features
+
+**Where**: `.claude/integrations/record-verify.ts` (signature + `assertLeafFeatureDir` + `VerifyNote` `code_path`/`spec_name` + CLI `--feature-path`/`--spec-name`, the single `--feature` flag removed) + `.claude/integrations/pre-commit-target.ts` (recompute from the note's stored paths; staged-scope validation replacing `featureFromStaged`) + `.claude/commands/feature-from-confluence.md` B11 step 6 (threads both paths) + `migrations/0004_verify_records_paths.sql` + `record-verify.test.ts` (26 tests). Design: `docs/design/measurement-layer-content-hash-split.md`. Bumps `PROMPT_VERSION v3.21 → v3.22` (+ all stamps + `package.json`).
+
+**Why**: W.3 (CONFIRMED UNIVERSAL, lesson L-2026-07-12-002) — the old single `--feature` string could address neither target's features (all nest under OpenedX module dirs while specs are flat), so a correctly-hash-covered `verified=true` row (the Block-5 prerequisite) was impossible. Under the "hash must fully cover the tested tree" bar this was a hard blocker, not a follow-up.
+
+**What**: the leaf code dir and flat spec folder are now supplied independently — `content_hash` covers both the nested `src/.../ProgressReports` tree AND `docs/specs/<FeatureName>/ux-states.json`. Writer and pre-commit hook call the same `computeContentHash` with the note's OWN stored `code_path`/`spec_name`, so recompute is byte-identical (no drift). Fail-closed hardening: missing/empty codePath throws (§7.1); a Tier B that ran without its ux-states.json throws (§7.2); `assertLeafFeatureDir` HARD-REFUSES a module/container dir via a positive per-feature `data/` property — name-agnostic, not a denylist (§7.4). The hook validates staged SCOPE against `code_path` with no feature-root guessing (§4): an out-of-feature staged file or a stale tree blocks.
+
+**Verified by**: `version:check` ✅ (all stamps v3.22), `prompt-budget --gate` ✅ (exit 0), `test:record-verify` ✅ (26/26 — includes the §7 attack suite: module dir / novel module dir / nested data / missing codePath / Tier-B-without-ux-states all throw; §4 staged-scope: in-scope passes, out-of-feature + stale block; §5(a/b/c) re-proven; writer/hook no-drift). NOT synced — the first real v3.22 B11 run on US-AD-095-ProgressReports (now fully hash-covered) produces the first `verified=true` row that unblocks sync.
