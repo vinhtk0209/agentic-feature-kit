@@ -97,11 +97,11 @@ list; a reviewer can eyeball it to confirm the intended tree was covered.
 
 | Site | Change |
 |------|--------|
-| `record-verify.ts:167` signature | `feature: string` → `scope: { codePath; specName }`; `walk(codePath)`; fail-closed if `codePath` missing (§7). |
+| `record-verify.ts:167` signature | `feature: string` → `scope: { codePath; specName }`; call `assertLeafFeatureDir(repoRoot, codePath)` first (§7.4), then `walk(codePath)`; fail-closed if `codePath` missing or walk yields zero files (§7.1). New exported `assertLeafFeatureDir` (same module → writer + hook enforce identically). |
 | `RecordVerifyInput` (`:42-57`) | replace `feature` with `codePath` + `specName`; keep a derived `feature` label. |
 | `recordVerify` (`:210-241`) | call `computeContentHash(repoRoot, { codePath, specName })`; write `code_path`/`spec_name` into the note. |
 | `captureAndRecord` (`:248-276`) | thread `codePath`/`specName` through to `recordVerify`. |
-| CLI `record`/`capture` (`:376-421`) | add `--feature-path <codePath>` + `--spec-name <specName>`; keep `--feature <X>` as a **co-named shorthand** (sets `codePath=src/X`, `specName=X`) for back-compat + the flat case. Require `--feature-path` when `--feature` absent. |
+| CLI `record`/`capture` (`:376-421`) | add REQUIRED `--feature-path <codePath>` + `--spec-name <specName>`. **`--feature` shorthand REMOVED** (review decision §10.2): it would set `codePath=src/X`, `specName=X` — the exact derive-both-from-one-name that §0/§1 prove is correct for 0% of real features; `verify_records` is `*/0` so nothing to back-compat. Keep a **derived `feature` label** (= `spec_name`) for display/DB only, never as a hash input. |
 | `pushVerifyRecord` (`:295-339`) | include `code_path`/`spec_name` in the POST body (see §8 for the DB column decision). |
 | `pre-commit-target.ts:131` | `computeContentHash(root, { codePath: note.code_path, specName: note.spec_name })`. |
 | `pre-commit-target.ts` staged-match (`:36-43`, `:104-109`) | **rewrite** `featureFromStaged` → verify staged `src/*` files are UNDER `note.code_path` (prefix) and any staged `docs/specs/*/ux-states.json` equals `docs/specs/<note.spec_name>/ux-states.json` (exact). See §4. |
@@ -184,10 +184,20 @@ New fail-closed rules (the current `walk` silently tolerates a missing dir — t
    but the hook's staged-scope validation (§4) blocks: A's staged src files are not under the note's
    `code_path`, or B's staged ux-states.json ≠ `docs/specs/<note.spec_name>/ux-states.json`. *Test:*
    craft a note for A, stage B's files → hook exit 1.
-4. **Over-broad codePath (a module dir, e.g. `src/studio-home`)** → hashes sibling features (correctness
-   hole, not security). *Mitigation:* the wire (§5) always passes the LEAF dir; add a lint/assert that
-   `codePath` is not one of the known framework module dirs, or warn if it contains >1 feature marker.
-   *Test:* `--feature-path src/studio-home` → coverage includes sibling features → assert the warning/refusal.
+4. **Over-broad codePath (a module dir, e.g. `src/studio-home`) → HARD REFUSAL (throw), positive
+   property, NOT a denylist** (review decision §10.4). A `console.warn` would repeat the
+   "--force forensically silent" gap; a blocklist of known module dirs is leaky (a novel module dir
+   slips through). Instead assert a POSITIVE property via the kit's own feature-layer convention (the
+   per-feature `data/` dir, HR32/33): `computeContentHash` calls `assertLeafFeatureDir(repoRoot,
+   codePath)` (folded into the same fn so writer AND hook enforce it identically) which requires:
+   (a) exactly one `data/` directory exists at-or-under `codePath`, AND (b) it sits directly at
+   `codePath/data` (the feature's OWN data layer). A module dir has NO `data/` at its own root and
+   MANY nested `data/` dirs → fails both → throws — **regardless of the dir's name** (name-agnostic,
+   so a novel/unknown module dir is caught by the same rule). An empty/non-feature dir has zero `data/`
+   → throws. A leaf feature (ProgressReports) has exactly `ProgressReports/data/` and none deeper →
+   passes. *Tests:* `--feature-path src/studio-home` (real module) → throws; a synthetic **novel**
+   module dir (nested feature `data/`, no root `data/`, name in no denylist) → throws by the same
+   positive property; a leaf dir → passes; a dir with `data/` at root AND a nested `data/` → throws.
 
 Every attack test lands in `record-verify.test.ts` alongside the existing §5 suite; all must be green
 before v3.22 ships.
@@ -218,13 +228,19 @@ before v3.22 ships.
 
 ---
 
-## 10. Open decisions for user review (this is the STOP)
+## 10. Review decisions — LOCKED 2026-07-12 (implementation proceeds on these)
 
-1. **Param shape:** options object `{ codePath, specName }` (recommended) vs. two positional args.
-2. **`--feature` back-compat shorthand:** keep it as a co-named alias (recommended) or remove it and
-   require `--feature-path` + `--spec-name` always.
-3. **DB columns:** add `code_path`/`spec_name` to `verify_records` now (recommended) or note-only.
-4. **Over-broad codePath guard (§7.4):** hard refusal vs. warning.
+1. **Param shape:** options object `{ codePath, specName }`. ✅ APPROVED as written.
+2. **`--feature` shorthand:** ❌ REMOVED entirely. It sets `codePath=src/X`, `specName=X` — correct for
+   0% of real features (§0/§1); `verify_records` `*/0` so nothing to back-compat. Every call site
+   passes `--feature-path` + `--spec-name` explicitly; a derived `feature` label is display/DB only.
+3. **DB columns:** ✅ ADD now — `code_path`/`spec_name` nullable via `migrations/0004_verify_records_paths.sql`.
+   Additive on the `*/0` table, not load-bearing for the sync guard (`sync-to-targets.ts:571-572`).
+   `pushVerifyRecord` includes them; if the migration hasn't been run the POST fails and
+   `pushVerifyRecord`'s fail-open catch keeps the local note valid (sync stays blocked until 0004 is
+   run + row re-pushed — documented as a Block-5 prereq).
+4. **Over-broad-path guard:** ✅ HARD REFUSAL (throw) via a POSITIVE leaf-feature-dir property
+   (`assertLeafFeatureDir`, the per-feature `data/` convention), NOT a denylist. See §7.4.
 
-**No code written. Awaiting review before the v3.22 implementation session. design-to-ui untouched.
-No sync.**
+**Implementation lands via canaries (one at a time, tests green between), targets v3.22, backup first,
+HANDOFF after each, no sync, design-to-ui untouched.**
