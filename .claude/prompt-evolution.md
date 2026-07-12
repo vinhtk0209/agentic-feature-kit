@@ -1611,3 +1611,22 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 **What**: the leaf code dir and flat spec folder are now supplied independently — `content_hash` covers both the nested `src/.../ProgressReports` tree AND `docs/specs/<FeatureName>/ux-states.json`. Writer and pre-commit hook call the same `computeContentHash` with the note's OWN stored `code_path`/`spec_name`, so recompute is byte-identical (no drift). Fail-closed hardening: missing/empty codePath throws (§7.1); a Tier B that ran without its ux-states.json throws (§7.2); `assertLeafFeatureDir` HARD-REFUSES a module/container dir via a positive per-feature `data/` property — name-agnostic, not a denylist (§7.4). The hook validates staged SCOPE against `code_path` with no feature-root guessing (§4): an out-of-feature staged file or a stale tree blocks.
 
 **Verified by**: `version:check` ✅ (all stamps v3.22), `prompt-budget --gate` ✅ (exit 0), `test:record-verify` ✅ (26/26 — includes the §7 attack suite: module dir / novel module dir / nested data / missing codePath / Tier-B-without-ux-states all throw; §4 staged-scope: in-scope passes, out-of-feature + stale block; §5(a/b/c) re-proven; writer/hook no-drift). NOT synced — the first real v3.22 B11 run on US-AD-095-ProgressReports (now fully hash-covered) produces the first `verified=true` row that unblocks sync.
+
+---
+
+## 2026-07-12 — Change X.1 (BACKLOG finding, triage in its own session — NOT fixed): HR35 verified-ratio parser undercounts non-`✅`-summary / middle-column-status checklists
+
+<!-- @lesson id="L-2026-07-12-004" classification="validation_rule" priority="medium" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change X.1 — `lint-feature.ts` HR35 can report a falsely-LOW verified ratio on valid checklists; off the sync-unblock critical path, no verdict changes
+
+**Where**: `.claude/integrations/lint-feature.ts` — `summaryPair` (`:138-146`, regex `/✅\s*(\d+)\s*\/\s*(\d+)/`) + the `finalCellVerified` row-scan fallback (`:151-160`). **Not fixed — logged for a separate triage session.**
+
+**Why**: two independent format assumptions make HR35 undercount:
+  1. `summaryPair` only matches a Summary pair prefixed by **`✅`**. A Summary that reports a *partial* count with **`⚠️`** (e.g. `Total ACT rows: **26** — ⚠️ 22/26 verified`) — or that omits the literal `Total UI/ACT rows` label (e.g. `verified: 37 / 37 (UI 18/18 · ACT 19/19)`) — does not parse, so `verifiedSource` silently falls back to `row-scan` (`:149`).
+  2. `finalCellVerified` counts `✅` only in the row's **final** table cell. Checklists that place the Status `✅` in a **middle** column (with a selector/evidence string in the final cell) are undercounted to ~0 by row-scan.
+
+**Observed (2026-07-12)**: US-AD-095-ProgressReports — the same checklist read as `[src: summary] 0/42` (one file revision) and `[src: row-scan] 1/38` (another, live-edited), while its Status cells actually showed ACT ~22/26. The undercount did **not** change the verdict there (UI genuinely `0/16`, so honest ratio ≈52% is below the 60% gate regardless). US-AD-094/AssessmentGrading reads `100%` by direct Status-cell count and (Status being the final cell) also via row-scan — so HR35 happens to agree there. The bug is real but has not flipped any real gate decision, and it is **off the sync-unblock critical path**.
+
+**What (proposed, not applied)**: (a) `summaryPair` should accept any status glyph before `X/Y` (`✅|⚠️|❌`) and a looser label (not only `Total UI/ACT rows`); (b) row-scan should locate the Status column by table **header** ("Status") rather than assuming the final cell. Add fixtures for both checklist dialects. Triage + fix in its own session.
+
+**Verified by**: grounded read only (`lint-feature.ts:138-160` + the two live checklists). No code changed.
