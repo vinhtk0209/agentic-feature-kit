@@ -1630,3 +1630,50 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 **What (proposed, not applied)**: (a) `summaryPair` should accept any status glyph before `X/Y` (`✅|⚠️|❌`) and a looser label (not only `Total UI/ACT rows`); (b) row-scan should locate the Status column by table **header** ("Status") rather than assuming the final cell. Add fixtures for both checklist dialects. Triage + fix in its own session.
 
 **Verified by**: grounded read only (`lint-feature.ts:138-160` + the two live checklists). No code changed.
+
+---
+
+## 2026-07-12 — Change Y.1 (⛔ CRITICAL-PATH BLOCKER, not ordinary backlog): b11-runner exit code excludes Playwright → capture false-proves verified=true
+
+<!-- @lesson id="L-2026-07-12-005" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change Y.1 — `b11-runner.ts` gates its exit on `b11_a` + coverage but NOT `b11_b` (Playwright) — the exact "exit code ≠ verdict" hole `capture` exists to close, one layer deeper
+
+**Where**: `.claude/integrations/b11-runner.ts:438-442` — `const gatesPass = b11_a === 'pass' && coverageErrors === 0; process.exit(gatesPass ? 0 : 1);`. The read side is CORRECT: `record-verify.ts` `captureAndRecord:354-362` reads `spawnSync().status` faithfully. **NOT fixed — design-first, its own session.**
+
+**Why (proven on disk 2026-07-12)**: a real capture on AssessmentGrading (US-AD-094) recorded `verify_records` row `run-1783868360863-827b5cdd` with `tier_b_exit=0 → verified=true`, while the b11-runner block in the same run reported `b11_b="fail"` (Playwright 0/1 routes, PLAYWRIGHT-002 CORS + PLAYWRIGHT-008 5/9 AC). Because `b11_b` is excluded from `gatesPass` (`:439-440` comment: "reported in the JSON but does not gate the exit code"), a failing Playwright run still `process.exit(0)`, `record-verify` reads 0, `computeVerified(0,0)=true`. **This is universal**: EVERY capture whose Playwright fails but whose static+coverage pass will false-prove `verified=true`. `capture` was chosen over `record` precisely to make `verified` a function of observed exit codes — but the exit code it observes (b11-runner's) is itself dishonest, so the guarantee is void.
+
+**6F**: `workflow_design_flaw` provably universal by pipeline mechanism (not project-specific) → promoted on first occurrence. This is now the sync-unblock critical-path blocker — **no valid v3.22 verified row is possible until this is fixed** (a Tier-B-failing feature false-proves; a Tier-B-passing feature is what we need but the gate can't be trusted to distinguish them).
+
+**What (proposed, not applied)**: `gatesPass = b11_a === 'pass' && coverageErrors === 0 && b11_b !== 'fail'` — `'skip'` stays valid (Tier-B-less / opt-out features), only `'fail'` gates. Attack-test: a Playwright-failing run MUST `process.exit(1)` → `tier_b_exit≠0` → `verified=false`. The fix ships to both target copies byte-identical; re-prove the §5 fail-closed contract after.
+
+**Verified by**: grounded read of `b11-runner.ts:438-442` + `record-verify.ts:354-362` + the landed `verify_records` row. No code changed.
+
+---
+
+## 2026-07-12 — Change Y.2 (bootstrap gap, blocks a correct v3.22 row): target command file never synced → resolveKitVersion tags the wrong version
+
+<!-- @lesson id="L-2026-07-12-006" classification="validation_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change Y.2 — `resolveKitVersion` reads the TARGET's `feature-from-confluence.md` PROMPT_VERSION, which is stale v3.18 because only the integration `.ts` files were hand-copied, not the command file
+
+**Where**: `.claude/integrations/record-verify.ts:159-169` (`resolveKitVersion`, reads `<target>/.claude/commands/feature-from-confluence.md`, fallback `'3.18.0'`) + the copy-to-target step (this session synced only `record-verify.ts`+`pre-commit-target.ts` manually; `commands/feature-from-confluence.md` is a sync-allowlist file but `npm run sync` is blocked). **NOT fixed.**
+
+**Why (proven on disk)**: authoring's `.claude/commands/feature-from-confluence.md` is dated Jul 3, still `PROMPT_VERSION: v3.18`, so both bootstrap rows are tagged `kit_version=3.18.0`. Even AFTER Y.1 is fixed, a legitimate capture in authoring still tags v3.18 → never matches the sync guard's `kit_version=eq.3.22.0` → no v3.22 row is ever produced. This is another "built-but-unconnected" link: the integration `.ts` reached the target but the command file (which carries the version stamp resolveKitVersion trusts) did not.
+
+**What (proposed, not applied)**: SYNC the command file to the target so `resolveKitVersion` reads the true installed version (fix at the root: the target must reflect the kit version whose code it runs). **Do NOT add `--kit-version` to `capture`** — a model-supplied version is exactly the self-report hole the measurement layer closes (`record` has it for a different, deliberate use; `capture` must derive, not accept). Trace every file that must reach the target for a capture to tag the correct version + a sha256 parity plan.
+
+**Verified by**: `ls`/`grep` on authoring's command file (Jul 3, v3.18) + `resolveKitVersion:159-169`. No code changed.
+
+---
+
+## 2026-07-12 — Change Y.3 (cosmetic): `phase` is a self-reported literal, never computed
+
+<!-- @lesson id="L-2026-07-12-007" classification="temporary_observation" priority="low" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change Y.3 — confirm no downstream consumer trusts `phase` as a validity signal
+
+**Where**: `.claude/integrations/record-verify.ts:365` (`phase: opts.phase ?? 'verify_complete'`) → written verbatim at `:309` (`phase: input.phase`). Only `verified` (`:100` `computeVerified`) is computed. **NOT changed.**
+
+**Why**: `phase` reproduces the historically-self-reported `verify_complete` label; it carries no computed meaning. Harmless today because the layer keys everything on `verified`, but it must never be read as evidence a verify passed.
+
+**What (proposed)**: audit for any downstream consumer that reads `phase` as a pass/fail signal (expect none); optionally derive it from `verified` only if trivial and non-risky. Otherwise document it as a known cosmetic label.
+
+**Verified by**: `record-verify.ts:309/:365`. No code changed.
