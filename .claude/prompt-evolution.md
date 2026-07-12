@@ -1571,7 +1571,20 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 
 ---
 
-## 2026-07-12 — Change W.3 (FINDING, not yet applied): `content_hash` single-feature-string breaks for features whose src folder ≠ docs/specs name
+## 2026-07-12 — Change W.3 (CONFIRMED design bug, fix deferred to a separate design-first session): `content_hash` single-feature-string breaks for features whose src folder ≠ docs/specs name
+
+> **CONFIRMED UNIVERSAL (2026-07-12, session 2).** Scanning BOTH targets from both directions found
+> **ZERO** co-named depth-1 features: every `docs/specs/<F>/ux-states.json` (learning: AdminRefundProcessing,
+> AnalyzeExamPerformance, BulkEnrollment, ClassAttendance, PaymentConfig, US-LE-019-AttendanceCheckin,
+> US-LE-031-CoursePlayerMultiFormat; authoring: AssessmentGrading, Attendance, ClassDetailsModuleList,
+> US-AD-095-ProgressReports) has NO matching `src/<F>` — generated features nest under OpenedX/Paragon
+> module dirs (`src/pages/…`, `src/studio-home/…`) while `docs/specs` uses flat/US-XX names. So this is
+> not an edge case: the co-named depth-1 assumption holds for **neither real target repo**. **Dependency
+> inversion this exposes:** if the first `verified=true` row must be co-named (so its `content_hash` fully
+> covers the tested tree — the correct bar), then W.3 must be fixed BEFORE a clean first row is possible;
+> "fix W.3 after sync unblocks" is circular under that bar. **Fix is a separate design-first session
+> (record-verify must accept separate code-path + spec-path, not derive both from one `--feature`); not
+> done this session.**
 
 <!-- @lesson id="L-2026-07-12-002" classification="validation_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
 ### Change W.3 — `record-verify` needs a separate code-path vs spec-name, or the hash silently under-covers deeply-nested features
