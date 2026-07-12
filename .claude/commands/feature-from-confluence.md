@@ -2184,6 +2184,24 @@ Log `[B11-coverage] ac_covered=N/M unit=K e2e=J errors=E` → `recovery.log`. Do
 
    Log: `[B11-be-pending] count=N → docs/specs/<FeatureName>/BE-PENDING.md` → `recovery.log`.
 
+6. **(v3.21 — Measurement Layer: write the trusted verify record — THE sync-unblock gate)** This is the ONLY sanctioned writer of the `verified` verdict (`docs/design/measurement-layer-b11-wire.md`; `record-verify.ts` is the single trusted writer, `memory.ts` in step 4 is narrative-only). Run the `capture` wrapper **from the TARGET repo root** (where `src/<feature>` lives — it hard-errors via `assertNotKitRepo` if run in the kit). It RE-RUNS the tiers and computes `verified` from their real exit codes — the model never supplies the verdict:
+
+   ```bash
+   # Tier B command included only when PLAYWRIGHT_OPTED_IN = true; OMIT --tierB-cmd when Agent B was
+   # skipped (opt-out / dev-server unavailable) → tierB_exit = null (a skipped Tier B is not a failure).
+   npx tsx .claude/integrations/record-verify.ts capture \
+     --feature <FeatureName> \
+     --tierA-cmd "npx tsx .claude/integrations/lint-feature.ts src/<feature-folder> --checklist docs/specs/<FeatureName>/checklist.md --ux-states docs/specs/<FeatureName>/ux-states.json --response-transform <PROJECT_CTX.response_transform> --min-verified 0.6 --gate" \
+     --tierB-cmd "npx tsx .claude/integrations/b11-runner.ts <FeatureName>"
+   ```
+
+   **§5 FAIL-CLOSED CONTRACT (two opposite postures — do not conflate):**
+   - **Wrapper exit ≠ 0** (git-note write failed, `assertNotKitRepo` fired, or a tier could not be spawned) → the verify record was **NOT written**. **STOP. Do NOT proceed to B12. Do NOT print any success banner.** Surface the raw error and route to the failure options below. A missing note = no verified state, full stop.
+   - **Wrapper exit = 0 but `verified: false`** in the printed note (a tier really failed — `verified` is `tierA_exit === 0 && (tierB_exit === 0 || tierB_exit === null)`) → this is a *successful record of a failing verify*. Do **NOT** go to B12 — route to the failure/rollback options below. **Gate the B12 transition on `verified === true`, never on "the record wrote".**
+   - **Wrapper exit = 0 AND `verified: true`** → proceed to B12. If the run also printed `⚠️ verify_records upsert failed`, the git note is valid locally but the Supabase row did **not** land — tell the user explicitly: **"verify record written locally but sync is still BLOCKED until the verify_records row lands (re-run the capture, or push the row, when Supabase is reachable)."** Do not imply sync is now open.
+
+   Log: `[B11-verify-record] verified=<bool> tierA=<exit> tierB=<exit|null> hash=<content_hash-prefix>` → `recovery.log`.
+
 ### If Agent B reports "Design cycle-back needed"
 
 ```
