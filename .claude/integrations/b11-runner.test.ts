@@ -13,7 +13,10 @@
  * deterministic suite — that integration is the Block-5 capture). This proves the LOGIC exhaustively.
  * Run: npx tsx .claude/integrations/b11-runner.test.ts
  */
-import { computeB11B, computeGatesPass } from './b11-runner';
+import { computeB11B, computeGatesPass, assertPlaywrightTokenFresh } from './b11-runner';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 let passed = 0, failed = 0;
 function test(name: string, fn: () => void) {
@@ -22,6 +25,36 @@ function test(name: string, fn: () => void) {
 }
 function eq<T>(got: T, want: T, msg: string) { if (got !== want) throw new Error(`${msg}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`); }
 const exitOf = (gatesPass: boolean) => (gatesPass ? 0 : 1);
+
+// ── Tier B token preflight fixtures (v3.24) ──
+// Real .env.playwright is NEVER touched: each case writes an isolated temp file and
+// removes it in finally (afterEach-equivalent for this flat sync harness).
+function withEnvFixture(content: string | null, fn: (envPath: string) => void): void {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'b11-tok-'));
+  const envPath = path.join(dir, '.env.playwright');
+  if (content !== null) fs.writeFileSync(envPath, content); // null → file absent (file-not-found branch)
+  try { fn(envPath); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+}
+const NOW = 1_000_000_000_000; // fixed injected clock — no wall-clock dependency
+const H = 3_600_000;
+const reasonCode = (e: unknown) => String((e as Error).message).split(':')[0];
+/** Assert assertPlaywrightTokenFresh THROWS with a specific tierB-token-* reason code. */
+function throwsCode(content: string | null, nowMs: number, wantCode: string, msg: string): void {
+  withEnvFixture(content, (p) => {
+    let e: unknown = null;
+    try { assertPlaywrightTokenFresh(p, nowMs); } catch (err) { e = err; }
+    if (e === null) throw new Error(`${msg}: expected throw ${wantCode}, got none`);
+    eq(reasonCode(e), wantCode, msg);
+  });
+}
+/** Assert it does NOT throw (token present + fresh). */
+function noThrow(content: string, nowMs: number, msg: string): void {
+  withEnvFixture(content, (p) => {
+    try { assertPlaywrightTokenFresh(p, nowMs); }
+    catch (err) { throw new Error(`${msg}: unexpected throw ${(err as Error).message}`); }
+  });
+}
+const TOKEN = 'dummy.jwt.placeholder'; // non-credential placeholder — only presence matters
 
 // ── Link 1 — routeResults → b11_b ──
 test('Link1 computeB11B: all routes pass → "pass"', () => {
@@ -64,6 +97,32 @@ test('JOIN: all routes pass → b11_b=pass → gatesPass=true → exit 0 (legiti
   const b11_b = computeB11B([{ passed: true }, { passed: true }], true);
   eq(b11_b, 'pass', 'route→b11_b');
   eq(exitOf(computeGatesPass('pass', 0, b11_b)), 0, 'legit-pass');
+});
+
+// ── Tier B auth preflight — fail-closed on every non-ok token state (v3.24) ──
+// These guard the property proven with throwaway tests in Canary 1: a missing/stale/
+// expiring token must THROW (exit ≠ 0) BEFORE Playwright launches, so a silent-empty
+// 401 render can never reach an assertion. Reason codes must stay distinct.
+test('preflight A missing: env file absent → tierB-token-missing', () => {
+  throwsCode(null, NOW, 'tierB-token-missing', 'file-absent');
+});
+test('preflight A missing: EXPIRES_AT absent (token present) → tierB-token-missing', () => {
+  throwsCode(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\n`, NOW, 'tierB-token-missing', 'no-expiry');
+});
+test('preflight GAP: valid future expiry BUT no PLAYWRIGHT_ACCESS_TOKEN → tierB-token-missing  [Z.3 blocker; status-only gate would pass this]', () => {
+  throwsCode(`PLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 72 * H}\n`, NOW, 'tierB-token-missing', 'gap-absent-token');
+});
+test('preflight B expired: past EXPIRES_AT → tierB-token-expired  [nowMs injected]', () => {
+  throwsCode(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW - 3 * H}\n`, NOW, 'tierB-token-expired', 'expired');
+});
+test('preflight C expiring: EXPIRES_AT +5h (<24h) → tierB-token-expiring  [the decisive case: passes under exit-code gating]', () => {
+  throwsCode(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 5 * H}\n`, NOW, 'tierB-token-expiring', 'expiring');
+});
+test('preflight D ok: token present + expiry +72h → does NOT throw', () => {
+  noThrow(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 72 * H}\n`, NOW, 'ok');
+});
+test('preflight boundary: EXPIRES_AT exactly 24h ahead → still fresh (ok), not expiring', () => {
+  noThrow(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 24 * H}\n`, NOW, 'boundary-24h');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

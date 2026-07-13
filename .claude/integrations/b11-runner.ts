@@ -31,6 +31,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { resolveRoutes, parseUxStates } from './ux-states';
 import { resolveContractHttp } from './contract-probe';
+import { checkPlaywrightToken } from './version-check';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,67 @@ const noPlaywright = args.includes('--no-playwright');
 const cwd = process.cwd();
 const specsDir = path.join(cwd, 'docs', 'specs', featureName);
 const integrationsDir = path.join(cwd, '.claude', 'integrations');
+
+// ─── Tier B auth preflight (v3.24) ───────────────────────────────────────────
+// Before Playwright launches, the access token MUST be present AND fresh. A
+// missing/empty/stale token → 401 → cross-origin login redirect → empty-shell
+// render that a shell-only assertion would FALSE-PASS (the class §4 closes).
+// We gate on the token's real STATE, NOT `version-check --playwright`'s exit
+// code — that CLI returns 0 for `expiring-soon` (warn-only), so gating on it
+// would let a token lapse mid-run. checkPlaywrightToken() inspects only
+// PLAYWRIGHT_TOKEN_EXPIRES_AT, so access-token PRESENCE is checked here too
+// (a valid expiry with no access token is the real Z.3 blocker). All of
+// missing / expired / expiring-soon THROW → main().catch → exit 1, BEFORE any
+// browser context is created.
+
+/** Resolve the .env.playwright the preflight reads — the same `<cwd>/.env.playwright`
+ *  playwright-runner loads (loadEnvFile → path.resolve). `PLAYWRIGHT_ENV_FILE`
+ *  overrides for TESTING ONLY (attack-test fixtures); never point it at prod creds. */
+export function resolvePlaywrightEnvPath(): string {
+  return process.env.PLAYWRIGHT_ENV_FILE ?? path.join(cwd, '.env.playwright');
+}
+
+/** Fail-closed Tier B token preflight. Throws with a distinct reason code —
+ *  tierB-token-missing / tierB-token-expired / tierB-token-expiring — for any
+ *  non-`ok` state. Pure + exported so it is unit-attack-testable against fixtures. */
+export function assertPlaywrightTokenFresh(envPath: string, nowMs: number = Date.now()): void {
+  if (!fs.existsSync(envPath)) {
+    throw new Error(
+      `tierB-token-missing: .env.playwright not found at ${envPath} — Tier B needs a fresh ` +
+        `PLAYWRIGHT_ACCESS_TOKEN to reach the backend authenticated; refusing to run blind.`,
+    );
+  }
+  const content = fs.readFileSync(envPath, 'utf8');
+  const at = content.match(/^\s*PLAYWRIGHT_ACCESS_TOKEN=(.*)$/m);
+  const accessToken = at ? at[1].trim().replace(/^['"]|['"]$/g, '') : '';
+  if (!accessToken) {
+    throw new Error(
+      `tierB-token-missing: PLAYWRIGHT_ACCESS_TOKEN absent/empty in ${envPath} — injectAuthTokens ` +
+        `would inject nothing → 401 → empty-shell false-pass. Refresh before Tier B.`,
+    );
+  }
+  const t = checkPlaywrightToken(envPath, nowMs);
+  const hrs = t.msRemaining !== null ? Math.round(t.msRemaining / 3_600_000) : null;
+  if (t.status === 'missing') {
+    throw new Error(
+      `tierB-token-missing: PLAYWRIGHT_TOKEN_EXPIRES_AT absent in ${envPath} — cannot prove the ` +
+        `token is fresh; refusing to run Tier B unauthenticated-blind.`,
+    );
+  }
+  if (t.status === 'expired') {
+    throw new Error(
+      `tierB-token-expired: PLAYWRIGHT_ACCESS_TOKEN expired ~${Math.abs(hrs ?? 0)}h ago — ` +
+        `re-authenticate and update .env.playwright before Tier B.`,
+    );
+  }
+  if (t.status === 'expiring-soon') {
+    throw new Error(
+      `tierB-token-expiring: PLAYWRIGHT_ACCESS_TOKEN expires in ~${hrs}h (<24h) — fail-closed so ` +
+        `it cannot lapse mid-run into a silent 401. Refresh before Tier B.`,
+    );
+  }
+  // status === 'ok' → token present and fresh → proceed.
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -411,6 +473,10 @@ async function main(): Promise<void> {
   const routeResults: RouteResult[] = [];
   const tierBRan = !noPlaywright && routes.length > 0;
   if (tierBRan) {
+    // v3.24 Tier B auth preflight — fail closed on a missing/stale/expiring token
+    // BEFORE any browser context is created. A bad token renders an empty-shell
+    // 401 page that a shell-only assertion would false-pass (the class §4 closes).
+    assertPlaywrightTokenFresh(resolvePlaywrightEnvPath());
     for (const route of routes) {
       routeResults.push(await runPlaywrightForRoute(route, playwrightTimeoutMs));
     }
