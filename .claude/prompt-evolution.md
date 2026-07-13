@@ -1766,3 +1766,31 @@ key scan. No code changed. (`missing_project_knowledge`: the CORS misread came f
 **What (proposed)**: `PLAYWRIGHT-002` should capture and surface the actual HTTP **status code** of the failing request (via `page.on('response')` / the navigation response), and only call it "CORS" when a 2xx response is actually blocked by a missing ACAO header — distinguishing a true browser CORS block from a 4xx/5xx that merely lacks the header. A backend 500 must read as "backend 500", not "CORS/env".
 
 **Verified by**: this session's probe (OPTIONS 200 w/ ACAO, GET 401) + the confirmed certificate/preview 500. No code changed.
+
+---
+
+## 2026-07-13 — v3.24 shipped (Tier B env: token preflight + §4 data-reached + Z.2 bounded wait). Block 5 STILL BLOCKED: three §4/feature issues found grounding ProgressReports (Canary 3)
+
+> v3.24 (Canary 0–3) landed the fail-closed token preflight (`b11-runner.ts`), the §4 data-reached assertion + Z.2 bounded wait (`playwright-runner.ts`), 5 version stamps, and a dual-target byte-identical copy to AUTHORING. Grounding ProgressReports for the first honest capture surfaced THREE reasons a Block-5 run cannot yet produce a legitimate `verified=true` — recorded here so the next session fixes them design-first BEFORE a fresh token is spent.
+
+<!-- @lesson id="L-2026-07-13-001" classification="validation_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change AA.1 — a mock-mode feature (USE_MOCK=true) makes ZERO real API calls, so §4 data-reached correctly fails; capture MUST run against the real backend
+**Where**: target feature data layer (`src/…/ProgressReports/data/api.ts` + `mockData.ts:13 USE_MOCK=true`) vs the `.claude/integrations/playwright-runner.ts` §4 gate.
+**Why**: under `USE_MOCK=true`, `api.ts` returns local mock inside `if (USE_MOCK)` and never calls `getHttpClient().get()`, so no `api.fpt-apps.com` response is emitted. §4 (key API 2xx + non-empty body) then reports `tierB-no-data-reached` — CORRECTLY (no real data reached), but for a reason that reads like a tooling bug. A `verified=true` row over mock data would be a false attestation.
+**What (rule)**: before a Block-5 capture the feature must be flipped to real API (`/drop-mock` → `USE_MOCK=false`). B11 should refuse (or loudly warn) when the feature under capture is still in mock mode.
+**Verified by**: static read of the ProgressReports data layer (2026-07-13). No live run.
+
+<!-- @lesson id="L-2026-07-13-002" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change AA.2 — §4 is assessed at INITIAL route load, but a tab-gated feature fetches its data DURING the interaction steps → §4 cannot observe it
+**Where**: `.claude/integrations/playwright-runner.ts` — the `PLAYWRIGHT-DATA` §4 check runs right after the initial-load waits, BEFORE the v2 interaction states run near the end of `runFeatureVerification`.
+**Why**: ProgressReports lives behind a "Progress & reports" tab (ux-states clicks it in the interaction steps). On the bare route load the tab is not open, so PR's data fetch has not fired when §4 reads `apiObservations` → `tierB-no-data-reached`, a false fail, even with a fresh token + real API.
+**What (proposed, design-first)**: move/repeat the §4 assessment to AFTER the interaction steps reach the feature's data-bearing state (or drive a direct route to the feature). The `page.on('response')` listener already accumulates for the whole page life; only the assessment POINT is too early.
+**Verified by**: static read of ux-states.json steps (navigate → click tab → waitForSelector) 2026-07-13. No live run.
+
+<!-- @lesson id="L-2026-07-13-003" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
+### Change AA.3 — MOST SEVERE (false-proof, one layer over Y.1): §4 matches ANY api.fpt-apps.com response, not the FEATURE's own endpoint → it can PASS on a sibling page's data
+**Where**: `.claude/integrations/playwright-runner.ts` — `apiUrlPattern` = `api.fpt-apps.com|/api/` (any backend response) fed to `assessDataReached`.
+**Why**: at `/class-management/edit/1` the class-edit page fires its OWN `api.fpt-apps.com` calls on load. If any returns 2xx-non-empty, §4 PASSES `data-reached` while ProgressReports' data (behind the tab) never loaded — a `verified=true` attesting the WRONG feature's data. This is exactly the Y.1 false-proof class, one layer over: the gate passes on data that isn't the feature's.
+**What (proposed, design-first)**: §4 must scope "key API" to the FEATURE's own endpoint(s) — match the feature's contract `.http` / data-layer URLs (`/progress-reports`, `/analytics`, `/learners`) rather than any `api.fpt-apps.com`. Combined with AA.2 (assess after the tab opens), §4 then proves the FEATURE's data reached, not a neighbor's.
+**6F**: `workflow_design_flaw` universal by pipeline mechanism (any tab-gated / multi-API route false-proves identically — not project-specific) → promote on first occurrence. This is the Block-5 critical-path blocker: no trustworthy v3.24 `verified=true` row until §4 is feature-scoped.
+**Verified by**: static read of the route + data layer 2026-07-13. No live run.

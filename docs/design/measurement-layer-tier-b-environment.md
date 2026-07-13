@@ -14,7 +14,19 @@
 > WITH the token populated; only if a genuine CORS block then appears on some host is §1 revisited. §1
 > below is retained for record but is no longer the primary fix.
 >
-> **Status: DESIGN ONLY — no code written. Targets kit v3.24.** Produced 2026-07-12 (session 2).
+> ⚠️ **RE-GROUND CORRECTION (2026-07-13, session 3 — supersedes the "absent token" claim above).**
+> A fresh disk re-ground found `PLAYWRIGHT_ACCESS_TOKEN` is in fact **PRESENT** in authoring's
+> `.env.playwright:14` (not absent); `checkPlaywrightToken()` reports **`expiring-soon` (~5h left)**
+> (`PLAYWRIGHT_TOKEN_EXPIRES_AT=1783950800` = 2026-07-13T13:53:20Z; probed 08:34:52Z). The token was
+> evidently added after the Z.3 probe. Two facts carried into the LOCKED plan: (a) the fail-closed
+> preflight MUST gate on the exported `checkPlaywrightToken()` **status** — `missing`/`expired`/
+> `expiring-soon` all THROW — NOT on the `version-check --playwright` **exit code**, which returns **0**
+> for `expiring-soon` (warn-only, verified on disk 2026-07-13). (b) The "unauthenticated 401" root-cause
+> for the 2026-07-12T14:07Z run is now uncertain (token `iat` 13:53Z predates it), but the fix (§2
+> preflight + §4 data-reached assertion) stands regardless — a present-but-expiring token is precisely
+> the silent-empty-401 risk §4 guards.
+>
+> **Status: LOCKED — implementing (2026-07-13, session 3). Targets kit v3.24.** Design produced 2026-07-12 (session 2).
 > Fixes Z.1 (Tier-B CORS wiring blocker) + Z.2 (assertion instability), lessons L-2026-07-12-009/010.
 > Context: with the Y.1 honest gate live, a real Tier B pre-check proved **no feature has ever passed
 > Tier B honestly** — every `api.fpt-apps.com` route CORS-fails. This design answers BOTH layers (CORS
@@ -84,14 +96,18 @@ redirect to logout"); `.env.playwright` is loaded at `:95-96`. So a fresh Playwr
 carry the logged-in session → **fixing CORS should NOT surface a 401** — CONDITIONAL on a fresh, present
 access token.
 
-**The gap to confirm at implementation:** authoring's `.env.playwright` shows `PLAYWRIGHT_REFRESH_TOKEN`
-and `PLAYWRIGHT_TOKEN_EXPIRES_AT` but **no access-token key was visible** in the key scan. If the access
-token is absent/empty, `injectAuthTokens` injects nothing → API calls 401 → empty page. `version-check
---playwright` (`version-check.ts:54-79`) checks expiry (exit 3 = expired/expiring < 24h; `status:missing`
-if no expiry). **Design requirement:** the Tier B fix must run this token preflight and **fail closed**
-if the token is missing/stale — so a silent-empty (401) render can never be mistaken for a pass. CORS
-and auth are handled as **one fix**: `--disable-web-security` + token-freshness preflight + §4 data
-assertion, shipped together.
+**The gap — RE-GROUNDED 2026-07-13 (corrects the original claim):** authoring's `.env.playwright:14`
+in fact **contains** `PLAYWRIGHT_ACCESS_TOKEN` (alongside `PLAYWRIGHT_REFRESH_TOKEN` and
+`PLAYWRIGHT_TOKEN_EXPIRES_AT`); it is **present but `expiring-soon` (~5h left)**, not absent. Were it
+absent/empty, `injectAuthTokens` would inject nothing → API calls 401 → empty page. Token status comes
+from the exported `checkPlaywrightToken()` (`version-check.ts:67`, status `ok`/`expiring-soon`/`expired`/
+`missing`). ⚠️ **The `version-check --playwright` CLI exit code is NOT a reliable gate**: verified on
+disk 2026-07-13 it exits **0** for `expiring-soon` (warn-only) — only `expired`/`missing` exit 3. So the
+preflight must gate on the **status value**, treating `missing`/`expired`/`expiring-soon` as fail-closed.
+**Design requirement:** the Tier B fix runs this token preflight and **fails closed** on any non-`ok`
+status — so a silent-empty (401) render can never be mistaken for a pass. Per §7 (LOCKED), CORS is
+demoted; the fix is **token-status preflight + §4 data-reached assertion + §3 bounded data-ready wait**,
+shipped together — `--disable-web-security` is NOT wired.
 
 ---
 
@@ -142,18 +158,27 @@ on a genuinely-data-passing feature can finally produce the first honest `verifi
 
 ---
 
-## 7. Open decisions for review (this is the STOP)
+## 7. Decisions — LOCKED 2026-07-13 (implementation proceeds on these; do not re-open)
 
-1. **CORS:** wire `--disable-web-security` for local Tier B (recommended) vs. invest in a
-   whitelisted-origin / devServer-proxy path (more faithful, heavier, needs backend). Confirm whether
-   the backend does server-side origin 403 (if so, the flag alone won't help).
-2. **Auth:** add a fail-closed `version-check --playwright` preflight to Tier B + confirm the
-   `.env.playwright` access-token key is populated (recommended).
-3. **§4 data-reached assertion:** required part of the fix (recommended) — confirm the mechanism
-   (data-bearing selector vs. network-response inspection).
-4. **Z.2 wait strategy:** per-route data-ready selector w/ bounded `networkidle` fallback (recommended)
-   vs. plain `networkidle`.
-5. **Version:** v3.24, ship to both targets (recommended).
+1. **CORS: DEMOTED.** Do NOT wire `--disable-web-security` — the Z.3 live probe disproved the block
+   (`api.fpt-apps.com` returns `access-control-allow-origin: http://localhost:1999`). If — and only
+   if — a genuine server-side 403 appears on some host during the token re-run, STOP and report; do
+   not add the flag speculatively.
+2. **AUTH: ADD a fail-closed token preflight to Tier B.** Before Playwright launches, gate on the
+   exported `checkPlaywrightToken()` **status** (`version-check.ts:67`), NOT the CLI exit code (which
+   returns 0 for `expiring-soon`, verified 2026-07-13). `missing` / `expired` / `expiring-soon` →
+   THROW → b11-runner exit ≠ 0 → B11 STOP. A silent-empty 401 render must NEVER reach an assertion.
+3. **§4 DATA-REACHED ASSERTION: REQUIRED, not optional.** Tier B must positively confirm the backend
+   was reached — inspect network responses for the feature's key API call returning **2xx with a
+   NON-EMPTY body** (preferred over selector-only, which can't catch an empty-body 200). Without this,
+   a stale token yields a rendered shell + empty data that a shell-only assertion would PASS — the
+   exact false-proof class Y.1 closed.
+4. **Z.2 WAIT:** per-route data-ready selector (from ux-states where nameable) with a **BOUNDED**
+   `networkidle` fallback. NOT plain `networkidle` (hang risk on long-poll/websocket/analytics beacons).
+5. **VERSION:** bump kit v3.23 → v3.24; ship `b11-runner.ts` + `playwright-runner.ts` + command file
+   to BOTH targets byte-identical (sha256). The command file carries `PROMPT_VERSION` — if authoring's
+   command file is not re-synced to v3.24, Y.2 recurs and the next capture row mis-stamps 3.23.0.
 
-**No code written. Awaiting review before the v3.24 implementation session. Backup applies when
-implementation starts. design-to-ui untouched. No sync.**
+**Implementation lands via canaries (one at a time, tests green between, STOP + report between,
+commit only on explicit go). Backup applies at start (done: `backup/2026-07-13`). design-to-ui
+untouched. No `npm run sync` — targets reached by the byte-identical copy in Canary 3.**
