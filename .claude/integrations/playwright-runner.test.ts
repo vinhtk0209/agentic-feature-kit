@@ -8,10 +8,14 @@
  * since the browser-driven path requires a real Playwright instance.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   analyzeCascade, CascadeAnalysis,
   assessDataReached, isNonEmptyBody, resolveWaitStrategy,
   ApiResponseObservation,
+  deriveFeatureEndpoints, urlMatchesEndpoint, EndpointDerivationError,
+  resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
 } from './playwright-runner';
 
 let passed = 0;
@@ -88,45 +92,50 @@ test('analyzeCascade — only the FIRST failure is the root cause (subsequent fa
 // The whole point: a shell-only assertion PASSES on empty data; §4 must FAIL it.
 const api = (status: number, bodyText: string, url = 'https://api.fpt-apps.com/x'): ApiResponseObservation =>
   ({ url, status, bodyText });
+// §8.1: assessDataReached now REQUIRES an explicit E_feat (no unscoped path). These diagnostic
+// tests exercise 401/403/5xx/empty/pass on the feature's OWN endpoint, so E_UNIT scopes to the
+// `api()` helper's default url (/x). The scoping is a no-op here (every obs is the feature's) —
+// the diagnostic under test is unchanged, but the call can no longer omit E_feat.
+const E_UNIT = ['/x'];
 
 test('§4 DECISIVE — empty-body 200 (skeleton) → FAILS tierB-empty-body', () => {
   // This is the exact false-proof: 200 OK but no data. A body-length shell check would PASS.
   for (const empty of ['', '[]', '{}', '{"data":[]}', '{"content":[],"totalElements":0}', 'null']) {
-    const v = assessDataReached([api(200, empty)]);
+    const v = assessDataReached([api(200, empty)], E_UNIT);
     assert(v.passed === false, `empty body ${JSON.stringify(empty)} must FAIL, got pass`);
     assert(v.reason === 'tierB-empty-body', `expected tierB-empty-body for ${empty}, got ${v.reason}`);
   }
 });
 test('§4 — key API 401 → FAILS tierB-api-401 (stale-token render cannot pass)', () => {
-  const v = assessDataReached([api(401, '{"message":"unauthorized"}')]);
+  const v = assessDataReached([api(401, '{"message":"unauthorized"}')], E_UNIT);
   assert(v.passed === false && v.reason === 'tierB-api-401', `got ${v.reason}`);
 });
 test('§4 — key API 403 → FAILS tierB-api-403', () => {
-  const v = assessDataReached([api(403, 'forbidden')]);
+  const v = assessDataReached([api(403, 'forbidden')], E_UNIT);
   assert(v.passed === false && v.reason === 'tierB-api-403', `got ${v.reason}`);
 });
 test('§4 — key API 500 → FAILS tierB-api-error', () => {
-  const v = assessDataReached([api(500, '{"error":"boom"}')]);
+  const v = assessDataReached([api(500, '{"error":"boom"}')], E_UNIT);
   assert(v.passed === false && v.reason === 'tierB-api-error', `got ${v.reason}`);
 });
 test('§4 — no API observed (login redirect before fetch) → FAILS tierB-no-data-reached', () => {
-  const v = assessDataReached([]);
+  const v = assessDataReached([], E_UNIT);
   assert(v.passed === false && v.reason === 'tierB-no-data-reached', `got ${v.reason}`);
 });
 test('§4 — non-empty 200 (real rows) → PASSES data-reached', () => {
-  const v = assessDataReached([api(200, '{"learners":[{"id":1,"name":"A"}]}')]);
+  const v = assessDataReached([api(200, '{"learners":[{"id":1,"name":"A"}]}')], E_UNIT);
   assert(v.passed === true && v.reason === 'data-reached', `got ${v.reason}: ${v.evidence}`);
 });
 test('§4 — top-level non-empty array → PASSES', () => {
-  const v = assessDataReached([api(200, '[{"id":1}]')]);
+  const v = assessDataReached([api(200, '[{"id":1}]')], E_UNIT);
   assert(v.passed === true, `array with rows must pass, got ${v.reason}`);
 });
 test('§4 — a 2xx-non-empty anywhere WINS over a sibling 401 (data did reach)', () => {
-  const v = assessDataReached([api(401, '{}'), api(200, '{"rows":[{"x":1}]}')]);
+  const v = assessDataReached([api(401, '{}'), api(200, '{"rows":[{"x":1}]}')], E_UNIT);
   assert(v.passed === true && v.reason === 'data-reached', `got ${v.reason}`);
 });
 test('§4 — 401 is chosen over a bare 5xx as the more diagnostic failure', () => {
-  const v = assessDataReached([api(500, ''), api(401, '')]);
+  const v = assessDataReached([api(500, ''), api(401, '')], E_UNIT);
   assert(v.passed === false && v.reason === 'tierB-api-401', `got ${v.reason}`);
 });
 
@@ -159,6 +168,183 @@ test('Z.2 — no/blank selector → bounded networkidle fallback (NOT unbounded)
 test('Z.2 — timeouts are hard-capped (cannot hang on a huge request)', () => {
   const w = resolveWaitStrategy(null, { networkidleTimeoutMs: 10_000_000, maxTimeoutMs: 30_000 });
   assert(w.timeoutMs === 30_000, `capped to 30s, got ${w.timeoutMs}`);
+});
+
+// ── §8.1 AA.3 — feature-endpoint scope (deriveFeatureEndpoints + rescoped assessDataReached) ──
+// Canary 2a. The severe blocker (L-2026-07-13-003, 6F): the broad api.fpt-apps.com|/api/ pattern
+// PASSES §4 on a SIBLING page's data (class-edit fires its own api calls) while the feature's own
+// data never loaded — a `verified=true` attesting the WRONG feature. E_feat scopes §4 to the
+// feature's own endpoints, derived .http-primary + api.ts cross-check, fail-closed on divergence.
+
+// A feature contract (.http) and its data-layer (api.ts) that AGREE on one endpoint:
+//   GET /api/admin/v1/classes/{id}/progress-reports
+// Real baseline-generated .http uses a `{{baseUrl}}` placeholder host (see __fixtures__/…/contract.full.http).
+const FEATURE_HTTP = [
+  '### Progress reports',
+  'GET {{baseUrl}}/api/admin/v1/classes/{{classId}}/progress-reports',
+  'Authorization: Bearer {{token}}',
+].join('\n');
+const FEATURE_API = [
+  `import { getHttpClient } from 'infra';`,
+  `export async function getProgressReports(classId: string): Promise<Report[]> {`,
+  '  return getHttpClient().get(`${API_BASE_URL}/api/admin/v1/classes/${classId}/progress-reports`);',
+  `}`,
+].join('\n');
+// api.ts that DRIFTED from the .http: singular `/progress-report` (missing trailing s).
+const FEATURE_API_DRIFT = FEATURE_API.replace('/progress-reports`', '/progress-report`');
+
+// Observed responses during a capture at /class-management/edit/1:
+const FEAT_URL = 'https://api.fpt-apps.com/api/admin/v1/classes/1/progress-reports?page=0';
+const SIBLING_URL = 'https://api.fpt-apps.com/api/admin/v1/classes/1'; // class-edit's OWN load call
+const obs = (status: number, bodyText: string, url: string): ApiResponseObservation => ({ url, status, bodyText });
+const NONEMPTY = '{"content":[{"id":1,"score":90}],"totalElements":1}';
+
+// ── urlMatchesEndpoint: prefix + id-wildcard, does NOT match a shorter sibling ──
+test('§8.1 — urlMatchesEndpoint matches feature url (id-wildcarded, query stripped)', () => {
+  assert(urlMatchesEndpoint(FEAT_URL, '/api/admin/v1/classes/:p/progress-reports') === true, 'feature url must match');
+});
+test('§8.1 — urlMatchesEndpoint does NOT match a shorter sibling url', () => {
+  assert(urlMatchesEndpoint(SIBLING_URL, '/api/admin/v1/classes/:p/progress-reports') === false, 'sibling must NOT match');
+});
+
+// ── deriveFeatureEndpoints: reconcile .http (H) vs api.ts (A) ──
+test('§8.1 — deriveFeatureEndpoints: H === A → E_feat = agreed set', () => {
+  const r = deriveFeatureEndpoints(FEATURE_HTTP, FEATURE_API, { dataGate: true });
+  assert(r.applicable === true, 'agreed endpoints are applicable');
+  assert(r.endpoints.length === 1 && r.endpoints[0] === '/api/admin/v1/classes/:p/progress-reports',
+    `E_feat should be the agreed endpoint, got ${JSON.stringify(r.endpoints)}`);
+});
+
+// (a) SIBLING-ONLY — the AA.3 CORE: sibling 2xx-non-empty, feature endpoint never seen → FAIL.
+test('§8.1 (a) SIBLING-ONLY → FAIL tierB-no-data-reached (the AA.3 core)', () => {
+  const E = deriveFeatureEndpoints(FEATURE_HTTP, FEATURE_API, { dataGate: true }).endpoints;
+  const v = assessDataReached([obs(200, NONEMPTY, SIBLING_URL)], E);
+  assert(v.passed === false, `sibling data must NOT pass §4, got pass: ${v.evidence}`);
+  assert(v.reason === 'tierB-no-data-reached', `expected tierB-no-data-reached, got ${v.reason}`);
+});
+
+// (b) FEATURE-PRESENT + sibling noise → PASS (feature data is what counts).
+test('§8.1 (b) FEATURE-PRESENT (+ sibling noise) → PASS data-reached', () => {
+  const E = deriveFeatureEndpoints(FEATURE_HTTP, FEATURE_API, { dataGate: true }).endpoints;
+  const v = assessDataReached([obs(200, NONEMPTY, SIBLING_URL), obs(200, NONEMPTY, FEAT_URL)], E);
+  assert(v.passed === true && v.reason === 'data-reached', `feature data must pass, got ${v.reason}: ${v.evidence}`);
+});
+
+// (c) SOURCE DIVERGENCE — .http says /progress-reports, api.ts calls /progress-report → STOP.
+test('§8.1 (c) SOURCE DIVERGENCE → STOP tierB-endpoint-source-divergence (never silently reconcile)', () => {
+  let threw: unknown = null;
+  try { deriveFeatureEndpoints(FEATURE_HTTP, FEATURE_API_DRIFT, { dataGate: true }); }
+  catch (e) { threw = e; }
+  assert(threw instanceof EndpointDerivationError, `must throw EndpointDerivationError, got ${threw}`);
+  const err = threw as EndpointDerivationError;
+  assert(err.reason === 'tierB-endpoint-source-divergence', `expected divergence reason, got ${err.reason}`);
+  // Both sets printed so the operator can see the drift.
+  assert(err.httpSet.some((p) => p.endsWith('/progress-reports')), `httpSet must show .http endpoint, got ${JSON.stringify(err.httpSet)}`);
+  assert(err.apiSet.some((p) => p.endsWith('/progress-report')), `apiSet must show api.ts endpoint, got ${JSON.stringify(err.apiSet)}`);
+});
+
+// REAL FEATURE — the reconciliation must NOT be so strict it STOPs a genuine feature (or Block 5
+// stays stuck under tierB-endpoint-source-divergence). Uses the ACTUAL progress-reports fixture:
+// the real contract.full.http (baseline convention, {{baseUrl}} host, trailing-slash-free paths,
+// query strings) + the real feature data/api.ts (getConfig().API_BASE_URL host, URL-builder helpers,
+// trailing slashes). H and A must reconcile to the same non-empty set of 4 endpoints.
+test('§8.1 REAL — progress-reports fixture (actual .http + actual api.ts) reconciles cleanly, no divergence', () => {
+  const FIX = path.join(__dirname, '__fixtures__', 'progress-reports');
+  const httpText = fs.readFileSync(path.join(FIX, 'contract.full.http'), 'utf8');
+  const apiText = fs.readFileSync(path.join(FIX, 'api.ts'), 'utf8');
+  const r = deriveFeatureEndpoints(httpText, apiText, { dataGate: true }); // must NOT throw
+  assert(r.applicable === true, 'real feature must be applicable (non-empty E_feat)');
+  const expected = [
+    '/api/admin/v1/classes/:p/progress-reports/assessment-analytics',
+    '/api/admin/v1/classes/:p/progress-reports/export',
+    '/api/admin/v1/classes/:p/progress-reports/learners',
+    '/api/admin/v1/classes/:p/progress-reports/overview',
+  ];
+  assert(JSON.stringify(r.endpoints) === JSON.stringify(expected),
+    `E_feat mismatch.\n  got:      ${JSON.stringify(r.endpoints)}\n  expected: ${JSON.stringify(expected)}`);
+});
+
+// (d) EMPTY E_feat — opt-out vs fail-closed, per the gate flag.
+test('§8.1 (d) EMPTY E_feat + --no-data-gate → skip (opt-out, applicable=false)', () => {
+  const r = deriveFeatureEndpoints('', '', { dataGate: false });
+  assert(r.applicable === false, 'empty E_feat under --no-data-gate is a sanctioned static opt-out');
+  assert(r.endpoints.length === 0, 'no endpoints derived');
+});
+test('§8.1 (d) EMPTY E_feat + gate ON → STOP tierB-no-feature-endpoints (fail-closed)', () => {
+  let threw: unknown = null;
+  try { deriveFeatureEndpoints('', '', { dataGate: true }); }
+  catch (e) { threw = e; }
+  assert(threw instanceof EndpointDerivationError, `must throw, got ${threw}`);
+  assert((threw as EndpointDerivationError).reason === 'tierB-no-feature-endpoints',
+    `expected tierB-no-feature-endpoints, got ${(threw as EndpointDerivationError).reason}`);
+});
+
+// ── §8.2 AA.2 — re-assess §4 at the feature's data-ready POINT (Canary 2b) ──────────
+// The feature's data fetch often fires only DURING interaction (e.g. ProgressReports loads only
+// after the "Progress & reports" tab is clicked). v3.24 read apiObservations BEFORE the interaction
+// steps → tierB-no-data-reached even with a fresh token + real API (false-FAIL). The assessment
+// POINT moves: a named data-ready selector (assess right after it resolves, Z.2-capped) else after
+// ALL interaction steps. Only the POINT moves — the page.on('response') listener is untouched.
+
+// ── resolveDataAssessPoint — selector-present vs after-steps ──
+test('§8.2 — named data-ready selector → assess-at-selector (bounded)', () => {
+  const p = resolveDataAssessPoint('[data-testid="report-table"]');
+  assert(p.kind === 'selector', `selector present → kind=selector, got ${p.kind}`);
+  assert(p.kind === 'selector' && p.selector === '[data-testid="report-table"]', 'selector preserved');
+  assert(p.kind === 'selector' && p.timeoutMs > 0 && p.timeoutMs <= 30_000, 'selector timeout bounded to Z.2 cap');
+});
+test('§8.2 — no/blank selector → assess-after-steps', () => {
+  for (const s of [undefined, null, '', '   ']) {
+    const p = resolveDataAssessPoint(s);
+    assert(p.kind === 'after-steps', `blank ${JSON.stringify(s)} → after-steps, got ${p.kind}`);
+  }
+});
+test('§8.2 — selector timeout hard-capped at 30s (Z.2 cap reused)', () => {
+  const p = resolveDataAssessPoint('#x', { selectorTimeoutMs: 10_000_000, maxTimeoutMs: 30_000 });
+  assert(p.kind === 'selector' && p.timeoutMs === 30_000, `capped to 30s, got ${(p as { timeoutMs?: number }).timeoutMs}`);
+});
+
+// ── finalizeDataReachedVerdict — the moved-point verdict, incl. distinct selector-timeout ──
+const FEAT2 = 'https://api.fpt-apps.com/api/admin/v1/classes/1/progress-reports/overview';
+const SIB2 = 'https://api.fpt-apps.com/api/admin/v1/classes/1';
+const E2 = ['/api/admin/v1/classes/:p/progress-reports/overview'];
+const NE2 = '{"content":[{"id":1}],"totalElements":1}';
+const ob2 = (status: number, bodyText: string, url: string): ApiResponseObservation => ({ url, status, bodyText });
+const SEL_POINT: DataAssessPoint = { kind: 'selector', selector: '#report', timeoutMs: 15_000 };
+const STEPS_POINT: DataAssessPoint = { kind: 'after-steps' };
+
+test('§8.2 — SELECTOR TIMED OUT → distinct FAIL tierB-data-ready-timeout (not no-data-reached)', () => {
+  // Even if the feature endpoint DID respond, a timed-out data-ready selector is its own failure
+  // class: the operator must be able to tell "selector wrong" from "backend never returned".
+  const v = finalizeDataReachedVerdict({
+    point: SEL_POINT, selectorTimedOut: true, observations: [ob2(200, NE2, FEAT2)], featureEndpoints: E2,
+  });
+  assert(v.passed === false, 'selector timeout must FAIL');
+  assert(v.reason === 'tierB-data-ready-timeout', `expected tierB-data-ready-timeout, got ${v.reason}`);
+});
+test('§8.2 — selector RESOLVED + feature data present → PASS data-reached (at the point)', () => {
+  const v = finalizeDataReachedVerdict({
+    point: SEL_POINT, selectorTimedOut: false, observations: [ob2(200, NE2, FEAT2)], featureEndpoints: E2,
+  });
+  assert(v.passed === true && v.reason === 'data-reached', `got ${v.reason}: ${v.evidence}`);
+});
+test('§8.2 — after-steps + ONLY sibling data at the point → FAIL tierB-no-data-reached (AA.2+AA.3 join)', () => {
+  const v = finalizeDataReachedVerdict({
+    point: STEPS_POINT, selectorTimedOut: false, observations: [ob2(200, NE2, SIB2)], featureEndpoints: E2,
+  });
+  assert(v.passed === false && v.reason === 'tierB-no-data-reached', `sibling-at-point must FAIL, got ${v.reason}`);
+});
+test('§8.2 — after-steps + feature data present at the point → PASS data-reached', () => {
+  const v = finalizeDataReachedVerdict({
+    point: STEPS_POINT, selectorTimedOut: false, observations: [ob2(200, NE2, SIB2), ob2(200, NE2, FEAT2)], featureEndpoints: E2,
+  });
+  assert(v.passed === true && v.reason === 'data-reached', `got ${v.reason}`);
+});
+test('§8.2 — after-steps + zero observations at the point → FAIL tierB-no-data-reached (never benign)', () => {
+  const v = finalizeDataReachedVerdict({
+    point: STEPS_POINT, selectorTimedOut: false, observations: [], featureEndpoints: E2,
+  });
+  assert(v.passed === false && v.reason === 'tierB-no-data-reached', `zero-obs must FAIL, got ${v.reason}`);
 });
 
 // ── report ────────────────────────────────────────────────────────────

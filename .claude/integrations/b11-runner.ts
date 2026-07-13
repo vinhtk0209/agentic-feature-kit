@@ -281,6 +281,13 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
   const interactionsArg = fs.existsSync(uxStatesPath) ? `--interactions "${uxStatesPath}"` : '';
   const checklistArg = fs.existsSync(checklistPath) ? `--ac-checklist "${checklistPath}"` : '';
 
+  // §8.1 AA.3: pass the feature's data/api.ts so playwright-runner can derive E_feat (feature-scoped
+  // §4). Same resolution as runContractProbe. Absent (no --feature-path) → runner fails §4 closed.
+  const apiFile = featurePath
+    ? [path.join(cwd, featurePath, 'data', 'api.ts'), path.join(cwd, featurePath, 'api.ts')].find((p) => fs.existsSync(p))
+    : undefined;
+  const apiPathArg = apiFile ? `--api-path "${apiFile}"` : '';
+
   const cmd = [
     `npx tsx "${runnerPath}"`,
     `"${route}"`,
@@ -288,6 +295,7 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
     `--feature-name "${featureName}"`,
     interactionsArg,
     checklistArg,
+    apiPathArg,
   ].filter(Boolean).join(' ');
 
   const { code, stdout, stderr } = await runPlaywrightSpawn(cmd, timeoutMs);

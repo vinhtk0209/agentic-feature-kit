@@ -182,3 +182,156 @@ on a genuinely-data-passing feature can finally produce the first honest `verifi
 **Implementation lands via canaries (one at a time, tests green between, STOP + report between,
 commit only on explicit go). Backup applies at start (done: `backup/2026-07-13`). design-to-ui
 untouched. No `npm run sync` — targets reached by the byte-identical copy in Canary 3.**
+
+## §8 — Canary-2 follow-up: §4 feature-scoped + re-assessed after interaction (closes AA.2 + AA.3)
+
+> **Status: DESIGN — LOCKED for implementation.** Closes the two Block-5 blockers logged
+> 2026-07-13 as L-2026-07-13-002 (AA.2) and L-2026-07-13-003 (AA.3, 6F / most-severe).
+> Design-doc-first per standing rule. No code lands until this §8 is approved.
+> All `file:line` are ANCHORS — re-grep current disk before every edit; v3.24 HEAD line
+> numbers WILL have drifted.
+
+### 8.0 Why v3.24 §4 cannot yet produce an honest `verified=true`
+
+v3.24 §4 (`PLAYWRIGHT-DATA`) asserts "≥1 response matching `apiUrlPattern` (default
+`api.fpt-apps.com|/api/`) with 2xx + non-empty body", assessed once, right after the
+initial-load waits. Two independent defects make this both miss real data and accept wrong data:
+
+- **AA.2 (miss real data / false-FAIL):** the feature's data fetch fires during the
+  interaction steps (e.g. ProgressReports loads only after the "Progress & reports" tab is
+  clicked). §4 reads `apiObservations` before those steps run → `tierB-no-data-reached` even
+  with a fresh token + real API. Anchor: assessment point is BEFORE the v2 interaction states
+  in `runFeatureVerification`.
+- **AA.3 (accept wrong data / false-PASS — the severe one):** `apiUrlPattern` matches ANY
+  backend response. At `/class-management/edit/1` the class-edit page fires its OWN
+  `api.fpt-apps.com` calls on load; if any is 2xx-non-empty, §4 PASSES `data-reached` while the
+  feature's data never loaded → a `verified=true` attesting the WRONG feature's data. Same
+  false-proof class as Y.1, one layer over.
+
+Both must be fixed together: AA.3 alone (feature-scoped but still assessed too early) still
+false-FAILs a tab-gated feature; AA.2 alone (re-assessed late but still any-endpoint) still
+false-PASSes on a sibling's data. The combination is what proves *the feature's own* data
+reached.
+
+---
+
+### 8.1 AA.3 — feature-endpoint scope (decision: `.http` primary, api.ts cross-check, **fail-closed on divergence**)
+
+§4 replaces the broad `apiUrlPattern` with a **feature endpoint set** `E_feat`, derived once
+per capture, before Playwright launches.
+
+**Source of `E_feat`:**
+
+1. **Primary — the feature's contract `.http`** (`docs/components/<feature>/*.http`, the same
+   file `contract-probe` reads). Deterministic, already on disk, generated from the feature's
+   own data layer. Parse each request line to a path template, strip host + query, and reduce
+   to a **path-prefix matcher** per endpoint (e.g. `/api/admin/v1/classes/{id}/progress-reports`
+   → match on `/classes/`…`/progress-reports`, id-segment wildcarded).
+2. **Cross-check — api.ts data-layer URLs** (grep the feature's `data/api.ts` for the
+   `${API_BASE_URL}/…` / URL-helper call sites — reuse the extraction already proven in
+   `baseline-http-gen`, do NOT hand-roll a second parser).
+
+**Reconciliation rule (LOAD-BEARING, fail-closed):**
+
+- Let `H` = endpoint set from `.http`, `A` = endpoint set from api.ts.
+- **`H === A`** (as path-prefix sets) → `E_feat = H`. Proceed.
+- **`H ⊃ A` or `H ⊂ A` or `H ≠ A`** → **STOP**, do not run §4 against a guessed union or
+  intersection. Emit a distinct reason `tierB-endpoint-source-divergence` with both sets printed.
+  Rationale: divergence means `.http` is **stale relative to the code** (feature changed
+  endpoints after `.http` was generated) — scoping §4 to either set risks matching a dead
+  endpoint (false-fail) or missing the real one. The correct action is regenerate `.http`
+  (`baseline-http-gen`) so the two agree, then re-capture. Never silently pick a source.
+- **`E_feat` empty** (feature has no `.http` AND no api.ts URLs — a truly routeless/static
+  feature) → §4 is **not applicable**; this path is `--no-data-gate` territory (static opt-out,
+  §4 already supports it) and must be reached via the explicit opt-out flag, never by an empty
+  match set silently passing. An empty `E_feat` reached WITHOUT `--no-data-gate` → STOP
+  `tierB-no-feature-endpoints` (fail-closed: a data-gated feature with zero derivable endpoints
+  is a config error, not a pass).
+
+**Attack-tests this must satisfy (all deterministic, no browser):**
+- Sibling data only (class-edit endpoint 2xx-non-empty, feature endpoint never seen) → **FAIL**
+  `tierB-no-data-reached` (the AA.3 core: sibling data must NOT pass).
+- Feature endpoint 2xx-non-empty + sibling data present → **PASS** (feature data is what counts).
+- `.http` lists `/progress-reports`, api.ts calls `/progress-report` (drift) → **STOP**
+  `tierB-endpoint-source-divergence` (never silently reconcile).
+- `E_feat` empty + `--no-data-gate` → skip (opt-out). `E_feat` empty + gate on → **STOP**.
+
+---
+
+### 8.2 AA.2 — re-assess after the feature's data-ready point (decision: named selector if present, else after interaction steps)
+
+The `page.on('response')` listener already accumulates for the whole page life (v3.24, unchanged
+— do NOT touch the listener). Only the **assessment POINT** moves.
+
+**New assessment timing (`resolveDataAssessPoint`, pure, testable):**
+
+1. **Named data-ready selector present** (per-route, from `ux-states.json` — the same
+   `--data-ready-selector` lever Z.2 already introduced) → assess §4 **immediately after that
+   selector resolves** (bounded by the existing Z.2 30s cap). This is the tightest, most
+   deterministic point: the selector is the feature's own "data has rendered" signal.
+2. **No named selector** → assess §4 **once, after ALL interaction steps complete** (end of
+   `runFeatureVerification`, after the last v2 interaction state), still before the route's
+   pass/fail is finalized. Fallback for features whose ux-states has no data-ready anchor.
+
+**Fail-closed at the assessment point (both branches):**
+- Zero observations of any `E_feat` endpoint by the assessment point (login redirect, tab never
+  reached, selector timed out) → **FAIL** `tierB-no-data-reached`. Never "no observations =
+  benign".
+- Selector branch: if the named selector itself times out (Z.2 cap hit) → **FAIL**
+  `tierB-data-ready-timeout` — distinct from `no-data-reached` so the operator can tell "selector
+  wrong" from "backend never returned".
+
+**Interaction with AA.3:** §4 at the (late) assessment point evaluates `E_feat` observations
+only. So the sequence that must hold end-to-end: interaction steps drive the tab open → feature
+endpoint fires → response accumulates → assessment point reached (selector or end-of-steps) → §4
+checks `E_feat ∩ observations` for 2xx-non-empty. A sibling endpoint that fired at initial load
+is in `apiObservations` but NOT in `E_feat`, so it cannot satisfy the gate. That is the AA.2+AA.3
+join that makes the row honest.
+
+---
+
+### 8.3 What does NOT change (scope fence)
+
+- `page.on('response')` registration + accumulation (v3.24) — untouched.
+- `isNonEmptyBody` array-aware logic (Canary 2) — untouched; still the emptiness test applied to
+  `E_feat` responses.
+- Z.2 bounded networkidle fallback + 30s cap — untouched; reused for the selector wait.
+- `--no-data-gate` static opt-out — untouched; now the ONLY sanctioned path for an empty
+  `E_feat`.
+- b11-runner exit gating, token preflight (C1), version stamps — untouched by §8.
+- CORS / `--disable-web-security` — stays DEMOTED per §7 decision 1. Not wired.
+
+---
+
+### 8.4 Canary split (one change at a time, tests green + STOP between)
+
+- **Canary 2a — AA.3 endpoint scope (pure, no browser).** Add `deriveFeatureEndpoints(feature)`
+  (`.http` parse + api.ts cross-check + fail-closed reconciliation) and rewire `assessDataReached`
+  to take `E_feat` instead of the broad pattern. Full attack-test suite from §8.1. `E_feat` empty
+  handling. No timing change yet — assessment still at old point (so this canary's browser
+  behavior is unchanged except scope). Tests: the 4 §8.1 attack-tests + divergence + empty cases.
+- **Canary 2b — AA.2 assessment timing (pure `resolveDataAssessPoint` + wiring).** Move the
+  assessment point per §8.2. Tests: selector-present → assess-at-selector; no-selector →
+  assess-after-steps; zero-obs-at-point → FAIL; selector-timeout → distinct reason.
+- **Canary 2c — version bump v3.24 → v3.25** (5 stamps: cmd copyright / PROMPT_VERSION /
+  progress-banner + README + package.json), `version:check` green, `prompt-budget --gate` exit 0,
+  dual-target byte-identical copy to AUTHORING (sha256), lessons AA.2/AA.3 flipped from
+  `test_status="pending"` → `enforced_by` the new tests + `test_status="passing"`.
+
+**Gate between each:** `test:playwright-runner` all green (existing 20 + new), `tsc` clean on
+edited files, real `.env.playwright` sha256 unchanged, no stray temp dirs. STOP + report + await
+approval between 2a → 2b → 2c. No commit until you say so. No `npm run sync`.
+
+---
+
+### 8.5 After §8 lands — the Block-5 unblock sequence (unchanged, now actually reachable)
+
+1. You populate a fresh `PLAYWRIGHT_ACCESS_TOKEN` into AUTHORING's `.env.playwright` (credential
+   task you own — I never generate/inject it).
+2. `/drop-mock` ProgressReports (`USE_MOCK=false`) — AA.1, so real endpoints fire.
+3. B11 capture on US-AD-095-ProgressReports → §8-corrected §4 observes the feature's own
+   `/progress-reports` (etc.) 2xx-non-empty AFTER the tab opens → first honest `verified=true`
+   (stamped v3.25) → sync unblocks.
+
+§8 removes the tooling reasons a legitimate run would fail/false-pass. AA.1 (mock) is a runtime
+toggle you flip at step 2, not a code fix — it stays a pre-capture checklist item.

@@ -33,6 +33,9 @@
 import { chromium, Browser, Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
+// §8.1 AA.3 — reuse the PROVEN endpoint extractors (TS-AST api.ts parser + .http parser +
+// path normalizer + contract resolver). Do NOT hand-roll a second parser (Wall-1 rewrite).
+import { parseHttp, parseApiReturnTypes, normalizePath, resolveContractHttp } from './contract-probe';
 
 // Optional deps — loaded lazily so the script still runs if they're missing
 type PixelmatchFn = (a: Uint8Array, b: Uint8Array, out: Uint8Array, w: number, h: number, opts?: { threshold?: number; includeAA?: boolean }) => number;
@@ -848,6 +851,7 @@ interface RunnerConfig {
   disableWebSecurity?: boolean;
   dataReadySelector?: string; // Z.2: per-route data-ready selector (else bounded networkidle)
   dataGate?: boolean;         // §4 data-reached gate; ON unless explicitly false (static route)
+  apiPath?: string;           // §8.1 AA.3: feature data/api.ts (cross-check source for E_feat scope)
 }
 
 // ── §4 Tier B data-reached assertion + Z.2 bounded wait (v3.24) ──────────────
@@ -895,29 +899,146 @@ export function isNonEmptyBody(bodyText: string): boolean {
   return sawScalarLeaf;              // no arrays → non-empty iff a meaningful leaf exists
 }
 
-/** §4 verdict over the key API responses observed during a route load.
- *  Fail-closed: zero observations (login-redirect before any fetch) → FAIL. */
-export function assessDataReached(apiResponses: ApiResponseObservation[]): DataReachedVerdict {
-  if (apiResponses.length === 0) {
-    return { passed: false, reason: 'tierB-no-data-reached',
-      evidence: 'no key API/XHR response observed during load (app may have redirected to login before fetching)' };
+// ── §8.1 AA.3 — feature-endpoint scope (E_feat): .http primary, api.ts cross-check, ──────────
+// fail-closed on divergence. The broad api.fpt-apps.com|/api/ pattern PASSES §4 on a SIBLING
+// page's data (e.g. class-edit's own load calls at /class-management/edit/1) while the feature's
+// own data never loaded → a `verified=true` attesting the WRONG feature. E_feat scopes §4 to the
+// feature's own endpoints so only the feature's data can satisfy the gate.
+
+/** A feature-endpoint matcher: a normalized path template (from `/api` onward, `${…}`/`{{…}}`
+ *  id-segments wildcarded to `:p`, query stripped) — the SAME normalized form `parseHttp` and
+ *  `parseApiReturnTypes` emit via `normalizePath`. */
+export type EndpointMatcher = string;
+
+/** STOP signal: E_feat could not be derived honestly. Carries the reason + both source sets so the
+ *  operator sees exactly what diverged (never silently reconciled to a union/intersection). */
+export class EndpointDerivationError extends Error {
+  reason: string;
+  httpSet: string[];
+  apiSet: string[];
+  constructor(reason: string, message: string, httpSet: string[] = [], apiSet: string[] = []) {
+    super(message);
+    this.name = 'EndpointDerivationError';
+    this.reason = reason;
+    this.httpSet = httpSet;
+    this.apiSet = apiSet;
   }
-  const reached = apiResponses.find((r) => r.status >= 200 && r.status < 300 && isNonEmptyBody(r.bodyText));
+}
+
+/** True iff an observed response URL falls under a feature-endpoint matcher. Path-prefix match,
+ *  segment-wise, with `:p` wildcarding any single (id) segment. The matcher must be a PREFIX of the
+ *  observed path (matcher.length ≤ observed.length) — so a shorter SIBLING url (e.g. the class-edit
+ *  `/classes/1` load) cannot satisfy a longer feature matcher `/classes/:p/progress-reports`. */
+export function urlMatchesEndpoint(url: string, matcher: EndpointMatcher): boolean {
+  // Observed URLs are ABSOLUTE (resp.url()), and an `api.*` host would make `normalizePath`'s
+  // `indexOf('/api')` catch `//api.fpt-apps.com` instead of the real `/api/…` path. Strip the
+  // origin via URL() first so only the pathname is normalized. (.http/api.ts sources use a
+  // `{{baseUrl}}`/`${API_BASE_URL}` placeholder host, so they don't hit this — only runtime urls do.)
+  let pathname = url;
+  try { pathname = new URL(url).pathname; } catch { pathname = url.split('?')[0]; }
+  const obs = normalizePath(pathname).split('/').filter(Boolean);   // concrete ids intact (e.g. "1")
+  const m = matcher.split('/').filter(Boolean);                // `:p` at id positions
+  if (m.length === 0 || m.length > obs.length) return false;
+  for (let i = 0; i < m.length; i += 1) {
+    if (m[i] === ':p') continue; // wildcard id segment
+    if (m[i] !== obs[i]) return false;
+  }
+  return true;
+}
+
+/** Unique, sorted normalized path set from a list of endpoints. */
+function pathSet(paths: string[]): string[] {
+  return Array.from(new Set(paths)).sort();
+}
+
+/**
+ * Derive the feature endpoint set `E_feat` from its contract `.http` (H, PRIMARY) cross-checked
+ * against its `data/api.ts` call sites (A). Fail-closed reconciliation (§8.1, LOAD-BEARING):
+ *   • H === A (as normalized path-prefix sets) → E_feat = H. Proceed.
+ *   • H ≠ A (any direction) → STOP `tierB-endpoint-source-divergence`, print both sets. Divergence
+ *     means `.http` is stale relative to the code; scoping §4 to either risks a dead endpoint
+ *     (false-fail) or missing the real one. Never silently pick a source.
+ *   • E_feat empty: with `dataGate:false` (--no-data-gate static opt-out) → N/A (applicable=false).
+ *     Without → STOP `tierB-no-feature-endpoints` (a data-gated feature with zero derivable
+ *     endpoints is a config error, not a pass).
+ * Pure over the two source texts (no disk) — the disk resolution lives in the caller.
+ */
+export function deriveFeatureEndpoints(
+  httpText: string, apiText: string, opts: { dataGate: boolean },
+): { endpoints: EndpointMatcher[]; applicable: boolean } {
+  const H = pathSet(parseHttp(httpText).map((e) => e.path));
+  const A = pathSet(parseApiReturnTypes(apiText).map((r) => r.path));
+
+  if (H.length === 0 && A.length === 0) {
+    if (opts.dataGate === false) return { endpoints: [], applicable: false }; // sanctioned static opt-out
+    throw new EndpointDerivationError('tierB-no-feature-endpoints',
+      'data gate ON but no feature endpoint derivable from .http or api.ts (config error — a data-gated ' +
+      'feature must expose ≥1 endpoint; use --no-data-gate only for a genuinely backend-less route)', H, A);
+  }
+
+  const equal = H.length === A.length && H.every((p, i) => p === A[i]);
+  if (!equal) {
+    throw new EndpointDerivationError('tierB-endpoint-source-divergence',
+      `.http endpoint set and api.ts call-site set diverge — .http is stale relative to the code. ` +
+      `Regenerate .http (baseline-http-gen) so they agree, then re-capture. ` +
+      `.http=[${H.join(', ')}] api.ts=[${A.join(', ')}]`, H, A);
+  }
+  return { endpoints: H, applicable: true };
+}
+
+/** Disk resolver for E_feat (§8.1): read the feature's contract `.http` (flagship writes it to
+ *  `docs/components/<feature>/`, `docs/specs/<feature>/` fallback — same lookup as contract-probe)
+ *  and its `data/api.ts` (path passed by b11-runner via `--api-path`), then reconcile via
+ *  `deriveFeatureEndpoints`. Throws `EndpointDerivationError` on a STOP (divergence / no-endpoints).
+ *  A missing source reads as '' so an unresolvable feature fails closed, never silently unscoped. */
+export function resolveFeatureEndpoints(
+  featureName: string | undefined, apiPath: string | undefined, opts: { dataGate: boolean },
+): { endpoints: EndpointMatcher[]; applicable: boolean } {
+  const httpFile = featureName
+    ? resolveContractHttp(path.join('docs', 'components', featureName), path.join('docs', 'specs', featureName))
+    : '';
+  const readSafe = (p: string): string => { try { return p ? fs.readFileSync(p, 'utf8') : ''; } catch { return ''; } };
+  return deriveFeatureEndpoints(readSafe(httpFile), readSafe(apiPath ?? ''), opts);
+}
+
+/** §4 verdict over the key API responses observed during a route load.
+ *  §8.1 AA.3: `featureEndpoints` (E_feat) is REQUIRED — observations are ALWAYS scoped to the
+ *  feature's own endpoints first, so a sibling page's 2xx-non-empty data can never satisfy the gate.
+ *  There is deliberately NO unscoped path: an optional param would leave a reachable-by-refactor
+ *  unscoped mode where AA.3 could silently resurrect with no test going red. Every caller (runtime
+ *  and unit) must supply an explicit E_feat.
+ *  Fail-closed: zero in-scope observations (login-redirect, tab never reached, or only sibling
+ *  noise) → FAIL. */
+export function assessDataReached(
+  apiResponses: ApiResponseObservation[], featureEndpoints: EndpointMatcher[],
+): DataReachedVerdict {
+  const apiResponsesScoped = apiResponses.filter(
+    (r) => featureEndpoints.some((m) => urlMatchesEndpoint(r.url, m)),
+  );
+  if (apiResponsesScoped.length === 0) {
+    const evidence = apiResponses.length > 0
+      ? `no response matched the feature endpoint set [${featureEndpoints.join(', ')}]; ` +
+        `${apiResponses.length} other response(s) observed but none is the feature's own data ` +
+        `(sibling/adjacent-page data must NOT pass §4)`
+      : 'no key API/XHR response observed during load (app may have redirected to login before fetching)';
+    return { passed: false, reason: 'tierB-no-data-reached', evidence };
+  }
+  const reached = apiResponsesScoped.find((r) => r.status >= 200 && r.status < 300 && isNonEmptyBody(r.bodyText));
   if (reached) {
     return { passed: true, reason: 'data-reached',
       evidence: `${reached.status} ${reached.url} (${reached.bodyText.trim().length} body chars)` };
   }
-  // No 2xx-non-empty → most diagnostic failure reason.
-  const unauthorized = apiResponses.find((r) => r.status === 401);
-  const forbidden = apiResponses.find((r) => r.status === 403);
-  const serverErr = apiResponses.find((r) => r.status >= 400);
+  // No 2xx-non-empty in scope → most diagnostic failure reason (scoped to E_feat responses).
+  const unauthorized = apiResponsesScoped.find((r) => r.status === 401);
+  const forbidden = apiResponsesScoped.find((r) => r.status === 403);
+  const serverErr = apiResponsesScoped.find((r) => r.status >= 400);
   if (unauthorized) return { passed: false, reason: 'tierB-api-401',
     evidence: `key API 401 (${unauthorized.url}) — stale/absent token; data never authenticated` };
   if (forbidden) return { passed: false, reason: 'tierB-api-403',
     evidence: `key API 403 (${forbidden.url})` };
   if (serverErr) return { passed: false, reason: 'tierB-api-error',
     evidence: `key API HTTP ${serverErr.status} (${serverErr.url})` };
-  const first = apiResponses[0];
+  const first = apiResponsesScoped[0];
   return { passed: false, reason: 'tierB-empty-body',
     evidence: `key API ${first.status} but empty/skeleton body (${first.url}) — shell rendered with no data` };
 }
@@ -938,6 +1059,55 @@ export function resolveWaitStrategy(
   const sel = (dataReadySelector ?? '').trim();
   if (sel.length > 0) return { kind: 'selector', selector: sel, timeoutMs: bound(opts?.selectorTimeoutMs ?? 15_000) };
   return { kind: 'networkidle', timeoutMs: bound(opts?.networkidleTimeoutMs ?? 15_000) };
+}
+
+// ── §8.2 AA.2 — re-assess §4 at the feature's data-ready POINT (not at initial load) ──────────
+// The feature's data fetch often fires only DURING the interaction steps (a tab click), so reading
+// apiObservations at initial load false-FAILs a tab-gated feature. The assessment POINT moves; the
+// page.on('response') listener (whole-page-life accumulation) is UNCHANGED.
+
+/** WHERE §4 is assessed:
+ *   • 'selector'    — a named data-ready selector is present (ux-states `--data-ready-selector`);
+ *                     assess right after it resolves, bounded by the Z.2 30s cap.
+ *   • 'after-steps' — no named selector; assess once, after ALL interaction steps complete. */
+export type DataAssessPoint =
+  | { kind: 'selector'; selector: string; timeoutMs: number }
+  | { kind: 'after-steps' };
+
+/** Decide the §4 assessment point from the route's data-ready selector (pure, testable). The bounded
+ *  selector wait REUSES `resolveWaitStrategy` (Z.2) as the single source of the 30s cap + 15s default
+ *  — no cap value is mirrored here. A present selector → assess right after it resolves (the feature's
+ *  own "data has rendered" signal, the tightest deterministic point); a blank selector → after-steps. */
+export function resolveDataAssessPoint(
+  dataReadySelector: string | null | undefined,
+  opts?: { selectorTimeoutMs?: number; maxTimeoutMs?: number },
+): DataAssessPoint {
+  const w = resolveWaitStrategy(dataReadySelector, opts);
+  if (w.kind === 'selector') return { kind: 'selector', selector: w.selector, timeoutMs: w.timeoutMs };
+  return { kind: 'after-steps' };
+}
+
+/** §4 verdict AT the (moved) assessment point (§8.2). Fail-closed both branches:
+ *   • selector branch + the named selector TIMED OUT (Z.2 cap hit) → distinct FAIL
+ *     `tierB-data-ready-timeout` (feature data never rendered — "selector wrong" ≠ "backend silent"),
+ *     regardless of what is in `observations`.
+ *   • otherwise → scope to E_feat via `assessDataReached` (zero in-scope obs → `tierB-no-data-reached`;
+ *     never "no observations = benign"). This is the AA.2+AA.3 join: a sibling endpoint that fired at
+ *     initial load is in `observations` but NOT in `featureEndpoints`, so it cannot satisfy the gate. */
+export function finalizeDataReachedVerdict(args: {
+  point: DataAssessPoint;
+  selectorTimedOut: boolean;
+  observations: ApiResponseObservation[];
+  featureEndpoints: EndpointMatcher[];
+}): DataReachedVerdict {
+  if (args.point.kind === 'selector' && args.selectorTimedOut) {
+    return {
+      passed: false, reason: 'tierB-data-ready-timeout',
+      evidence: `named data-ready selector "${args.point.selector}" did not resolve within ` +
+        `${args.point.timeoutMs}ms — the feature's data never rendered (selector wrong, or backend never returned)`,
+    };
+  }
+  return assessDataReached(args.observations, args.featureEndpoints);
 }
 
 async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & { extended?: ExtendedResults }> {
@@ -1074,39 +1244,11 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       evidence: `Body text length: ${bodyText.trim().length} chars`,
     });
 
-    // ── Z.2 bounded data-ready wait + §4 data-reached assertion (v3.24) ──
-    // Give data-dependent content time to arrive (bounded — never hangs), then
-    // gate on the NETWORK truth: a shell can render with 401'd/empty data and
-    // pass the body-length check above; §4 fails that false-proof.
-    const waitStrategy = resolveWaitStrategy(cfg.dataReadySelector);
-    let waitTimedOut = false;
-    try {
-      if (waitStrategy.kind === 'selector') {
-        await page.waitForSelector(waitStrategy.selector, { timeout: waitStrategy.timeoutMs });
-      } else {
-        await page.waitForLoadState('networkidle', { timeout: waitStrategy.timeoutMs });
-      }
-    } catch { waitTimedOut = true; } // bounded timeout; not a silent pass — §4 below is the gate
-
-    if (cfg.dataGate === false) {
-      checks.push({
-        id: 'PLAYWRIGHT-DATA',
-        description: 'Tier B data-reached (§4) — disabled for backend-less route',
-        passed: true,
-        evidence: 'data gate disabled (--no-data-gate): route declared static/backend-less',
-      });
-    } else {
-      const verdict = assessDataReached(apiObservations);
-      const waitNote = waitTimedOut
-        ? `wait: bounded ${waitStrategy.kind} timed out after ${waitStrategy.timeoutMs}ms`
-        : `wait: ${waitStrategy.kind} settled`;
-      checks.push({
-        id: 'PLAYWRIGHT-DATA',
-        description: 'Tier B: backend reached with real data (§4 — key API 2xx + non-empty body)',
-        passed: verdict.passed,
-        evidence: `${verdict.reason} | ${waitNote} — ${verdict.evidence}`,
-      });
-    }
+    // ── §4 Tier B data-reached — assessment MOVED (§8.2 AA.2) ──
+    // The feature's data fetch often fires only DURING the interaction steps (a tab click), so §4 is
+    // no longer assessed here at initial load (that false-FAILed a tab-gated feature). It is assessed
+    // AFTER the v1/v2 interaction loops below, at the feature's data-ready point (see PLAYWRIGHT-DATA
+    // near the end of this function). The page.on('response') listener above keeps accumulating.
 
     const screenshotDir = featureName
       ? path.join('docs', 'specs', featureName, 'screenshots')
@@ -1248,6 +1390,53 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       }
     }
 
+    // ── §4 Tier B data-reached assertion — assessed AFTER interaction steps (§8.2 AA.2) ──
+    // The feature's data fetch often fires only during interaction (e.g. ProgressReports loads only
+    // after the "Progress & reports" tab is clicked), so §4 is assessed HERE — after the v1/v2
+    // interaction loops above have driven the feature's own endpoint to fire. Point per §8.2:
+    // a named data-ready selector (assess right after it resolves, Z.2-capped) else after-steps.
+    // Scope is E_feat (§8.1 AA.3): a sibling endpoint that fired at initial load is in apiObservations
+    // but NOT in E_feat, so it cannot satisfy the gate. A STOP (divergence / no-derivable-endpoints)
+    // FAILS the route with its distinct reason — never a silent unscoped pass.
+    if (cfg.dataGate === false) {
+      checks.push({
+        id: 'PLAYWRIGHT-DATA',
+        description: 'Tier B data-reached (§4) — disabled for backend-less route',
+        passed: true,
+        evidence: 'data gate disabled (--no-data-gate): route declared static/backend-less',
+      });
+    } else {
+      const assessPoint = resolveDataAssessPoint(cfg.dataReadySelector);
+      let selectorTimedOut = false;
+      if (assessPoint.kind === 'selector') {
+        try { await page.waitForSelector(assessPoint.selector, { timeout: assessPoint.timeoutMs }); }
+        catch { selectorTimedOut = true; } // Z.2-capped; distinct tierB-data-ready-timeout below
+      } else {
+        // after-steps: a bounded networkidle settle flushes any in-flight feature response (Z.2 cap).
+        await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => { /* bounded */ });
+      }
+      let verdict: DataReachedVerdict;
+      try {
+        const { endpoints } = resolveFeatureEndpoints(cfg.featureName, cfg.apiPath, { dataGate: true });
+        verdict = finalizeDataReachedVerdict({ point: assessPoint, selectorTimedOut, observations: apiObservations, featureEndpoints: endpoints });
+      } catch (e) {
+        if (e instanceof EndpointDerivationError) {
+          verdict = { passed: false, reason: e.reason, evidence: e.message };
+        } else { throw e; }
+      }
+      const pointNote = assessPoint.kind === 'selector'
+        ? (selectorTimedOut
+          ? `assess-point: data-ready selector "${assessPoint.selector}" TIMED OUT (${assessPoint.timeoutMs}ms)`
+          : `assess-point: after data-ready selector "${assessPoint.selector}" resolved`)
+        : 'assess-point: after all interaction steps';
+      checks.push({
+        id: 'PLAYWRIGHT-DATA',
+        description: 'Tier B: backend reached with real data (§4 — feature API 2xx + non-empty body)',
+        passed: verdict.passed,
+        evidence: `${verdict.reason} | ${pointNote} — ${verdict.evidence}`,
+      });
+    }
+
     // ── Standalone --visual-baseline (single image) — opt-in only (--visual-diff) ──
     if (visualDiffEnabled && cfg.visualBaseline && !scriptV2) {
       const slug = resolvedRoute.replace(/\//g, '_').replace(/^_/, '').replace(/[:<>"|?*]/g, '-');
@@ -1378,6 +1567,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
   const acChecklistPath = flagValue('--ac-checklist');
   const dataReadySelector = flagValue('--data-ready-selector'); // Z.2 per-route data-ready selector
   const auditCssPath = flagValue('--audit-css');
+  const apiPath = flagValue('--api-path'); // §8.1 feature data/api.ts for E_feat cross-check
   const messagesPath = flagValue('--messages-path');
   const thresholdRaw = flagValue('--visual-diff-threshold');
   const visualDiffThreshold = thresholdRaw ? parseFloat(thresholdRaw) : undefined;
@@ -1402,6 +1592,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
       'Usage: npx tsx .claude/integrations/playwright-runner.ts <route> [--screenshot] [--feature-name <name>] [--mock-error]\n' +
       '       [--interactions <path>] [--visual-baseline <png>] [--visual-baseline-dir <dir>] [--ac-checklist <md>]\n' +
       '       [--audit-a11y] [--audit-css <visual-properties.md>] [--messages-path <messages.ts>] [--visual-diff-threshold <%>]\n' +
+      '       [--api-path <data/api.ts>]  (§8.1: feature api.ts for E_feat-scoped §4 data gate)\n' +
       '       [--visual-diff]  (opt-in: enable visual baseline diffs; off by default)',
     );
     process.exit(1);
@@ -1425,6 +1616,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     disableWebSecurity,
     dataReadySelector,
     dataGate,
+    apiPath,
   })
     .then(printResult)
     .catch(console.error);
