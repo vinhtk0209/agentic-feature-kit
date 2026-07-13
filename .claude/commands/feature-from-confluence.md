@@ -3,7 +3,7 @@ description: Turn a Confluence page, PDF, or Word spec into convention-compliant
 ---
 
 <!--
-  feature-from-confluence — Claude Code Edition v3.23
+  feature-from-confluence — Claude Code Edition v3.24
   © 2026 claude-workflow-kit contributors. MIT Licence — see repository root.
 -->
 
@@ -17,7 +17,7 @@ PARALLEL_MODE:    true          # B5/B10/B11 may spawn subagents in parallel
 SHELL_PERSISTENT: true          # Bash tool keeps cwd & env between calls
 PYTHON_AVAILABLE: true          # may invoke .claude/integrations/browser-use-wrapper.py at B11 fallback
 AUTOLINT_HOOK:    true          # PostToolUse hook lints on every Edit/Write (settings.local.json)
-PROMPT_VERSION:   v3.23
+PROMPT_VERSION:   v3.24
 COPILOT_SUPPORT: false          # Copilot edition not maintained — Claude Code only
 ```
 
@@ -492,7 +492,7 @@ Steps are grouped into **8 phases** so the user sees at a glance where they are 
 
 ```text
 ╔════════════════════════════════════════════════════════════════════════╗
-║  /feature-from-confluence · v3.23   ▶ B2 — Download Images              ║
+║  /feature-from-confluence · v3.24   ▶ B2 — Download Images              ║
 ║  Feature: <FeatureName>   ·   Mode: <SIMPLE|MEDIUM|COMPLEX> (score N)   ║
 ║  Progress: ███████░░░░░░░░░░░░░░░░░  3 / 26 steps   ·   🛑 next: B4     ║
 ╠════════════════════════════════════════════════════════════════════════╣

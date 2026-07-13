@@ -4,7 +4,7 @@
 
 > **One command. Your spec becomes convention-compliant, PR-ready code — with human-in-the-loop gates, a deterministic self-test toolchain, and a self-improvement loop.**
 >
-> Kit version **v3.23**. **Claude Code only** and **tech-stack agnostic** — it reads your project's conventions from `CLAUDE.md`.
+> Kit version **v3.24**. **Claude Code only** and **tech-stack agnostic** — it reads your project's conventions from `CLAUDE.md`.
 
 ## Requirements
 
