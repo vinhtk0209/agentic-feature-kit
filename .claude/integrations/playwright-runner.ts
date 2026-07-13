@@ -846,6 +846,98 @@ interface RunnerConfig {
   visualDiffThreshold?: number;
   visualDiff?: boolean;   // opt-in (default off): run per-state/standalone visual baseline diffs
   disableWebSecurity?: boolean;
+  dataReadySelector?: string; // Z.2: per-route data-ready selector (else bounded networkidle)
+  dataGate?: boolean;         // §4 data-reached gate; ON unless explicitly false (static route)
+}
+
+// ── §4 Tier B data-reached assertion + Z.2 bounded wait (v3.24) ──────────────
+// The load-bearing measurement-layer guard. A stale/absent token lets the app
+// render its SHELL while every data call 401s → an empty page that a shell-only
+// assertion (e.g. PLAYWRIGHT-005 body-length) PASSES. §4 closes that by
+// inspecting the actual network: ≥1 key API call must return 2xx with a
+// genuinely non-empty body, else the route FAILS Tier B with a distinct reason.
+// CORS / --disable-web-security is NOT used here (Z.3 disproved the CORS block).
+
+export interface ApiResponseObservation { url: string; status: number; bodyText: string; }
+export interface DataReachedVerdict { passed: boolean; reason: string; evidence: string; }
+
+/** True iff a body carries at least one real data ROW — not '', null, [], {}, or a
+ *  skeleton envelope whose list payload is empty (even alongside a zero count).
+ *  Rule (array-aware, fail-closed per §4):
+ *    • any non-empty array anywhere            → data rows present → non-empty
+ *    • arrays present but ALL empty            → skeleton → EMPTY  (e.g. {"content":[],"totalElements":0})
+ *    • no arrays at all, but a meaningful leaf → non-empty (a detail object {"name":"A"})
+ *  A count-only shell ({"data":[]} / {"total":0,"data":[]}) is EMPTY: the point of §4
+ *  is to fail the stale-token empty-render, and a zero-row list IS that shape. */
+export function isNonEmptyBody(bodyText: string): boolean {
+  const t = (bodyText ?? '').trim();
+  if (t.length === 0) return false;
+  let parsed: unknown;
+  try { parsed = JSON.parse(t); } catch { return t.length > 2; } // non-JSON text payload
+  let sawArray = false, sawNonEmptyArray = false, sawScalarLeaf = false;
+  const visit = (v: unknown): void => {
+    if (v === null || v === undefined) return;
+    if (Array.isArray(v)) {
+      sawArray = true;
+      if (v.length > 0) sawNonEmptyArray = true;
+      v.forEach(visit);
+    } else if (typeof v === 'object') {
+      Object.values(v as Record<string, unknown>).forEach(visit);
+    } else if (typeof v === 'string') {
+      if (v.trim().length > 0) sawScalarLeaf = true;
+    } else if (typeof v === 'number' || typeof v === 'boolean') {
+      sawScalarLeaf = true;
+    }
+  };
+  visit(parsed);
+  if (sawNonEmptyArray) return true; // real rows
+  if (sawArray) return false;        // arrays present but all empty → skeleton
+  return sawScalarLeaf;              // no arrays → non-empty iff a meaningful leaf exists
+}
+
+/** §4 verdict over the key API responses observed during a route load.
+ *  Fail-closed: zero observations (login-redirect before any fetch) → FAIL. */
+export function assessDataReached(apiResponses: ApiResponseObservation[]): DataReachedVerdict {
+  if (apiResponses.length === 0) {
+    return { passed: false, reason: 'tierB-no-data-reached',
+      evidence: 'no key API/XHR response observed during load (app may have redirected to login before fetching)' };
+  }
+  const reached = apiResponses.find((r) => r.status >= 200 && r.status < 300 && isNonEmptyBody(r.bodyText));
+  if (reached) {
+    return { passed: true, reason: 'data-reached',
+      evidence: `${reached.status} ${reached.url} (${reached.bodyText.trim().length} body chars)` };
+  }
+  // No 2xx-non-empty → most diagnostic failure reason.
+  const unauthorized = apiResponses.find((r) => r.status === 401);
+  const forbidden = apiResponses.find((r) => r.status === 403);
+  const serverErr = apiResponses.find((r) => r.status >= 400);
+  if (unauthorized) return { passed: false, reason: 'tierB-api-401',
+    evidence: `key API 401 (${unauthorized.url}) — stale/absent token; data never authenticated` };
+  if (forbidden) return { passed: false, reason: 'tierB-api-403',
+    evidence: `key API 403 (${forbidden.url})` };
+  if (serverErr) return { passed: false, reason: 'tierB-api-error',
+    evidence: `key API HTTP ${serverErr.status} (${serverErr.url})` };
+  const first = apiResponses[0];
+  return { passed: false, reason: 'tierB-empty-body',
+    evidence: `key API ${first.status} but empty/skeleton body (${first.url}) — shell rendered with no data` };
+}
+
+/** Z.2 wait strategy: a named data-ready selector when ux-states provides one,
+ *  else a BOUNDED networkidle fallback (never plain/unbounded — hang risk on
+ *  long-poll/websocket/analytics). Both carry a finite timeout, hard-capped. */
+export type WaitStrategy =
+  | { kind: 'selector'; selector: string; timeoutMs: number }
+  | { kind: 'networkidle'; timeoutMs: number };
+
+export function resolveWaitStrategy(
+  dataReadySelector: string | null | undefined,
+  opts?: { selectorTimeoutMs?: number; networkidleTimeoutMs?: number; maxTimeoutMs?: number },
+): WaitStrategy {
+  const cap = opts?.maxTimeoutMs ?? 30_000; // hard cap — bounded, cannot hang
+  const bound = (n: number) => Math.min(Math.max(1, n), cap);
+  const sel = (dataReadySelector ?? '').trim();
+  if (sel.length > 0) return { kind: 'selector', selector: sel, timeoutMs: bound(opts?.selectorTimeoutMs ?? 15_000) };
+  return { kind: 'networkidle', timeoutMs: bound(opts?.networkidleTimeoutMs ?? 15_000) };
 }
 
 async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & { extended?: ExtendedResults }> {
@@ -909,6 +1001,25 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       consoleErrors.push(text);
     });
 
+    // §4: capture key API/XHR responses so Tier B can prove the backend was
+    // actually REACHED (2xx + non-empty body), not merely that a shell rendered.
+    // Register before goto so initial-load fetches are seen. Handlers never throw.
+    const apiUrlPattern = new RegExp(process.env.PLAYWRIGHT_API_URL_PATTERN ?? 'api\\.fpt-apps\\.com|/api/');
+    const apiObservations: ApiResponseObservation[] = [];
+    page.on('response', (resp) => {
+      void (async () => {
+        try {
+          const rtype = resp.request().resourceType();
+          if (rtype !== 'fetch' && rtype !== 'xhr') return;
+          const url = resp.url();
+          if (!apiUrlPattern.test(url)) return;
+          let bodyText = '';
+          try { bodyText = await resp.text(); } catch { bodyText = ''; }
+          apiObservations.push({ url, status: resp.status(), bodyText });
+        } catch { /* never let a response handler reject */ }
+      })();
+    });
+
     const response = await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
 
     // Check 1: Route resolves (no 404 / error page)
@@ -962,6 +1073,40 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       passed: bodyText.trim().length > 100,
       evidence: `Body text length: ${bodyText.trim().length} chars`,
     });
+
+    // ── Z.2 bounded data-ready wait + §4 data-reached assertion (v3.24) ──
+    // Give data-dependent content time to arrive (bounded — never hangs), then
+    // gate on the NETWORK truth: a shell can render with 401'd/empty data and
+    // pass the body-length check above; §4 fails that false-proof.
+    const waitStrategy = resolveWaitStrategy(cfg.dataReadySelector);
+    let waitTimedOut = false;
+    try {
+      if (waitStrategy.kind === 'selector') {
+        await page.waitForSelector(waitStrategy.selector, { timeout: waitStrategy.timeoutMs });
+      } else {
+        await page.waitForLoadState('networkidle', { timeout: waitStrategy.timeoutMs });
+      }
+    } catch { waitTimedOut = true; } // bounded timeout; not a silent pass — §4 below is the gate
+
+    if (cfg.dataGate === false) {
+      checks.push({
+        id: 'PLAYWRIGHT-DATA',
+        description: 'Tier B data-reached (§4) — disabled for backend-less route',
+        passed: true,
+        evidence: 'data gate disabled (--no-data-gate): route declared static/backend-less',
+      });
+    } else {
+      const verdict = assessDataReached(apiObservations);
+      const waitNote = waitTimedOut
+        ? `wait: bounded ${waitStrategy.kind} timed out after ${waitStrategy.timeoutMs}ms`
+        : `wait: ${waitStrategy.kind} settled`;
+      checks.push({
+        id: 'PLAYWRIGHT-DATA',
+        description: 'Tier B: backend reached with real data (§4 — key API 2xx + non-empty body)',
+        passed: verdict.passed,
+        evidence: `${verdict.reason} | ${waitNote} — ${verdict.evidence}`,
+      });
+    }
 
     const screenshotDir = featureName
       ? path.join('docs', 'specs', featureName, 'screenshots')
@@ -1219,6 +1364,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
   const auditA11y = args.includes('--audit-a11y');
   const visualDiff = args.includes('--visual-diff');
   const disableWebSecurity = args.includes('--disable-web-security');
+  const dataGate = !args.includes('--no-data-gate'); // §4 gate ON unless opted out
 
   const flagValue = (name: string): string | undefined => {
     const idx = args.indexOf(name);
@@ -1230,6 +1376,7 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
   const visualBaseline = flagValue('--visual-baseline');
   const visualBaselineDir = flagValue('--visual-baseline-dir');
   const acChecklistPath = flagValue('--ac-checklist');
+  const dataReadySelector = flagValue('--data-ready-selector'); // Z.2 per-route data-ready selector
   const auditCssPath = flagValue('--audit-css');
   const messagesPath = flagValue('--messages-path');
   const thresholdRaw = flagValue('--visual-diff-threshold');
@@ -1276,6 +1423,8 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     visualDiffThreshold,
     visualDiff,
     disableWebSecurity,
+    dataReadySelector,
+    dataGate,
   })
     .then(printResult)
     .catch(console.error);
