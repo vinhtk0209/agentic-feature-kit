@@ -313,7 +313,7 @@ join that makes the row honest.
 - **Canary 2b — AA.2 assessment timing (pure `resolveDataAssessPoint` + wiring).** Move the
   assessment point per §8.2. Tests: selector-present → assess-at-selector; no-selector →
   assess-after-steps; zero-obs-at-point → FAIL; selector-timeout → distinct reason.
-- **Canary 2c — version bump v3.24 → v3.25** (5 stamps: cmd copyright / PROMPT_VERSION /
+- **Canary 2c — cleanup + bookkeeping, NO version bump (stays v3.24)** (all 5 stamps remain v3.24: cmd copyright / PROMPT_VERSION /
   progress-banner + README + package.json), `version:check` green, `prompt-budget --gate` exit 0,
   dual-target byte-identical copy to AUTHORING (sha256), lessons AA.2/AA.3 flipped from
   `test_status="pending"` → `enforced_by` the new tests + `test_status="passing"`.
@@ -331,7 +331,7 @@ approval between 2a → 2b → 2c. No commit until you say so. No `npm run sync`
 2. `/drop-mock` ProgressReports (`USE_MOCK=false`) — AA.1, so real endpoints fire.
 3. B11 capture on US-AD-095-ProgressReports → §8-corrected §4 observes the feature's own
    `/progress-reports` (etc.) 2xx-non-empty AFTER the tab opens → first honest `verified=true`
-   (stamped v3.25) → sync unblocks.
+   (stamped v3.24) → sync unblocks.
 
 §8 removes the tooling reasons a legitimate run would fail/false-pass. AA.1 (mock) is a runtime
 toggle you flip at step 2, not a code fix — it stays a pre-capture checklist item.
