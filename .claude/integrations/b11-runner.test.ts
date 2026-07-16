@@ -115,14 +115,17 @@ test('preflight GAP: valid future expiry BUT no PLAYWRIGHT_ACCESS_TOKEN → tier
 test('preflight B expired: past EXPIRES_AT → tierB-token-expired  [nowMs injected]', () => {
   throwsCode(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW - 3 * H}\n`, NOW, 'tierB-token-expired', 'expired');
 });
-test('preflight C expiring: EXPIRES_AT +5h (<24h) → tierB-token-expiring  [the decisive case: passes under exit-code gating]', () => {
+test('preflight C expiring: EXPIRES_AT +5h (<6h) → tierB-token-expiring  [the decisive case: passes under exit-code gating]', () => {
   throwsCode(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 5 * H}\n`, NOW, 'tierB-token-expiring', 'expiring');
 });
 test('preflight D ok: token present + expiry +72h → does NOT throw', () => {
   noThrow(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 72 * H}\n`, NOW, 'ok');
 });
-test('preflight boundary: EXPIRES_AT exactly 24h ahead → still fresh (ok), not expiring', () => {
-  noThrow(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 24 * H}\n`, NOW, 'boundary-24h');
+test('preflight boundary: EXPIRES_AT exactly 6h ahead → still fresh (ok), not expiring  [AA.4 §9: threshold 24h→6h]', () => {
+  noThrow(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 6 * H}\n`, NOW, 'boundary-6h');
+});
+test('preflight AA.4 regression: fresh TTL_native-sized token (~23.5h) → does NOT throw  [§9: pre-fix this THREW under 24h threshold]', () => {
+  noThrow(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 23.5 * H}\n`, NOW, 'aa4-fresh-ttl-native');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

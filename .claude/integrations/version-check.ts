@@ -62,7 +62,7 @@ export interface PlaywrightTokenCheck {
   msRemaining: number | null;
 }
 
-const WARN_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 h
+const WARN_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6h — AA.4, §9, was 24h (backend TTL_native <24h made a fresh token unpassable)
 
 export function checkPlaywrightToken(
   envFile: string,
