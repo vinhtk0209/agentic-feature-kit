@@ -335,3 +335,112 @@ approval between 2a → 2b → 2c. No commit until you say so. No `npm run sync`
 
 §8 removes the tooling reasons a legitimate run would fail/false-pass. AA.1 (mock) is a runtime
 toggle you flip at step 2, not a code fix — it stays a pre-capture checklist item.
+
+---
+
+## §9 — `WARN_THRESHOLD_MS`: the fresh-token-unsatisfiable `expiring-soon` boundary (AA.4)
+
+> **Status: LOCKED 2026-07-16 — threshold = 6 h, shipped as v3.25.** Root cause observed live
+> 2026-07-16 during the Block-5 STEP-1 preflight (two consecutive `npm run workflow:login`
+> rotations). Design-doc-first per standing rule; the human locked 6 h after review. Code change
+> (threshold + test) and the v3.25 stamp/doc bump land as TWO separate commits per canary rule.
+> All `file:line` are ANCHORS — re-grep current disk before any edit.
+
+### 9.0 Root cause — the threshold is physically unsatisfiable by a fresh token
+
+The auth backend mints Playwright access tokens with a **native TTL shorter than the 24 h guard
+threshold**. Observed directly, back-to-back after a clean `workflow:login`:
+
+- Rotation A (STEP 1, first attempt): `msRemaining = 85 181 553 ms` = **23.66 h** → `status=expiring-soon`.
+- The guard threshold: `WARN_THRESHOLD_MS = 24 * 60 * 60 * 1000` = **86 400 000 ms (24 h)**.
+
+Because `TTL_native (~23.66 h) < WARN_THRESHOLD_MS (24 h)`, a **just-minted** token is already on the
+`expiring-soon` side of the boundary the instant it is issued. There is no wall-clock moment at
+which the current guard would report `ok` for this backend — the fail-closed preflight
+(`assertPlaywrightTokenFresh`, `b11-runner.ts:153`) is therefore **structurally unpassable**, not
+merely "refresh and retry". This is distinct from the STEP-1 first halt (a genuinely stale ~71 h
+token): here the token is fresh and the *threshold* is the defect.
+
+### 9.1 What is (and is NOT) changing
+
+- **Definition — the only change site:** `version-check.ts:65`
+  `const WARN_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 h` → `6 * 60 * 60 * 1000; // 6h` (LOCKED).
+  One definition, one usage (`version-check.ts:83`); no duplicate threshold constant exists anywhere
+  in the kit (grep-confirmed 2026-07-16).
+- **The comparison operator does NOT change.** `version-check.ts:83` stays strict `<`
+  (`msRemaining < WARN_THRESHOLD_MS ? 'expiring-soon' : 'ok'`). Only the constant it compares against
+  moves. Boundary semantics unchanged: exactly-threshold = `ok`, strictly-under = `expiring-soon`.
+- **Verdict order does NOT change.** `checkPlaywrightToken` keeps `missing → expired → expiring-soon
+  → ok` precedence (`version-check.ts:81-85`); `assertPlaywrightTokenFresh` keeps its throw order
+  `missing → expired → expiring` (`b11-runner.ts:141-158`). Only the numeric boundary between
+  `expiring-soon` and `ok` moves.
+- **Both consumers inherit the new value unchanged:** the fail-closed B11 preflight
+  (`b11-runner.ts:153`, THROWS) and the warn-only `--playwright` CLI (`version-check.ts:125`,
+  exit 0). No consumer-side edit.
+
+### 9.2 The invariant the new threshold MUST still preserve
+
+`WARN_THRESHOLD_MS` exists to **fail closed on any token that could lapse MID-RUN** — the exact
+class the whole §4 rewrite protects (a token that 401s partway renders an empty-shell that a
+shell-only assertion false-passes). The token is validated **once**, at preflight
+(`b11-runner.ts:487`), and then **reused across every route** without re-check. So the token must
+remain valid for the entire authenticated run that follows the preflight.
+
+**Worst-case B11 run duration (grounded, not assumed):**
+
+- Per-route Playwright ceiling: `playwrightTimeoutMs = 600_000` ms = **10 min/route**
+  (`b11-runner.ts:469`), enforced by the process-tree kill in `runPlaywrightSpawn`.
+- Routes run **sequentially** (`b11-runner.ts:488-490`), so wall-clock ≈ `routes.length × 10 min`.
+- Plus one-shot static/coverage/contract overhead earlier in `main()` (bounded by the 2-min `run`
+  default, `b11-runner.ts:164`) — but those run BEFORE the preflight-gated token is used, so they do
+  not extend the post-preflight authenticated window.
+- **Worst-case authenticated window ≈ `routes.length × 10 min`.** For a realistic feature (a
+  handful of routes) this is well under an hour.
+
+**The locked threshold satisfies the two-sided bound:**
+
+```
+  worst_case_run + safety_margin   ≤   6 h   <   TTL_native (~23.66 h observed)
+  └─────────── ~1 h ─────────────┘                └──── upper bound ────┘
+```
+
+- **Lower bound** — 6 h exceeds the ~1 h worst-case authenticated window plus margin, so the guard
+  still catches a genuine mid-run lapse (its purpose is preserved).
+- **Upper bound** — 6 h sits well below the backend's native TTL so a **freshly-minted** token reads
+  `ok` with ~17 h of headroom (the whole point of AA.4), leaving slack beneath the TTL floor even if
+  TTL_native varies run-to-run below the single 23.66 h sample.
+
+**Locked at 6 h 2026-07-16** — a policy call trading mid-run-lapse protection (higher) against
+fresh-token-passability under a sub-24 h TTL (lower). If a future backend change pushes TTL_native
+below ~7 h, revisit (6 h would lose its headroom).
+
+### 9.3 Byte-identity + sync consequence
+
+`version-check.ts` must stay **byte-identical kit ↔ AUTHORING** (both `8201194c…` as of 2026-07-16)
+so the guard the capture runs against equals the guard in the kit. ⚠️ The **LEARNING** target copy
+already diverges (`251c9500…`) independently of this change — flag for a future sync reconcile; it
+is not the AUTHORING capture path and this §9 does not touch it. The 6 h value reaches targets only
+through the normal `kit → sync → target` path — **which is itself still fail-closed** until the
+first honest `verified=true` exists. So this fix and the Block-5 capture are mutually gating: the
+capture needs the lowered threshold to reach `ok`, and the lowered threshold reaches AUTHORING via a
+sync that the capture unblocks. Bootstrap actually used 2026-07-16: after the kit threshold change,
+`version-check.ts` was copied kit → AUTHORING directly (byte-identical, sha256
+`47887f00…`), so the AUTHORING capture reads the 6 h guard without a sync. That copy is git-ignored
+in AUTHORING (`.gitignore:43 .claude/integrations/`), so it never becomes a target-tracked change —
+consistent with kit-as-sole-source.
+
+### 9.4 Version stamp — LOCKED v3.25
+
+This is a guard **behavior change** (a token state that previously THREW now passes), not a pure
+Tier-B internal fix, so it takes its own bump **v3.24 → v3.25** rather than folding into v3.24. All
+5 stamps moved (cmd copyright / PROMPT_VERSION / progress-banner / README / package.json);
+`version:check` green at v3.25. Lesson `L-2026-07-16-001` (AA.4) recorded in `prompt-evolution.md`.
+The stamp + `prompt-evolution.md` + this doc land as a SEPARATE commit from the threshold+test code.
+
+### 9.5 Test obligation — DONE (`b11-runner.test.ts`)
+
+The boundary tests were re-pinned around 6 h: the `noThrow` boundary case moved `24×H → 6×H`
+("boundary-6h"); the `5×H` `expiring` case held (still `<6h` → throws); and a NEW regression case
+asserts a `TTL_native`-sized fresh token (`23.5×H`) now yields `ok` (it THREW under 24 h — proven
+RED before the constant change, GREEN after). Suite: **23 passed, 0 failed**. `live_validated=false`
+until the first honest B11 capture passes the preflight with a real fresh (<24 h) token.
