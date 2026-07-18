@@ -916,12 +916,23 @@ export class EndpointDerivationError extends Error {
   reason: string;
   httpSet: string[];
   apiSet: string[];
-  constructor(reason: string, message: string, httpSet: string[] = [], apiSet: string[] = []) {
+  // §17.7.3 structured cause: the two set-difference axes, so callers/tests can tell an
+  // undeclared-missing contract endpoint (H∖A, no §-anchored # DEFER:) apart from an extra
+  // code call site (A∖H) — the reason string alone conflates them. Both default to [] so any
+  // OTHER throw site (e.g. tierB-no-feature-endpoints) is unaffected.
+  readonly undeclaredMissing: string[];
+  readonly extraInCode: string[];
+  constructor(
+    reason: string, message: string, httpSet: string[] = [], apiSet: string[] = [],
+    undeclaredMissing: string[] = [], extraInCode: string[] = [],
+  ) {
     super(message);
     this.name = 'EndpointDerivationError';
     this.reason = reason;
     this.httpSet = httpSet;
     this.apiSet = apiSet;
+    this.undeclaredMissing = undeclaredMissing;
+    this.extraInCode = extraInCode;
   }
 }
 
@@ -953,11 +964,17 @@ function pathSet(paths: string[]): string[] {
 
 /**
  * Derive the feature endpoint set `E_feat` from its contract `.http` (H, PRIMARY) cross-checked
- * against its `data/api.ts` call sites (A). Fail-closed reconciliation (§8.1, LOAD-BEARING):
- *   • H === A (as normalized path-prefix sets) → E_feat = H. Proceed.
- *   • H ≠ A (any direction) → STOP `tierB-endpoint-source-divergence`, print both sets. Divergence
- *     means `.http` is stale relative to the code; scoping §4 to either risks a dead endpoint
- *     (false-fail) or missing the real one. Never silently pick a source.
+ * against its `data/api.ts` call sites (A). Fail-closed reconciliation (§8.1 + §17.7, LOAD-BEARING):
+ *   • `declaredDeferSet` = normalized paths of H-elements carrying a §-anchored `# DEFER:` marker
+ *     (§17.7.3). An anchorless `# DEFER:` is treated as ABSENT — orphan defers fail closed.
+ *   • PASS ⟺ `extraInCode` (A∖H) is empty AND `undeclaredMissing` ((H∖A)∖deferSet) is empty.
+ *     Then E_feat = H ∖ declaredDeferSet (§17.7.4) — deferred endpoints have no runtime consumer,
+ *     so leaving them in E_feat would make §4 data-scoping unsatisfiable for them. When A∖H is
+ *     empty this equals A exactly.
+ *   • Otherwise → STOP `tierB-endpoint-source-divergence`: either code calls an endpoint the
+ *     contract lacks (`extraInCode`), or the contract has an extra endpoint that is NOT declared-
+ *     deferred (`undeclaredMissing`). `deferSet` NEVER comes from "what api.ts happens not to call"
+ *     — only from an explicit on-disk `# DEFER:` declaration.
  *   • E_feat empty: with `dataGate:false` (--no-data-gate static opt-out) → N/A (applicable=false).
  *     Without → STOP `tierB-no-feature-endpoints` (a data-gated feature with zero derivable
  *     endpoints is a config error, not a pass).
@@ -966,7 +983,8 @@ function pathSet(paths: string[]): string[] {
 export function deriveFeatureEndpoints(
   httpText: string, apiText: string, opts: { dataGate: boolean },
 ): { endpoints: EndpointMatcher[]; applicable: boolean } {
-  const H = pathSet(parseHttp(httpText).map((e) => e.path));
+  const httpEndpoints = parseHttp(httpText);
+  const H = pathSet(httpEndpoints.map((e) => e.path));
   const A = pathSet(parseApiReturnTypes(apiText).map((r) => r.path));
 
   if (H.length === 0 && A.length === 0) {
@@ -976,14 +994,33 @@ export function deriveFeatureEndpoints(
       'feature must expose ≥1 endpoint; use --no-data-gate only for a genuinely backend-less route)', H, A);
   }
 
-  const equal = H.length === A.length && H.every((p, i) => p === A[i]);
-  if (!equal) {
+  // §17.7.3: a deferred endpoint counts ONLY if its `# DEFER:` reason references a design §-anchor.
+  const ANCHOR = /§\s?\d+(\.\d+)*/;
+  const declaredDeferSet = new Set(
+    httpEndpoints
+      .filter((e) => e.deferReason != null && ANCHOR.test(e.deferReason))
+      .map((e) => e.path),
+  );
+
+  const Aset = new Set(A);
+  const Hset = new Set(H);
+  const extraInCode = A.filter((p) => !Hset.has(p));                                      // A ∖ H
+  const undeclaredMissing = H.filter((p) => !Aset.has(p) && !declaredDeferSet.has(p));    // (H∖A) ∖ deferSet
+
+  if (extraInCode.length > 0 || undeclaredMissing.length > 0) {
     throw new EndpointDerivationError('tierB-endpoint-source-divergence',
-      `.http endpoint set and api.ts call-site set diverge — .http is stale relative to the code. ` +
-      `Regenerate .http (baseline-http-gen) so they agree, then re-capture. ` +
-      `.http=[${H.join(', ')}] api.ts=[${A.join(', ')}]`, H, A);
+      `.http endpoint set and api.ts call-site set diverge. ` +
+      `extraInCode=[${extraInCode.join(', ')}] (code calls an endpoint the contract lacks); ` +
+      `undeclaredMissing=[${undeclaredMissing.join(', ')}] (contract endpoint with no §-anchored # DEFER:). ` +
+      `declaredDefer=[${[...declaredDeferSet].join(', ')}]. ` +
+      `Regenerate .http (baseline-http-gen) so they agree, or add a §-anchored # DEFER: for a ` +
+      `deliberately-deferred endpoint, then re-capture. .http=[${H.join(', ')}] api.ts=[${A.join(', ')}]`,
+      H, A, undeclaredMissing, extraInCode);
   }
-  return { endpoints: H, applicable: true };
+
+  // §17.7.4: E_feat = H ∖ declaredDeferSet (== A when A∖H is empty).
+  const endpoints = H.filter((p) => !declaredDeferSet.has(p));
+  return { endpoints, applicable: true };
 }
 
 /** Disk resolver for E_feat (§8.1): read the feature's contract `.http` (flagship writes it to

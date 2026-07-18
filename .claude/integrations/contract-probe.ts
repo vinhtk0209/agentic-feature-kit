@@ -303,7 +303,7 @@ export function resolveContractHttp(componentsDir: string, specsDir: string): st
 
 // ─── .http → endpoints + mock JSON ───────────────────────────────────────────────
 
-export interface HttpEndpoint { method: string; path: string; json: unknown | null; }
+export interface HttpEndpoint { method: string; path: string; json: unknown | null; deferReason?: string; }
 
 function extractMockJson(block: string): unknown | null {
   const lines = block.replace(/\r\n/g, '\n').split('\n');
@@ -324,13 +324,25 @@ function extractMockJson(block: string): unknown | null {
   try { return JSON.parse(text); } catch { return null; }
 }
 
+/** §17.7.2: extract a `# DEFER: <reason>` marker from a request-block, if present. Mirrors
+ *  `extractMockJson` — scans the block's comment lines for the first DEFER marker. Returns the
+ *  reason text (trimmed), or null. The §-anchor requirement on the reason is enforced downstream
+ *  in `deriveFeatureEndpoints` (§17.7.3), not here — this parser only surfaces the raw reason. */
+function extractDefer(block: string): string | null {
+  const m = block.match(/^#\s*DEFER:\s*(.+)$/im);
+  return m ? m[1].trim() : null;
+}
+
 export function parseHttp(httpText: string): HttpEndpoint[] {
   const blocks = httpText.split(/^###.*$/m);
   const out: HttpEndpoint[] = [];
   for (const block of blocks) {
     const req = block.match(/^\s*(GET|POST|PUT|DELETE|PATCH)\s+(\S+)/m);
     if (!req) continue;
-    out.push({ method: req[1].toUpperCase(), path: normalizePath(req[2]), json: extractMockJson(block) });
+    const ep: HttpEndpoint = { method: req[1].toUpperCase(), path: normalizePath(req[2]), json: extractMockJson(block) };
+    const defer = extractDefer(block);
+    if (defer) ep.deferReason = defer;
+    out.push(ep);
   }
   return out;
 }
