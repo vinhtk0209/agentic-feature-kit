@@ -12,6 +12,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { lint, parseArgs, gateExitCode, Args, requiredUxStateFindings, hasUxStateKind } from './lint-feature';
+import { countChecklistSection } from './playwright-runner';
 import type { UxStatesDoc } from './ux-states';
 
 let passed = 0;
@@ -507,6 +508,58 @@ const i18nOkUx = write(`${i18nOk}/ux-states.json`, JSON.stringify({
 test('L-02 / W.2b → text: assertion matching defaultMessage exactly is not warned', () => {
   const f = lint(args(path.join(tmpRoot, i18nOk), { uxStates: i18nOkUx }));
   assert(!hasWarn(f, 'W2', 'i18n case drift'), 'exact-match text: assertion must not trip W2 case drift');
+});
+
+// ── T6 (design §10.5, canary C1) — BE-exclusion symmetry ─────────────
+// Invariant (§10.2 D2): a row marked `<!-- enforced-by: BE -->` is invisible to ALL of
+//   (1) countChecklistSection — the Summary path        (playwright-runner.ts, §10.2 path 3)
+//   (2) grab                  — the HR35 row-scan denominator
+//   (3) checkAcCoverage       — the HR36 coverage set
+//   (4) finalCellVerified     — the 4th asymmetry §10.2 flags (brRows filters; this did not)
+// The fixture deliberately has NO `## Summary` `✅ X/Y` pair, so verifiedSource falls back to
+// row-scan — that fallback is what exercises finalCellVerified. The BE row carries a ✅ in its
+// final (evidence) cell, which is exactly what an unfiltered reader miscounts as verified.
+const t6 = 't6-be-symmetry';
+write(`${t6}/data/api.ts`, 'export const q = 1;\n');
+const t6ChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Description | Tool | Status | Evidence |',
+  '|----|-------------|------|--------|----------|',
+  '| ACT-01 | renders summary | Playwright | ✅ Pass | run-ref-1 ✅ |',
+  '| ACT-BR2 | computes attendance rate | BE | ✅ Pass | BE-owned ✅ <!-- enforced-by: BE --> |',
+  '',
+].join('\n');
+const t6Checklist = write(`${t6}/checklist.md`, t6ChecklistText);
+const t6Ux = write(`${t6}/ux-states.json`, JSON.stringify({
+  feature: 'T6',
+  states: [{ ac_assertions: [{ ac_id: 'ACT-01', selector: '.x', expected: 'visible' }] }],
+  negative_states: [], unit_tests: [],
+}, null, 2));
+
+test('T6 — BE row is invisible to countChecklistSection (Summary path, §10.2 path 3)', () => {
+  const s = countChecklistSection(t6ChecklistText, 'ACT');
+  assert(s.total === 1, `BE row must leave the Summary total: expected 1, got ${s.total}`);
+  assert(s.pass === 1, `BE row must leave the Summary pass count: expected 1, got ${s.pass}`);
+  // The point of the fix: with BE rows gone, a fully-verified section can reach pass === total,
+  // which is what lets icon() emit ✅ and moves HR35 off the row-scan fallback (§10.2).
+  assert(s.pass === s.total, 'section must be able to reach full-green once BE rows are excluded');
+});
+
+test('T6 — BE row is invisible to grab + checkAcCoverage (HR36 coverage set)', () => {
+  const f = lint(args(path.join(tmpRoot, t6), { checklist: t6Checklist, uxStates: t6Ux }));
+  assert(!has(f, 'HR36', 'ACT-BR2'), 'BE row must not be named as uncovered');
+  assert(!has(f, 'HR36', 'AC coverage'), 'BE row must not be counted as uncovered');
+});
+
+test('T6 — BE row is invisible to finalCellVerified (HR35 row-scan, 4th asymmetry)', () => {
+  const f = lint(args(path.join(tmpRoot, t6), { checklist: t6Checklist, uxStates: t6Ux }));
+  const hr35 = f.find((x) => x.rule === 'HR35');
+  assert(!!hr35, 'expected an HR35 finding');
+  const msg = (hr35 as { msg: string }).msg;
+  assert(/\[src: row-scan\]/.test(msg), `fixture must exercise the row-scan path, got: ${msg}`);
+  const m = msg.match(/ACT\s+(\d+)\/(\d+)/);
+  assert(!!m, `expected an "ACT n/m" pair in: ${msg}`);
+  assert(m![1] === '1', `BE row must not be counted as verified: expected "ACT 1/…", got "${m![0]}"`);
 });
 
 // ── teardown + report ────────────────────────────────────────────────

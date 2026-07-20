@@ -152,6 +152,9 @@ function parseChecklist(file?: string): Checklist | null {
     let ok = 0;
     for (const ln of md.split('\n')) {
       if (!ln.includes('|') || !idRe.test(ln)) continue;
+      // §10.2 D2 (4th asymmetry): grab and brRows already drop backend-only rows; this reader did
+      // not, so a BE row carrying a ✅ in its evidence cell was counted as FE-verified.
+      if (/<!--\s*enforced-by:\s*BE/i.test(ln)) continue;
       const cells = ln.split('|');
       const last = cells[cells.length - 2] || cells[cells.length - 1] || '';
       if (/✅|✔/.test(last)) ok += 1;

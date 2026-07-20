@@ -630,7 +630,13 @@ export function countChecklistSection(
   const tableLines = section.split('\n').filter(
     (l) => /^\|/.test(l.trim()) && !/^\|\s*[-:]+\s*\|/.test(l.trim()),
   );
-  const dataRows = tableLines.slice(1); // skip header row
+  // §10.2 D2 — BE-exclusion symmetry: a row tagged `<!-- enforced-by: BE -->` is a backend
+  // obligation, not an FE-verifiable one, so it must be invisible here exactly as it already is
+  // to grab/brRows in lint-feature.ts. Leaving it in kept `pass === total` unreachable for any
+  // section holding a BE row, so icon() could never emit ✅ and HR35 fell back to row-scan forever.
+  const dataRows = tableLines
+    .slice(1) // skip header row
+    .filter((l) => !/<!--\s*enforced-by:\s*BE/i.test(l));
   return {
     total: dataRows.length,
     pass: dataRows.filter((l) => l.includes('✅')).length,
