@@ -612,6 +612,34 @@ function updateChecklistRows(checklistPath: string, verdicts: RowVerdict[]): voi
 }
 
 /**
+ * Count one `## <title>` checklist section: total data rows and the ✅/❌/⬜ split.
+ *
+ * Hoisted out of updateChecklistSummary (design §10.2 / canary C1) so the BE-exclusion
+ * invariant is reachable from a test — it was previously a closure over `text` and no
+ * test could observe it. Pure: text in, counts out; no I/O.
+ */
+export function countChecklistSection(
+  text: string,
+  title: string,
+): { total: number; pass: number; fail: number; pending: number } {
+  const startIdx = text.indexOf(`## ${title}`);
+  if (startIdx === -1) return { total: 0, pass: 0, fail: 0, pending: 0 };
+  const rest = text.slice(startIdx);
+  const nextSection = rest.match(/\n## /);
+  const section = nextSection ? rest.slice(0, nextSection.index) : rest;
+  const tableLines = section.split('\n').filter(
+    (l) => /^\|/.test(l.trim()) && !/^\|\s*[-:]+\s*\|/.test(l.trim()),
+  );
+  const dataRows = tableLines.slice(1); // skip header row
+  return {
+    total: dataRows.length,
+    pass: dataRows.filter((l) => l.includes('✅')).length,
+    fail: dataRows.filter((l) => l.includes('❌')).length,
+    pending: dataRows.filter((l) => l.includes('⬜')).length,
+  };
+}
+
+/**
  * Auto-update the `## Summary` section in checklist.md after row updates.
  * Counts ✅/❌/⬜ per section (REQ, UI, ACT, UX) and rewrites the Summary block.
  * Called immediately after updateChecklistRows() so counts reflect the latest run.
@@ -626,23 +654,7 @@ function updateChecklistSummary(
   if (!fs.existsSync(checklistPath)) return;
   const text = fs.readFileSync(checklistPath, 'utf8');
 
-  const countSection = (title: string): { total: number; pass: number; fail: number; pending: number } => {
-    const startIdx = text.indexOf(`## ${title}`);
-    if (startIdx === -1) return { total: 0, pass: 0, fail: 0, pending: 0 };
-    const rest = text.slice(startIdx);
-    const nextSection = rest.match(/\n## /);
-    const section = nextSection ? rest.slice(0, nextSection.index) : rest;
-    const tableLines = section.split('\n').filter(
-      (l) => /^\|/.test(l.trim()) && !/^\|\s*[-:]+\s*\|/.test(l.trim()),
-    );
-    const dataRows = tableLines.slice(1); // skip header row
-    return {
-      total: dataRows.length,
-      pass: dataRows.filter((l) => l.includes('✅')).length,
-      fail: dataRows.filter((l) => l.includes('❌')).length,
-      pending: dataRows.filter((l) => l.includes('⬜')).length,
-    };
-  };
+  const countSection = (title: string) => countChecklistSection(text, title);
 
   const req = countSection('Requirements Coverage');
   const ui = countSection('UI Verification');
