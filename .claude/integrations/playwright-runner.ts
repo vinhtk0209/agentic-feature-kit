@@ -280,6 +280,9 @@ interface RowVerdict {
   id: string;
   passed: boolean;
   evidence: string;
+  // §10.3 (C2): optional capture run-reference. On a PASS it is stamped as `✅ <runRef>` into the
+  // Evidence cell (falls back to `evidence` when unset). Additive — callers that omit it are unaffected.
+  runRef?: string;
 }
 
 interface ExtendedResults {
@@ -586,29 +589,76 @@ function parseChecklistRows(checklistPath: string): ChecklistRow[] {
   return rows;
 }
 
-function updateChecklistRows(checklistPath: string, verdicts: RowVerdict[]): void {
-  if (!fs.existsSync(checklistPath) || verdicts.length === 0) return;
-  let text = fs.readFileSync(checklistPath, 'utf8');
-  for (const v of verdicts) {
-    const statusIcon = v.passed ? '✅ Pass' : '❌ Fail';
-    // Update line that starts with | <id> | ...
-    const re = new RegExp(`^(\\|\\s*${v.id.replace(/[-]/g, '\\-')}\\s*\\|[^\\n]*)$`, 'm');
-    const match = text.match(re);
-    if (!match) continue;
-    const cells = match[1].split('|').slice(1, -1).map((c) => c.trim());
-    if (cells.length >= 5) {
-      // ACT table: id|desc|tool|status|evidence
-      cells[3] = statusIcon;
-      cells[4] = v.evidence;
-    } else if (cells.length === 4) {
-      // UI/Requirements: id|desc|status|evidence
-      cells[2] = statusIcon;
-      cells[3] = v.evidence;
-    }
-    const newLine = `| ${cells.join(' | ')} |`;
-    text = text.replace(re, newLine);
+/** STOP signal (§10.3 D3): the checklist writer met a header it cannot resolve BY NAME — absent, or
+ *  missing a Status-equivalent / Evidence column. Carries the verdict + the offending header so the
+ *  operator sees why the write was refused; the cell-count fallback behind the (a2) destructive
+ *  misalignment is never used. Mirrors EndpointDerivationError's typed-STOP shape (§17.7). */
+export class ChecklistLayoutError extends Error {
+  readonly verdict = 'tierB-checklist-unrecognized-layout';
+  readonly rowId: string;
+  readonly header: string;
+  constructor(rowId: string, header: string, message: string) {
+    super(message);
+    this.name = 'ChecklistLayoutError';
+    this.rowId = rowId;
+    this.header = header;
   }
-  fs.writeFileSync(checklistPath, text, 'utf8');
+}
+
+export function updateChecklistRows(checklistPath: string, verdicts: RowVerdict[]): void {
+  if (!fs.existsSync(checklistPath) || verdicts.length === 0) return;
+  const raw = fs.readFileSync(checklistPath, 'utf8');
+  const eol = raw.includes('\r\n') ? '\r\n' : '\n';
+  const lines = raw.split(/\r?\n/);
+  const cellsOf = (l: string) => l.split('|').slice(1, -1).map((c) => c.trim());
+
+  // §10.3 D3: resolve the Status-equivalent + Evidence columns FROM THE HEADER, by NAME. Recognized
+  // ⇔ the header carries BOTH. `cells.length` is never consulted — the cell-count fallback is the
+  // exact mechanism behind the (a2) destructive misalignment, so it is deleted, not degraded to.
+  // Note the UI template header names the status column `Matches Spec`, not `Status` — matched here.
+  const resolveLayout = (headerLine: string): { statusIdx: number; evidenceIdx: number } | null => {
+    const names = cellsOf(headerLine);
+    const statusIdx = names.findIndex((n) => /^(status|matches spec|result)$/i.test(n));
+    const evidenceIdx = names.findIndex((n) => /^evidence$/i.test(n));
+    return statusIdx === -1 || evidenceIdx === -1 ? null : { statusIdx, evidenceIdx };
+  };
+
+  // Validate-all-then-write-once: plan every edit first; throw on the first unrecognized row BEFORE
+  // the single fs.writeFileSync → any STOP leaves the file byte-identical (fail-closed, §10.3 / T7).
+  const planned: Array<{ idx: number; line: string }> = [];
+  for (const v of verdicts) {
+    const idRe = new RegExp(`^\\s*\\|\\s*${v.id.replace(/[-]/g, '\\-')}\\s*\\|`);
+    const rowIdx = lines.findIndex((l) => idRe.test(l));
+    if (rowIdx === -1) continue; // id not in this checklist → nothing to update (row untouched)
+    // Walk up to this table's header: the row directly above the `|---|` separator.
+    let headerIdx = -1;
+    for (let i = rowIdx - 1; i >= 0; i--) {
+      const t = lines[i].trim();
+      if (/^\|(\s*:?-+:?\s*\|)+$/.test(t)) { headerIdx = i - 1; break; } // separator → header is above
+      if (!t.startsWith('|')) break; // left the table without a separator → unrecognized
+    }
+    const layout = headerIdx >= 0 ? resolveLayout(lines[headerIdx]) : null;
+    if (!layout) {
+      throw new ChecklistLayoutError(v.id, headerIdx >= 0 ? lines[headerIdx] : '',
+        `tierB-checklist-unrecognized-layout: row ${v.id} sits under a header that is absent or lacks a ` +
+        `Status-equivalent/Evidence column (header: ${headerIdx >= 0 ? lines[headerIdx].trim() : 'NONE'}). ` +
+        'Cell-count fallback is prohibited (§10.3); zero bytes written.');
+    }
+    const cells = cellsOf(lines[rowIdx]);
+    if (cells.length <= Math.max(layout.statusIdx, layout.evidenceIdx)) {
+      throw new ChecklistLayoutError(v.id, lines[headerIdx],
+        `tierB-checklist-unrecognized-layout: row ${v.id} has ${cells.length} cells but the header resolves ` +
+        `Status@${layout.statusIdx} / Evidence@${layout.evidenceIdx} — column/row mismatch; zero bytes written.`);
+    }
+    cells[layout.statusIdx] = v.passed ? '✅ Pass' : '❌ Fail';
+    // §10.3: on PASS, stamp `✅ <run-ref>` into the EVIDENCE cell — that ✅ is what finalCellVerified
+    // counts (T5). runRef defaults to the free-form evidence when a caller hasn't threaded one in.
+    cells[layout.evidenceIdx] = v.passed ? `✅ ${v.runRef ?? v.evidence}` : v.evidence;
+    planned.push({ idx: rowIdx, line: `| ${cells.join(' | ')} |` });
+  }
+  if (planned.length === 0) return; // nothing matched → file left byte-identical
+  for (const p of planned) lines[p.idx] = p.line;
+  fs.writeFileSync(checklistPath, lines.join(eol), 'utf8');
 }
 
 /**
@@ -1545,8 +1595,17 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
     // ── Update checklist.md if --ac-checklist provided ──
     if (cfg.acChecklistPath && fs.existsSync(cfg.acChecklistPath)) {
       const allVerdicts = [...extended.uiResults, ...extended.acResults, ...extended.unitTestResults];
-      updateChecklistRows(cfg.acChecklistPath, allVerdicts);
-      updateChecklistSummary(cfg.acChecklistPath, checks, extended.acResults, extended.unitTestResults, new Date().toISOString());
+      try {
+        updateChecklistRows(cfg.acChecklistPath, allVerdicts);
+        updateChecklistSummary(cfg.acChecklistPath, checks, extended.acResults, extended.unitTestResults, new Date().toISOString());
+      } catch (e) {
+        // §10.3 fail-closed: an unrecognized checklist header STOPs the writer with ZERO bytes
+        // written. Surface it as a loud, labeled failed check (verdict observable in the result) —
+        // never a silent skip. Mirrors §17.7's `instanceof EndpointDerivationError` handling (:1478).
+        if (e instanceof ChecklistLayoutError) {
+          checks.push({ id: 'PLAYWRIGHT-CHECKLIST', description: `Tier B: checklist writer STOP (${e.verdict})`, passed: false, evidence: e.message });
+        } else { throw e; }
+      }
     }
 
     return {

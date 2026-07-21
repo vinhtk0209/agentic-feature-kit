@@ -11,8 +11,9 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { lint, parseArgs, gateExitCode, Args, requiredUxStateFindings, hasUxStateKind } from './lint-feature';
-import { countChecklistSection } from './playwright-runner';
+import { countChecklistSection, updateChecklistRows } from './playwright-runner';
 import type { UxStatesDoc } from './ux-states';
 
 let passed = 0;
@@ -560,6 +561,105 @@ test('T6 — BE row is invisible to finalCellVerified (HR35 row-scan, 4th asymme
   const m = msg.match(/ACT\s+(\d+)\/(\d+)/);
   assert(!!m, `expected an "ACT n/m" pair in: ${msg}`);
   assert(m![1] === '1', `BE row must not be counted as verified: expected "ACT 1/…", got "${m![0]}"`);
+});
+
+// ── T5 + T7 (design §10.5, canary C2 = §10.3) — writer/reader alignment ───────────────
+// RED-FIRST: authored BEFORE the §10.3 writer fix. Against current code:
+//   • T5 → writer stamps `✅ Pass` into the STATUS cell + plain evidence → finalCellVerified
+//     (reads the FINAL/evidence cell) sees no ✅ → numerator stays 0. Expected 1 → RED.
+//   • T7 → writer never throws; it id-matches + writes via cells.length → the drifted UI header
+//     (no Evidence col) is mutated → no STOP + bytes change → RED.
+// Both flip GREEN only when C2 lands: evidence-cell ✅ stamp + header-resolved columns +
+// fail-closed `tierB-checklist-unrecognized-layout`.
+const sha256 = (p: string) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+
+// T5 fixture — RECOGNIZED template ACT layout (Evidence column present), unverified row, NO
+// `## Summary ✅ X/Y` pair so the reader falls back to finalCellVerified row-scan (same trick as T6).
+const t5 = 't5-cell-alignment';
+write(`${t5}/data/api.ts`, 'export const q = 1;\n');
+const t5ChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Test Case | Tool | Status | Evidence |',
+  '|----|-----------|------|--------|----------|',
+  '| ACT-001 | renders summary chart | Playwright | ⬜ Pending | |',
+  '',
+].join('\n');
+const t5Checklist = write(`${t5}/checklist.md`, t5ChecklistText);
+const t5Ux = write(`${t5}/ux-states.json`, JSON.stringify({
+  feature: 'T5',
+  states: [{ ac_assertions: [{ ac_id: 'ACT-001', selector: '.x', expected: 'visible' }] }],
+  negative_states: [], unit_tests: [],
+}, null, 2));
+
+test('T5 — writer PASS verdict must land a ✅ in the evidence (final) cell so finalCellVerified counts it (§10.5-T5; RED before §10.3)', () => {
+  updateChecklistRows(t5Checklist, [{ id: 'ACT-001', passed: true, evidence: 'cap-run-42' }]);
+  const f = lint(args(path.join(tmpRoot, t5), { checklist: t5Checklist, uxStates: t5Ux }));
+  const hr35 = f.find((x) => x.rule === 'HR35');
+  assert(!!hr35, 'expected an HR35 finding');
+  const msg = (hr35 as { msg: string }).msg;
+  assert(/\[src: row-scan\]/.test(msg), `fixture must exercise the row-scan path, got: ${msg}`);
+  const m = msg.match(/ACT\s+(\d+)\/(\d+)/);
+  assert(!!m, `expected an "ACT n/m" pair in: ${msg}`);
+  assert(m![1] === '1', `after a PASS verdict the evidence cell must carry ✅ so it is counted: expected "ACT 1/…", got "ACT ${m![1]}/${m![2]}" — msg: ${msg}`);
+});
+
+// T7 fixture — the real DRIFTED target UI header (no Evidence column) → matches none of the 5
+// recognized template layouts → must STOP `tierB-checklist-unrecognized-layout`, zero bytes written.
+const t7 = 't7-unrecognized-header';
+write(`${t7}/data/api.ts`, 'export const q = 1;\n');
+const t7ChecklistText = [
+  '## UI Verification',
+  '| # | Component | Screen | Check | Status |',
+  '|---|-----------|--------|-------|--------|',
+  '| UI-01 | Dashboard heading | Progress & Reports | title renders | ⬜ |',
+  '',
+].join('\n');
+const t7Checklist = write(`${t7}/checklist.md`, t7ChecklistText);
+
+test('T7 — unrecognized/absent header → STOP tierB-checklist-unrecognized-layout, zero bytes written (§10.5-T7; RED before §10.3)', () => {
+  const before = sha256(t7Checklist);
+  let threw = false; let verdict = '';
+  try {
+    updateChecklistRows(t7Checklist, [{ id: 'UI-01', passed: true, evidence: 'cap-run-99' }]);
+  } catch (e) {
+    threw = true;
+    verdict = ((e as { verdict?: string }).verdict) || (e as Error).message || '';
+  }
+  const after = sha256(t7Checklist);
+  assert(threw, `writer must STOP (throw) on an unrecognized header, not degrade to cells.length — before=${before} after=${after}`);
+  assert(/tierB-checklist-unrecognized-layout/.test(verdict), `STOP verdict must be tierB-checklist-unrecognized-layout, got: "${verdict}"`);
+  assert(after === before, `zero bytes written on STOP: sha256 must be unchanged — before=${before} after=${after}`);
+});
+
+// T8 (design §10.5) — DOCUMENTED-RED "assert-the-gap": the reader still counts a BARE ✅ (no
+// provenance run-ref) in the evidence cell. GREEN today = the known reader gap (§10.3 "Residual
+// risk") is still open. Must stay GREEN across C1–C4; a flip to RED means a canary closed the
+// reader gap unintentionally → investigate, do NOT edit T8. Reader-only (no writer call).
+const t8 = 't8-bare-check-reader-gap';
+write(`${t8}/data/api.ts`, 'export const q = 1;\n');
+const t8ChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Test Case | Tool | Status | Evidence |',
+  '|----|-----------|------|--------|----------|',
+  '| ACT-001 | renders summary chart | Playwright | ⬜ Pending | ✅ |',
+  '',
+].join('\n');
+const t8Checklist = write(`${t8}/checklist.md`, t8ChecklistText);
+const t8Ux = write(`${t8}/ux-states.json`, JSON.stringify({
+  feature: 'T8',
+  states: [{ ac_assertions: [{ ac_id: 'ACT-001', selector: '.x', expected: 'visible' }] }],
+  negative_states: [], unit_tests: [],
+}, null, 2));
+
+test('T8 — reader still counts a BARE ✅ (no run-ref) in the evidence cell — documented-RED gap, must stay GREEN (§10.5-T8)', () => {
+  const f = lint(args(path.join(tmpRoot, t8), { checklist: t8Checklist, uxStates: t8Ux }));
+  const hr35 = f.find((x) => x.rule === 'HR35');
+  assert(!!hr35, 'expected an HR35 finding');
+  const msg = (hr35 as { msg: string }).msg;
+  assert(/\[src: row-scan\]/.test(msg), `fixture must exercise the row-scan path, got: ${msg}`);
+  const m = msg.match(/ACT\s+(\d+)\/(\d+)/);
+  assert(!!m, `expected an "ACT n/m" pair in: ${msg}`);
+  assert(m![1] === '1', `documented gap (§10.5-T8): a bare ✅ must still be counted — expected "ACT 1/…", got "ACT ${m![1]}/${m![2]}" — msg: ${msg}`);
 });
 
 // ── teardown + report ────────────────────────────────────────────────
