@@ -28,6 +28,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseUxStates, type UxStatesDoc } from './ux-states';
 import { loadConfig, type LearnedConfig } from './learned-config';
+import { parseRowDefer, validateRowDefer, LOCKED_ANCHORS, ChecklistDeferError } from './checklist-defer';
 
 export interface Args {
   folder: string;
@@ -116,6 +117,18 @@ interface Checklist { actIds: string[]; verifiedAct: number; totalAct: number; u
 function parseChecklist(file?: string): Checklist | null {
   if (!file || !fs.existsSync(file)) return null;
   const md = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+  // §10.4 C3a — fail-closed defer validation, run BEFORE any grab()/count loop so a checklist that
+  // carries a MALFORMED row-level `<!-- DEFER: … -->` marker STOPs before a single number is computed
+  // from it. parseRowDefer surfaces the marker; validateRowDefer throws ChecklistDeferError on
+  // anchorless / predicate-less / anchor-not-locked (§10.5 T2/T3/T4). The lint() call site (:561)
+  // converts that throw into an observable TIERB-DEFER error finding. C3a only VALIDATES — excluding a
+  // VALID defer from the HR35 denominator / HR36 coverage set is C3b, so a well-formed marker here is
+  // left counted (falls through untouched to grab below).
+  for (const ln of md.split('\n')) {
+    if (!ln.includes('|')) continue;
+    const d = parseRowDefer(ln);
+    if (d) validateRowDefer(d, LOCKED_ANCHORS);
+  }
   const grab = (idRe: RegExp) => {
     const ids: string[] = [];
     for (const ln of md.split('\n')) {
@@ -558,7 +571,19 @@ export function lint(args: Args): Finding[] {
 
   // Spec-coupled checks (checklist + ux-states) — skipped in --code-only mode.
   if (!args.codeOnly) {
-    const cl = parseChecklist(args.checklist);
+    // §10.4 C3a — reader-side catch (scoped to the checklist parse). A malformed row-level defer
+    // STOPs as an observable, gate-failing TIERB-DEFER error (via :585/:602), NEVER an uncaught crash.
+    // Mirrors the runner's ChecklistLayoutError handling (playwright-runner.ts:1605) — but on the
+    // LINTER path, which the probe confirmed is a DIFFERENT code path the runner's catch never sees.
+    // On STOP, cl is left null; the downstream HR checks already guard `if (!cl)` (:260/:271/:284), so
+    // no count is produced from a checklist carrying a bad defer.
+    let cl: Checklist | null;
+    try {
+      cl = parseChecklist(args.checklist);
+    } catch (e) {
+      if (e instanceof ChecklistDeferError) { add('TIERB-DEFER', 'error', `Tier B: checklist defer STOP (${e.verdict})`); cl = null; }
+      else throw e;
+    }
     const tested = collectTestedAcIds(args.uxStates, files);
     checkBusinessRules(args.folder, cl, files);
     checkAcCoverage(cl, tested);

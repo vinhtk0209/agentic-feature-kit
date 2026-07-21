@@ -662,6 +662,55 @@ test('T8 — reader still counts a BARE ✅ (no run-ref) in the evidence cell �
   assert(m![1] === '1', `documented gap (§10.5-T8): a bare ✅ must still be counted — expected "ACT 1/…", got "ACT ${m![1]}/${m![2]}" — msg: ${msg}`);
 });
 
+// ── §10.5 canary C3 (§10.4 D4) — reader-path integration for AC-level declared-defer ─────────
+// C3a lifts §17.7's declared-defer up to checklist rows: a row-level `<!-- DEFER: §<anchor> ;
+// predicate:<key> -->` marker is admitted ONLY with BOTH a §-anchor to a *locked* decision AND a
+// predicate key (§10.4). These tests exercise the READER path (lint()/parseChecklist), not just the
+// unit validateRowDefer (that is checklist-defer.test.ts). A malformed marker must become an
+// OBSERVABLE STOP — an 'error'-level TIERB-DEFER finding carrying the verdict — NOT an uncaught throw
+// (the probe confirmed parseChecklist is called bare at lint-feature.ts:561) and NOT a silent pass.
+// RED-FIRST: authored before the parseChecklist validate-pass + :561 catch are wired.
+const dfr = 'defer-reader-feature';
+write(`${dfr}/data/api.ts`, 'export const q = 1;\n');
+// ACT-02 carries an anchorless defer (unit T2 lifted to the reader path): predicate present, NO §.
+const dfrChecklist = write(`${dfr}/checklist.md`, [
+  '## ACT — Acceptance Test Cases',
+  '| # | Test | Tool | Status | Evidence |',
+  '|---|------|------|--------|----------|',
+  '| ACT-01 | renders summary | Playwright | ⬜ Pending | |',
+  '| ACT-02 | absent-data state | Playwright | ⬜ Pending | <!-- DEFER: predicate:foo --> |',
+  '',
+].join('\n'));
+test('§10.5 C3 reader — malformed (anchorless) DEFER → observable TIERB-DEFER STOP, not a crash/silent pass', () => {
+  const f = lint(args(path.join(tmpRoot, dfr), { checklist: dfrChecklist }));
+  assert(has(f, 'TIERB-DEFER', 'tierB-defer-anchorless'), 'anchorless row-defer must surface an error-level TIERB-DEFER finding carrying the verdict');
+});
+
+// GREEN-path guard: a well-formed, locked defer (§10.4 + predicate) must NOT STOP, and C3a must
+// STILL COUNT the row (exclusion is C3b). "Still counted" is proven observably — the deferred ACT
+// row, left uncovered by ux-states, is STILL named uncovered by HR36 → it remains in the coverage
+// set (not excluded). When C3b lands this assertion flips (the row drops out) — expected, by design.
+const dfrOk = 'defer-reader-ok-feature';
+write(`${dfrOk}/data/api.ts`, 'export const q = 1;\n');
+const dfrOkChecklist = write(`${dfrOk}/checklist.md`, [
+  '## ACT — Acceptance Test Cases',
+  '| # | Test | Tool | Status | Evidence |',
+  '|---|------|------|--------|----------|',
+  '| ACT-01 | renders summary | Playwright | ⬜ Pending | |',
+  '| ACT-02 | absent-data state | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:bar --> |',
+  '',
+].join('\n'));
+const dfrOkUx = write(`${dfrOk}/ux-states.json`, JSON.stringify({
+  feature: 'DeferOk',
+  states: [{ ac_assertions: [{ ac_id: 'ACT-01', selector: '.x', expected: 'visible' }] }],
+  negative_states: [], unit_tests: [],
+}, null, 2));
+test('§10.5 C3 reader — well-formed locked DEFER → no STOP, and row STILL counted (C3a does not exclude; C3b will)', () => {
+  const f = lint(args(path.join(tmpRoot, dfrOk), { checklist: dfrOkChecklist, uxStates: dfrOkUx }));
+  assert(!has(f, 'TIERB-DEFER'), 'a well-formed, locked defer must NOT STOP');
+  assert(has(f, 'HR36', 'ACT-02'), 'C3a does not exclude: the deferred, uncovered row is STILL counted → HR36 names it');
+});
+
 // ── teardown + report ────────────────────────────────────────────────
 try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch { /* ignore */ }
 console.log(`\n${passed} passed, ${failed} failed`);
