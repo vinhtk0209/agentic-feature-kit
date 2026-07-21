@@ -9,7 +9,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { parseContextJson, collectFeatures, renderIndex } from './feature-index';
+import { parseContextJson, collectFeatures, renderIndex, indexInSync } from './feature-index';
 
 let passed = 0;
 let failed = 0;
@@ -120,6 +120,32 @@ test('renderIndex — deterministic table with final marker', () => {
 
 test('renderIndex — empty rows renders placeholder', () => {
   assert(renderIndex([]).includes('_No feature folders found._'), 'empty placeholder');
+});
+
+// ─── indexInSync (EOL-agnostic --check compare, E-02) ────────────────────────
+
+const exp = renderIndex([
+  { feature: 'A', phase: 'final_confirmed', taskType: 'BASELINE', evalScore: '91', finalConfirmed: true, lastUpdated: '2026-01-03T00:00:00Z' },
+]);
+
+test('indexInSync — identity: LF vs identical LF is in sync', () => {
+  assert(indexInSync(exp, exp) === true, 'identical content must be in sync');
+});
+
+test('indexInSync — E-02: CRLF working tree vs LF expected is in sync', () => {
+  assert(indexInSync(exp.replace(/\n/g, '\r\n'), exp) === true, 'CRLF actual vs LF expected must be in sync');
+});
+
+test('indexInSync — symmetric: LF actual vs CRLF expected is in sync', () => {
+  assert(indexInSync(exp, exp.replace(/\n/g, '\r\n')) === true, 'both operands must be normalized');
+});
+
+test('indexInSync — genuine content drift is STILL reported out-of-sync', () => {
+  assert(indexInSync(exp + '| drift |\n', exp) === false, 'real drift must not be masked by EOL normalization');
+});
+
+test('indexInSync — mixed-EOL sanity', () => {
+  assert(indexInSync('a\r\nb\n', 'a\nb\n') === true, 'mixed CRLF/LF should normalize equal');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

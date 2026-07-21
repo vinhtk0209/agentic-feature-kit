@@ -129,6 +129,18 @@ export function renderIndex(rows: FeatureRow[]): string {
   return lines.join('\n');
 }
 
+/**
+ * True iff INDEX.md is in sync with the freshly-rendered content, ignoring line-ending
+ * differences only. The writer always emits LF (`renderIndex` join('\n')), but an autocrlf
+ * checkout materializes the working-tree INDEX.md as CRLF, so a raw byte compare falsely reports
+ * "stale" on every Windows checkout (E-02). Normalizing CRLF→LF on BOTH operands makes `--check`
+ * EOL-agnostic while still catching genuine content drift (only the \r\n axis is collapsed).
+ */
+export function indexInSync(actual: string, expected: string): boolean {
+  const normEol = (s: string) => s.replace(/\r\n/g, '\n');
+  return normEol(actual) === normEol(expected);
+}
+
 /** Regenerate INDEX.md from the live specs dir. Returns the rendered content. */
 export function regenerateIndex(specsDir: string = SPECS_DIR, indexPath: string = INDEX_PATH): string {
   const rows = collectFeatures(specsDir);
@@ -149,7 +161,7 @@ if (process.argv[1] && process.argv[1].includes('feature-index') && !process.arg
     const rows = collectFeatures(SPECS_DIR);
     const expected = renderIndex(rows);
     const actual = fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf-8') : '';
-    if (actual !== expected) {
+    if (!indexInSync(actual, expected)) {
       console.error('❌ docs/specs/INDEX.md is stale. Run: npm run workflow:index');
       process.exit(1);
     }
