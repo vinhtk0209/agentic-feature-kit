@@ -9,6 +9,8 @@
 
 import { spawnSync, SpawnSyncReturns } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 
 let passed = 0;
 let failed = 0;
@@ -33,11 +35,28 @@ function buildEnv(overrides: Env): Record<string, string> {
   ) as Record<string, string>;
 }
 
-/** Spawn telemetry.ts directly (no network mock — only for tests that exit before any fetch). */
+/**
+ * Spawn telemetry.ts directly (no network mock — only for tests that exit before any fetch).
+ *
+ * Redirects the config-dir env vars to a fresh empty temp dir so getToken()'s on-disk fallback
+ * (telemetry.ts:105-112) reads ENOENT → returns null, keeping "direct" runs truly offline even
+ * on a machine where `workflow login` has written a real %APPDATA%\workflow\claude\config.json
+ * (E-01). Without this, the leaked APPDATA lets getToken() find a real token, verify() skips the
+ * missing-token branch (telemetry.ts:140-142) and fires a live Supabase RPC at :146. APPDATA
+ * covers the win32 branch; HOME/USERPROFILE cover os.homedir() on posix and the win32 fallback.
+ * These sit in the overrides object, which buildEnv spreads AFTER process.env, so they win.
+ */
 function runDirect(args: string[], env: Env = {}): SpawnSyncReturns<string> {
   const quoted = [TELEMETRY, ...args].map((a) => `"${a}"`).join(' ');
+  const emptyHome = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-tel-'));
   return spawnSync(`npx tsx ${quoted}`, {
-    env: buildEnv({ KIT_TOKEN: undefined, ...env }),
+    env: buildEnv({
+      KIT_TOKEN: undefined,
+      APPDATA: emptyHome,
+      HOME: emptyHome,
+      USERPROFILE: emptyHome,
+      ...env,
+    }),
     encoding: 'utf8',
     shell: true,
     timeout: 30000,
@@ -59,8 +78,22 @@ function runMocked(args: string[], env: Env = {}): SpawnSyncReturns<string> {
 
 test('missing KIT_TOKEN → verify exits 1 (no network call)', () => {
   const r = runDirect(['verify']);
-  assert(r.status === 1, `expected exit 1, got ${r.status}`);
-  assert(r.stderr.includes('KIT_TOKEN'), 'stderr should mention KIT_TOKEN');
+  const out = `${r.stdout}\n${r.stderr}`;
+  assert(r.status === 1, `expected exit 1, got ${r.status}\nstderr: ${r.stderr}`);
+  assert(r.stderr.includes('KIT_TOKEN'), 'stderr should mention KIT_TOKEN (missing-token branch)');
+  // Prove the run stayed offline (zero RPC): if getToken() had found an on-disk token (E-01),
+  // verify() would have reached rpc() at telemetry.ts:146 and emitted one of these markers.
+  // The first two (rpc fn name / endpoint host) never print on any path — belt-and-suspenders;
+  // the last three are the outputs the fetch path actually produces, so they catch a regression.
+  for (const marker of [
+    'verify_kit_token',               // rpc fn name
+    'supabase.co',                    // rpc endpoint host
+    'Token valid',                    // telemetry.ts:160 — only after a successful rpc
+    'Token verification unavailable', // telemetry.ts:153 — only if rpc was attempted and threw
+    '@@KIT_EVENT@@',                  // telemetry.ts:165 — meta marker, only on the valid rpc path
+  ]) {
+    assert(!out.includes(marker), `offline violated — output contained rpc-path marker "${marker}"`);
+  }
 });
 
 // ── Tests: verify command dispatch ───────────────────────────────────────────
