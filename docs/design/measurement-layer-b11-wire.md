@@ -1,6 +1,6 @@
 # Measurement Layer v1 — wiring `record-verify` into B11 (design)
 
-> **Status: DESIGN ONLY — no code written.** Produced 2026-07-12 (sync-unblock session, Block 3).
+> ⚠️ **SUPERSEDED-OR-SHIPPED (target v3.21) → see tier-b §8 + HANDOFF. Retained for provenance.** Produced 2026-07-12 (sync-unblock session, Block 3).
 > Companion to `docs/design/measurement-layer-v1.md`. This is the missing link the 2026-07-12
 > HARD PREREQUISITE found: `record-verify.ts` is the single sanctioned `verify_records` writer but
 > is **not called anywhere** in `feature-from-confluence.md`, so no `verified=true` row can ever be

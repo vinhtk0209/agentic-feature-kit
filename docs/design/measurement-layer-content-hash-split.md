@@ -1,6 +1,6 @@
 # Measurement Layer v1 — split `content_hash` into code-path + spec-name (W.3 fix, design)
 
-> **Status: DESIGN ONLY — no code written. Targets kit v3.22.** Produced 2026-07-12 (session 2).
+> ⚠️ **SUPERSEDED-OR-SHIPPED (target v3.22) → see tier-b §8 + HANDOFF. Retained for provenance.** Produced 2026-07-12 (session 2).
 > Companion to `docs/design/measurement-layer-v1.md` and `docs/design/measurement-layer-b11-wire.md`.
 > Fixes the CONFIRMED-UNIVERSAL W.3 bug (`prompt-evolution.md` Change W.3, lesson L-2026-07-12-002):
 > `computeContentHash` derives BOTH the code tree and `ux-states.json` from a single `--feature`

@@ -1,6 +1,6 @@
 # Measurement Layer v1 — b11-runner exit-gate honesty + version bootstrap (design)
 
-> **Status: DESIGN ONLY — no code written. Targets kit v3.23.** Produced 2026-07-12 (session 2).
+> ⚠️ **SUPERSEDED-OR-SHIPPED (target v3.23) → see tier-b §8 + HANDOFF. Retained for provenance.** Produced 2026-07-12 (session 2).
 > Companion to `measurement-layer-v1.md`, `…-b11-wire.md`, `…-content-hash-split.md`. Fixes the
 > CRITICAL false-proof found this session: a capture on AssessmentGrading recorded `verified=true`
 > while Playwright had failed (`verify_records` `run-1783868360863-827b5cdd`). Covers **Y.1** (the

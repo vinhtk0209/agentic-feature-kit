@@ -1,6 +1,6 @@
 # Measurement Layer v1 — computed `verify_complete` + a real hook (design)
 
-> **STATUS: DESIGN — FROZEN.** Review-passed; no implementation until an approved session. This doc resolves the four open questions for the
+> **POINTER — live measurement-layer status is NOT cached here; see `measurement-layer-tier-b-environment.md` §8 + `HANDOFF.md` (live `verify_records` query). This doc is the FROZEN invariant, not a status snapshot.** Review-passed; no implementation until an approved session. This doc resolves the four open questions for the
 > MVP and defines the one invariant every later phase must preserve. It does not contain code.
 > Reviewed by a human before any implementation session (same posture as `self-training-loop.md`).
 

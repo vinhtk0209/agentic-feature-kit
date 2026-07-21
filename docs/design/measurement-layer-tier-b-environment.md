@@ -185,6 +185,8 @@ untouched. No `npm run sync` — targets reached by the byte-identical copy in C
 
 ## §8 — Canary-2 follow-up: §4 feature-scoped + re-assessed after interaction (closes AA.2 + AA.3)
 
+> 🔒 **§8 = LIVE canary-editable. §7/§9/§10 = LOCKED (do not edit incidentally).** Edits here must not touch adjacent locked sections (§7, §9, §10).
+
 > **Status: DESIGN — LOCKED for implementation.** Closes the two Block-5 blockers logged
 > 2026-07-13 as L-2026-07-13-002 (AA.2) and L-2026-07-13-003 (AA.3, 6F / most-severe).
 > Design-doc-first per standing rule. No code lands until this §8 is approved.
