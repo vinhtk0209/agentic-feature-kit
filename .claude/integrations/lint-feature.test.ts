@@ -878,6 +878,58 @@ test('T1 — defer-rot: SATISFIED+stamped is counted for real (no grandfather); 
   }
 });
 
+// T-c3c (design §10.9 C3c — Summary-path denominator+numerator defer exclusion) — the row-scan
+// path already excludes valid defers (C3b-ii grab()); the Summary path (verifiedSource='summary')
+// currently does not, for either the denominator (raw disk total) or the numerator (raw disk pass,
+// which whole-line-matches ✅ same as countChecklistSection — a stray ✅ in a deferred row's evidence
+// cell, exactly T11's ACT-06 shape, would be wrongly credited). One ACT + one UI section, each with
+// a real pass row, a clean-⬜ valid defer (denominator case), and a stray-✅ valid defer (numerator
+// case), plus a hand-written ## Summary block mirroring what countChecklistSection would compute
+// TODAY (defer-blind) — total=3/pass=2 per section. Corrected: total=1/ok=1 per section (100%).
+const tc3c = 'tc3c-summary-defer-exclusion';
+write(`${tc3c}/data/api.ts`, 'export const q = 1;\n');
+const tc3cChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Description | Tool | Status | Evidence |',
+  '|----|-------------|------|--------|----------|',
+  '| ACT-01 | renders summary | Playwright | ✅ Pass | run-ref-1 ✅ |',
+  '| ACT-02 | clean deferred (denominator case) | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:no-published-assessment ; stamp:unsatisfied@run-c3c --> |',
+  '| ACT-03 | stray-✅ deferred (numerator case) | Playwright | ⬜ Pending | ✅ <!-- DEFER: §10.4 ; predicate:no-published-assessment ; stamp:unsatisfied@run-c3c --> |',
+  '',
+  '## UI Verification',
+  '| ID | Description | Tool | Status | Evidence |',
+  '|----|-------------|------|--------|----------|',
+  '| UI-01 | renders header | Playwright | ✅ Pass | run-ref-1 ✅ |',
+  '| UI-02 | clean deferred (denominator case) | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:no-published-assessment ; stamp:unsatisfied@run-c3c --> |',
+  '| UI-03 | stray-✅ deferred (numerator case) | Playwright | ⬜ Pending | ✅ <!-- DEFER: §10.4 ; predicate:no-published-assessment ; stamp:unsatisfied@run-c3c --> |',
+  '',
+  '## Summary',
+  '',
+  '- Total UI rows: **3** — ✅ 2/3 verified',
+  '- Total ACT rows: **3** — ✅ 2/3 verified',
+  '',
+].join('\n');
+const tc3cChecklist = write(`${tc3c}/checklist.md`, tc3cChecklistText);
+const tc3cUx = write(`${tc3c}/ux-states.json`, JSON.stringify({
+  feature: 'Tc3c', states: [{ ac_assertions: [{ ac_id: 'ACT-01', selector: '.x', expected: 'visible' }] }], negative_states: [], unit_tests: [],
+}, null, 2));
+
+test('T-c3c — Summary-path (verifiedSource=summary) excludes valid-defer rows from BOTH denominator and numerator, ACT+UI (§10.9 proposed C3c; RED before fix)', () => {
+  process.env.KIT_RUN_ID = 'run-c3c';
+  try {
+    const f = lint(args(path.join(tmpRoot, tc3c), { checklist: tc3cChecklist, uxStates: tc3cUx }));
+    const hr35 = f.find((x) => x.rule === 'HR35');
+    assert(!!hr35, 'expected an HR35 finding');
+    const msg = (hr35 as { msg: string }).msg;
+    assert(msg.includes('[src: summary]'), `expected verifiedSource=summary, got: ${msg}`);
+    assert(msg.includes('ACT 1/1'), `ACT denominator+numerator must both exclude the 2 deferred rows (expected "ACT 1/1"), got: ${msg}`);
+    assert(msg.includes('UI 1/1'), `UI denominator+numerator must both exclude the 2 deferred rows (expected "UI 1/1"), got: ${msg}`);
+    assert(msg.includes('100%'), `1/1 + 1/1 = 2/2 must read 100%, got: ${msg}`);
+  } finally {
+    delete process.env.KIT_RUN_ID;
+  }
+});
+
 // ── teardown + report ────────────────────────────────────────────────
 try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch { /* ignore */ }
 console.log(`\n${passed} passed, ${failed} failed`);

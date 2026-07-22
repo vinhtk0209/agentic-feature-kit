@@ -156,10 +156,23 @@ function parseChecklist(file?: string): Checklist | null {
   // collected separately from grab() (which already excludes these rows) so checkAcCoverage can
   // flag one that turns out to be already covered by a real test (a false defer claim).
   const deferredActIds: string[] = [];
+  // §10.9 C3c — Summary-path (verifiedSource='summary') denominator+numerator exclusion. countChecklistSection
+  // (playwright-runner.ts) counts ✅/total per-section blind to defer markers, so a valid defer's row is
+  // still in the disk-written `✅ X/Y`. Denominator: subtract deferredActIds.length/deferredUiIds.length
+  // from sAct.total/sUi.total below. Numerator: countChecklistSection's `pass` check is whole-line
+  // `l.includes('✅')` (playwright-runner.ts:692), not final-cell — a valid defer whose evidence cell
+  // carries a stray ✅ (e.g. a stale pass stamp from before it was deferred; T11's ACT-06 fixture proves
+  // this shape) is wrongly counted as verified on disk. Mirror that exact whole-line check here so the
+  // subtraction cancels precisely what countChecklistSection wrongly added — final-cell-only would miss it.
+  let deferredActVerifiedCount = 0;
+  const deferredUiIds: string[] = [];
+  let deferredUiVerifiedCount = 0;
   for (const ln of md.split('\n')) {
     if (!ln.includes('|') || !isLineValidlyDeferred(ln)) continue;
-    const m = ln.match(/\b(ACT-[\w.]+)\b/);
-    if (m) deferredActIds.push(m[1]);
+    const mAct = ln.match(/\b(ACT-[\w.]+)\b/);
+    if (mAct) { deferredActIds.push(mAct[1]); if (ln.includes('✅')) deferredActVerifiedCount += 1; }
+    const mUi = ln.match(/\b(UI-[\w.]+)\b/);
+    if (mUi) { deferredUiIds.push(mUi[1]); if (ln.includes('✅')) deferredUiVerifiedCount += 1; }
   }
 
   // Authoritative verified counts come from the `## Summary` section, NOT a row-level ✅ scan
@@ -196,8 +209,16 @@ function parseChecklist(file?: string): Checklist | null {
     return ok;
   };
   // total = Summary's reported row count (consistent denominator), else unique-id count
-  const act = { ids: actIds, ok: sAct?.verified ?? finalCellVerified(/\bACT-[\w.]+\b/), total: sAct?.total ?? actIds.length };
-  const ui = { ids: uiIds, ok: sUi?.verified ?? finalCellVerified(/\bUI-[\w.]+\b/), total: sUi?.total ?? uiIds.length };
+  const act = {
+    ids: actIds,
+    ok: sAct ? sAct.verified - deferredActVerifiedCount : finalCellVerified(/\bACT-[\w.]+\b/),
+    total: sAct ? sAct.total - deferredActIds.length : actIds.length,
+  };
+  const ui = {
+    ids: uiIds,
+    ok: sUi ? sUi.verified - deferredUiVerifiedCount : finalCellVerified(/\bUI-[\w.]+\b/),
+    total: sUi ? sUi.total - deferredUiIds.length : uiIds.length,
+  };
   // Business/display-rule rows (HR34). Locale-robust detection (audit F7): the strongest signal
   // is language-independent — an explicit `BR-` id or a `Unit Test` tool cell. Keyword-sniffing
   // is only a fallback and now covers VI/JP as well as EN, because the prior EN-only set silently
