@@ -697,7 +697,7 @@ const dfrOkChecklist = write(`${dfrOk}/checklist.md`, [
   '| # | Test | Tool | Status | Evidence |',
   '|---|------|------|--------|----------|',
   '| ACT-01 | renders summary | Playwright | ⬜ Pending | |',
-  '| ACT-02 | absent-data state | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:bar --> |',
+  '| ACT-02 | absent-data state | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:bar ; stamp:unsatisfied@run-1 --> |',
   '',
 ].join('\n'));
 const dfrOkUx = write(`${dfrOk}/ux-states.json`, JSON.stringify({
@@ -709,6 +709,47 @@ test('§10.5 C3 reader — well-formed locked DEFER → no STOP, and row STILL c
   const f = lint(args(path.join(tmpRoot, dfrOk), { checklist: dfrOkChecklist, uxStates: dfrOkUx }));
   assert(!has(f, 'TIERB-DEFER'), 'a well-formed, locked defer must NOT STOP');
   assert(has(f, 'HR36', 'ACT-02'), 'C3a does not exclude: the deferred, uncovered row is STILL counted → HR36 names it');
+});
+
+// ── §10.9 (C3b-i, PROPOSED — not yet locked) — predicate-registry + capture-time stamp: runtime
+// defer invalidation. RED-FIRST: authored BEFORE C3b lands. T10 below exercises the READER path
+// (lint()) against the PROPOSED stamp shape
+//   `<!-- DEFER: §<anchor> ; predicate:<key> ; stamp:<satisfied|unsatisfied>@<run-ref> -->`
+// C3a's parseRowDefer/validateRowDefer are stamp-blind today: the `stamp:` clause parses as inert
+// trailing text (PREDICATE regex only consumes up to the next non-word/dot/dash char), so a marker
+// with or without a stamp is admitted identically, and an admitted row is NEVER excluded from any
+// count (proven by the adjacent "well-formed locked DEFER ... C3a does not exclude" test above).
+// No new imports are added here — the assertion below is a behavioral gap in the EXISTING lint()
+// entry point, so it fails on assertions, not on import errors, and cannot affect any
+// currently-passing test in this file.
+//
+// T1, T9, T11 moved to .claude/integrations/_c3b-ii-tests.scratch.ts (untracked) — all three
+// require grab-path exclusion (grab/finalCellVerified/brRows) to pass, which is C3b-ii scope, not
+// C3b-i (registry + stamp only). Shipping T1 alone here would mean grab() excludes a valid defer
+// while finalCellVerified/brRows do not — the exact "4th asymmetry" bug §10.2 D2 and §10.9 D9.4
+// both warn about. C3b-i therefore drives ONLY T10 green.
+
+// T10 (design §10.9, NEW property — fail-closed stamp requirement, D5.4/A5) — a DEFER marker with a
+// locked anchor + predicate key but NO capture-time stamp must STOP (verdict
+// `tierB-defer-unstamped`), not be silently admitted. Closes the grandfathering hole: an
+// un-evaluated defer must never be treated as validly deferred. NOTE: identical marker shape to the
+// existing "well-formed locked DEFER → no STOP" GREEN test above (dfrOk) — implementing T10 will
+// require that test's fixture to gain a stamp clause once C3b ships. Flagged for the implementation
+// turn; not touched here.
+const t10 = 't10-unstamped-defer';
+write(`${t10}/data/api.ts`, 'export const q = 1;\n');
+const t10ChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Description | Tool | Status | Evidence |',
+  '|----|-------------|------|--------|----------|',
+  '| ACT-05 | locked anchor + predicate, no stamp | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:no-published-assessment --> |',
+  '',
+].join('\n');
+const t10Checklist = write(`${t10}/checklist.md`, t10ChecklistText);
+
+test('T10 — unstamped defer → STOP tierB-defer-unstamped (fail-closed, not treated as deferred) (§10.9 proposed, D5.4; RED — stamp check does not exist yet)', () => {
+  const f = lint(args(path.join(tmpRoot, t10), { checklist: t10Checklist }));
+  assert(has(f, 'TIERB-DEFER', 'tierB-defer-unstamped'), 'a defer with no capture-time stamp must STOP with verdict tierB-defer-unstamped');
 });
 
 // ── teardown + report ────────────────────────────────────────────────

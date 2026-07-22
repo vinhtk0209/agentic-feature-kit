@@ -741,8 +741,11 @@ re-verified against this doc (2026-07-22):
 | Sub-canary | Change | Tests | State |
 |------------|--------|-------|-------|
 | **C3a** | §10.4 static validation only — marker parse, anchor/predicate presence, `LOCKED_ANCHORS` membership | T2, T3, T4 (re-locked §10.5) | **SHIPPED** `dce4b45` |
-| **C3b** | §10.9 — predicate registry + capture-time stamp + auto-invalidate + grab-path (`grab`/`finalCellVerified`/`brRows`) denominator + coverage exclusion | T1, T9, T10, T11 | RED tests written 2026-07-22, implementation NOT started |
+| **C3b-i** | §10.9 registry scaffold + stamp field + `tierB-defer-unstamped` STOP (D9.2/D9.3) | T10 | **SHIPPED** 2026-07-22 |
+| **C3b-ii** | §10.9 predicate-eval (run-ref threading) + auto-invalidate (A5) + grab-path (`grab`/`finalCellVerified`/`brRows`) 3-site denominator + coverage exclusion + HR36 defer-coverage | T1, T9, T11 | NOT started |
 | **C3c** | Summary-path denominator exclusion — `countChecklistSection` (`playwright-runner.ts`, runner-side) | none yet | OUT OF SCOPE for C3b, unimplemented, no tests yet |
+
+> C3b split i/ii 2026-07-22 — T1 depends on current-run-ref plumbing (C3b-ii), cannot GREEN in i.
 
 Rationale for the split (post-hoc, since it was not planned): C3a shipping alone as pure validation
 carried zero exclusion risk (it can only STOP more often, never silently pass something it

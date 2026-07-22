@@ -28,7 +28,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseUxStates, type UxStatesDoc } from './ux-states';
 import { loadConfig, type LearnedConfig } from './learned-config';
-import { parseRowDefer, validateRowDefer, LOCKED_ANCHORS, ChecklistDeferError } from './checklist-defer';
+import { parseRowDefer, validateRowDefer, validateRowDeferStamp, LOCKED_ANCHORS, ChecklistDeferError } from './checklist-defer';
 
 export interface Args {
   folder: string;
@@ -117,17 +117,22 @@ interface Checklist { actIds: string[]; verifiedAct: number; totalAct: number; u
 function parseChecklist(file?: string): Checklist | null {
   if (!file || !fs.existsSync(file)) return null;
   const md = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
-  // §10.4 C3a — fail-closed defer validation, run BEFORE any grab()/count loop so a checklist that
-  // carries a MALFORMED row-level `<!-- DEFER: … -->` marker STOPs before a single number is computed
-  // from it. parseRowDefer surfaces the marker; validateRowDefer throws ChecklistDeferError on
-  // anchorless / predicate-less / anchor-not-locked (§10.5 T2/T3/T4). The lint() call site (:561)
-  // converts that throw into an observable TIERB-DEFER error finding. C3a only VALIDATES — excluding a
-  // VALID defer from the HR35 denominator / HR36 coverage set is C3b, so a well-formed marker here is
-  // left counted (falls through untouched to grab below).
+  // §10.4 C3a + §10.9 C3b-i — fail-closed defer validation, run BEFORE any grab()/count loop so a
+  // checklist that carries a MALFORMED row-level `<!-- DEFER: … -->` marker STOPs before a single
+  // number is computed from it. parseRowDefer surfaces the marker; validateRowDefer throws
+  // ChecklistDeferError on anchorless / predicate-less / anchor-not-locked (§10.5 T2/T3/T4);
+  // validateRowDeferStamp throws on a missing capture-time stamp (§10.9 D9.3, T10). The lint() call
+  // site (:561) converts either throw into an observable TIERB-DEFER error finding. Neither check
+  // EXCLUDES a valid, stamped defer from the HR35 denominator / HR36 coverage set — that grab-path
+  // wiring is C3b-ii, so a well-formed marker here is left counted (falls through untouched to grab
+  // below).
   for (const ln of md.split('\n')) {
     if (!ln.includes('|')) continue;
     const d = parseRowDefer(ln);
-    if (d) validateRowDefer(d, LOCKED_ANCHORS);
+    if (d) {
+      validateRowDefer(d, LOCKED_ANCHORS);
+      validateRowDeferStamp(d);
+    }
   }
   const grab = (idRe: RegExp) => {
     const ids: string[] = [];
