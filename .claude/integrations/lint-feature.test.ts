@@ -708,9 +708,17 @@ const dfrOkUx = write(`${dfrOk}/ux-states.json`, JSON.stringify({
   negative_states: [], unit_tests: [],
 }, null, 2));
 test('§10.5/§10.9 C3b-ii reader — well-formed, validly-stamped DEFER → no STOP, and row EXCLUDED from HR36 (C3b-ii D9.4 exclusion)', () => {
-  const f = lint(args(path.join(tmpRoot, dfrOk), { checklist: dfrOkChecklist, uxStates: dfrOkUx }));
-  assert(!has(f, 'TIERB-DEFER'), 'a well-formed, locked defer must NOT STOP');
-  assert(!has(f, 'HR36', 'ACT-02'), '§10.9 D9.4: a validly-deferred (unsatisfied-stamped) row must be EXCLUDED from the HR36 coverage set, not named');
+  // §10.9 C3b-iii — own-run trust: the stamp embeds run-1, so KIT_RUN_ID must match for the reader
+  // (this test, calling lint() in-process) to trust it, mirroring what spawnSync's env does for a
+  // real capture. Restored in finally so it never leaks into a later test in this same process.
+  process.env.KIT_RUN_ID = 'run-1';
+  try {
+    const f = lint(args(path.join(tmpRoot, dfrOk), { checklist: dfrOkChecklist, uxStates: dfrOkUx }));
+    assert(!has(f, 'TIERB-DEFER'), 'a well-formed, locked defer must NOT STOP');
+    assert(!has(f, 'HR36', 'ACT-02'), '§10.9 D9.4: a validly-deferred (unsatisfied-stamped) row must be EXCLUDED from the HR36 coverage set, not named');
+  } finally {
+    delete process.env.KIT_RUN_ID;
+  }
 });
 
 // ── §10.9 (C3b-i, PROPOSED — not yet locked) — predicate-registry + capture-time stamp: runtime
@@ -774,8 +782,15 @@ const t9Ux = write(`${t9}/ux-states.json`, JSON.stringify({
 }, null, 2));
 
 test('T9 — HR36 defer-coverage: a declared defer backed by NO real AC gap is an error (§10.9 proposed, D5.6a; RED — check does not exist yet)', () => {
-  const f = lint(args(path.join(tmpRoot, t9), { checklist: t9Checklist, uxStates: t9Ux }));
-  assert(has(f, 'HR36', 'ACT-04'), 'a defer on an already-tested row must surface an HR36 error naming ACT-04 (defer resolves no real gap)');
+  // §10.9 C3b-iii — own-run trust: stamp embeds run-1; must match KIT_RUN_ID or the reader treats
+  // it as unstamped (STOP), never reaching the HR36 check this test asserts on.
+  process.env.KIT_RUN_ID = 'run-1';
+  try {
+    const f = lint(args(path.join(tmpRoot, t9), { checklist: t9Checklist, uxStates: t9Ux }));
+    assert(has(f, 'HR36', 'ACT-04'), 'a defer on an already-tested row must surface an HR36 error naming ACT-04 (defer resolves no real gap)');
+  } finally {
+    delete process.env.KIT_RUN_ID;
+  }
 });
 
 // T11 (design §10.9, NEW property — "4th asymmetry", defer variant of T6) — a validly-deferred
@@ -803,17 +818,64 @@ const t11Ux = write(`${t11}/ux-states.json`, JSON.stringify({
 }, null, 2));
 
 test('T11 — all 3 grab-path sites (grab/finalCellVerified/brRows) skip a valid unsatisfied-stamped defer row (§10.9 proposed, 4th-asymmetry defer variant; RED before C3b)', () => {
-  const f = lint(args(path.join(tmpRoot, t11), { checklist: t11Checklist, uxStates: t11Ux }));
-  assert(!has(f, 'HR36', 'ACT-06'), 'grab site: ACT-06 must be excluded from the HR36 coverage set entirely');
-  assert(has(f, 'HR36', 'ACT-02'), 'control: the genuinely uncovered, non-deferred row must still be named (regression guard)');
-  const hr35t11 = f.find((x) => x.rule === 'HR35');
-  assert(!!hr35t11, 'expected an HR35 finding');
-  const msgT11 = (hr35t11 as { msg: string }).msg;
-  const mT11 = msgT11.match(/ACT\s+(\d+)\/(\d+)/);
-  assert(!!mT11, `expected an "ACT n/m" pair, got: ${msgT11}`);
-  assert(mT11![1] === '1' && mT11![2] === '2', `finalCellVerified+grab symmetry: expected "ACT 1/2" (ACT-06's stray ✅ and row both excluded), got "ACT ${mT11![1]}/${mT11![2]}"`);
-  const hr34t11 = f.find((x) => x.rule === 'HR34' && x.level === 'error');
-  assert(!hr34t11 || !hr34t11.msg.includes('ACT-06'), 'brRows site: ACT-06 must not appear in the HR34 business-rule row list');
+  // §10.9 C3b-iii — own-run trust: stamp embeds run-1; must match KIT_RUN_ID or the reader STOPs
+  // (cl=null), blanking every HR34/HR35/HR36 finding this test inspects.
+  process.env.KIT_RUN_ID = 'run-1';
+  try {
+    const f = lint(args(path.join(tmpRoot, t11), { checklist: t11Checklist, uxStates: t11Ux }));
+    assert(!has(f, 'HR36', 'ACT-06'), 'grab site: ACT-06 must be excluded from the HR36 coverage set entirely');
+    assert(has(f, 'HR36', 'ACT-02'), 'control: the genuinely uncovered, non-deferred row must still be named (regression guard)');
+    const hr35t11 = f.find((x) => x.rule === 'HR35');
+    assert(!!hr35t11, 'expected an HR35 finding');
+    const msgT11 = (hr35t11 as { msg: string }).msg;
+    const mT11 = msgT11.match(/ACT\s+(\d+)\/(\d+)/);
+    assert(!!mT11, `expected an "ACT n/m" pair, got: ${msgT11}`);
+    assert(mT11![1] === '1' && mT11![2] === '2', `finalCellVerified+grab symmetry: expected "ACT 1/2" (ACT-06's stray ✅ and row both excluded), got "ACT ${mT11![1]}/${mT11![2]}"`);
+    const hr34t11 = f.find((x) => x.rule === 'HR34' && x.level === 'error');
+    assert(!hr34t11 || !hr34t11.msg.includes('ACT-06'), 'brRows site: ACT-06 must not appear in the HR34 business-rule row list');
+  } finally {
+    delete process.env.KIT_RUN_ID;
+  }
+});
+
+// T1 (design §10.5, LOCKED but never implemented — "defer-rot") — bundled with its required
+// happy-path counterpart, since the two are one mechanism: predicate SATISFIED+stamped must
+// auto-invalidate (row counted for real, no grandfather — §10.4/§10.9 D5.3); predicate
+// UNSATISFIED+stamped must remain validly excluded from both the HR35 denominator and the HR36
+// coverage set. One checklist, two defer rows, no `## Summary` pair (forces row-scan so the
+// denominator is directly observable in the HR35 message).
+const t1 = 't1-defer-rot';
+write(`${t1}/data/api.ts`, 'export const q = 1;\n');
+const t1ChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Description | Tool | Status | Evidence |',
+  '|----|-------------|------|--------|----------|',
+  '| ACT-01 | renders summary | Playwright | ✅ Pass | run-ref-1 ✅ |',
+  '| ACT-02 | satisfied predicate, still marked deferred | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:no-published-assessment ; stamp:satisfied@run-99 --> |',
+  '| ACT-03 | unsatisfied predicate, validly deferred | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:no-published-assessment ; stamp:unsatisfied@run-99 --> |',
+  '',
+].join('\n');
+const t1Checklist = write(`${t1}/checklist.md`, t1ChecklistText);
+const t1Ux = write(`${t1}/ux-states.json`, JSON.stringify({
+  feature: 'T1', states: [{ ac_assertions: [{ ac_id: 'ACT-01', selector: '.x', expected: 'visible' }] }], negative_states: [], unit_tests: [],
+}, null, 2));
+
+test('T1 — defer-rot: SATISFIED+stamped is counted for real (no grandfather); UNSATISFIED+stamped stays excluded (§10.9 proposed; RED before C3b)', () => {
+  // §10.9 C3b-iii — own-run trust: both stamps embed run-99; must match KIT_RUN_ID or the reader
+  // STOPs (cl=null) on either row before either assertion below is ever reached.
+  process.env.KIT_RUN_ID = 'run-99';
+  try {
+    const f = lint(args(path.join(tmpRoot, t1), { checklist: t1Checklist, uxStates: t1Ux }));
+    assert(has(f, 'HR36', 'ACT-02'), 'auto-invalidated (satisfied) row must be evaluated for real — still uncovered, so HR36 must name it (no grandfather)');
+    assert(!has(f, 'HR36', 'ACT-03'), 'validly deferred (unsatisfied) row must be excluded from the HR36 coverage set — must NOT be named');
+    const hr35t1 = f.find((x) => x.rule === 'HR35');
+    assert(!!hr35t1, 'expected an HR35 finding');
+    const mT1 = (hr35t1 as { msg: string }).msg.match(/ACT\s+(\d+)\/(\d+)/);
+    assert(!!mT1, `expected an "ACT n/m" pair, got: ${(hr35t1 as { msg: string }).msg}`);
+    assert(mT1![2] === '2', `HR35 denominator must exclude the validly-deferred row (ACT-01 + ACT-02 only = 2), got total ${mT1![2]}`);
+  } finally {
+    delete process.env.KIT_RUN_ID;
+  }
 });
 
 // ── teardown + report ────────────────────────────────────────────────

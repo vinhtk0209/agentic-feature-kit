@@ -156,6 +156,10 @@ export function validateRowDeferStamp(parsed: RowDefer): void {
     throw new ChecklistDeferError('tierB-defer-unstamped',
       `defer ${parsed.anchor} has no capture-time stamp (§10.9 D9.3: an un-evaluated defer must STOP, not be silently admitted)`);
   }
+  if (parsed.stamp.runRef !== process.env.KIT_RUN_ID) {
+    throw new ChecklistDeferError('tierB-defer-unstamped',
+      `defer ${parsed.anchor} stamp run-ref (${parsed.stamp.runRef}) does not match the current run (§10.9 D9.2 own-run trust: a stamp from a different run is treated as unstamped)`);
+  }
 }
 
 /**

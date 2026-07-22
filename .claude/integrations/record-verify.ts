@@ -351,8 +351,15 @@ export function captureAndRecord(opts: {
   // A1.1 repo-role guard — fail BEFORE running the tier commands if we're in the kit repo.
   assertNotKitRepo(repoRoot);
 
+  // §10.9 C3b-iii — resolved ONCE, here, so the SAME id both (a) reaches the reader (via the
+  // spawned tierA/tierB process's env) and (b) is what verify_records.runner_run_id ends up
+  // storing. Two separate resolutions (one for env, one inside recordVerify) would use
+  // generateRunId()'s randomness twice and produce TWO different ids — breaking the provenance
+  // the D9.2 own-run trust rule depends on (the reader must see the id the record actually got).
+  const runRef = opts.runner_run_id ?? process.env.KIT_RUN_ID ?? generateRunId();
+
   const runExit = (cmd: string): number => {
-    const r = spawnSync(cmd, { cwd: repoRoot, shell: true, stdio: 'inherit' });
+    const r = spawnSync(cmd, { cwd: repoRoot, shell: true, stdio: 'inherit', env: { ...process.env, KIT_RUN_ID: runRef } });
     // Signal death or spawn failure → treat as failure, never as pass.
     return r.status === null ? 1 : r.status;
   };
@@ -367,7 +374,7 @@ export function captureAndRecord(opts: {
     specName: opts.specName,
     tierA_exit,
     tierB_exit,
-    runner_run_id: opts.runner_run_id,
+    runner_run_id: runRef,
   });
 }
 
