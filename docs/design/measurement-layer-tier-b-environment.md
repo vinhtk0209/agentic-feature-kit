@@ -581,6 +581,16 @@ glyph.
 
 ### 10.4 — D4 LOCKED: AC-level declared-defer (extends §17.7 from endpoint level to checklist-row level)
 
+> **AMENDED 2026-07-22 — implementation split, reconciling git history (disk-over-doc).** §10.4's
+> mechanism landed in three canaries instead of one: **C3a** (static marker validation only —
+> anchor/predicate presence + `LOCKED_ANCHORS` check, STOP-only, shipped `dce4b45`), **C3b**
+> (predicate-registry + capture-time stamp + auto-invalidate + grab-path denominator/coverage
+> exclusion — see §10.9), and **C3c** (Summary-path denominator exclusion, runner-side
+> `countChecklistSection` — OUT OF SCOPE for C3b, unimplemented). This section's prose below is
+> UNCHANGED and remains the authoritative statement of the full mechanism; §10.9 specifies the two
+> things it left open (predicate registry, stamp shape) and records the split as a deliberate
+> re-lock, not silent drift. See §10.8.1 for the canary-split amendment.
+
 §17.7 already implements this shape for contract endpoints: `extractDefer` parses
 `# DEFER: <reason>` (`contract-probe.ts:327-332`), and `deriveFeatureEndpoints` admits a defer **only**
 when the reason matches `ANCHOR = /§\s?\d+(\.\d+)*/` (`playwright-runner.ts:997-1003`), computing
@@ -620,11 +630,21 @@ a canary may not ship without its mapped tests (§10.8).
 | T1 | **defer-rot** — predicate satisfied but row still deferred | STOP |
 | T2 | **anchorless defer** | STOP |
 | T3 | **predicate-less defer** | STOP |
-| T4 | **defer-inflation** — mass-deferring to shrink the denominator | Mitigation: every defer requires a §-anchor to a *locked* design decision; nightly battery (roadmap `o2-continuous-assurance`, `ROADMAP-AUTONOMOUS-SDLC.md:355`) re-evaluates all standing predicates |
+| T4 | **anchor-not-locked** — defer anchor is well-formed but not in the reviewed `LOCKED_ANCHORS` allowlist (re-locked 2026-07-22, was "defer-inflation") | STOP `tierB-defer-anchor-not-locked` |
 | T5 | **cell-alignment regression** — writer's evidence-cell stamp is counted by `finalCellVerified` | GREEN (and RED before the §10.3 change) |
 | T6 | **BE-exclusion symmetry** — a BE row is invisible to `countSection`, `grab`, and `checkAcCoverage` alike | GREEN |
 | T7 | **unrecognized/absent header** — a checklist section whose header row is missing or matches no known layout | STOP with `tierB-checklist-unrecognized-layout`; **zero bytes written** to the checklist (assert file content byte-identical before/after); NOT a silent skip (no "row left untouched, run continues") |
 | T8 | **bare-✅ reader gap** — a checklist row carrying a bare `✅` in the evidence cell, with **no** header-resolved status column and no provenance run-ref, is accepted by `finalCellVerified` (`lint-feature.ts:151-160`, glyph-only test `/✅\|✔/` at `:157`) | **GREEN today by design — documented-RED.** Asserts the gap **exists**. This is a KNOWN gap, intentionally **NOT** fixed in C1–C4 (§10.3 "Residual risk"). Anchor: §10.5-T8. |
+
+> **RE-LOCKED 2026-07-22 — T4 spec updated to match shipped code (disk-over-doc).** Original
+> (LOCKED 2026-07-20): *"defer-inflation — mass-deferring to shrink the denominator | Mitigation:
+> every defer requires a §-anchor to a locked design decision; nightly battery re-evaluates all
+> standing predicates."* Shipped `checklist-defer.test.ts` (C3a) instead asserts: *"anchor not in
+> lockedAnchorSet → STOP `tierB-defer-anchor-not-locked`"* — a real, reviewed, shipped check, but a
+> narrower one than the original prose (it blocks an UNLOCKED anchor; it does not itself detect
+> defer *volume* against locked anchors — that mitigation is not abandoned, just unimplemented;
+> tracked as debt in `GAPS-ROADMAP.md` §G-01). Re-locked because the code was reviewed and shipped
+> and the doc was the stale artifact.
 
 **T8 mechanism — LOCKED: assert-the-gap (assertion inversion), not a runner directive.**
 
@@ -711,4 +731,141 @@ to it is present and in the stated state.
 | T3 — predicate-less defer | **C3** | STOP |
 | T4 — defer-inflation | **C3** | Mitigation asserted (§-anchor to a *locked* decision required) |
 | — (no new test) | **C4** | Covered by T6, already GREEN from C1 |
+
+### 10.8.1 — Canary split amendment — AMENDED 2026-07-22 (C3 → C3a/C3b/C3c)
+
+**Deliberate re-lock, not silent drift.** The original **C3** row above (§10.4, tests T1–T4, "lands
+last as one unit") shipped instead as three separate canaries, discovered when git history was
+re-verified against this doc (2026-07-22):
+
+| Sub-canary | Change | Tests | State |
+|------------|--------|-------|-------|
+| **C3a** | §10.4 static validation only — marker parse, anchor/predicate presence, `LOCKED_ANCHORS` membership | T2, T3, T4 (re-locked §10.5) | **SHIPPED** `dce4b45` |
+| **C3b** | §10.9 — predicate registry + capture-time stamp + auto-invalidate + grab-path (`grab`/`finalCellVerified`/`brRows`) denominator + coverage exclusion | T1, T9, T10, T11 | RED tests written 2026-07-22, implementation NOT started |
+| **C3c** | Summary-path denominator exclusion — `countChecklistSection` (`playwright-runner.ts`, runner-side) | none yet | OUT OF SCOPE for C3b, unimplemented, no tests yet |
+
+Rationale for the split (post-hoc, since it was not planned): C3a shipping alone as pure validation
+carried zero exclusion risk (it can only STOP more often, never silently pass something it
+shouldn't) — the safest first slice. C3b is the load-bearing exclusion mechanism and needed the
+predicate-registry design §10.9 provides. C3c is deliberately deferred because the Summary-path
+denominator (`countChecklistSection`) is runner-side, not reader-side, and mixing it into C3b would
+widen the diff without a design reason — see §10.9 D9.4's scope fence.
+
+### 10.9 — Predicate-Registry & Runtime Defer Invalidation — C3b implementation of §10.4
+
+This section does NOT redefine §10.4's semantics — §10.4 already specifies the full mechanism
+(admission rules, re-evaluation on every run, auto-invalidation with no grandfathering, exclusion
+from both HR35 and HR36). This section specifies the two things §10.4 left unspecified: the
+predicate registry (a machine-checkable predicate is named in §10.4 but its implementation was not
+defined) and the capture-time stamp shape (§10.4 says "re-evaluated on every run" but not where the
+evaluation's outcome lives for the reader to consume).
+
+**D9.1 — Predicate registry: named KEY → code, not a DSL.**
+
+A predicate is a named KEY resolved by a small, reviewed code registry — never a string-eval'd
+expression, never a template. Adding a key requires a locked design decision plus a reviewed commit
+(the same anti-inflation control §10.4 already applies to §-anchors, now applied to predicate keys
+too — a hand-editable predicate string would be exactly the trust surface §10.3 already rejected for
+the reader).
+
+Seed set — EXACTLY 2 keys, no template/example keys:
+
+| Key | Satisfied ⟺ | Source |
+|-----|-------------|--------|
+| `specific-exam-filter` | ≥1 per-exam charts response has `empty === false` | per-exam charts network capture |
+| `no-published-assessment` | assessments response `length > 0` | assessments network capture |
+
+Semantics (reference §10.4, not restated): SATISFIED → defer auto-invalidates → the AC is evaluated
+for real, no grandfathering — if it genuinely fails, the gate goes red correctly (§10.4, roadmap
+amendment A5). NOT satisfied → the defer remains valid → the row is excluded from both the HR35
+denominator and the HR36 coverage set (§10.4).
+
+**D9.2 — Capture-time stamp shape (LOCKED 2026-07-22).**
+
+The predicate is evaluated ONCE, at capture time, by the code that already writes evidence into the
+checklist (`updateChecklistRows`, §10.3) — never by the reader. The outcome is stamped onto the SAME
+inline marker §10.4 already defines, as a third `;`-separated clause, mirroring how `predicate:<key>`
+is already parsed:
+
+    <!-- DEFER: §<anchor> ; predicate:<key> ; stamp:<satisfied|unsatisfied>@<capture-run-ref> -->
+
+- `stamp:` value is exactly `satisfied` or `unsatisfied` — the literal, already-computed result of
+  running the registered code for `<key>` against that run's capture. Never re-derived by the
+  reader.
+- `@<capture-run-ref>` is provenance, mirroring the `✅ <capture-run-ref>` token §10.3 already stamps
+  into the evidence cell — ties the stamp to the specific b11 run that produced it.
+- **Own-run trust rule (LOCKED 2026-07-22).** The reader trusts a stamp ONLY if its
+  `<capture-run-ref>` matches the CURRENT run. A stamp carrying a run-ref from a DIFFERENT (earlier)
+  run is treated as **UNSTAMPED** → STOP `tierB-defer-unstamped` (D9.3), exactly as if no `stamp:`
+  clause were present at all. Rationale: §10.4 mandates re-evaluation on EVERY run; the writer
+  re-stamps each capture; the reader must therefore consume only its own run's stamp. Without this
+  rule, a stale `satisfied` stamp from an earlier run could grandfather across every later run —
+  reopening the exact A5 hole D9.3 exists to close.
+- Parsed into a new `RowDefer.stamp: { outcome: 'satisfied' | 'unsatisfied'; runRef: string } | null`
+  field (`null` = marker present, no `stamp:` clause, OR a stamp whose run-ref fails the own-run
+  trust rule above — both collapse to the same D9.3 STOP).
+- Written ONLY by the capture/runner step. A human hand-typing a `stamp:` clause is the same
+  hand-editable-trust problem §10.3 already rejected for the Status cell — out of scope to prevent
+  outright in C3b (no signing mechanism proposed here), but the reader never TRUSTS a stamp's
+  correctness, only its presence and its run-ref — which is what D9.3 and the own-run rule enforce.
+
+Rejected: a separate sidecar/JSON stamp file keyed by row id. Rejected because it doubles the
+places defer state lives (marker text + sidecar) and adds an ID-reconciliation failure mode the
+inline clause doesn't have; the inline clause keeps everything the reader needs in one
+regex-extractable string, consistent with §10.4's existing anchor/predicate parsing.
+
+**D9.3 — Missing stamp → STOP `tierB-defer-unstamped` (fail-closed, closes the grandfather hole).**
+
+A marker with a locked anchor and a valid predicate key but NO `stamp:` clause (`RowDefer.stamp ===
+null`) — including a stamp that fails the D9.2 own-run trust rule — is NOT treated as deferred; it
+STOPs with a new verdict, `tierB-defer-unstamped`, in the same family as §10.4's existing
+anchorless/predicate-less STOPs. This is the mechanism that closes roadmap amendment A5's
+grandfathering hole: without it, a defer marker written before capture-time stamping existed (or a
+stale stamp carried over from an earlier run) would silently pass through as "admitted" forever,
+exactly the class of bug §10.4 exists to prevent for anchors/predicates.
+
+**D9.4 — C3b scope fence: grab-path only, Summary-path is OUT OF SCOPE (→ C3c).**
+
+C3b implements exclusion at exactly the 3 reader-side sites inside `parseChecklist` that the
+`enforced-by:BE` filter already occupies (`lint-feature.ts`, current line numbers): `grab` (feeds
+`actIds` → HR36 coverage set + HR35 row-scan denominator), `finalCellVerified` (HR35 row-scan
+numerator), `brRows` (HR34). All 3 MUST skip a valid (unsatisfied-stamped) defer row — the "4th
+asymmetry" lesson from §10.2 D2 (one site missed = a real bug) applies identically here; T11 pins
+this.
+
+The Summary-path denominator — `countChecklistSection` (`playwright-runner.ts`, runner-side),
+active when `verifiedSource === 'summary'` — is explicitly OUT OF SCOPE for C3b. `totalAct` in that
+path comes from the `✅ X/Y` pair `countChecklistSection` writes, not from `actIds.length`, so the
+grab-path exclusion above does not reach it. This is a known, BY-DESIGN gap, not an oversight — C3c
+is its named resolution. Until C3c ships, a checklist whose HR35 falls onto the Summary path (rather
+than row-scan) will NOT get denominator exclusion for a valid defer.
+
+**D9.5 — HR36 defer-coverage (NEW, D5.6 — proposed as T9, alongside this section's lock).**
+
+Every declared row-defer must: (a) resolve a REAL AC gap — the row must not already be covered by a
+test; (b) carry a valid stamp (D9.2/D9.3); (c) currently be predicate-unsatisfied (D9.1). (b) and (c)
+are enforced by D9.3's STOP and D9.1's exclusion respectively. (a) is new: a defer on an
+ALREADY-covered row is a false claim (the marker should have been removed) and is an HR36 ERROR
+naming the row — T9 pins this. This closes a defer-inflation angle the original §10.5 T4 did not:
+mass-deferring rows that are secretly already covered, to make the checklist look more "honestly
+deferred" than it is.
+
+**Rejected alternatives:**
+- **DSL predicates** (string-eval'd conditions) — rejected by §10.4 D4 itself; D9.1 only makes the
+  rejection concrete for the registry's shape.
+- **Controlled-fixture mocking** to make a predicate deterministically testable — rejected by §10.4
+  itself ("§4 leakage = false-verified"); D9 does not reopen it.
+- **Template/example predicate keys** — rejected; only the 2 seed keys ship, each backed by a real
+  AC (AC-2's structural predicate, §10.4).
+- **Mutating §10.4's existing prose** — rejected; §10.4 is LOCKED and correct, this section only
+  fills the two gaps it left open.
+
+**C3b test → property mapping (2026-07-22):**
+
+| Test | Property | State (2026-07-22) |
+|------|----------|---------------------|
+| T1 | defer-rot (SATISFIED+stamped → counted for real) + its UNSATISFIED+stamped exclusion counterpart | RED (written, `lint-feature.test.ts`) |
+| T9 | HR36 defer-coverage — declared defer with no real AC gap | RED (written, `lint-feature.test.ts`) |
+| T10 | missing/stale stamp → STOP `tierB-defer-unstamped` | RED (written, `lint-feature.test.ts`) |
+| T11 | grab-path 3-site symmetry (grab/finalCellVerified/brRows) for a valid defer row | RED (written, `lint-feature.test.ts`) |
 | T8 — bare-✅ reader gap | **all of C1–C4** | GREEN throughout (documented-RED; a flip to RED means a canary closed the reader gap unintentionally — investigate, do not update T8) |
