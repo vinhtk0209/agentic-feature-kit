@@ -168,3 +168,19 @@ export function validateRowDeferStamp(parsed: RowDefer): void {
 export function isDeferValid(parsed: RowDefer): boolean {
   return parsed.stamp !== null && parsed.stamp.outcome === 'unsatisfied';
 }
+
+/**
+ * §10.9 D9.4 — reader-side, per-line exclusion predicate for the grab-path 3-site skip (grab,
+ * finalCellVerified, brRows in lint-feature.ts). Pure: no throw, no re-validation. The pre-grab
+ * loop (lint-feature.ts:129-136) already ran validateRowDefer/validateRowDeferStamp and would have
+ * STOPped on anything anchorless/predicate-less/anchor-not-locked/unstamped before this is ever
+ * reached, so a marker seen here is always well-formed; this only asks whether it is a CURRENTLY
+ * valid (unsatisfied-stamped) exclusion, mirroring the `enforced-by:BE` skip these 3 sites already
+ * apply. C3b-ii scope: does NOT check the D9.2 own-run trust rule (no run-ref reaches this reader
+ * path yet) — that follow-up is C3b-iii.
+ */
+export function isLineValidlyDeferred(ln: string): boolean {
+  const parsed = parseRowDefer(ln);
+  if (!parsed) return false;
+  return isDeferValid(parsed);
+}

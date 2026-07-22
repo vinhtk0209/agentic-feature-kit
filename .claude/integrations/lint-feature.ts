@@ -28,7 +28,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseUxStates, type UxStatesDoc } from './ux-states';
 import { loadConfig, type LearnedConfig } from './learned-config';
-import { parseRowDefer, validateRowDefer, validateRowDeferStamp, LOCKED_ANCHORS, ChecklistDeferError } from './checklist-defer';
+import { parseRowDefer, validateRowDefer, validateRowDeferStamp, isLineValidlyDeferred, LOCKED_ANCHORS, ChecklistDeferError } from './checklist-defer';
 
 export interface Args {
   folder: string;
@@ -112,7 +112,7 @@ function checkTransformLayer(folder: string, files: string[]) {
 }
 
 // ── checklist parsing ────────────────────────────────────────────────
-interface Checklist { actIds: string[]; verifiedAct: number; totalAct: number; uiIds: string[]; verifiedUi: number; totalUi: number; brRows: string[]; verifiedSource: 'summary' | 'row-scan'; }
+interface Checklist { actIds: string[]; verifiedAct: number; totalAct: number; uiIds: string[]; verifiedUi: number; totalUi: number; brRows: string[]; verifiedSource: 'summary' | 'row-scan'; deferredActIds: string[]; }
 
 function parseChecklist(file?: string): Checklist | null {
   if (!file || !fs.existsSync(file)) return null;
@@ -141,6 +141,9 @@ function parseChecklist(file?: string): Checklist | null {
       // `<!-- enforced-by: BE -->` is not an FE-testable obligation, so it must not
       // be counted as uncovered. (audit F4 — prose said this; the script didn't.)
       if (/<!--\s*enforced-by:\s*BE/i.test(ln)) continue;
+      // §10.9 D9.4 (C3b-ii) — a validly-deferred (unsatisfied-stamped) row is excluded from the
+      // HR36 coverage set / HR35 denominator, same rationale as the BE skip above.
+      if (isLineValidlyDeferred(ln)) continue;
       const m = ln.match(idRe);
       if (m && ln.includes('|')) ids.push(m[1]);
     }
@@ -148,6 +151,16 @@ function parseChecklist(file?: string): Checklist | null {
   };
   const actIds = grab(/\b(ACT-[\w.]+)\b/);
   const uiIds = grab(/\b(UI-[\w.]+)\b/);
+
+  // §10.9 D9.5 — HR36 defer-coverage: ids that carry a CURRENTLY valid (unsatisfied-stamped) defer,
+  // collected separately from grab() (which already excludes these rows) so checkAcCoverage can
+  // flag one that turns out to be already covered by a real test (a false defer claim).
+  const deferredActIds: string[] = [];
+  for (const ln of md.split('\n')) {
+    if (!ln.includes('|') || !isLineValidlyDeferred(ln)) continue;
+    const m = ln.match(/\b(ACT-[\w.]+)\b/);
+    if (m) deferredActIds.push(m[1]);
+  }
 
   // Authoritative verified counts come from the `## Summary` section, NOT a row-level ✅ scan
   // (rows carry ✅ in evidence columns while their final Status is still ⬜ — counting those over-reports).
@@ -173,6 +186,9 @@ function parseChecklist(file?: string): Checklist | null {
       // §10.2 D2 (4th asymmetry): grab and brRows already drop backend-only rows; this reader did
       // not, so a BE row carrying a ✅ in its evidence cell was counted as FE-verified.
       if (/<!--\s*enforced-by:\s*BE/i.test(ln)) continue;
+      // §10.9 D9.4 (C3b-ii) — same 4th-asymmetry class: a validly-deferred row's evidence cell
+      // (e.g. a stray ✅) must not count toward the HR35 numerator either.
+      if (isLineValidlyDeferred(ln)) continue;
       const cells = ln.split('|');
       const last = cells[cells.length - 2] || cells[cells.length - 1] || '';
       if (/✅|✔/.test(last)) ok += 1;
@@ -193,12 +209,13 @@ function parseChecklist(file?: string): Checklist | null {
   for (const ln of md.split('\n')) {
     if (!ln.includes('|')) continue;
     if (/<!--\s*enforced-by:\s*BE/i.test(ln)) continue; // backend-only rows are not FE obligations
+    if (isLineValidlyDeferred(ln)) continue; // §10.9 D9.4 (C3b-ii) — validly-deferred rows are not FE obligations yet either
     const m = ln.match(brRe);
     if (!m) continue;
     if (/\bBR-/.test(m[1]) || isUnitTestRow(ln) || brKw.test(ln)) brRows.push(m[1]);
   }
   return {
-    actIds: act.ids, verifiedAct: act.ok, totalAct: act.total, uiIds: ui.ids, verifiedUi: ui.ok, totalUi: ui.total, brRows, verifiedSource,
+    actIds: act.ids, verifiedAct: act.ok, totalAct: act.total, uiIds: ui.ids, verifiedUi: ui.ok, totalUi: ui.total, brRows, verifiedSource, deferredActIds,
   };
 }
 
@@ -287,6 +304,16 @@ function checkBusinessRules(folder: string, cl: Checklist | null, files: string[
 // ── HR36 — full AC coverage ──────────────────────────────────────────
 function checkAcCoverage(cl: Checklist | null, tested: Set<string>) {
   if (!cl) { add('HR36', 'warn', 'no checklist.md — cannot verify AC coverage'); return; }
+  // §10.9 D9.5 — a defer that resolves NO real gap (its row is already covered by a real test) is a
+  // false claim: the marker should have been removed, not left in place. Runs BEFORE the "0 ACT
+  // rows" early-return below: a checklist whose only row(s) are all validly-deferred has an EMPTY
+  // actIds (2b excludes them), which must not suppress this check. Excluded (2b) and flagged (here)
+  // are mutually exclusive — a defer only reaches here if it's in `tested`, i.e. covered.
+  for (const id of cl.deferredActIds) {
+    if (tested.has(id)) {
+      add('HR36', 'error', `defer on ${id} resolves no real gap — row is already covered by a test; remove the DEFER marker (§10.9 D9.5)`);
+    }
+  }
   if (cl.actIds.length === 0) { add('HR36', 'warn', 'checklist has 0 ACT rows'); return; }
   const uncovered = cl.actIds.filter((id) => !tested.has(id));
   const pct = Math.round(((cl.actIds.length - uncovered.length) / cl.actIds.length) * 100);

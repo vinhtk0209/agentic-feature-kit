@@ -686,10 +686,12 @@ test('§10.5 C3 reader — malformed (anchorless) DEFER → observable TIERB-DEF
   assert(has(f, 'TIERB-DEFER', 'tierB-defer-anchorless'), 'anchorless row-defer must surface an error-level TIERB-DEFER finding carrying the verdict');
 });
 
-// GREEN-path guard: a well-formed, locked defer (§10.4 + predicate) must NOT STOP, and C3a must
-// STILL COUNT the row (exclusion is C3b). "Still counted" is proven observably — the deferred ACT
-// row, left uncovered by ux-states, is STILL named uncovered by HR36 → it remains in the coverage
-// set (not excluded). When C3b lands this assertion flips (the row drops out) — expected, by design.
+// GREEN-path guard: a well-formed, locked, validly-stamped (unsatisfied) defer (§10.4 + predicate +
+// §10.9 stamp) must NOT STOP, and — since C3b-ii landed — must be EXCLUDED from the HR36 coverage
+// set (not merely admitted). Flipped 2026-07-22 per this test's own prior comment ("When C3b lands
+// this assertion flips (the row drops out) — expected, by design"): pre-C3b-ii this asserted the
+// OPPOSITE (row still counted, C3a does not exclude); §10.9 D9.4 (C3b-ii) is exactly the mechanism
+// that flips it.
 const dfrOk = 'defer-reader-ok-feature';
 write(`${dfrOk}/data/api.ts`, 'export const q = 1;\n');
 const dfrOkChecklist = write(`${dfrOk}/checklist.md`, [
@@ -705,10 +707,10 @@ const dfrOkUx = write(`${dfrOk}/ux-states.json`, JSON.stringify({
   states: [{ ac_assertions: [{ ac_id: 'ACT-01', selector: '.x', expected: 'visible' }] }],
   negative_states: [], unit_tests: [],
 }, null, 2));
-test('§10.5 C3 reader — well-formed locked DEFER → no STOP, and row STILL counted (C3a does not exclude; C3b will)', () => {
+test('§10.5/§10.9 C3b-ii reader — well-formed, validly-stamped DEFER → no STOP, and row EXCLUDED from HR36 (C3b-ii D9.4 exclusion)', () => {
   const f = lint(args(path.join(tmpRoot, dfrOk), { checklist: dfrOkChecklist, uxStates: dfrOkUx }));
   assert(!has(f, 'TIERB-DEFER'), 'a well-formed, locked defer must NOT STOP');
-  assert(has(f, 'HR36', 'ACT-02'), 'C3a does not exclude: the deferred, uncovered row is STILL counted → HR36 names it');
+  assert(!has(f, 'HR36', 'ACT-02'), '§10.9 D9.4: a validly-deferred (unsatisfied-stamped) row must be EXCLUDED from the HR36 coverage set, not named');
 });
 
 // ── §10.9 (C3b-i, PROPOSED — not yet locked) — predicate-registry + capture-time stamp: runtime
@@ -750,6 +752,68 @@ const t10Checklist = write(`${t10}/checklist.md`, t10ChecklistText);
 test('T10 — unstamped defer → STOP tierB-defer-unstamped (fail-closed, not treated as deferred) (§10.9 proposed, D5.4; RED — stamp check does not exist yet)', () => {
   const f = lint(args(path.join(tmpRoot, t10), { checklist: t10Checklist }));
   assert(has(f, 'TIERB-DEFER', 'tierB-defer-unstamped'), 'a defer with no capture-time stamp must STOP with verdict tierB-defer-unstamped');
+});
+
+// T9 (design §10.9, NEW property — HR36 defer-coverage, D5.6a) — a declared defer that does not
+// resolve a real AC gap (the row is ALREADY covered by a real test) must itself be an HR36 error. A
+// defer is a claim that a row can't yet be tested; if it's already tested, the claim is false and
+// the marker should have been removed, not left in place — this closes the defer-inflation angle
+// D5.6 names but the original T1–T8 table never covered.
+const t9 = 't9-defer-no-real-gap';
+write(`${t9}/data/api.ts`, 'export const q = 1;\n');
+const t9ChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Description | Tool | Status | Evidence |',
+  '|----|-------------|------|--------|----------|',
+  '| ACT-04 | already covered, but still carries a defer | Playwright | ⬜ Pending | <!-- DEFER: §10.4 ; predicate:specific-exam-filter ; stamp:unsatisfied@run-1 --> |',
+  '',
+].join('\n');
+const t9Checklist = write(`${t9}/checklist.md`, t9ChecklistText);
+const t9Ux = write(`${t9}/ux-states.json`, JSON.stringify({
+  feature: 'T9', states: [{ ac_assertions: [{ ac_id: 'ACT-04', selector: '.x', expected: 'visible' }] }], negative_states: [], unit_tests: [],
+}, null, 2));
+
+test('T9 — HR36 defer-coverage: a declared defer backed by NO real AC gap is an error (§10.9 proposed, D5.6a; RED — check does not exist yet)', () => {
+  const f = lint(args(path.join(tmpRoot, t9), { checklist: t9Checklist, uxStates: t9Ux }));
+  assert(has(f, 'HR36', 'ACT-04'), 'a defer on an already-tested row must surface an HR36 error naming ACT-04 (defer resolves no real gap)');
+});
+
+// T11 (design §10.9, NEW property — "4th asymmetry", defer variant of T6) — a validly-deferred
+// (unsatisfied+stamped) row must be invisible to grab (HR36 coverage + HR35 row-scan denominator),
+// finalCellVerified (HR35 row-scan numerator), AND brRows (HR34) alike — mirroring §10.2 D2's BE
+// symmetry, this time for the defer-exclusion mechanism. C3b's grab-path scope is LOCKED to these 3
+// reader-side sites only; the Summary-path denominator (countChecklistSection, runner-side) is OUT
+// OF SCOPE, deferred to C3c (§10.9). ACT-06 deliberately carries a stray ✅ in its evidence cell
+// (e.g. a leftover manual edit) alongside a valid unsatisfied defer, so that a numerator fix without
+// a matching denominator fix (or vice versa) cannot cancel out and read as an accidental pass.
+const t11 = 't11-defer-3site-symmetry';
+write(`${t11}/data/api.ts`, 'export const q = 1;\n');
+const t11ChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Description | Tool | Status | Evidence |',
+  '|----|-------------|------|--------|----------|',
+  '| ACT-01 | renders summary | Playwright | ✅ Pass | run-ref-1 ✅ |',
+  '| ACT-02 | genuinely uncovered, not deferred | Playwright | ⬜ Pending | |',
+  '| ACT-06 | rounds attendance rate (BR), validly deferred | Unit Test | ⬜ Pending | ✅ <!-- DEFER: §10.4 ; predicate:specific-exam-filter ; stamp:unsatisfied@run-1 --> |',
+  '',
+].join('\n');
+const t11Checklist = write(`${t11}/checklist.md`, t11ChecklistText);
+const t11Ux = write(`${t11}/ux-states.json`, JSON.stringify({
+  feature: 'T11', states: [{ ac_assertions: [{ ac_id: 'ACT-01', selector: '.x', expected: 'visible' }] }], negative_states: [], unit_tests: [],
+}, null, 2));
+
+test('T11 — all 3 grab-path sites (grab/finalCellVerified/brRows) skip a valid unsatisfied-stamped defer row (§10.9 proposed, 4th-asymmetry defer variant; RED before C3b)', () => {
+  const f = lint(args(path.join(tmpRoot, t11), { checklist: t11Checklist, uxStates: t11Ux }));
+  assert(!has(f, 'HR36', 'ACT-06'), 'grab site: ACT-06 must be excluded from the HR36 coverage set entirely');
+  assert(has(f, 'HR36', 'ACT-02'), 'control: the genuinely uncovered, non-deferred row must still be named (regression guard)');
+  const hr35t11 = f.find((x) => x.rule === 'HR35');
+  assert(!!hr35t11, 'expected an HR35 finding');
+  const msgT11 = (hr35t11 as { msg: string }).msg;
+  const mT11 = msgT11.match(/ACT\s+(\d+)\/(\d+)/);
+  assert(!!mT11, `expected an "ACT n/m" pair, got: ${msgT11}`);
+  assert(mT11![1] === '1' && mT11![2] === '2', `finalCellVerified+grab symmetry: expected "ACT 1/2" (ACT-06's stray ✅ and row both excluded), got "ACT ${mT11![1]}/${mT11![2]}"`);
+  const hr34t11 = f.find((x) => x.rule === 'HR34' && x.level === 'error');
+  assert(!hr34t11 || !hr34t11.msg.includes('ACT-06'), 'brRows site: ACT-06 must not appear in the HR34 business-rule row list');
 });
 
 // ── teardown + report ────────────────────────────────────────────────
