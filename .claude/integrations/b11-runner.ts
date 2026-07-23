@@ -419,6 +419,32 @@ function runContractProbe(): { contractErrors: number; contractWarnings: number;
 
 // ─── Step 4: Update checklist PLAYWRIGHT rows ─────────────────────────────────
 
+/**
+ * Normalize a single line to a heading key, or null if it isn't an ATX heading (2+ `#`,
+ * then whitespace, then title). Stripping everything but [a-z0-9] from the title makes
+ * `## Playwright Verify (B11)` and `## 🔬 Playwright Verification Log` resolve to
+ * comparable keys regardless of emoji, case, punctuation, or spacing drift (W3).
+ */
+export function normalizeHeading(line: string): string | null {
+  const m = /^\s*#{2,}\s+(.*)$/.exec(line);
+  if (!m) return null;
+  return m[1].toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * First line index whose normalized heading key contains `needle` (already normalized by
+ * the caller), or -1. EOL-agnostic split (E-02 discipline) so CRLF checklists resolve the
+ * same as LF ones.
+ */
+export function findHeadingLine(content: string, needle: string): number {
+  const lines = content.split(/\r\n|\r|\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const key = normalizeHeading(lines[i]);
+    if (key !== null && key.includes(needle)) return i;
+  }
+  return -1;
+}
+
 function updateChecklistPlaywright(routeResults: RouteResult[]): boolean {
   const checklistPath = path.join(specsDir, 'checklist.md');
   const content = readFile(checklistPath);
@@ -433,8 +459,7 @@ function updateChecklistPlaywright(routeResults: RouteResult[]): boolean {
 
   // Mark overall playwright section pass/fail
   // If there's an existing "Playwright Verify" table, update it
-  const playwrightSection = /## Playwright Verify[\s\S]*?(?=\n---|\n## |\n$)/;
-  if (playwrightSection.test(updated)) {
+  if (findHeadingLine(updated, 'playwright') !== -1) {
     // Section exists — leave per-check rows as-is (playwright-runner updates them)
     // Just ensure the section is present; runner handles individual row updates
   } else {
@@ -446,7 +471,16 @@ function updateChecklistPlaywright(routeResults: RouteResult[]): boolean {
     }).join('\n');
 
     const section = `\n## Playwright Verify (B11)\n\n| Check | Result | Notes |\n|-------|--------|-------|\n${rows}\n`;
-    updated = updated.replace(/(\n## Summary)/, `${section}\n## Summary`);
+    const summaryLineIdx = findHeadingLine(updated, 'summary');
+    if (summaryLineIdx === -1) {
+      // No Summary heading to anchor to (e.g. a template-drifted file) — append rather
+      // than silently no-op (W3: the old regex-anchor miss left this branch a no-write).
+      updated = `${updated}${section}`;
+    } else {
+      const lines = updated.split(/\r\n|\r|\n/);
+      lines.splice(summaryLineIdx, 0, ...section.split('\n'));
+      updated = lines.join('\n');
+    }
   }
 
   if (updated !== content) {

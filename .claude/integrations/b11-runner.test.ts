@@ -13,7 +13,7 @@
  * deterministic suite — that integration is the Block-5 capture). This proves the LOGIC exhaustively.
  * Run: npx tsx .claude/integrations/b11-runner.test.ts
  */
-import { computeB11B, computeGatesPass, assertPlaywrightTokenFresh } from './b11-runner';
+import { computeB11B, computeGatesPass, assertPlaywrightTokenFresh, normalizeHeading, findHeadingLine } from './b11-runner';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -126,6 +126,68 @@ test('preflight boundary: EXPIRES_AT exactly 6h ahead → still fresh (ok), not 
 });
 test('preflight AA.4 regression: fresh TTL_native-sized token (~23.5h) → does NOT throw  [§9: pre-fix this THREW under 24h threshold]', () => {
   noThrow(`PLAYWRIGHT_ACCESS_TOKEN=${TOKEN}\nPLAYWRIGHT_TOKEN_EXPIRES_AT=${NOW + 23.5 * H}\n`, NOW, 'aa4-fresh-ttl-native');
+});
+
+// ── W3 — normalizeHeading / findHeadingLine (heading-agnostic section resolution) ──
+test('normalizeHeading: current-target Playwright heading', () => {
+  eq(normalizeHeading('## Playwright Verify (B11)'), 'playwrightverifyb11', 'current-target-playwright');
+});
+test('normalizeHeading: template emoji Playwright heading', () => {
+  eq(normalizeHeading('## 🔬 Playwright Verification Log'), 'playwrightverificationlog', 'template-emoji-playwright');
+});
+test('normalizeHeading: extra hashes + extra whitespace', () => {
+  eq(normalizeHeading('###   playwright   verify'), 'playwrightverify', 'extra-hashes-whitespace');
+});
+test('normalizeHeading: template emoji Summary heading', () => {
+  eq(normalizeHeading('## 📊 Summary'), 'summary', 'template-emoji-summary');
+});
+test('normalizeHeading: current-target Summary heading', () => {
+  eq(normalizeHeading('## Summary'), 'summary', 'current-target-summary');
+});
+test('normalizeHeading: no ## prefix -> null', () => {
+  eq(normalizeHeading('Playwright Verify'), null, 'no-hash-prefix');
+});
+test('normalizeHeading: no space after # -> null', () => {
+  eq(normalizeHeading('##NoSpace'), null, 'no-space-after-hash');
+});
+test('normalizeHeading: heading not at line start -> null', () => {
+  eq(normalizeHeading('- ## not a heading'), null, 'not-line-start');
+});
+
+// Fixtures: CURRENT_FORM mirrors the live target checklist's plain headings; TEMPLATE_FORM
+// mirrors checklist.template.md's emoji-prefixed headings (§F / G-CHECKLIST-REGEN probe).
+const CURRENT_FORM = [
+  '## UX States', '', '| ID | State |', '|----|-------|', '',
+  '## Playwright Verify (B11)', '', '| Check | Result | Notes |', '|-------|--------|-------|', '',
+  '## Summary', '', '- done',
+].join('\n');
+const TEMPLATE_FORM = [
+  '## UX States', '', '## 🌱 Seed Coverage', '',
+  '## 🔬 Playwright Verification Log', '', '| Check ID | Description | Result | Evidence |', '|----------|-------------|--------|----------|', '',
+  '## 📊 Summary', '', '- done',
+].join('\n');
+const NEITHER_FORM = ['## Requirements Coverage', '', '## UI Verification', '', '## ACT'].join('\n');
+
+test('findHeadingLine: finds "playwright" in template emoji form', () => {
+  eq(findHeadingLine(TEMPLATE_FORM, 'playwright'), 4, 'template-playwright-idx');
+});
+test('findHeadingLine: finds "playwright" in current target form', () => {
+  eq(findHeadingLine(CURRENT_FORM, 'playwright'), 5, 'current-playwright-idx');
+});
+test('findHeadingLine: finds "summary" in template emoji form', () => {
+  eq(findHeadingLine(TEMPLATE_FORM, 'summary'), 9, 'template-summary-idx');
+});
+test('findHeadingLine: finds "summary" in current target form', () => {
+  eq(findHeadingLine(CURRENT_FORM, 'summary'), 10, 'current-summary-idx');
+});
+test('findHeadingLine: returns -1 when neither heading is present', () => {
+  eq(findHeadingLine(NEITHER_FORM, 'playwright'), -1, 'neither-playwright-idx');
+  eq(findHeadingLine(NEITHER_FORM, 'summary'), -1, 'neither-summary-idx');
+});
+test('findHeadingLine: CRLF content resolves identically to LF content', () => {
+  const crlf = CURRENT_FORM.replace(/\n/g, '\r\n');
+  eq(findHeadingLine(crlf, 'playwright'), findHeadingLine(CURRENT_FORM, 'playwright'), 'crlf-playwright-matches-lf');
+  eq(findHeadingLine(crlf, 'summary'), findHeadingLine(CURRENT_FORM, 'summary'), 'crlf-summary-matches-lf');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
