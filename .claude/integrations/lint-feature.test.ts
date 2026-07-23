@@ -930,6 +930,87 @@ test('T-c3c — Summary-path (verifiedSource=summary) excludes valid-defer rows 
   }
 });
 
+// T12 (design §W2a) — evidence-cell writer must strip raw ANSI SGR sequences (the class of bytes
+// a Playwright Error.message call-log carries) before the row is written; a clean evidence string
+// must pass through byte-identical (negative control, §W2a S3.1).
+const t12 = 't12-ansi-sanitize';
+write(`${t12}/data/api.ts`, 'export const q = 1;\n');
+const t12ChecklistText = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Test Case | Tool | Status | Evidence |',
+  '|----|-----------|------|--------|----------|',
+  '| ACT-001 | renders summary chart | Playwright | ⬜ Pending | |',
+  '| ACT-002 | renders detail panel | Playwright | ⬜ Pending | |',
+  '',
+].join('\n');
+const t12Checklist = write(`${t12}/checklist.md`, t12ChecklistText);
+
+test('T12 — evidence cell strips ANSI SGR sequences before write; clean evidence passes through byte-identical (§W2a; RED before sanitizer)', () => {
+  updateChecklistRows(t12Checklist, [
+    { id: 'ACT-001', passed: false, evidence: 'Timeout 10000ms exceeded.\x1b[2m- waiting for locator\x1b[22m' },
+    { id: 'ACT-002', passed: false, evidence: 'cap-run-42' },
+  ]);
+  const written = fs.readFileSync(t12Checklist, 'utf8');
+  assert(!written.includes('\x1b'), `evidence cell must not carry a raw ESC byte after sanitization, got: ${JSON.stringify(written)}`);
+  const lines = written.split(/\r?\n/);
+  const cleanRow = lines.find((l) => l.startsWith('| ACT-002'));
+  assert(!!cleanRow, 'expected to find the ACT-002 row in the written file');
+  const cleanEvidence = (cleanRow as string).split('|').slice(1, -1).map((c) => c.trim())[4];
+  assert(cleanEvidence === 'cap-run-42', `clean evidence must pass through byte-identical, got: ${JSON.stringify(cleanEvidence)}`);
+});
+
+// T13 (design §W2a) — a literal LF embedded in evidence text must be collapsed so the row stays on
+// exactly one physical line (this is the mechanism that split ACT-AC11 into an orphaned NR=90 line
+// in the target checklist).
+const t13 = 't13-newline-sanitize';
+write(`${t13}/data/api.ts`, 'export const q = 1;\n');
+const t13ChecklistTextLines = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Test Case | Tool | Status | Evidence |',
+  '|----|-----------|------|--------|----------|',
+  '| ACT-001 | renders summary chart | Playwright | ⬜ Pending | |',
+  '',
+];
+const t13ChecklistText = t13ChecklistTextLines.join('\n');
+const t13Checklist = write(`${t13}/checklist.md`, t13ChecklistText);
+
+test('T13 — evidence cell collapses embedded newlines before write, physical line count unchanged (§W2a; RED before sanitizer)', () => {
+  updateChecklistRows(t13Checklist, [{ id: 'ACT-001', passed: false, evidence: 'Error: expected\nCall log:\n  - retrying click' }]);
+  const written = fs.readFileSync(t13Checklist, 'utf8');
+  const writtenLines = written.split(/\r?\n/);
+  assert(writtenLines.length === t13ChecklistTextLines.length,
+    `row must occupy exactly one physical line: expected ${t13ChecklistTextLines.length} total lines, got ${writtenLines.length}\n${JSON.stringify(written)}`);
+});
+
+// T14 (design §W2a) — combined ANSI + embedded-newline contamination, mirroring the real AC11
+// failure (dim-wrapped Playwright call log). Both defects must be neutralized together: no ESC
+// byte, exactly one physical line, and the row's field count matches the header's column count.
+const t14 = 't14-combined-sanitize';
+write(`${t14}/data/api.ts`, 'export const q = 1;\n');
+const t14ChecklistTextLines = [
+  '## ACT — Acceptance Test Cases',
+  '| ID | Test Case | Tool | Status | Evidence |',
+  '|----|-----------|------|--------|----------|',
+  '| ACT-001 | renders summary chart | Playwright | ⬜ Pending | |',
+  '',
+];
+const t14ChecklistText = t14ChecklistTextLines.join('\n');
+const t14Checklist = write(`${t14}/checklist.md`, t14ChecklistText);
+
+test('T14 — combined ANSI+newline contamination fully neutralized: no ESC, one physical line, header-matching field count (§W2a; RED before sanitizer)', () => {
+  const headerCells = 5; // ID | Test Case | Tool | Status | Evidence
+  updateChecklistRows(t14Checklist, [{ id: 'ACT-001', passed: false, evidence: 'assert failed\x1b[2m\n  - waiting for "[data-testid=x]"\n\x1b[22mgot 0%' }]);
+  const written = fs.readFileSync(t14Checklist, 'utf8');
+  assert(!written.includes('\x1b'), `must not carry a raw ESC byte, got: ${JSON.stringify(written)}`);
+  const writtenLines = written.split(/\r?\n/);
+  assert(writtenLines.length === t14ChecklistTextLines.length,
+    `row must occupy exactly one physical line: expected ${t14ChecklistTextLines.length} total lines, got ${writtenLines.length}\n${JSON.stringify(written)}`);
+  const rowLine = writtenLines.find((l) => l.startsWith('| ACT-001'));
+  assert(!!rowLine, 'expected to find the ACT-001 row in the written file');
+  const nf = (rowLine as string).split('|').length;
+  assert(nf === headerCells + 2, `field count must match the header's ${headerCells} columns (+2 boundary pipes), got ${nf}: ${rowLine}`);
+});
+
 // ── teardown + report ────────────────────────────────────────────────
 try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch { /* ignore */ }
 console.log(`\n${passed} passed, ${failed} failed`);

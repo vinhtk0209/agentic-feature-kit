@@ -605,6 +605,18 @@ export class ChecklistLayoutError extends Error {
   }
 }
 
+// §W2a: neutralize raw ANSI SGR sequences and embedded line breaks (both observed in real
+// Playwright Error.message call-logs) before evidence text is woven into a markdown table cell.
+// A single space replaces each line break — CommonMark inline content collapses raw line breaks
+// to a space on render anyway, so this matches expected rendering instead of injecting a visible
+// marker (⏎ / literal "\n") that isn't otherwise meaningful to a table reader. No truncation.
+function sanitizeEvidenceCell(value: string): string {
+  return value
+    .replace(/\x1b\[[0-9;]*m/g, '')
+    .replace(/\r\n|\r|\n/g, ' ')
+    .trim();
+}
+
 export function updateChecklistRows(checklistPath: string, verdicts: RowVerdict[]): void {
   if (!fs.existsSync(checklistPath) || verdicts.length === 0) return;
   const raw = fs.readFileSync(checklistPath, 'utf8');
@@ -653,7 +665,7 @@ export function updateChecklistRows(checklistPath: string, verdicts: RowVerdict[
     cells[layout.statusIdx] = v.passed ? '✅ Pass' : '❌ Fail';
     // §10.3: on PASS, stamp `✅ <run-ref>` into the EVIDENCE cell — that ✅ is what finalCellVerified
     // counts (T5). runRef defaults to the free-form evidence when a caller hasn't threaded one in.
-    cells[layout.evidenceIdx] = v.passed ? `✅ ${v.runRef ?? v.evidence}` : v.evidence;
+    cells[layout.evidenceIdx] = v.passed ? `✅ ${sanitizeEvidenceCell(v.runRef ?? v.evidence)}` : sanitizeEvidenceCell(v.evidence);
     planned.push({ idx: rowIdx, line: `| ${cells.join(' | ')} |` });
   }
   if (planned.length === 0) return; // nothing matched → file left byte-identical
