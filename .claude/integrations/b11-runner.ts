@@ -445,6 +445,35 @@ export function findHeadingLine(content: string, needle: string): number {
   return -1;
 }
 
+/**
+ * The dominant EOL style of `content` — '\r\n' if it contains at least one CRLF pair,
+ * else '\n'. Lets the insert path preserve a CRLF checklist's line endings instead of
+ * silently normalizing the whole file to LF (E-02 discipline; W3-fix).
+ */
+export function detectEol(content: string): string {
+  return content.includes('\r\n') ? '\r\n' : '\n';
+}
+
+/**
+ * Pure string-assembly step of the "no Playwright section yet" branch: build the section
+ * (every internal line break is `eol`, so emitted TEXT is unchanged and only the break
+ * characters vary), then splice it before the Summary heading or, absent one, append it —
+ * never silently no-op (W3). Extracted out of updateChecklistPlaywright solely so the EOL
+ * round-trip is testable without exporting that function or its specsDir closure.
+ */
+export function buildPlaywrightInsert(content: string, rows: string, eol: string): string {
+  const section = `${eol}## Playwright Verify (B11)${eol}${eol}| Check | Result | Notes |${eol}|-------|--------|-------|${eol}${rows}${eol}`;
+  const summaryLineIdx = findHeadingLine(content, 'summary');
+  if (summaryLineIdx === -1) {
+    // No Summary heading to anchor to (e.g. a template-drifted file) — append rather
+    // than silently no-op (W3: the old regex-anchor miss left this branch a no-write).
+    return `${content}${section}`;
+  }
+  const lines = content.split(/\r\n|\r|\n/);
+  lines.splice(summaryLineIdx, 0, ...section.split(eol));
+  return lines.join(eol);
+}
+
 function updateChecklistPlaywright(routeResults: RouteResult[]): boolean {
   const checklistPath = path.join(specsDir, 'checklist.md');
   const content = readFile(checklistPath);
@@ -453,6 +482,8 @@ function updateChecklistPlaywright(routeResults: RouteResult[]): boolean {
   const allPassed = routeResults.every((r) => r.passed);
   const passCount = routeResults.filter((r) => r.passed).length;
   const total = routeResults.length;
+
+  const eol = detectEol(content);
 
   // Update PLAYWRIGHT-001 through PLAYWRIGHT-005 summary if present
   let updated = content;
@@ -468,19 +499,9 @@ function updateChecklistPlaywright(routeResults: RouteResult[]): boolean {
       const icon = r.passed ? '✅ pass' : '❌ fail';
       const notes = r.checks.find((c) => !c.passed)?.message ?? '';
       return `| PLAYWRIGHT-ROUTE-${String(i + 1).padStart(3, '0')}: ${r.route} | ${icon} | ${notes} |`;
-    }).join('\n');
+    }).join(eol);
 
-    const section = `\n## Playwright Verify (B11)\n\n| Check | Result | Notes |\n|-------|--------|-------|\n${rows}\n`;
-    const summaryLineIdx = findHeadingLine(updated, 'summary');
-    if (summaryLineIdx === -1) {
-      // No Summary heading to anchor to (e.g. a template-drifted file) — append rather
-      // than silently no-op (W3: the old regex-anchor miss left this branch a no-write).
-      updated = `${updated}${section}`;
-    } else {
-      const lines = updated.split(/\r\n|\r|\n/);
-      lines.splice(summaryLineIdx, 0, ...section.split('\n'));
-      updated = lines.join('\n');
-    }
+    updated = buildPlaywrightInsert(updated, rows, eol);
   }
 
   if (updated !== content) {

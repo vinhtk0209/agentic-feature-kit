@@ -13,7 +13,7 @@
  * deterministic suite — that integration is the Block-5 capture). This proves the LOGIC exhaustively.
  * Run: npx tsx .claude/integrations/b11-runner.test.ts
  */
-import { computeB11B, computeGatesPass, assertPlaywrightTokenFresh, normalizeHeading, findHeadingLine } from './b11-runner';
+import { computeB11B, computeGatesPass, assertPlaywrightTokenFresh, normalizeHeading, findHeadingLine, detectEol, buildPlaywrightInsert } from './b11-runner';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -188,6 +188,46 @@ test('findHeadingLine: CRLF content resolves identically to LF content', () => {
   const crlf = CURRENT_FORM.replace(/\n/g, '\r\n');
   eq(findHeadingLine(crlf, 'playwright'), findHeadingLine(CURRENT_FORM, 'playwright'), 'crlf-playwright-matches-lf');
   eq(findHeadingLine(crlf, 'summary'), findHeadingLine(CURRENT_FORM, 'summary'), 'crlf-summary-matches-lf');
+});
+
+// ── W3-fix — detectEol / buildPlaywrightInsert (preserve original EOL on insert) ──
+test('detectEol: CRLF content -> \\r\\n', () => {
+  eq(detectEol('## Summary\r\n\r\n- done\r\n'), '\r\n', 'crlf-content');
+});
+test('detectEol: LF content -> \\n', () => {
+  eq(detectEol('## Summary\n\n- done\n'), '\n', 'lf-content');
+});
+test('detectEol: empty string -> \\n', () => {
+  eq(detectEol(''), '\n', 'empty-content');
+});
+test('detectEol: single line, no newline at all -> \\n', () => {
+  eq(detectEol('## Summary'), '\n', 'no-newline-content');
+});
+test('detectEol: mixed content containing at least one CRLF pair -> \\r\\n', () => {
+  eq(detectEol('## UX States\n\n## Summary\r\n\n- done'), '\r\n', 'mixed-content');
+});
+
+// Round-trip: buildPlaywrightInsert is the pure string-assembly step extracted from
+// updateChecklistPlaywright's else-branch (kit-side, not exported before this turn) so the
+// EOL-preservation property is testable without exporting that function or touching its
+// specsDir closure (both out of scope this turn — see prompt's R1 fallback clause).
+test('buildPlaywrightInsert: CRLF content + existing Summary heading -> splice-insert stays CRLF', () => {
+  const crlf = ['## UX States', '', '## Summary', '', '- done'].join('\r\n');
+  const result = buildPlaywrightInsert(crlf, '| PLAYWRIGHT-ROUTE-001: /x | ✅ pass |  |', '\r\n');
+  eq(result.includes('\r\n'), true, 'contains-crlf');
+  eq(/(?<!\r)\n/.test(result), false, 'no-bare-lf');
+});
+test('buildPlaywrightInsert: CRLF content + no Summary heading -> append stays CRLF', () => {
+  const crlf = ['## UX States', '', '- done'].join('\r\n');
+  const result = buildPlaywrightInsert(crlf, '| PLAYWRIGHT-ROUTE-001: /x | ✅ pass |  |', '\r\n');
+  eq(result.includes('\r\n'), true, 'contains-crlf');
+  eq(/(?<!\r)\n/.test(result), false, 'no-bare-lf');
+});
+test('buildPlaywrightInsert: LF content + existing Summary heading -> splice-insert stays LF (no regression)', () => {
+  const lf = ['## UX States', '', '## Summary', '', '- done'].join('\n');
+  const result = buildPlaywrightInsert(lf, '| PLAYWRIGHT-ROUTE-001: /x | ✅ pass |  |', '\n');
+  eq(result.includes('\r\n'), false, 'no-crlf-introduced');
+  eq(result.includes('## Playwright Verify (B11)'), true, 'section-text-present');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
