@@ -16,6 +16,7 @@ import {
   ApiResponseObservation,
   deriveFeatureEndpoints, urlMatchesEndpoint, EndpointDerivationError,
   resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
+  replaceSummarySection,
 } from './playwright-runner';
 
 let passed = 0;
@@ -345,6 +346,122 @@ test('§8.2 — after-steps + zero observations at the point → FAIL tierB-no-d
     point: STEPS_POINT, selectorTimedOut: false, observations: [], featureEndpoints: E2,
   });
   assert(v.passed === false && v.reason === 'tierB-no-data-reached', `zero-obs must FAIL, got ${v.reason}`);
+});
+
+// ── G-SUMMARY-TRUNCATE — replaceSummarySection (W3 pattern, canary hoist) ──────
+// updateChecklistSummary's old tail was `text.replace(/## Summary[\s\S]*$/, newSummary)`:
+// (1) SILENT-NOOP on any non-literal `## Summary` heading (e.g. `## 📊 Summary`), and
+// (2) DATA-LOSS — `[\s\S]*$` eats every trailing section after Summary, not just Summary's
+// own body. replaceSummarySection fixes both: heading-agnostic match via findHeadingLine,
+// and bounded replacement (stops at the next `## ` heading, or EOF if Summary is last).
+
+const R1_TEXT = [
+  '# Checklist', '',
+  '## Requirements Coverage', '',
+  '| ID | Status |',
+  '|----|--------|',
+  '| REQ-001 | done |', '',
+  '## Summary', '',
+  '- OLD',
+].join('\n');
+
+test('G-SUMMARY-TRUNCATE R1 — plain heading, Summary is last section → replaced, content before untouched', () => {
+  const newSummary = ['## Summary', '', '- NEW A', '- NEW B'].join('\n');
+  const result = replaceSummarySection(R1_TEXT, newSummary);
+  const beforeHeading = R1_TEXT.slice(0, R1_TEXT.indexOf('## Summary'));
+  assert(result.startsWith(beforeHeading), 'content before the Summary heading must be byte-identical');
+  assert(result.includes('- NEW A') && result.includes('- NEW B'), 'new summary content must appear');
+  assert(!result.includes('- OLD'), 'old summary content must be gone');
+});
+
+// R2 — emoji heading. Under the ORIGINAL /## Summary[\s\S]*$/ regex this is a SILENT-NOOP:
+// the literal string '## Summary' never matches '## 📊 Summary', so `updated === text`
+// and the write guard skips writing — the section is simply never updated, forever.
+const R2_TEXT = [
+  '# Checklist', '',
+  '## 📊 Summary', '',
+  '- OLD',
+].join('\n');
+
+test('G-SUMMARY-TRUNCATE R2 — emoji heading `## 📊 Summary` must be found and replaced (current code SILENT-NOOPs)', () => {
+  // Confirm the fixture actually contains the real codepoint, not a mojibake substitute.
+  const emojiLine = R2_TEXT.split('\n')[2];
+  assert(emojiLine.codePointAt(3) === 0x1F4CA, `fixture must contain U+1F4CA, got line: ${JSON.stringify(emojiLine)}`);
+
+  const newSummary = ['## Summary', '', '- NEW A'].join('\n');
+  const result = replaceSummarySection(R2_TEXT, newSummary);
+  assert(!result.includes('- OLD'), 'emoji-headed Summary must be replaced, not left as-is (SILENT-NOOP fix)');
+  assert(result.includes('- NEW A'), 'new summary content must appear');
+});
+
+// R3 — trailing section after Summary. Under the ORIGINAL regex, `[\s\S]*$` (no bound) eats
+// EVERYTHING from '## Summary' to EOF, so a following '## Legend' section is destroyed.
+const R3_TEXT = [
+  '# Checklist', '',
+  '## Summary', '',
+  '- OLD', '',
+  '## Legend', '',
+  '| Icon | Meaning |',
+  '|------|---------|',
+  '| ✅ | pass |',
+].join('\n');
+
+test('G-SUMMARY-TRUNCATE R3 — trailing section after Summary survives byte-identical, Summary is replaced', () => {
+  const newSummary = ['## Summary', '', '- NEW A'].join('\n');
+  const result = replaceSummarySection(R3_TEXT, newSummary);
+  const trailing = R3_TEXT.slice(R3_TEXT.indexOf('## Legend'));
+  assert(result.includes(trailing), 'trailing ## Legend section must survive byte-identical (DATA-LOSS fix)');
+  assert(!result.includes('- OLD'), 'old Summary content must be replaced');
+  assert(result.includes('- NEW A'), 'new Summary content must appear');
+});
+
+// R4 — no Summary heading anywhere → append rather than silent no-op (buildPlaywrightInsert
+// precedent, b11-runner.ts: never leave a "should have written" case as a no-op).
+const R4_TEXT = [
+  '# Checklist', '',
+  '## Requirements Coverage', '',
+  '| ID | Status |',
+  '|----|--------|',
+  '| REQ-001 | done |',
+].join('\n');
+
+test('G-SUMMARY-TRUNCATE R4 — no Summary heading anywhere → block is appended, original content intact', () => {
+  const newSummary = ['## Summary', '', '- NEW A'].join('\n');
+  const result = replaceSummarySection(R4_TEXT, newSummary);
+  assert(result.startsWith(R4_TEXT), 'original content must be intact and appear first (append, not mutate)');
+  assert(result.includes('- NEW A'), 'appended summary block must be present');
+});
+
+// R5 — CRLF round-trip. Byte-level count (not eyeballing): after stripping every CRLF pair,
+// zero lone LF bytes may remain.
+test('G-SUMMARY-TRUNCATE R5 — CRLF input preserves CRLF, no lone LF introduced (byte-level check)', () => {
+  const before = ['# Checklist', '', '## Summary', '', '- OLD'].join('\r\n');
+  const newSummary = ['## Summary', '', '- NEW A', '- NEW B'].join('\n'); // caller builds this with \n, same as real code
+  const result = replaceSummarySection(before, newSummary);
+  const crlfCount = (result.match(/\r\n/g) || []).length;
+  const lfOnlyCount = (result.replace(/\r\n/g, '').match(/\n/g) || []).length;
+  assert(crlfCount > 0, 'expected CRLF line breaks to be present in the CRLF fixture output');
+  assert(lfOnlyCount === 0, `expected zero lone LF bytes, found ${lfOnlyCount}`);
+});
+
+// R6 — the template's actual shape: emoji heading AND a trailing section together.
+const R6_TEXT = [
+  '# Checklist', '',
+  '## 📊 Summary', '',
+  '- OLD', '',
+  '## Legend', '',
+  '| Icon | Meaning |',
+  '|------|---------|',
+  '| ✅ | pass |',
+].join('\n');
+
+test('G-SUMMARY-TRUNCATE R6 — emoji heading + trailing section together, both fixed simultaneously', () => {
+  const newSummary = ['## Summary', '', '- NEW A'].join('\n');
+  const result = replaceSummarySection(R6_TEXT, newSummary);
+  const trailing = R6_TEXT.slice(R6_TEXT.indexOf('## Legend'));
+  assert(!result.includes('- OLD'), 'emoji-headed Summary must be replaced');
+  assert(result.includes('- NEW A'), 'new summary content must appear');
+  assert(result.includes(trailing), 'trailing Legend section must survive byte-identical');
 });
 
 // ── report ────────────────────────────────────────────────────────────

@@ -36,6 +36,9 @@ import * as path from 'path';
 // §8.1 AA.3 — reuse the PROVEN endpoint extractors (TS-AST api.ts parser + .http parser +
 // path normalizer + contract resolver). Do NOT hand-roll a second parser (Wall-1 rewrite).
 import { parseHttp, parseApiReturnTypes, normalizePath, resolveContractHttp } from './contract-probe';
+// G-SUMMARY-TRUNCATE — reuse the heading-agnostic locator already proven for the Playwright
+// section (b11-runner.ts, buildPlaywrightInsert) instead of hand-rolling a second one here.
+import { findHeadingLine } from './b11-runner';
 
 // Optional deps — loaded lazily so the script still runs if they're missing
 type PixelmatchFn = (a: Uint8Array, b: Uint8Array, out: Uint8Array, w: number, h: number, opts?: { threshold?: number; includeAA?: boolean }) => number;
@@ -708,6 +711,45 @@ export function countChecklistSection(
 }
 
 /**
+ * Replace (or append) the `## Summary` section of checklist `text` with `newSummary`.
+ *
+ * Hoisted out of updateChecklistSummary (G-SUMMARY-TRUNCATE canary, following the C1
+ * countChecklistSection precedent above) so a test can observe it directly. Fixes two
+ * failure modes of the old `text.replace(/## Summary[\s\S]*$/, newSummary)` tail:
+ *   1. SILENT-NOOP — the literal string never matched a drifted heading like `## 📊 Summary`,
+ *      so the section was never updated. Fixed by locating the heading via
+ *      `findHeadingLine(text, 'summary')` (b11-runner.ts), which is heading-agnostic.
+ *   2. DATA-LOSS — `[\s\S]*$` has no end bound, so any section AFTER Summary (e.g. a
+ *      trailing `## Legend`) was deleted along with it. Fixed by bounding the replaced
+ *      region to the next `## ` heading, or EOF if Summary is the last section.
+ * On a missing Summary heading, APPENDS `newSummary` rather than returning `text` unchanged —
+ * follows the buildPlaywrightInsert precedent (b11-runner.ts): a "should have written" case
+ * must never silently no-op.
+ * Pure: text in, text out. EOL-agnostic split/rejoin (E-02 discipline) preserves the input's
+ * dominant EOL style (CRLF or LF), including inside `newSummary` itself.
+ */
+export function replaceSummarySection(text: string, newSummary: string): string {
+  const eol = text.includes('\r\n') ? '\r\n' : '\n';
+  const normalizedSummary = newSummary.split(/\r\n|\r|\n/).join(eol);
+  const lines = text.split(/\r\n|\r|\n/);
+  const headingIdx = findHeadingLine(text, 'summary');
+
+  if (headingIdx === -1) {
+    return `${text}${eol}${normalizedSummary}`;
+  }
+
+  let nextHeadingIdx = -1;
+  const headingRe = /^\s*#{2,}\s+/;
+  for (let i = headingIdx + 1; i < lines.length; i++) {
+    if (headingRe.test(lines[i])) { nextHeadingIdx = i; break; }
+  }
+
+  const before = lines.slice(0, headingIdx);
+  const after = nextHeadingIdx === -1 ? [] : lines.slice(nextHeadingIdx);
+  return [...before, ...normalizedSummary.split(eol), ...after].join(eol);
+}
+
+/**
  * Auto-update the `## Summary` section in checklist.md after row updates.
  * Counts ✅/❌/⬜ per section (REQ, UI, ACT, UX) and rewrites the Summary block.
  * Called immediately after updateChecklistRows() so counts reflect the latest run.
@@ -756,7 +798,7 @@ function updateChecklistSummary(
   ];
 
   const newSummary = `## Summary\n\n${summaryLines.join('\n')}`;
-  const updated = text.replace(/## Summary[\s\S]*$/, newSummary);
+  const updated = replaceSummarySection(text, newSummary);
   if (updated !== text) fs.writeFileSync(checklistPath, updated, 'utf8');
 }
 
