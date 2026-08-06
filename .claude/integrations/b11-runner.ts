@@ -30,7 +30,7 @@ import { execSync, spawnSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { resolveRoutes, parseUxStates } from './ux-states';
-import { resolveContractHttp } from './contract-probe';
+import { resolveContractHttp, AmbiguousHttpFileError } from './contract-probe';
 import { checkPlaywrightToken } from './version-check';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -397,7 +397,18 @@ function runContractProbe(): { contractErrors: number; contractWarnings: number;
   // The flagship writes the contract to docs/components/<Feature>/<Feature>.full.http (B8.6);
   // resolveContractHttp looks there first (prefer *.full.http), with docs/specs/<Feature>/ as fallback.
   const componentsDir = path.join(cwd, 'docs', 'components', featureName);
-  const httpFile = resolveContractHttp(componentsDir, specsDir);
+  // f2-resolver-hardening: resolveContractHttp now fails closed (throws) on an ambiguous
+  // multi-.http dir. This step is ADVISORY-ONLY and must never gate the exit code — report the
+  // ambiguity in the summary instead of letting it propagate into an unhandled B11 crash.
+  let httpFile: string;
+  try {
+    httpFile = resolveContractHttp(componentsDir, specsDir);
+  } catch (e) {
+    if (e instanceof AmbiguousHttpFileError) {
+      return { contractErrors: 0, contractWarnings: 1, contractSummary: `contract=skipped (${e.message})` };
+    }
+    throw e;
+  }
   const typesFile = [path.join(cwd, featurePath, 'data', 'types.ts'), path.join(cwd, featurePath, 'types.ts')].find((p) => fs.existsSync(p)) ?? '';
   const apiFile = [path.join(cwd, featurePath, 'data', 'api.ts'), path.join(cwd, featurePath, 'api.ts')].find((p) => fs.existsSync(p)) ?? '';
   if (!fs.existsSync(probe) || !httpFile || !typesFile || !apiFile) {

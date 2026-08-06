@@ -281,24 +281,61 @@ export function parseApiReturnTypes(apiText: string): RouteType[] {
 
 // ─── .http contract-file resolution (B11 lookup) ─────────────────────────────────
 
-/** Pick the best `.http` from a filename list: prefer `*.full.http`, else any `*.http`, else ''. */
-export function pickHttpFile(files: string[]): string {
-  return files.find((f) => f.endsWith('.full.http')) ?? files.find((f) => f.endsWith('.http')) ?? '';
+/**
+ * f2-resolver-hardening: pickHttpFile used to silently pick the first `Array.find` match
+ * (effectively `fs.readdirSync` order) whenever a directory held more than one `.http`
+ * candidate at the winning tier. That is not a real selection signal — it fails closed here
+ * instead, unless exactly one candidate carries the explicit `.primary.http`/`.primary.full.http`
+ * marker (rename the intended file to add `.primary` before `.http` to disambiguate).
+ */
+export class AmbiguousHttpFileError extends Error {
+  constructor(public readonly candidates: string[], public readonly dir?: string) {
+    super(
+      `tierB-http-contract-ambiguous: ${candidates.length} .http candidates found` +
+      `${dir ? ` in ${dir}` : ''} (${candidates.join(', ')}) and none uniquely carries an ` +
+      `explicit ".primary.http"/".primary.full.http" selection marker. Rename the intended ` +
+      'file to add ".primary" before ".http", or remove the extra candidates.',
+    );
+    this.name = 'AmbiguousHttpFileError';
+  }
+}
+
+/** Pick the best `.http` from a filename list: prefer `*.full.http`, else any `*.http`, else ''.
+ *  Fails closed (throws `AmbiguousHttpFileError`) if more than one candidate exists at the
+ *  winning tier and no single `.primary.http`/`.primary.full.http` marker resolves it. */
+export function pickHttpFile(files: string[], dir?: string): string {
+  const pickTier = (candidates: string[], primarySuffix: string): string => {
+    if (candidates.length === 0) return '';
+    if (candidates.length === 1) return candidates[0];
+    const primary = candidates.filter((f) => f.endsWith(primarySuffix));
+    if (primary.length === 1) return primary[0];
+    throw new AmbiguousHttpFileError(primary.length > 1 ? primary : candidates, dir);
+  };
+
+  const fullCandidates = files.filter((f) => f.endsWith('.full.http'));
+  if (fullCandidates.length > 0) return pickTier(fullCandidates, '.primary.full.http');
+
+  const plainCandidates = files.filter((f) => f.endsWith('.http'));
+  if (plainCandidates.length > 0) return pickTier(plainCandidates, '.primary.http');
+
+  return '';
 }
 
 /**
  * Resolve a feature's `.http` contract for the B11 probe. The flagship writes it to
  * `docs/components/<Feature>/<Feature>.full.http` (B8.6), so look there first; fall back to
- * `docs/specs/<Feature>/`. Returns '' if neither has one.
+ * `docs/specs/<Feature>/`. Returns '' if neither has one. Propagates `AmbiguousHttpFileError`
+ * (fail-closed) rather than swallowing it into a silent pick.
  */
 export function resolveContractHttp(componentsDir: string, specsDir: string): string {
   const inDir = (dir: string): string => {
     let files: string[];
     try { files = fs.readdirSync(dir); } catch { return ''; }
-    const hit = pickHttpFile(files);
+    const hit = pickHttpFile(files, dir);
     return hit ? path.join(dir, hit) : '';
   };
-  return inDir(componentsDir) || inDir(specsDir);
+  const inComponents = inDir(componentsDir);
+  return inComponents || inDir(specsDir);
 }
 
 // ─── .http → endpoints + mock JSON ───────────────────────────────────────────────

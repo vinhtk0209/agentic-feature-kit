@@ -35,7 +35,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 // §8.1 AA.3 — reuse the PROVEN endpoint extractors (TS-AST api.ts parser + .http parser +
 // path normalizer + contract resolver). Do NOT hand-roll a second parser (Wall-1 rewrite).
-import { parseHttp, parseApiReturnTypes, normalizePath, resolveContractHttp } from './contract-probe';
+import { parseHttp, parseApiReturnTypes, normalizePath, resolveContractHttp, AmbiguousHttpFileError } from './contract-probe';
 // G-SUMMARY-TRUNCATE — reuse the heading-agnostic locator already proven for the Playwright
 // section (b11-runner.ts, buildPlaywrightInsert) instead of hand-rolling a second one here.
 import { findHeadingLine, normalizeHeading } from './b11-runner';
@@ -1182,9 +1182,17 @@ export function deriveFeatureEndpoints(
 export function resolveFeatureEndpoints(
   featureName: string | undefined, apiPath: string | undefined, opts: { dataGate: boolean },
 ): { endpoints: EndpointMatcher[]; applicable: boolean } {
-  const httpFile = featureName
-    ? resolveContractHttp(path.join('docs', 'components', featureName), path.join('docs', 'specs', featureName))
-    : '';
+  // f2-resolver-hardening: resolveContractHttp now fails closed (throws) on an ambiguous
+  // multi-.http dir. Treat that the same as an unresolvable feature (httpFile='') — the
+  // existing "missing source reads as ''" fail-closed path below already covers it.
+  let httpFile = '';
+  if (featureName) {
+    try {
+      httpFile = resolveContractHttp(path.join('docs', 'components', featureName), path.join('docs', 'specs', featureName));
+    } catch (e) {
+      if (!(e instanceof AmbiguousHttpFileError)) throw e;
+    }
+  }
   const readSafe = (p: string): string => { try { return p ? fs.readFileSync(p, 'utf8') : ''; } catch { return ''; } };
   return deriveFeatureEndpoints(readSafe(httpFile), readSafe(apiPath ?? ''), opts);
 }

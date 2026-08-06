@@ -42,6 +42,7 @@ import {
   compareShapeVsShape,
   parseApiReturnTypes,
   resolveContractHttp,
+  AmbiguousHttpFileError,
   type Shape,
   type FieldType,
   type ContractFinding,
@@ -436,9 +437,18 @@ export function reconcileFeature(opts: ReconcileFeatureOptions): ReconcileResult
     return errorResult(opts.feature, 'not-enhance-no-existing-code', contractStatus);
   }
   // (a) data problem: ENHANCE target, but the declared contract is absent.
+  // f2-resolver-hardening: resolveContractHttp now fails closed (throws) on an ambiguous
+  // multi-.http dir. Treat that the same as "no contract resolved" — the existing
+  // missing-declared-contract branch below already handles an empty afterPath.
+  let resolvedAfterPath = '';
+  try {
+    resolvedAfterPath = resolveContractHttp(opts.componentsDir ?? '', opts.specsDir ?? '');
+  } catch (e) {
+    if (!(e instanceof AmbiguousHttpFileError)) throw e;
+  }
   const afterPath = opts.afterPath && fs.existsSync(opts.afterPath)
     ? opts.afterPath
-    : resolveContractHttp(opts.componentsDir ?? '', opts.specsDir ?? '');
+    : resolvedAfterPath;
   if (!afterPath || !fs.existsSync(afterPath)) {
     return errorResult(opts.feature, 'missing-declared-contract', contractStatus, afterPath);
   }
