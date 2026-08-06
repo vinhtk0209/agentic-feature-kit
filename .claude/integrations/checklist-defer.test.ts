@@ -13,7 +13,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRowDefer, validateRowDefer, ChecklistDeferError, LOCKED_ANCHORS } from './checklist-defer';
+import {
+  parseRowDefer, validateRowDefer, ChecklistDeferError, LOCKED_ANCHORS,
+  stampRowDefer, buildPredicateCaptureInput,
+} from './checklist-defer';
 
 // A checklist ROW carrying an inline defer marker, mirroring the BE channel `<!-- enforced-by: BE -->`
 // (lint-feature.ts:125). The reason between `DEFER:` and `-->` is what parseRowDefer dissects.
@@ -64,4 +67,102 @@ test('valid defer (§10.4 + predicate, locked) → admitted, no throw', () => {
 test('no defer marker on the row → parseRowDefer returns null', () => {
   const plain = '| ACT-03 | another AC | Playwright | ✅ Pass | run-ref |';
   assert.equal(parseRowDefer(plain), null);
+});
+
+// ── §10.9 D9.2 — stampRowDefer: writer-side capture-time evaluation (C3b-iv, this session) ──
+
+test('stampRowDefer — well-formed marker, predicate UNSATISFIED → stamp:unsatisfied written', () => {
+  const line = row('§10.4 ; predicate:no-published-assessment');
+  const out = stampRowDefer(line, { assessments: [] }, 'run-abc');
+  const parsed = parseRowDefer(out);
+  assert.ok(parsed, 'stamped line must still parse as a defer marker');
+  assert.equal(parsed!.anchor, '§10.4', 'anchor preserved');
+  assert.equal(parsed!.predicateKey, 'no-published-assessment', 'predicate key preserved');
+  assert.deepEqual(parsed!.stamp, { outcome: 'unsatisfied', runRef: 'run-abc' }, 'stamp reflects the evaluated outcome + supplied run-ref');
+});
+
+test('stampRowDefer — well-formed marker, predicate SATISFIED → stamp:satisfied written', () => {
+  const line = row('§10.4 ; predicate:no-published-assessment');
+  const out = stampRowDefer(line, { assessments: [{ examId: 1 }] }, 'run-abc');
+  const parsed = parseRowDefer(out);
+  assert.deepEqual(parsed!.stamp, { outcome: 'satisfied', runRef: 'run-abc' });
+});
+
+test('stampRowDefer — specific-exam-filter predicate, no non-empty chart → unsatisfied', () => {
+  const line = row('§10.4 ; predicate:specific-exam-filter');
+  const out = stampRowDefer(line, { perExamCharts: [{ empty: true }, { empty: true }] }, 'run-xyz');
+  assert.deepEqual(parseRowDefer(out)!.stamp, { outcome: 'unsatisfied', runRef: 'run-xyz' });
+});
+
+test('stampRowDefer — specific-exam-filter predicate, one non-empty chart → satisfied', () => {
+  const line = row('§10.4 ; predicate:specific-exam-filter');
+  const out = stampRowDefer(line, { perExamCharts: [{ empty: true }, { empty: false }] }, 'run-xyz');
+  assert.deepEqual(parseRowDefer(out)!.stamp, { outcome: 'satisfied', runRef: 'run-xyz' });
+});
+
+test('stampRowDefer — re-stamping replaces a stale stamp, does not duplicate the clause', () => {
+  const already = row('§10.4 ; predicate:no-published-assessment ; stamp:satisfied@old-run');
+  const out = stampRowDefer(already, { assessments: [] }, 'new-run');
+  const parsed = parseRowDefer(out)!;
+  assert.deepEqual(parsed.stamp, { outcome: 'unsatisfied', runRef: 'new-run' }, 'fresh evaluation overwrites the stale stamp');
+  const stampClauseCount = (out.match(/stamp:/g) ?? []).length;
+  assert.equal(stampClauseCount, 1, 'exactly one stamp: clause must remain, never two');
+});
+
+test('stampRowDefer — no DEFER marker on the row → line returned byte-identical', () => {
+  const plain = '| ACT-03 | another AC | Playwright | ✅ Pass | run-ref |';
+  assert.equal(stampRowDefer(plain, { assessments: [] }, 'run-1'), plain);
+});
+
+test('stampRowDefer — malformed marker (no predicate key) → left untouched, not this function\'s job to fix', () => {
+  const line = row('§10.4');
+  const out = stampRowDefer(line, { assessments: [] }, 'run-1');
+  assert.equal(out, line, 'anchorless/predicate-less markers are the READER\'s (validateRowDefer\'s) STOP, not silently patched here');
+});
+
+test('stampRowDefer — unknown predicate key → left untouched (governed lookup, not a throw here)', () => {
+  const line = row('§10.4 ; predicate:some-future-key-not-yet-registered');
+  const out = stampRowDefer(line, { assessments: [] }, 'run-1');
+  assert.equal(out, line);
+});
+
+// ── buildPredicateCaptureInput — duck-typed, feature-agnostic extraction from raw network
+//    observations (ApiResponseObservation-shaped: {url, status, bodyText}). Matches on RESPONSE
+//    SHAPE (a boolean `.empty` field ⇒ a charts-like observation; an `.assessments` array ⇒ an
+//    assessments-like observation), never on URL substrings — so this stays feature-agnostic even
+//    though PREDICATE_REGISTRY's 2 keys are themselves feature-specific. ──
+
+test('buildPredicateCaptureInput — extracts perExamCharts from empty-boolean-shaped bodies', () => {
+  const obs = [
+    { url: 'https://x/reports/assessments/charts?exam_id=157', status: 200, bodyText: JSON.stringify({ empty: true, exam_id: 157 }) },
+    { url: 'https://x/reports/overview', status: 200, bodyText: JSON.stringify({ totalEnrolled: 5 }) },
+  ];
+  const input = buildPredicateCaptureInput(obs);
+  assert.deepEqual(input.perExamCharts, [{ empty: true }]);
+});
+
+test('buildPredicateCaptureInput — extracts + flattens assessments-shaped bodies', () => {
+  const obs = [
+    { url: 'https://x/reports/assessments', status: 200, bodyText: JSON.stringify({ assessments: [{ exam_id: 157 }, { exam_id: 177 }] }) },
+  ];
+  const input = buildPredicateCaptureInput(obs);
+  assert.equal(input.assessments?.length, 2);
+});
+
+test('buildPredicateCaptureInput — non-JSON / unrelated bodies are skipped, never throw', () => {
+  const obs = [
+    { url: 'https://x/health', status: 200, bodyText: 'OK' },
+    { url: 'https://x/reports/learners', status: 200, bodyText: JSON.stringify({ content: [] }) },
+  ];
+  const input = buildPredicateCaptureInput(obs);
+  assert.deepEqual(input, { perExamCharts: [], assessments: [] });
+});
+
+test('round-trip — live-shaped capture (charts.empty=true, real exam) resolves specific-exam-filter as UNSATISFIED (matches the real backend state documented in GAPS-ROADMAP/HANDOFF)', () => {
+  const obs = [
+    { url: 'https://x/reports/assessments/charts?exam_id=157', status: 200, bodyText: JSON.stringify({ empty: true, exam_id: 157, exam_title: 'Bổ trợ thêm', status_chart: { passed: 0, incomplete: 0, not_attempted: 2 } }) },
+  ];
+  const line = row('§10.4 ; predicate:specific-exam-filter');
+  const out = stampRowDefer(line, buildPredicateCaptureInput(obs), 'run-live-shape');
+  assert.deepEqual(parseRowDefer(out)!.stamp, { outcome: 'unsatisfied', runRef: 'run-live-shape' });
 });

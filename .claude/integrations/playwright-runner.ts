@@ -39,6 +39,10 @@ import { parseHttp, parseApiReturnTypes, normalizePath, resolveContractHttp } fr
 // G-SUMMARY-TRUNCATE — reuse the heading-agnostic locator already proven for the Playwright
 // section (b11-runner.ts, buildPlaywrightInsert) instead of hand-rolling a second one here.
 import { findHeadingLine } from './b11-runner';
+// §10.9 D9.2 — writer-side capture-time defer-stamp evaluation (C3b-iv). stampRowDefer/
+// buildPredicateCaptureInput are pure (no fs) and live in checklist-defer.ts alongside
+// PREDICATE_REGISTRY/resolvePredicate; reused here rather than duplicated.
+import { stampRowDefer, buildPredicateCaptureInput, PredicateCaptureInput } from './checklist-defer';
 
 // Optional deps — loaded lazily so the script still runs if they're missing
 type PixelmatchFn = (a: Uint8Array, b: Uint8Array, out: Uint8Array, w: number, h: number, opts?: { threshold?: number; includeAA?: boolean }) => number;
@@ -620,7 +624,14 @@ function sanitizeEvidenceCell(value: string): string {
     .trim();
 }
 
-export function updateChecklistRows(checklistPath: string, verdicts: RowVerdict[]): void {
+export function updateChecklistRows(
+  checklistPath: string,
+  verdicts: RowVerdict[],
+  // §10.9 D9.2 — optional: when supplied, any row carrying a well-formed `<!-- DEFER: ... -->`
+  // marker is re-stamped from THIS run's capture before its Status/Evidence cells are written.
+  // Omitted by existing callers → behavior is unchanged (fully additive/backward-compatible).
+  deferInput?: { input: PredicateCaptureInput; runRef: string },
+): void {
   if (!fs.existsSync(checklistPath) || verdicts.length === 0) return;
   const raw = fs.readFileSync(checklistPath, 'utf8');
   const eol = raw.includes('\r\n') ? '\r\n' : '\n';
@@ -658,6 +669,16 @@ export function updateChecklistRows(checklistPath: string, verdicts: RowVerdict[
         `tierB-checklist-unrecognized-layout: row ${v.id} sits under a header that is absent or lacks a ` +
         `Status-equivalent/Evidence column (header: ${headerIdx >= 0 ? lines[headerIdx].trim() : 'NONE'}). ` +
         'Cell-count fallback is prohibited (§10.3); zero bytes written.');
+    }
+    // §10.9 D9.2 — re-stamp any DEFER marker on this row from THIS run's capture BEFORE cell-split,
+    // so the fresh stamp is what gets written. Convention (matching `enforced-by: BE`, §10.2): a
+    // marker lives in the description/Test cell, not Status/Evidence — stampRowDefer only touches
+    // text inside the marker's own `<!-- DEFER: ... -->` delimiters, so this is safe regardless of
+    // which cell it sits in, EXCEPT if a marker were placed inside the Status/Evidence cell itself,
+    // where the unconditional overwrite two lines below would discard it — not expected per the
+    // established BE-marker convention, not additionally guarded against here.
+    if (deferInput) {
+      lines[rowIdx] = stampRowDefer(lines[rowIdx], deferInput.input, deferInput.runRef);
     }
     const cells = cellsOf(lines[rowIdx]);
     if (cells.length <= Math.max(layout.statusIdx, layout.evidenceIdx)) {
@@ -1649,8 +1670,17 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
     // ── Update checklist.md if --ac-checklist provided ──
     if (cfg.acChecklistPath && fs.existsSync(cfg.acChecklistPath)) {
       const allVerdicts = [...extended.uiResults, ...extended.acResults, ...extended.unitTestResults];
+      // §10.9 D9.2 — re-evaluate any declared row-defer from THIS run's own network capture.
+      // runRef mirrors the SAME env var the reader's own-run trust rule checks
+      // (checklist-defer.ts validateRowDeferStamp, process.env.KIT_RUN_ID) — record-verify.ts's
+      // captureAndRecord() sets it into this process's env before spawning the tierB command,
+      // so a real orchestrated run stamps with the id the reader will later see. Absent that
+      // orchestration (e.g. a standalone manual invocation), the placeholder deliberately will
+      // NOT match the reader's (also-unset) KIT_RUN_ID once a real run id exists — legitimate
+      // fail-closed behavior, not a bug: an unstamped/unorchestrated run must not silently pass.
+      const deferInput = { input: buildPredicateCaptureInput(apiObservations), runRef: process.env.KIT_RUN_ID ?? 'no-kit-run-id' };
       try {
-        updateChecklistRows(cfg.acChecklistPath, allVerdicts);
+        updateChecklistRows(cfg.acChecklistPath, allVerdicts, deferInput);
         updateChecklistSummary(cfg.acChecklistPath, checks, extended.acResults, extended.unitTestResults, new Date().toISOString());
       } catch (e) {
         // §10.3 fail-closed: an unrecognized checklist header STOPs the writer with ZERO bytes

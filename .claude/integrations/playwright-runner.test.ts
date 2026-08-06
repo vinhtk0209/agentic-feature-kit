@@ -9,6 +9,7 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import {
   analyzeCascade, CascadeAnalysis,
@@ -16,7 +17,7 @@ import {
   ApiResponseObservation,
   deriveFeatureEndpoints, urlMatchesEndpoint, EndpointDerivationError,
   resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
-  replaceSummarySection,
+  replaceSummarySection, updateChecklistRows,
 } from './playwright-runner';
 
 let passed = 0;
@@ -462,6 +463,65 @@ test('G-SUMMARY-TRUNCATE R6 — emoji heading + trailing section together, both 
   assert(!result.includes('- OLD'), 'emoji-headed Summary must be replaced');
   assert(result.includes('- NEW A'), 'new summary content must appear');
   assert(result.includes(trailing), 'trailing Legend section must survive byte-identical');
+});
+
+// ── §10.9 D9.2 — updateChecklistRows(deferInput) integration: writer stamps a DEFER marker
+//    from real capture data, alongside (not instead of) the row's truthful Status/Evidence. ──
+
+function withTempChecklist(body: string, fn: (checklistPath: string) => void): void {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccheck-'));
+  const p = path.join(dir, 'checklist.md');
+  fs.writeFileSync(p, body, 'utf8');
+  try { fn(p); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+}
+
+const ACT_TABLE_WITH_DEFER = [
+  '# Checklist', '',
+  '## ACT — Acceptance Test Cases', '',
+  '| # | Test | Screen | Evidence | Status |',
+  '|---|------|--------|----------|--------|',
+  '| ACT-AC6 | select specific exam <!-- DEFER: §10.4 ; predicate:specific-exam-filter --> | Progress & Reports | | ⬜ |',
+].join('\n');
+
+test('updateChecklistRows(deferInput) — UNSATISFIED predicate: marker gets stamped, Status/Evidence stay the row\'s TRUTHFUL (failing) verdict — no fake-pass', () => {
+  withTempChecklist(ACT_TABLE_WITH_DEFER, (p) => {
+    // Real-shaped capture (mirrors the live-captured contract: exam 157, charts.empty=true — no
+    // non-empty chart observed anywhere in this run) → specific-exam-filter is UNSATISFIED.
+    const deferInput = {
+      input: { perExamCharts: [{ empty: true }] },
+      runRef: 'run-int-1',
+    };
+    updateChecklistRows(p, [{ id: 'ACT-AC6', passed: false, evidence: 'pr-status-chart not visible' }], deferInput);
+    const out = fs.readFileSync(p, 'utf8');
+    assert(out.includes('stamp:unsatisfied@run-int-1'), 'marker must carry the freshly evaluated unsatisfied stamp');
+    assert(out.includes('❌ Fail'), 'Status cell must still show the row\'s REAL (failing) verdict — defer stamping never rewrites Status to a pass');
+    assert(!out.includes('✅ Pass'), 'must never fake a pass on a row that genuinely failed, defer or not');
+  });
+});
+
+test('updateChecklistRows(deferInput) — SATISFIED predicate: marker still stamped honestly (auto-invalidation signal), row unaffected otherwise', () => {
+  withTempChecklist(ACT_TABLE_WITH_DEFER, (p) => {
+    // A hypothetical run where a non-empty chart WAS observed — predicate flips to satisfied,
+    // meaning (per §10.4/D9.1) this defer would auto-invalidate: the AC must be evaluated for
+    // real, no grandfathering.
+    const deferInput = {
+      input: { perExamCharts: [{ empty: false }] },
+      runRef: 'run-int-2',
+    };
+    updateChecklistRows(p, [{ id: 'ACT-AC6', passed: true, evidence: 'pr-status-chart visible' }], deferInput);
+    const out = fs.readFileSync(p, 'utf8');
+    assert(out.includes('stamp:satisfied@run-int-2'), 'marker must reflect the satisfied outcome');
+    assert(out.includes('✅ Pass'), 'a genuinely-passing row must still show its real pass — stamping is additive, not a suppression mechanism');
+  });
+});
+
+test('updateChecklistRows — omitted deferInput (existing callers) leaves a DEFER marker untouched, exactly the pre-this-session behavior', () => {
+  withTempChecklist(ACT_TABLE_WITH_DEFER, (p) => {
+    updateChecklistRows(p, [{ id: 'ACT-AC6', passed: false, evidence: 'x' }]);
+    const out = fs.readFileSync(p, 'utf8');
+    assert(out.includes('<!-- DEFER: §10.4 ; predicate:specific-exam-filter -->'), 'marker text must be byte-identical when no deferInput is supplied (backward compatibility)');
+    assert(!out.includes('stamp:'), 'no stamp clause should appear without deferInput');
+  });
 });
 
 // ── report ────────────────────────────────────────────────────────────

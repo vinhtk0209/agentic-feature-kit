@@ -188,3 +188,65 @@ export function isLineValidlyDeferred(ln: string): boolean {
   if (!parsed) return false;
   return isDeferValid(parsed);
 }
+
+/**
+ * §10.9 D9.2 — writer-side capture-time evaluation (C3b-iv). Given a checklist row's raw line and
+ * this run's predicate-capture input, re-evaluates the row's `<!-- DEFER: ... -->` marker (if any)
+ * and rewrites its `stamp:` clause to the freshly computed outcome + `runRef`. The marker's
+ * anchor/predicate-key are preserved verbatim; any PRIOR stamp clause is replaced (never
+ * duplicated) — "re-evaluated on every run" (§10.4) means the writer always re-stamps, it never
+ * trusts a stamp already on disk.
+ *
+ * Deliberately permissive on malformed input: a marker missing anchor/predicate-key, or naming an
+ * unregistered predicate key, is returned UNCHANGED — this function's job is only to stamp a
+ * well-formed marker, never to validate or repair one. Validation (and the STOP on anything
+ * malformed) is validateRowDefer/validateRowDeferStamp's job, on the READER side; duplicating that
+ * logic here would create two sources of truth for "is this marker well-formed."
+ * A line with no marker at all is returned byte-identical (pure passthrough).
+ */
+export function stampRowDefer(line: string, input: PredicateCaptureInput, runRef: string): string {
+  const parsed = parseRowDefer(line);
+  if (!parsed || !parsed.anchor || !parsed.predicateKey) return line;
+  let fn: (i: PredicateCaptureInput) => boolean;
+  try {
+    fn = resolvePredicate(parsed.predicateKey);
+  } catch {
+    return line;
+  }
+  const outcome = fn(input) ? 'satisfied' : 'unsatisfied';
+  const reason = `${parsed.anchor} ; predicate:${parsed.predicateKey} ; stamp:${outcome}@${runRef}`;
+  return line.replace(/<!--\s*DEFER:\s*.+?\s*-->/i, `<!-- DEFER: ${reason} -->`);
+}
+
+/**
+ * §10.9 D9.1 sources ("per-exam charts network capture" / "assessments network capture") —
+ * feature-agnostic extraction of PredicateCaptureInput from raw ApiResponseObservation-shaped
+ * network responses ({url, status, bodyText}). Matches on RESPONSE SHAPE (duck-typed), never on a
+ * URL substring or feature name: a body with a boolean `.empty` field contributes to
+ * `perExamCharts`; a body with an `.assessments` array contributes (flattened) to `assessments`.
+ * This keeps the extraction generic even though PREDICATE_REGISTRY's 2 seed keys are themselves
+ * feature-specific — a future feature's predicate can reuse this helper without adding a new
+ * URL-pattern special case here, as long as its own response shapes are similarly distinctive.
+ * Non-JSON or unrelated bodies are silently skipped (never throw — a capture session's response
+ * list legitimately contains many endpoints this function has no opinion about).
+ */
+export function buildPredicateCaptureInput(
+  observations: Array<{ url: string; status: number; bodyText: string }>,
+): PredicateCaptureInput {
+  const perExamCharts: Array<{ empty: boolean }> = [];
+  const assessments: unknown[] = [];
+  for (const obs of observations) {
+    let body: unknown;
+    try {
+      body = JSON.parse(obs.bodyText);
+    } catch {
+      continue;
+    }
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      const b = body as Record<string, unknown>;
+      if (typeof b.empty === 'boolean') perExamCharts.push({ empty: b.empty });
+      if (Array.isArray(b.assessments)) assessments.push(...b.assessments);
+    }
+  }
+  return { perExamCharts, assessments };
+}
