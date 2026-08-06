@@ -17,7 +17,7 @@ import {
   ApiResponseObservation,
   deriveFeatureEndpoints, urlMatchesEndpoint, EndpointDerivationError,
   resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
-  replaceSummarySection, updateChecklistRows,
+  replaceSummarySection, countChecklistSection, updateChecklistRows,
 } from './playwright-runner';
 
 let passed = 0;
@@ -463,6 +463,53 @@ test('G-SUMMARY-TRUNCATE R6 — emoji heading + trailing section together, both 
   assert(!result.includes('- OLD'), 'emoji-headed Summary must be replaced');
   assert(result.includes('- NEW A'), 'new summary content must appear');
   assert(result.includes(trailing), 'trailing Legend section must survive byte-identical');
+});
+
+// ── G-COUNTSECTION-LITERAL-MATCH — countChecklistSection heading-agnostic match ──
+
+const ACT_SECTION_LITERAL = [
+  '# Checklist', '',
+  '## ACT — Acceptance Test Cases', '',
+  '| # | Test | Screen | Evidence | Status |',
+  '|---|------|--------|----------|--------|',
+  '| ACT-AC1 | check one | | ok | ✅ Pass |',
+  '| ACT-AC2 | check two <!-- enforced-by: BE --> | | | ⚠️ |',
+  '| ACT-AC3 | check three | | | ❌ Fail |',
+  '', '## UX States', '',
+  '| # | State | Screen | Evidence | Status |',
+  '|---|-------|--------|----------|--------|',
+  '| UX-1 | should not be counted in ACT | | | ⬜ |',
+].join('\n');
+
+test('countChecklistSection — literal heading still resolves (regression)', () => {
+  const r = countChecklistSection(ACT_SECTION_LITERAL, 'ACT');
+  assert(r.total === 2, `expected 2 non-BE rows, got ${r.total}`);
+  assert(r.pass === 1, `expected 1 pass, got ${r.pass}`);
+  assert(r.fail === 1, `expected 1 fail, got ${r.fail}`);
+});
+
+test('countChecklistSection — stops at next ## heading (lower bound preserved)', () => {
+  const r = countChecklistSection(ACT_SECTION_LITERAL, 'ACT');
+  assert(r.total === 2, 'UX-1 row from the next section must not leak into the ACT count');
+});
+
+// Same content, but the heading has drifted to the template's emoji form — the exact
+// class of drift replaceSummarySection was already fixed for (G-SUMMARY-TRUNCATE).
+const ACT_SECTION_EMOJI_HEADING = ACT_SECTION_LITERAL.replace(
+  '## ACT — Acceptance Test Cases',
+  '## 🧪 ACT — Acceptance Test Cases',
+);
+
+test('G-COUNTSECTION-LITERAL-MATCH — emoji-drifted heading still resolves (was silent zero)', () => {
+  const r = countChecklistSection(ACT_SECTION_EMOJI_HEADING, 'ACT');
+  assert(r.total === 2, `expected 2 non-BE rows on emoji heading, got ${r.total} (silent-zero bug if 0)`);
+  assert(r.pass === 1, `expected 1 pass, got ${r.pass}`);
+  assert(r.fail === 1, `expected 1 fail, got ${r.fail}`);
+});
+
+test('G-COUNTSECTION-LITERAL-MATCH — missing heading still returns all-zero, not a throw', () => {
+  const r = countChecklistSection(ACT_SECTION_LITERAL, 'Nonexistent Section');
+  assert(r.total === 0 && r.pass === 0 && r.fail === 0 && r.pending === 0, 'missing heading must return all-zero');
 });
 
 // ── §10.9 D9.2 — updateChecklistRows(deferInput) integration: writer stamps a DEFER marker

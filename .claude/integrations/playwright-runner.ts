@@ -38,7 +38,7 @@ import * as path from 'path';
 import { parseHttp, parseApiReturnTypes, normalizePath, resolveContractHttp } from './contract-probe';
 // G-SUMMARY-TRUNCATE — reuse the heading-agnostic locator already proven for the Playwright
 // section (b11-runner.ts, buildPlaywrightInsert) instead of hand-rolling a second one here.
-import { findHeadingLine } from './b11-runner';
+import { findHeadingLine, normalizeHeading } from './b11-runner';
 // §10.9 D9.2 — writer-side capture-time defer-stamp evaluation (C3b-iv). stampRowDefer/
 // buildPredicateCaptureInput are pure (no fs) and live in checklist-defer.ts alongside
 // PREDICATE_REGISTRY/resolvePredicate; reused here rather than duplicated.
@@ -708,12 +708,20 @@ export function countChecklistSection(
   text: string,
   title: string,
 ): { total: number; pass: number; fail: number; pending: number } {
-  const startIdx = text.indexOf(`## ${title}`);
-  if (startIdx === -1) return { total: 0, pass: 0, fail: 0, pending: 0 };
-  const rest = text.slice(startIdx);
-  const nextSection = rest.match(/\n## /);
-  const section = nextSection ? rest.slice(0, nextSection.index) : rest;
-  const tableLines = section.split('\n').filter(
+  // Heading-agnostic match (G-COUNTSECTION-LITERAL-MATCH): reuses the same
+  // normalizeHeading/findHeadingLine pair replaceSummarySection already relies on, so a
+  // title's heading resolves the same whether it's plain (`## ACT — ...`) or emoji-prefixed
+  // (`## 🧪 ACT — ...`) — a literal indexOf silently returned an all-zero count on drift.
+  const needle = normalizeHeading(`## ${title}`);
+  const lines = text.split(/\r\n|\r|\n/);
+  const startLine = needle === null ? -1 : findHeadingLine(text, needle);
+  if (startLine === -1) return { total: 0, pass: 0, fail: 0, pending: 0 };
+  let endLine = lines.length;
+  for (let i = startLine + 1; i < lines.length; i += 1) {
+    if (/^\s*#{2,}\s+/.test(lines[i])) { endLine = i; break; }
+  }
+  const section = lines.slice(startLine, endLine);
+  const tableLines = section.filter(
     (l) => /^\|/.test(l.trim()) && !/^\|\s*[-:]+\s*\|/.test(l.trim()),
   );
   // §10.2 D2 — BE-exclusion symmetry: a row tagged `<!-- enforced-by: BE -->` is a backend
