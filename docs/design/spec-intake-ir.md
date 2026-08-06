@@ -1,8 +1,8 @@
 # Spec-IR — canonical intake representation (f3-spec-intake-ir)
 
-Status: §1–4 implemented this canary (schema, provenance model, adapter contract, ambiguity
-handling) for the **raw-US / Word / PDF / Excel** adapters. §5–6 (split criteria, AC-conservation)
-live in `f4-feature-splitter`'s own section of this doc, added when that phase lands.
+Status: §1–4 (schema, provenance model, adapter contract, ambiguity handling) implemented in
+`f3-spec-intake-ir` for the **raw-US / Word / PDF / Excel** adapters. §5–6 (split criteria,
+AC-conservation invariant) implemented in `f4-feature-splitter`.
 
 **Descoped this canary, explicitly:** "Confluence path refactored onto IR, byte-equivalent B0
 behavior proven by golden tests" (`ROADMAP-AUTONOMOUS-SDLC.md` f3 attack-tests). B0 today ingests
@@ -87,6 +87,48 @@ paragraphs that don't match are left as plain `paragraphs[]` entries, never forc
 under-extraction (a human adds a missed AC by hand) is preferred over over-extraction (a fabricated
 AC with fabricated provenance, which `validateSpecIR` would reject anyway since it has no real
 source quote).
+
+## §5 — Split criteria (f4-feature-splitter)
+
+`splitFeature(ir: SpecIR, opts)` (`.claude/integrations/feature-splitter.ts`) partitions
+`ir.acceptanceCriteria` into sub-features by ONE of two deterministic modes — never LLM judgment,
+so AC-conservation is a mechanical property of the algorithm, not something that could silently
+drop or duplicate an AC:
+
+1. **Tag mode** (used when ≥1 AC carries an inline `[Area: <name>]` marker in its text): ACs are
+   grouped by area tag, in first-seen area order. An area whose AC count exceeds
+   `opts.maxAcsPerSubFeature` is NOT silently kept oversized — it is flagged in `warnings[]` with a
+   re-split recommendation naming the area and its AC count.
+2. **Size mode** (fallback, no tags present anywhere): ACs are chunked in original order into
+   groups of at most `opts.maxAcsPerSubFeature` (default 5) — a straight array partition, so
+   conservation is trivially exact.
+
+Sub-feature dependency ordering: an AC may carry an inline `[DependsOn: <sub-feature-name>]`
+marker; if present anywhere, `splitFeature` builds the dependency graph from those markers and
+topologically sorts it, throwing `CyclicSplitDependencyError` (fail-closed, listing the cycle) if
+one exists. With no markers, sub-features default to a linear chain in derivation order
+(sub-feature *N* depends on *N-1*) — always acyclic by construction.
+
+A split producing exactly one sub-feature (parent small enough to fit under
+`maxAcsPerSubFeature`, or all ACs share one tag) is **allowed, not rejected** — flagged in
+`warnings[]` as a degenerate split so a human can judge whether splitting was warranted at all.
+
+## §6 — AC-conservation invariant + naming/branching convention
+
+`verifyAcConservation(parentAcs, subFeatures)` is the tooling-proven invariant the DoD requires:
+the union of every sub-feature's AC ids must equal the parent's AC id set exactly — zero drops
+(an id in the parent, missing from every sub-feature) and zero double-ownership (an id present in
+more than one sub-feature). `splitFeature` calls this on its OWN output before returning (same
+fail-closed-before-return discipline as `validateSpecIR` in §1) — a splitter bug can never silently
+produce a result with a dropped or duplicated AC.
+
+Naming: sub-feature `name` = `${parentName}-${areaSlug}` (tag mode) or `${parentName}-part${n}`
+(size mode), 1-based. Branch convention (matches this workspace's own default-branch rule): each
+sub-feature's suggested branch is `feature/${parentName}-<suffix>`, never a bare/base branch.
+`/split-feature` (the command) writes each sub-feature as its own
+`docs/specs/<parentName>-<suffix>/raw-spec.md`, independently B0-consumable (a fresh `/feature-from-
+confluence` run over that file needs nothing from the parent spec or sibling sub-features besides
+the `dependsOn` ordering already recorded in `SPLIT.json`).
 
 ## Zero-new-dependency constraint (this canary)
 
