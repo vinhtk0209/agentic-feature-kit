@@ -65,11 +65,17 @@ export function splitSections(text: string): Section[] {
   return sections;
 }
 
+/** Shared chars/4 heuristic — reused by evidence-bundle.ts's per-phase context budgets
+ *  (p1-harness-evidence) so the two size ratchets in this repo don't diverge on the same estimate. */
+export function estimateTokens(text: string): number {
+  return Math.round(text.length / 4);
+}
+
 export function analyzeBudget(filePath: string, budgetKb: number | null): BudgetReport {
   const text = fs.readFileSync(filePath, 'utf8');
   const bytes = Buffer.byteLength(text, 'utf8');
   const kb = Math.round((bytes / 1024) * 10) / 10;
-  const approxTokens = Math.round(text.length / 4);
+  const approxTokens = estimateTokens(text);
   const sections = splitSections(text).sort((a, b) => b.bytes - a.bytes);
   return {
     file: filePath,

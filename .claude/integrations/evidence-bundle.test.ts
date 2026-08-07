@@ -1,0 +1,256 @@
+/**
+ * evidence-bundle.test.ts — attack-suite for p1-harness-evidence.
+ *
+ * Required canaries (ROADMAP-AUTONOMOUS-SDLC.md p1-harness-evidence DoD):
+ *   (a) bundle builder collects the emitted artifacts into an addressable bundle.
+ *   (b) sha256 manifest: per-file + top-level hash.
+ *   (c) tamper attack-test: modify one bundled artifact => manifest mismatch => fail-closed.
+ *   (d) resume: interrupted run resumes from last completed B-phase using bundles alone.
+ *   (e) per-phase context budgets: declared + enforced (separable DoD part 3).
+ *
+ * Standalone, no jest. Run:  npx tsx .claude/integrations/evidence-bundle.test.ts
+ */
+
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import {
+  buildBundle, verifyBundle, resumeFromBundles, PHASE_ORDER,
+  UnknownPhaseError, MissingArtifactError, EmptyBundleError, ContextBudgetExceededError,
+} from './evidence-bundle';
+
+let passed = 0;
+let failed = 0;
+function test(name: string, fn: () => void) {
+  try { fn(); passed += 1; console.log(`✅ ${name}`); } catch (e) { failed += 1; console.log(`❌ ${name}\n     ${(e as Error).stack ?? (e as Error).message}`); }
+}
+function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
+function assertThrows(fn: () => void, ctor: Function, label: string) {
+  try { fn(); } catch (e) { assert(e instanceof ctor, `${label}: expected ${ctor.name}, got ${(e as Error)?.constructor?.name}: ${(e as Error).message}`); return; }
+  throw new Error(`${label}: expected a throw, got a normal return`);
+}
+
+function mkTmpRepo(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'evidence-bundle-'));
+}
+function writeRepoFile(cwd: string, relPath: string, content: string): void {
+  const abs = path.join(cwd, relPath);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  fs.writeFileSync(abs, content, 'utf8');
+}
+
+// ─── (a) bundle builder collects declared artifacts into an addressable bundle ───────────────
+
+test('(a) build: collects inputs + outputs + transcripts into files[], manifest addressable on disk', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/ux-states.json', '{"states":[]}');
+  writeRepoFile(cwd, 'docs/specs/Foo/checklist.md', '# checklist');
+  const manifest = buildBundle({
+    featureName: 'Foo', phase: 'B5', cwd,
+    inputs: ['docs/specs/Foo/ux-states.json'],
+    outputs: ['docs/specs/Foo/checklist.md'],
+    transcripts: { probe: 'npm run types 2>&1 -> 0 errors' },
+  });
+  assert(manifest.files.length === 3, `expected 3 file entries, got ${manifest.files.length}`);
+  assert(manifest.files.some((f) => f.role === 'input' && f.path.endsWith('ux-states.json')), 'input entry present');
+  assert(manifest.files.some((f) => f.role === 'output' && f.path.endsWith('checklist.md')), 'output entry present');
+  const transcriptEntry = manifest.files.find((f) => f.role === 'transcript');
+  assert(!!transcriptEntry, 'transcript entry present');
+  const manifestOnDisk = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B5', 'manifest.json');
+  assert(fs.existsSync(manifestOnDisk), `manifest not written to expected addressable path: ${manifestOnDisk}`);
+  assert(fs.existsSync(path.resolve(cwd, transcriptEntry!.path)), 'transcript content actually persisted into the bundle');
+});
+
+test('(a) build: fail-closed on a declared-but-missing artifact (never a silent partial bundle)', () => {
+  const cwd = mkTmpRepo();
+  assertThrows(() => buildBundle({ featureName: 'Foo', phase: 'B5', cwd, outputs: ['docs/specs/Foo/does-not-exist.md'] }), MissingArtifactError, 'missing artifact');
+  assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), 'no partial bundle dir left behind after a missing-artifact failure');
+});
+
+test('(a) build: rejects an unknown phase id (typo-safety over PHASE_ORDER)', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/x.md', 'x');
+  assertThrows(() => buildBundle({ featureName: 'Foo', phase: 'B999', cwd, outputs: ['docs/specs/Foo/x.md'] }), UnknownPhaseError, 'unknown phase');
+});
+
+test('(a) build: refuses an empty bundle (zero inputs/outputs/transcripts)', () => {
+  const cwd = mkTmpRepo();
+  assertThrows(() => buildBundle({ featureName: 'Foo', phase: 'B4', cwd }), EmptyBundleError, 'empty bundle');
+});
+
+test('PHASE_ORDER covers all 23 B-phases from the flagship command (B0..B12.8)', () => {
+  assert(PHASE_ORDER.length === 23, `expected 23 phases, got ${PHASE_ORDER.length}: ${PHASE_ORDER.join(',')}`);
+  assert(PHASE_ORDER[0] === 'B0' && PHASE_ORDER[PHASE_ORDER.length - 1] === 'B12.8', 'order runs B0 -> B12.8');
+});
+
+// ─── (b) sha256 manifest: per-file + top-level hash ──────────────────────────────────────────
+
+test('(b) manifest: every file entry carries a real sha256, and the top-level manifestHash is a deterministic function of them', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'alpha content');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'] });
+  for (const f of manifest.files) assert(/^[0-9a-f]{64}$/.test(f.sha256), `entry sha256 must be 64 hex chars, got "${f.sha256}" for ${f.path}`);
+  assert(/^[0-9a-f]{64}$/.test(manifest.manifestHash), `manifestHash must be 64 hex chars, got "${manifest.manifestHash}"`);
+
+  // Rebuilding from the SAME inputs must reproduce the SAME manifestHash (deterministic, not a
+  // random/time-based value) — builtAt differs but manifestHash must not.
+  const cwd2 = mkTmpRepo();
+  writeRepoFile(cwd2, 'docs/specs/Foo/a.md', 'alpha content');
+  const manifest2 = buildBundle({ featureName: 'Foo', phase: 'B0', cwd: cwd2, outputs: ['docs/specs/Foo/a.md'] });
+  assert(manifest.manifestHash === manifest2.manifestHash, 'same content -> same manifestHash across independent builds');
+  assert(manifest.files[0].sha256 === manifest2.files[0].sha256, 'same file content -> same per-file sha256');
+});
+
+test('(b) manifest: verifyBundle reports valid:true and manifestSelfConsistent:true on a freshly built, untouched bundle', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'alpha content');
+  buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'] });
+  const v = verifyBundle('Foo', 'B0', cwd);
+  assert(v.exists && v.valid && v.manifestSelfConsistent, `expected clean valid bundle, got ${JSON.stringify(v)}`);
+  assert(v.fileMismatches.length === 0, 'no mismatches on a clean bundle');
+});
+
+// ─── (c) tamper attack-test: modified artifact => manifest mismatch => fail-closed ───────────
+
+test('(c) tamper: editing a BUNDLED OUTPUT FILE after build() is caught by verifyBundle -> invalid, fail-closed', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/checklist.md', '# original checklist');
+  buildBundle({ featureName: 'Foo', phase: 'B11', cwd, outputs: ['docs/specs/Foo/checklist.md'] });
+
+  // Tamper: mutate the live artifact the bundle referenced, WITHOUT rebuilding the bundle.
+  writeRepoFile(cwd, 'docs/specs/Foo/checklist.md', '# TAMPERED — attacker forged a pass');
+
+  const v = verifyBundle('Foo', 'B11', cwd);
+  assert(v.valid === false, 'tampered artifact must fail verification (fail-closed)');
+  assert(v.manifestSelfConsistent === true, 'manifest.json itself was untouched — only the referenced file drifted');
+  assert(v.fileMismatches.some((m) => m.reason === 'hash-mismatch' && m.path.endsWith('checklist.md')), `expected a hash-mismatch on checklist.md: ${JSON.stringify(v.fileMismatches)}`);
+});
+
+test('(c) tamper: hand-editing manifest.json itself (forging a hash) is caught via manifestSelfConsistent -> invalid, fail-closed', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/checklist.md', '# original checklist');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B11', cwd, outputs: ['docs/specs/Foo/checklist.md'] });
+
+  // Attacker forges the recorded hash in manifest.json to match a different (tampered) file,
+  // WITHOUT recomputing manifestHash — the self-consistency check must still catch it.
+  const mPath = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B11', 'manifest.json');
+  const forged = { ...manifest, files: manifest.files.map((f) => ({ ...f, sha256: 'deadbeef'.repeat(8) })) };
+  fs.writeFileSync(mPath, JSON.stringify(forged, null, 2), 'utf8');
+
+  const v = verifyBundle('Foo', 'B11', cwd);
+  assert(v.valid === false, 'a manifest.json whose file-list no longer matches its own manifestHash must fail-closed');
+  assert(v.manifestSelfConsistent === false, 'self-consistency check must detect the forged file list');
+});
+
+test('(c) tamper: a missing (deleted) bundled artifact is reported as a mismatch, not silently valid', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/checklist.md', '# original checklist');
+  buildBundle({ featureName: 'Foo', phase: 'B11', cwd, outputs: ['docs/specs/Foo/checklist.md'] });
+  fs.unlinkSync(path.join(cwd, 'docs', 'specs', 'Foo', 'checklist.md'));
+
+  const v = verifyBundle('Foo', 'B11', cwd);
+  assert(v.valid === false, 'deleted artifact must fail verification');
+  assert(v.fileMismatches.some((m) => m.reason === 'missing'), `expected a "missing" mismatch: ${JSON.stringify(v.fileMismatches)}`);
+});
+
+// ─── (d) resume: from any completed B-phase, using bundles alone ────────────────────────────
+
+test('(d) resume: no bundles at all -> resume from PHASE_ORDER[0], zero completed', () => {
+  const cwd = mkTmpRepo();
+  const r = resumeFromBundles('Foo', cwd);
+  assert(r.completedPhases.length === 0, 'nothing completed yet');
+  assert(r.lastCompletedPhase === null, 'no last-completed phase');
+  assert(r.resumeFromPhase === PHASE_ORDER[0], `expected resume at ${PHASE_ORDER[0]}, got ${r.resumeFromPhase}`);
+  assert(r.blockedAt?.reason === 'missing', 'first phase never ran -> "missing", not "invalid"');
+});
+
+test('(d) resume: an INTERRUPTED run (B0, B0.5, B1 bundled; B2 never ran) resumes exactly at B2, using bundles alone', () => {
+  const cwd = mkTmpRepo();
+  for (const phase of ['B0', 'B0.5', 'B1'] as const) {
+    writeRepoFile(cwd, `docs/specs/Foo/${phase}.txt`, `output of ${phase}`);
+    buildBundle({ featureName: 'Foo', phase, cwd, outputs: [`docs/specs/Foo/${phase}.txt`] });
+  }
+  const r = resumeFromBundles('Foo', cwd);
+  assert(JSON.stringify(r.completedPhases) === JSON.stringify(['B0', 'B0.5', 'B1']), `expected B0,B0.5,B1 completed, got ${JSON.stringify(r.completedPhases)}`);
+  assert(r.lastCompletedPhase === 'B1', `expected lastCompletedPhase=B1, got ${r.lastCompletedPhase}`);
+  assert(r.resumeFromPhase === 'B2', `expected resumeFromPhase=B2, got ${r.resumeFromPhase}`);
+});
+
+test('(d) resume: re-running resumeFromBundles on the SAME on-disk bundles is idempotent (no duplication, same answer twice)', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/B0.txt', 'out');
+  buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/B0.txt'] });
+  const r1 = resumeFromBundles('Foo', cwd);
+  const r2 = resumeFromBundles('Foo', cwd);
+  assert(JSON.stringify(r1) === JSON.stringify(r2), 'resume must be a pure read — identical bundles on disk -> identical resume state, every call');
+});
+
+test('(d) resume: a TAMPERED completed phase blocks resume there (fail-closed), even though later phases look fine on their own', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/B0.txt', 'out0');
+  buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/B0.txt'] });
+  writeRepoFile(cwd, 'docs/specs/Foo/B1.txt', 'out1');
+  buildBundle({ featureName: 'Foo', phase: 'B1', cwd, outputs: ['docs/specs/Foo/B1.txt'] });
+
+  // Tamper with B0's artifact after the fact.
+  writeRepoFile(cwd, 'docs/specs/Foo/B0.txt', 'TAMPERED');
+
+  const r = resumeFromBundles('Foo', cwd);
+  assert(r.resumeFromPhase === 'B0', `a tampered B0 must block resume AT B0, not skip to B1/B2 (got ${r.resumeFromPhase})`);
+  assert(r.blockedAt?.reason === 'invalid', 'must be reported as "invalid" (tamper), not "missing"');
+  assert(r.completedPhases.length === 0, 'nothing counts as trustworthy-completed once the very first phase is tampered');
+});
+
+test('(d) resume: every phase bundled and valid -> resumeFromPhase = DONE', () => {
+  const cwd = mkTmpRepo();
+  for (const phase of PHASE_ORDER) {
+    writeRepoFile(cwd, `docs/specs/Foo/${phase}.txt`, `output of ${phase}`);
+    buildBundle({ featureName: 'Foo', phase, cwd, outputs: [`docs/specs/Foo/${phase}.txt`] });
+  }
+  const r = resumeFromBundles('Foo', cwd);
+  assert(r.resumeFromPhase === 'DONE', `expected DONE, got ${r.resumeFromPhase}`);
+  assert(r.completedPhases.length === PHASE_ORDER.length, `expected all ${PHASE_ORDER.length} phases completed, got ${r.completedPhases.length}`);
+});
+
+// ─── (e) per-phase context budgets: declared + enforced ─────────────────────────────────────
+
+test('(e) budget: a declared default budget exists for every phase in PHASE_ORDER', () => {
+  // Import lazily via require to check the exported const without a second import binding —
+  // simpler: re-derive from a build that intentionally uses the DEFAULT (no override).
+  const cwd = mkTmpRepo();
+  for (const phase of PHASE_ORDER) {
+    writeRepoFile(cwd, `docs/specs/Foo/${phase}-small.txt`, 'tiny');
+    const manifest = buildBundle({ featureName: 'Foo', phase, cwd, outputs: [`docs/specs/Foo/${phase}-small.txt`] });
+    assert(typeof manifest.budgetTokens === 'number' && manifest.budgetTokens > 0, `phase ${phase} must have a positive declared budget, got ${manifest.budgetTokens}`);
+  }
+});
+
+test('(e) budget: a bundle whose content exceeds its declared budget is REFUSED (fail-closed), not silently written', () => {
+  const cwd = mkTmpRepo();
+  const bigContent = 'x'.repeat(20_000); // ~5000 tokens at chars/4, well over a 1000-token budget
+  writeRepoFile(cwd, 'docs/specs/Foo/huge.md', bigContent);
+  assertThrows(
+    () => buildBundle({ featureName: 'Foo', phase: 'B4', cwd, outputs: ['docs/specs/Foo/huge.md'], budgetTokens: 1000 }),
+    ContextBudgetExceededError,
+    'over-budget bundle',
+  );
+  assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B4', 'manifest.json')), 'no manifest written when the budget gate refuses the bundle');
+});
+
+test('(e) budget: allowOverBudget:true is a conscious, explicit escape hatch that still writes the true estimatedTokens', () => {
+  const cwd = mkTmpRepo();
+  const bigContent = 'x'.repeat(20_000);
+  writeRepoFile(cwd, 'docs/specs/Foo/huge.md', bigContent);
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B4', cwd, outputs: ['docs/specs/Foo/huge.md'], budgetTokens: 1000, allowOverBudget: true });
+  assert(manifest.estimatedTokens > manifest.budgetTokens, 'the override must not lie about being over budget');
+});
+
+test('(e) budget: a small bundle within its declared budget builds normally (the gate does not false-positive)', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/small.md', 'tiny content');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B4', cwd, outputs: ['docs/specs/Foo/small.md'] });
+  assert(manifest.estimatedTokens <= manifest.budgetTokens, 'a small bundle must not be flagged over budget');
+});
+
+console.log(`\n${passed} passed, ${failed} failed`);
+process.exit(failed > 0 ? 1 : 0);
