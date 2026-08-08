@@ -35,7 +35,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 // §8.1 AA.3 — reuse the PROVEN endpoint extractors (TS-AST api.ts parser + .http parser +
 // path normalizer + contract resolver). Do NOT hand-roll a second parser (Wall-1 rewrite).
-import { parseHttp, parseApiReturnTypes, normalizePath, resolveContractHttp, AmbiguousHttpFileError } from './contract-probe';
+import { parseHttp, parseApiReturnTypes, normalizePath, resolveContractHttp, AmbiguousHttpFileError, resolveApiBasePathFromEnvText } from './contract-probe';
 // G-SUMMARY-TRUNCATE — reuse the heading-agnostic locator already proven for the Playwright
 // section (b11-runner.ts, buildPlaywrightInsert) instead of hand-rolling a second one here.
 import { findHeadingLine, normalizeHeading } from './b11-runner';
@@ -1133,10 +1133,14 @@ function pathSet(paths: string[]): string[] {
  */
 export function deriveFeatureEndpoints(
   httpText: string, apiText: string, opts: { dataGate: boolean },
+  // basePathPrefix: path segment the app's configured base URL itself carries (e.g. '/api' when
+  // API_BASE_URL=http://host/api) — see contract-probe.ts normalizePath's doc for why source-text
+  // parsing alone can't see it. '' preserves prior behavior for a plain-origin base URL.
+  basePathPrefix: string = '',
 ): { endpoints: EndpointMatcher[]; applicable: boolean } {
-  const httpEndpoints = parseHttp(httpText);
+  const httpEndpoints = parseHttp(httpText, basePathPrefix);
   const H = pathSet(httpEndpoints.map((e) => e.path));
-  const A = pathSet(parseApiReturnTypes(apiText).map((r) => r.path));
+  const A = pathSet(parseApiReturnTypes(apiText, basePathPrefix).map((r) => r.path));
 
   if (H.length === 0 && A.length === 0) {
     if (opts.dataGate === false) return { endpoints: [], applicable: false }; // sanctioned static opt-out
@@ -1194,7 +1198,11 @@ export function resolveFeatureEndpoints(
     }
   }
   const readSafe = (p: string): string => { try { return p ? fs.readFileSync(p, 'utf8') : ''; } catch { return ''; } };
-  return deriveFeatureEndpoints(readSafe(httpFile), readSafe(apiPath ?? ''), opts);
+  // .env.development is what the webpack dev server actually injects into getConfig() at runtime
+  // (not .env.playwright, which only configures the test runner itself) — so it's the authoritative
+  // source for whether API_BASE_URL carries a path segment the derived templates must account for.
+  const basePathPrefix = resolveApiBasePathFromEnvText(readSafe(path.join(process.cwd(), '.env.development')));
+  return deriveFeatureEndpoints(readSafe(httpFile), readSafe(apiPath ?? ''), opts, basePathPrefix);
 }
 
 /** §4 verdict over the key API responses observed during a route load.

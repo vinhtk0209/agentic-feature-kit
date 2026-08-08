@@ -5,7 +5,7 @@
  *   npx tsx .claude/integrations/contract-probe.test.ts
  */
 
-import { probeContract, extractNullishFields, detectFallbackMasking, detectSuspectValues, type ContractFinding, type Shape } from './contract-probe';
+import { probeContract, extractNullishFields, detectFallbackMasking, detectSuspectValues, normalizePath, extractBaseUrlPath, resolveApiBasePathFromEnvText, type ContractFinding, type Shape } from './contract-probe';
 
 let passed = 0;
 let failed = 0;
@@ -211,6 +211,57 @@ test('suspect_value — extra (unmodeled) field with same value as typed field d
   const mockWithExtra = { ...cleanMock, surprise: 'x' };
   const f = probeContract({ httpText: http(mockWithExtra), typesText: TYPES, apiText: API, getOnly: true });
   assert(!f.some((x) => x.kind === 'suspect_value'), 'unmodeled extra fields must not pair with typed fields for suspect_value');
+});
+
+// ── basePathPrefix (double-/api base-URL fix) ───────────────────────────────
+
+test('normalizePath — no basePathPrefix is byte-identical to prior behavior', () => {
+  const t = '${getConfig().API_BASE_URL}/api/admin/v1/classes/${classId}/reports/overview';
+  assert(normalizePath(t) === '/api/admin/v1/classes/:p/reports/overview', `got ${normalizePath(t)}`);
+});
+
+test('normalizePath — basePathPrefix is prepended after the /api anchor is found', () => {
+  const t = '${getConfig().API_BASE_URL}/api/admin/v1/classes/${classId}/reports/overview';
+  const got = normalizePath(t, '/api');
+  assert(got === '/api/api/admin/v1/classes/:p/reports/overview', `got ${got}`);
+});
+
+test('normalizePath — basePathPrefix on an already-absolute observed pathname (no placeholder) is a no-op site — callers never pass it for observed URLs', () => {
+  // urlMatchesEndpoint calls normalizePath(pathname) with NO second arg — this just proves the
+  // default stays '' so that call site is unaffected by this change.
+  const observed = '/api/api/admin/v1/classes/4/reports/overview';
+  assert(normalizePath(observed) === observed, `default basePathPrefix must not alter observed-URL normalization, got ${normalizePath(observed)}`);
+});
+
+test('extractBaseUrlPath — path segment extracted, trailing slash stripped', () => {
+  assert(extractBaseUrlPath('http://localhost:8080/api') === '/api', extractBaseUrlPath('http://localhost:8080/api'));
+  assert(extractBaseUrlPath('http://localhost:8080/api/') === '/api', extractBaseUrlPath('http://localhost:8080/api/'));
+});
+
+test('extractBaseUrlPath — bare origin (no path) → empty string', () => {
+  assert(extractBaseUrlPath('http://localhost:8080') === '', extractBaseUrlPath('http://localhost:8080'));
+});
+
+test('extractBaseUrlPath — different path convention (e.g. staging /isu-elearner) extracted as-is, not assumed to be /api', () => {
+  assert(extractBaseUrlPath('https://api-stg.example.com/isu-elearner') === '/isu-elearner', extractBaseUrlPath('https://api-stg.example.com/isu-elearner'));
+});
+
+test('extractBaseUrlPath — unparseable value → empty string (fail-open)', () => {
+  assert(extractBaseUrlPath('not a url') === '', extractBaseUrlPath('not a url'));
+});
+
+test('resolveApiBasePathFromEnvText — reads API_BASE_URL with quotes, returns its path', () => {
+  const env = "APP_ID='authoring'\nAPI_BASE_URL='http://localhost:8080/api'\nPORT=1999\n";
+  assert(resolveApiBasePathFromEnvText(env) === '/api', resolveApiBasePathFromEnvText(env));
+});
+
+test('resolveApiBasePathFromEnvText — var absent → empty string', () => {
+  assert(resolveApiBasePathFromEnvText('APP_ID=authoring\nPORT=1999\n') === '', 'expected empty string when API_BASE_URL is absent');
+});
+
+test('resolveApiBasePathFromEnvText — var present but bare origin → empty string, unaffected', () => {
+  const env = "API_BASE_URL='http://localhost:8080'\n";
+  assert(resolveApiBasePathFromEnvText(env) === '', resolveApiBasePathFromEnvText(env));
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

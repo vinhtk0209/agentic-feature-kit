@@ -288,10 +288,22 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
     : undefined;
   const apiPathArg = apiFile ? `--api-path "${apiFile}"` : '';
 
+  // --visual-diff (2026-08-08): was opt-in-and-never-opted-in, so PLAYWRIGHT-007 and every
+  // baseline-backed ui_row silently reported "skipped"/unverified rather than a real verdict —
+  // a free pass, not a check. Wiring it unconditionally here makes Tier B run the real comparison
+  // for ANY state that carries a ux-states.json `baseline` field, for EVERY feature that uses
+  // b11-runner, not just the one this was fixed for. Two known consequences at the time of this
+  // change (grep docs/specs/*/ux-states.json for "baseline" before assuming a feature is
+  // unaffected): a feature whose baseline PNG is missing will now FAIL "Baseline missing" instead
+  // of silently passing; a feature with a real, current baseline will now be genuinely diffed and
+  // may fail if its baseline has drifted from the current UI. Neither is a regression this wiring
+  // causes — both are real gaps this wiring exposes. Threshold is NOT overridden here — it stays at
+  // playwright-runner's own default (--visual-diff-threshold, defaults to 5%, see runVisualDiff).
   const cmd = [
     `npx tsx "${runnerPath}"`,
     `"${route}"`,
     `--screenshot`,
+    `--visual-diff`,
     `--feature-name "${featureName}"`,
     interactionsArg,
     checklistArg,

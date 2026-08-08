@@ -130,11 +130,43 @@ export interface RouteType {
   rawPath?: string;
 }
 
-export function normalizePath(tpl: string): string {
+/**
+ * `basePathPrefix` accounts for a configured base URL that itself carries a path segment (e.g.
+ * `API_BASE_URL=http://host/api`, whose real requests land at `/api/api/...` because the app's own
+ * URL builders concatenate another literal `/api/...` on top). Source-text parsing sees only the
+ * literal text AFTER the `${...}`/`{{...}}` base-URL placeholder, so it can never know the base
+ * itself contributes a path — the caller resolves that (see `resolveApiBasePathFromEnvText`) and
+ * passes it in. Default '' preserves prior behavior for every base URL with no path segment, and
+ * for the observed-URL call site (`urlMatchesEndpoint`), which never passes this — an absolute
+ * response URL's pathname already reflects reality, doubling included, with nothing to prepend.
+ */
+export function normalizePath(tpl: string, basePathPrefix: string = ''): string {
   const i = tpl.indexOf('/api');
   let p = i >= 0 ? tpl.slice(i) : tpl;
+  if (basePathPrefix && i >= 0) p = basePathPrefix + p;
   p = p.replace(/\$\{[^}]+\}/g, ':p').replace(/\{\{[^}]+\}\}/g, ':p');
   return p.split(/[?\s]/)[0].replace(/\/+$/, '');
+}
+
+/** Path portion of a configured base URL (e.g. `http://host:8080/api` -> `/api`). '' for a bare
+ *  origin or an unparseable value — callers then apply zero prefix (today's behavior). */
+export function extractBaseUrlPath(baseUrl: string): string {
+  try {
+    const p = new URL(baseUrl.trim()).pathname.replace(/\/+$/, '');
+    return p;
+  } catch {
+    return '';
+  }
+}
+
+/** Read `API_BASE_URL` out of a `.env.development`-style file's TEXT (no disk I/O — the caller
+ *  reads the file) and return its path portion via `extractBaseUrlPath`. '' if the var is
+ *  absent/empty/unparseable, so a project whose base URL has no path segment is unaffected. */
+export function resolveApiBasePathFromEnvText(envText: string): string {
+  const m = envText.match(/^\s*API_BASE_URL\s*=\s*(.*)$/m);
+  if (!m) return '';
+  const raw = m[1].trim().replace(/^['"]|['"]$/g, '');
+  return raw ? extractBaseUrlPath(raw) : '';
 }
 
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'delete', 'patch']);
@@ -188,7 +220,7 @@ function expandTemplate(tpl: string, helpers: Map<string, string>): string {
  * => { …get(`…`)… }`). URL-builder helpers are resolved to their literal path so `normalizePath`
  * yields the same path the `.http` request line does. Output interface is unchanged (RouteType[]).
  */
-export function parseApiReturnTypes(apiText: string): RouteType[] {
+export function parseApiReturnTypes(apiText: string, basePathPrefix: string = ''): RouteType[] {
   const sf = ts.createSourceFile('api.ts', apiText, ts.ScriptTarget.Latest, true);
 
   // Pass 1: collect URL-builder helpers (const arrow / function returning a single template/string).
@@ -260,7 +292,7 @@ export function parseApiReturnTypes(apiText: string): RouteType[] {
     if (!call) return;
     const url = resolveUrl(call.urlArg);
     if (url === null) return;
-    out.push({ method: call.method, path: normalizePath(url), typeName: rt.typeName, isArray: rt.isArray, rawPath: url });
+    out.push({ method: call.method, path: normalizePath(url, basePathPrefix), typeName: rt.typeName, isArray: rt.isArray, rawPath: url });
   };
 
   sf.forEachChild((node) => {
@@ -370,13 +402,13 @@ function extractDefer(block: string): string | null {
   return m ? m[1].trim() : null;
 }
 
-export function parseHttp(httpText: string): HttpEndpoint[] {
+export function parseHttp(httpText: string, basePathPrefix: string = ''): HttpEndpoint[] {
   const blocks = httpText.split(/^###.*$/m);
   const out: HttpEndpoint[] = [];
   for (const block of blocks) {
     const req = block.match(/^\s*(GET|POST|PUT|DELETE|PATCH)\s+(\S+)/m);
     if (!req) continue;
-    const ep: HttpEndpoint = { method: req[1].toUpperCase(), path: normalizePath(req[2]), json: extractMockJson(block) };
+    const ep: HttpEndpoint = { method: req[1].toUpperCase(), path: normalizePath(req[2], basePathPrefix), json: extractMockJson(block) };
     const defer = extractDefer(block);
     if (defer) ep.deferReason = defer;
     out.push(ep);

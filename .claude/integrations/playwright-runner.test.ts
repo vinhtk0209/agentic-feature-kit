@@ -266,6 +266,47 @@ test('§8.1 REAL — progress-reports fixture (actual .http + actual api.ts) rec
     `E_feat mismatch.\n  got:      ${JSON.stringify(r.endpoints)}\n  expected: ${JSON.stringify(expected)}`);
 });
 
+// §8.1 basePathPrefix — the double-/api base-URL bug (2026-08-07): API_BASE_URL itself carries a
+// path segment (e.g. `http://host/api`), so the REAL runtime request lands at `/api/api/...`, but
+// source-text parsing of the SAME `${getConfig().API_BASE_URL}/api/...` template in both .http and
+// api.ts can only ever see the literal `/api/...` after the placeholder — H and A agree with each
+// other (no divergence thrown) but BOTH are wrong relative to the real served path, so a genuine
+// 2xx-non-empty response never matches E_feat. basePathPrefix fixes this by teaching the deriver
+// what the placeholder itself resolves to. Reuses the same real progress-reports fixture as the
+// §8.1 REAL test above — same H/A texts, only basePathPrefix differs.
+test('§8.1 basePathPrefix — real fixture + basePathPrefix="/api" reconciles to the DOUBLE-/api set, still no divergence', () => {
+  const FIX = path.join(__dirname, '__fixtures__', 'progress-reports');
+  const httpText = fs.readFileSync(path.join(FIX, 'contract.full.http'), 'utf8');
+  const apiText = fs.readFileSync(path.join(FIX, 'api.ts'), 'utf8');
+  const r = deriveFeatureEndpoints(httpText, apiText, { dataGate: true }, '/api'); // must NOT throw
+  assert(r.applicable === true, 'real feature must still be applicable with basePathPrefix set');
+  const expected = [
+    '/api/api/admin/v1/classes/:p/progress-reports/assessment-analytics',
+    '/api/api/admin/v1/classes/:p/progress-reports/export',
+    '/api/api/admin/v1/classes/:p/progress-reports/learners',
+    '/api/api/admin/v1/classes/:p/progress-reports/overview',
+  ];
+  assert(JSON.stringify(r.endpoints) === JSON.stringify(expected),
+    `E_feat mismatch.\n  got:      ${JSON.stringify(r.endpoints)}\n  expected: ${JSON.stringify(expected)}`);
+});
+
+test('§8.1 basePathPrefix — an observed double-/api URL now matches the corrected E_feat (was the RED case)', () => {
+  const FIX = path.join(__dirname, '__fixtures__', 'progress-reports');
+  const httpText = fs.readFileSync(path.join(FIX, 'contract.full.http'), 'utf8');
+  const apiText = fs.readFileSync(path.join(FIX, 'api.ts'), 'utf8');
+  const E = deriveFeatureEndpoints(httpText, apiText, { dataGate: true }, '/api').endpoints;
+  const realObservedUrl = 'https://api.fpt-apps.com/api/api/admin/v1/classes/4/progress-reports/overview';
+  const v = assessDataReached([obs(200, NONEMPTY, realObservedUrl)], E);
+  assert(v.passed === true && v.reason === 'data-reached',
+    `RED (before fix) was tierB-no-data-reached; GREEN expects data-reached, got ${v.reason}: ${v.evidence}`);
+  // Sanity: WITHOUT basePathPrefix (the pre-fix E_feat), the same observed URL must NOT match —
+  // proves the fix changed a real FAIL into a real PASS, not that the assertion is vacuous.
+  const Eunfixed = deriveFeatureEndpoints(httpText, apiText, { dataGate: true }).endpoints;
+  const vRed = assessDataReached([obs(200, NONEMPTY, realObservedUrl)], Eunfixed);
+  assert(vRed.passed === false && vRed.reason === 'tierB-no-data-reached',
+    `pre-fix E_feat must still fail on the double-/api observed URL (RED baseline), got ${vRed.reason}`);
+});
+
 // (d) EMPTY E_feat — opt-out vs fail-closed, per the gate flag.
 test('§8.1 (d) EMPTY E_feat + --no-data-gate → skip (opt-out, applicable=false)', () => {
   const r = deriveFeatureEndpoints('', '', { dataGate: false });
