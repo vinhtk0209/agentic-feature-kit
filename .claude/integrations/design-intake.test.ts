@@ -64,9 +64,16 @@ try {
     assert.equal(invalid.ok, false); assert.equal(!invalid.ok && invalid.reason, 'ingest-image-hash-unresolved');
     assert.equal(fs.existsSync(path.join(root, 'bad-asset', 'DesignModel.json')), false);
   });
+
+  await test('D0.5 cannot be affected by a screenshot-diff false-positive storm', () => {
+    const implementation = fs.readFileSync(path.join(__dirname, 'design-intake.ts'), 'utf8');
+    assert.equal(implementation.includes('playwright-runner'), false);
+    assert.equal(implementation.includes('pixelmatch'), false);
+    assert.equal(implementation.includes('visual-diff'), false);
+  });
 } finally { fs.rmSync(root, { recursive: true, force: true }); }
 
-console.log(`design-intake tests ${passed}/3`);
+console.log(`design-intake tests ${passed}/4`);
 }
 
 main().catch((error) => { console.error(error); process.exit(1); });
