@@ -66,6 +66,8 @@ Before detecting the input type, **strip any workflow flags** from `$ARGUMENTS` 
 - Store the autonomy value as `AUTONOMY` (see `## AUTONOMY`); persist it later to `context-summary.md` as `autonomyGates`.
 - Store the remaining string (flags removed, trimmed) as `SPEC_INPUT`. Use `SPEC_INPUT` for Step 2 type detection and every B0 fetch/read/intake command. The raw URL/path passed to `fetch_confluence_page` or `Read` MUST NOT contain `--auto`.
 
+- Recognize these **flag-gated Design-to-UI** tokens separately and remove them before setting `SPEC_INPUT`: `--design-source=figma`, `--figma=<one-or-more-comma-separated-Figma-refs>`, and `--refresh-design`. Set `DESIGN_SOURCE`, `FIGMA_REFS`, and `REFRESH_DESIGN` respectively. The normal flagship path remains unchanged when `DESIGN_SOURCE` is empty.
+
 If no flags are present, `AUTONOMY` is empty (default OFF) and set `SPEC_INPUT=$ARGUMENTS` unchanged.
 
 ### Step 2 — Detect input type
@@ -99,6 +101,12 @@ Please re-run with a supported input type.
 **STOP immediately.**
 
 Only continue to SESSION BOOTSTRAP when `INPUT_TYPE` is `confluence`, `pdf`, `word`, `excel`, or `raw-us`.
+
+### Step 2.5 — Design-to-UI dual-input gate *(only when `--design-source=figma`)*
+
+If `DESIGN_SOURCE=figma`, `FIGMA_REFS` is mandatory. Run D0 only after B0 has produced the canonical Spec-IR, then run D0.5 before B1. Use `.claude/integrations/design-intake.ts` as the executable boundary: D0 reuses the canonical Spec-IR and validates the Figma file key without calling Figma; D0.5 is the **sole** DesignSource/Figma caller, checks a versioned `DesignModel.json` cache first, and honours `--refresh-design`.
+
+On any D0/D0.5 reason code, STOP fail-closed. On success hand forward only the parsed Spec-IR and `DesignModel.json` path. D1/D1.5 and all later phases MUST consume that handoff only: they MUST NOT re-parse the Confluence source and MUST NOT call Figma/MCP.
 
 ---
 
