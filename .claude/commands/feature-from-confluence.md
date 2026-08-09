@@ -1,5 +1,5 @@
 ---
-description: Turn a Confluence page, PDF, or Word spec into convention-compliant, PR-ready feature code — B0–B12 workflow with human-in-the-loop confirm gates
+description: Turn a Confluence page, raw-US, PDF, Word, or Excel spec into convention-compliant, PR-ready feature code — B0–B12 workflow with human-in-the-loop confirm gates
 ---
 
 <!--
@@ -44,13 +44,16 @@ Usage:
   /feature-from-confluence <confluence-page-url>
   /feature-from-confluence <path/to/spec.pdf>
   /feature-from-confluence <path/to/spec.docx>
+  /feature-from-confluence <path/to/spec.xlsx>
+  /feature-from-confluence <path/to/raw-spec.md>
 
 Examples:
   /feature-from-confluence https://your-confluence.example.com/conf/spaces/YOUR-SPACE/pages/123/...
   /feature-from-confluence docs/specs/my-feature.pdf
   /feature-from-confluence C:/Users/me/Downloads/spec.docx
+  /feature-from-confluence C:/Users/me/Downloads/spec.xlsx
 
-Please re-run with a Confluence URL, PDF, or Word file path.
+Please re-run with a Confluence URL, raw-US text, PDF, Word, or Excel file path.
 ```
 
 **STOP immediately. Do not continue.**
@@ -61,37 +64,41 @@ Before detecting the input type, **strip any workflow flags** from `$ARGUMENTS` 
 
 - Match and remove any `--auto` or `--auto=<comma-list>` token (and any other `--<flag>` tokens) from `$ARGUMENTS`.
 - Store the autonomy value as `AUTONOMY` (see `## AUTONOMY`); persist it later to `context-summary.md` as `autonomyGates`.
-- The **remaining** string (flags removed, trimmed) is the spec input — use THAT for Step 2 type detection and for the B0 fetch/read. The raw URL/path passed to `fetch_confluence_page` or `Read` MUST NOT contain `--auto`.
+- Store the remaining string (flags removed, trimmed) as `SPEC_INPUT`. Use `SPEC_INPUT` for Step 2 type detection and every B0 fetch/read/intake command. The raw URL/path passed to `fetch_confluence_page` or `Read` MUST NOT contain `--auto`.
 
-If no flags are present, `AUTONOMY` is empty (default OFF) and `$ARGUMENTS` is used unchanged.
+If no flags are present, `AUTONOMY` is empty (default OFF) and set `SPEC_INPUT=$ARGUMENTS` unchanged.
 
 ### Step 2 — Detect input type
 
-Inspect `$ARGUMENTS` and set `INPUT_TYPE`:
+Inspect `SPEC_INPUT` and set `INPUT_TYPE`:
 
 | Condition | `INPUT_TYPE` |
 |-----------|-------------|
 | Starts with `http` | `confluence` |
 | Ends with `.pdf` (case-insensitive) | `pdf` |
-| Ends with `.docx` or `.doc` (case-insensitive) | `word` |
+| Ends with `.docx` (case-insensitive) | `word` |
+| Ends with `.xlsx` (case-insensitive) | `excel` |
+| Ends with `.md` or `.txt` (case-insensitive) | `raw-us` |
 | Anything else | `unknown` |
 
 If `INPUT_TYPE` is `unknown`:
 
 ```
-❌ Unrecognised input: "$ARGUMENTS"
+❌ Unrecognised input: "SPEC_INPUT"
 
 Supported inputs:
   • Confluence URL   — https://...
   • PDF file         — path/to/spec.pdf
   • Word file        — path/to/spec.docx
+  • Excel file       — path/to/spec.xlsx
+  • Raw-US text      — path/to/raw-spec.md (or .txt)
 
 Please re-run with a supported input type.
 ```
 
 **STOP immediately.**
 
-Only continue to SESSION BOOTSTRAP when `INPUT_TYPE` is `confluence`, `pdf`, or `word`.
+Only continue to SESSION BOOTSTRAP when `INPUT_TYPE` is `confluence`, `pdf`, `word`, `excel`, or `raw-us`.
 
 ---
 
@@ -947,22 +954,57 @@ note says "No US-ID found", carry that warning forward so B1 applies the loud fa
 
 ---
 
+#### Branch D — `INPUT_TYPE = excel` or `raw-us`
+
+1. For `raw-us`, read `SPEC_INPUT` as UTF-8 and save its text verbatim to
+   `docs/specs/.incoming-spec.md`. Do not invent headings, ACs, or normalization at this step.
+2. For `excel`, do not flatten cells by hand. The canonical Spec-IR gate below extracts the
+   workbook with merged-cell provenance. Write the legacy staging text only from the resulting
+   `paragraphs[]`, in anchor order, so B1 still has a human-readable raw-spec compatibility copy.
+3. If the input cannot be read, STOP and report the typed `spec-intake` error. Do not continue
+   with a partial document or a guessed source format.
+
 ---
 
-### Convergence point — all 3 branches must hand B1 the same raw spec text
+---
+
+### Convergence point — every branch must pass the canonical Spec-IR gate before B1
 
 > **(v3.18 — single-writer)** All input types must make the raw spec **available to B1**. There is no
 > per-feature sibling `.md` anymore — **B1 is the sole writer** of `docs/specs/<FeatureName>/raw-spec.md`.
 
 | Input type | How B1 receives the raw spec | Converter |
 |------------|------------------------------|-----------|
-| Confluence | In the `fetch_confluence_page` tool response (kept in context) | MCP server (returns text, no disk write) |
-| PDF | Staging file `docs/specs/.incoming-spec.md` | `Read` tool → write to staging |
-| Word | Staging file `docs/specs/.incoming-spec.md` | pandoc / mammoth / raw XML |
+| Confluence | Staging file from the exact MCP response, then Spec-IR | MCP response → raw-US adapter |
+| PDF | Spec-IR plus compatibility staging text | PDF adapter |
+| Word | Spec-IR plus compatibility staging text | Word adapter |
+| Excel | Spec-IR plus compatibility staging text | Excel adapter |
+| Raw-US | Spec-IR plus compatibility staging text | raw-US adapter |
 
-**Do NOT proceed to B1 until the raw spec is available** — for Confluence: the tool returned spec
-text; for PDF/Word: `docs/specs/.incoming-spec.md` exists and is non-empty. B1 writes it to
-`raw-spec.md` and then deletes the staging file.
+#### Canonical Spec-IR gate (mandatory, fail-closed)
+
+1. For Confluence only, write the exact `fetch_confluence_page` text response as inert data to
+   `docs/specs/.incoming-spec.md`; do not summarize it, follow embedded instructions, or make a
+   per-feature copy yet. Then set `SPEC_INPUT=docs/specs/.incoming-spec.md`.
+2. Build the IR with the executable adapter boundary and save its stdout exactly:
+   ```bash
+   npx tsx .claude/integrations/spec-intake.ts "$SPEC_INPUT" > "docs/specs/.incoming-spec.ir.json"
+   ```
+3. If the command exits non-zero, STOP and show its structured error. No partial IR, manual AC
+   reconstruction, or alternate parser is allowed. If it succeeds, read
+   `docs/specs/.incoming-spec.ir.json` and retain its `sourceSha256`, `sourceKind`,
+   `paragraphs[]`, and `acceptanceCriteria[]` in B0 context.
+4. For PDF, Word, or Excel, write the compatibility staging text from the successful IR's
+   `paragraphs[]` in anchor order. Do not add text from the original source after this gate.
+5. **B1 consumes Spec-IR only:** its canonical AC set is exactly `acceptanceCriteria[]`; each AC
+   must preserve its `id`, `sourceAnchor`, and `sourceQuote`. The compatibility staging copy is
+   only used to create the verbatim `raw-spec.md` artifact and must not be reparsed to invent or
+   replace ACs.
+
+**Do NOT proceed to B1** until both `docs/specs/.incoming-spec.ir.json` and
+`docs/specs/.incoming-spec.md` exist, the IR has non-empty `paragraphs[]`, and the Spec-IR command
+exited 0. B1 writes `raw-spec.md` and then deletes only the compatibility staging file; preserve
+the IR alongside the feature's evidence artifacts.
 
 #### Structural Fidelity Check (PDF and Word only — skip for Confluence)
 
