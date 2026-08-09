@@ -26,6 +26,13 @@ const mcpCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
 type RpcMessage = { id?: number; result?: unknown; error?: { message?: string } };
 
+function safeToolError(result: { content?: Array<{ type?: string; text?: string }> }): string {
+  const text = result.content?.find((entry) => entry.type === 'text')?.text ?? 'no tool error text';
+  // Tool errors are expected to contain only status/configuration guidance, but redact anything
+  // that resembles a credential assignment before exposing diagnostic evidence.
+  return text.replace(/(token|pass(?:word)?|authorization)\s*[=:]\s*\S+/gi, '$1=[redacted]').slice(0, 400);
+}
+
 class McpClient {
   private readonly child: ChildProcessWithoutNullStreams;
   private buffer = '';
@@ -102,7 +109,7 @@ async function main(): Promise<void> {
     const response = await client.request(2, 'tools/call', { name: 'fetch_confluence_page', arguments: { url } });
     assert.ok(!response.error, `MCP tool request failed: ${response.error?.message ?? 'unknown error'}`);
     const result = response.result as { content?: Array<{ type?: string; text?: string }>; isError?: boolean };
-    assert.ok(!result?.isError, 'fetch_confluence_page returned a tool error');
+    assert.ok(!result?.isError, `fetch_confluence_page returned a tool error: ${safeToolError(result ?? {})}`);
     const source = result?.content?.find((entry) => entry.type === 'text')?.text;
     assert.ok(typeof source === 'string' && source.length > 0, 'fetch_confluence_page returned no text source');
     assert.ok(source.startsWith('# '), 'MCP source must retain the B0 title header');
