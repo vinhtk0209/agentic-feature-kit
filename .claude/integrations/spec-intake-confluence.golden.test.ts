@@ -22,7 +22,7 @@ if (!url) {
 }
 
 const kitRoot = path.resolve(__dirname, '..', '..');
-const mcpCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const tsxCli = path.join(kitRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
 
 type RpcMessage = { id?: number; result?: unknown; error?: { message?: string } };
 
@@ -39,10 +39,9 @@ class McpClient {
   private readonly waiters = new Map<number, { resolve: (value: RpcMessage) => void; reject: (error: Error) => void }>();
 
   constructor() {
-    this.child = spawn(mcpCommand, ['tsx', '.claude/mcp-server/index.ts'], {
+    this.child = spawn(process.execPath, [tsxCli, '.claude/mcp-server/index.ts'], {
       cwd: kitRoot,
       stdio: 'pipe',
-      shell: process.platform === 'win32',
       windowsHide: true,
     });
     this.child.stdout.setEncoding('utf8');
