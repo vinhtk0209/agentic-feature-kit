@@ -577,6 +577,42 @@ prose. Print it verbatim on its own line (replace `<BX>` with the current step i
 
 ---
 
+## Evidence bundle protocol — mandatory at every B-phase boundary (P1)
+
+`evidence-bundle.ts` is the durable completion contract. This protocol applies to **every one of
+the 23 B-phases** from `B0` through `B12.8`, including automatic and dynamically skipped phases.
+A phase is not complete merely because its prose work or terminal command looked successful.
+
+1. At the end of each successful phase, identify the exact existing input artifacts, output
+   artifacts, and tool/probe transcript(s). Build the manifest before printing the next phase:
+   ```bash
+   npx tsx .claude/integrations/evidence-bundle.ts build "<FeatureName>" "<BX>" \
+     --inputs "<comma-separated existing input paths>" \
+     --outputs "<comma-separated existing output paths>" \
+     --transcript-file "<name>=<existing transcript path>"
+   ```
+   Use `--transcript name=<literal short result>` only when no transcript file exists. The bundle
+   command itself rejects an empty or over-budget bundle; do not use `--allow-over-budget` unless
+   the user explicitly approves the recorded overage.
+2. Immediately verify the just-written manifest:
+   ```bash
+   npx tsx .claude/integrations/evidence-bundle.ts verify "<FeatureName>" "<BX>"
+   ```
+   Continue only on `valid:true`. A missing artifact, SHA-256 mismatch, forged manifest, or
+   non-zero verify result is a **phase failure**: do not emit `✅`, do not advance, and apply ★1/
+   ★7 with the verifier output as evidence.
+3. For a dynamically skipped phase, emit a bundle containing a transcript that records the exact
+   skip predicate and the prior artifact(s) used to establish it. Skipped does not mean
+   evidence-free.
+4. On resume, after `<FeatureName>` is known and before selecting the next B-phase, run:
+   ```bash
+   npx tsx .claude/integrations/evidence-bundle.ts resume "<FeatureName>"
+   ```
+   Follow only its `resumeFromPhase`. If it reports an invalid prior bundle, restart at that phase;
+   never skip past a tampered or missing bundle based on conversation memory.
+
+---
+
 ## SESSION BOOTSTRAP
 
 **Run before B0 — in this order.**

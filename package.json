@@ -60,6 +60,7 @@
     "test:contract-probe-defer": "npx tsx .claude/integrations/contract-probe.defer.test.ts",
     "test:spec-intake": "npx tsx .claude/integrations/spec-ir.test.ts && npx tsx .claude/integrations/spec-intake.cli.test.ts",
     "test:spec-intake-wiring": "npx tsx .claude/commands/feature-from-confluence.spec-ir-wiring.test.ts",
+    "test:evidence-bundle-wiring": "npx tsx .claude/commands/feature-from-confluence.evidence-wiring.test.ts",
     "test:baseline-http-gen": "npx tsx .claude/integrations/baseline-http-gen.test.ts",
     "test:d-cross-2": "npx tsx .claude/integrations/d-cross-2.test.ts",
     "test:learned-config": "npx tsx .claude/integrations/learned-config.test.ts",
