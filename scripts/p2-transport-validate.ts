@@ -9,6 +9,7 @@ import { Readable } from 'stream';
 import {
   parseP2RoleTransportEnvelope,
   parseP2TransportStopReceipt,
+  validateP2RoleTransportSet,
   type P2RoleTransport,
   type P2TransportStopReceipt,
 } from '../.claude/integrations/p2-transport-manifest';
@@ -18,7 +19,7 @@ export const MAX_P2_TRANSPORT_INPUT_BYTES = 1_048_576;
 
 export interface P2TransportValidationResult {
   schemaVersion: 1;
-  kind: 'manifest' | 'stop-receipt' | null;
+  kind: 'manifest' | 'manifest-set' | 'stop-receipt' | null;
   ok: boolean;
   manifest: P2RoleTransport | null;
   receipt: P2TransportStopReceipt | null;
@@ -28,7 +29,7 @@ export interface P2TransportValidationResult {
 interface ValidationOptions {
   cwd: string;
   approvedWorkspaceBase: string;
-  mode: 'manifest' | 'stop-receipt';
+  mode: 'manifest' | 'manifest-set' | 'stop-receipt';
 }
 
 function parseArgs(argv: readonly string[]): ValidationOptions {
@@ -43,7 +44,7 @@ function parseArgs(argv: readonly string[]): ValidationOptions {
   }
   if (!values.has('--cwd') || !values.has('--approved-workspace-base')) throw new Error('missing required argument');
   const mode = values.get('--mode') ?? 'manifest';
-  if (mode !== 'manifest' && mode !== 'stop-receipt') throw new Error('invalid mode');
+  if (mode !== 'manifest' && mode !== 'manifest-set' && mode !== 'stop-receipt') throw new Error('invalid mode');
   return {
     cwd: path.resolve(values.get('--cwd')!),
     approvedWorkspaceBase: path.resolve(values.get('--approved-workspace-base')!),
@@ -70,6 +71,21 @@ function parseStopReceiptRequest(raw: string): { manifestEnvelope: string; stopR
   return { manifestEnvelope: record.manifestEnvelope, stopReceipt: record.stopReceipt };
 }
 
+function parseManifestSetRequest(raw: string): string[] {
+  let value: unknown;
+  try { value = JSON.parse(raw); } catch { throw new Error('invalid manifest-set request'); }
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
+    throw new Error('invalid manifest-set request');
+  }
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).length !== 1 || !Object.prototype.hasOwnProperty.call(record, 'manifestEnvelopes')
+    || !Array.isArray(record.manifestEnvelopes) || record.manifestEnvelopes.length < 1
+    || record.manifestEnvelopes.length > 4 || !record.manifestEnvelopes.every(item => typeof item === 'string')) {
+    throw new Error('invalid manifest-set request');
+  }
+  return record.manifestEnvelopes as string[];
+}
+
 export function formatP2TransportValidationResult(result: P2TransportValidationResult): string {
   return `${P2_TRANSPORT_VALIDATION_RESULT_SENTINEL}${JSON.stringify(result)}`;
 }
@@ -84,6 +100,12 @@ export function executeP2TransportValidation(
     if (options.mode === 'manifest') {
       const manifest = parseP2RoleTransportEnvelope(rawEnvelope, options);
       return { schemaVersion: 1, kind: 'manifest', ok: true, manifest, receipt: null, errorCode: null };
+    }
+    if (options.mode === 'manifest-set') {
+      const manifests = parseManifestSetRequest(rawEnvelope)
+        .map(envelope => parseP2RoleTransportEnvelope(envelope, options));
+      validateP2RoleTransportSet(manifests);
+      return { schemaVersion: 1, kind: 'manifest-set', ok: true, manifest: null, receipt: null, errorCode: null };
     }
     const request = parseStopReceiptRequest(rawEnvelope);
     const manifest = parseP2RoleTransportEnvelope(request.manifestEnvelope, options);

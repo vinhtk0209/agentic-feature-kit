@@ -123,6 +123,48 @@ async function main(): Promise<void> {
     for (const raw of cases) assert.equal(executeP2TransportValidation(receiptArgv, raw).ok, false);
   });
 
+  await test('manifest-set mode accepts one coherent wave and returns no trusted manifest payload', () => {
+    const setArgv = [...argv, '--mode', 'manifest-set'];
+    const second = manifest();
+    second.taskId = 'task-dev';
+    second.role = 'dev';
+    second.workspace.workspaceId = 'run-1-dev';
+    second.workspace.path = path.join(base, 'run-1-dev');
+    const result = executeP2TransportValidation(setArgv, JSON.stringify({ manifestEnvelopes: [envelope(), envelope(second)] }));
+    assert.deepEqual(result, {
+      schemaVersion: 1, kind: 'manifest-set', ok: true, manifest: null, receipt: null, errorCode: null,
+    });
+  });
+
+  await test('manifest-set mode rejects mixed run/plan and duplicate task/workspace identities', () => {
+    const setArgv = [...argv, '--mode', 'manifest-set'];
+    const mutate = (change: (value: P2RoleTransport) => void): string => {
+      const value = manifest();
+      change(value);
+      return JSON.stringify({ manifestEnvelopes: [envelope(), envelope(value)] });
+    };
+    const attacks = [
+      mutate(value => { value.runId = 'run-2'; value.stopReceipt.runId = 'run-2'; }),
+      mutate(value => { value.planHash = 'b'.repeat(64); }),
+      mutate(value => { value.workspace.workspaceId = 'RUN-1-UI'; value.workspace.path = path.join(base, 'other'); value.taskId = 'other'; }),
+      mutate(value => { value.workspace.workspaceId = 'other'; value.workspace.path = path.join(base, 'RUN-1-UI'); value.taskId = 'other'; }),
+      mutate(value => { value.workspace.workspaceId = 'other'; value.workspace.path = path.join(base, 'other'); }),
+    ];
+    for (const raw of attacks) assert.equal(executeP2TransportValidation(setArgv, raw).ok, false);
+  });
+
+  await test('manifest-set request rejects empty, oversized, malformed, and extra-field input', () => {
+    const setArgv = [...argv, '--mode', 'manifest-set'];
+    const cases = [
+      JSON.stringify({ manifestEnvelopes: [] }),
+      JSON.stringify({ manifestEnvelopes: Array.from({ length: 5 }, () => envelope()) }),
+      JSON.stringify({ manifestEnvelopes: [1] }),
+      JSON.stringify({ manifestEnvelopes: [envelope()], extra: true }),
+      '{bad-json}',
+    ];
+    for (const raw of cases) assert.equal(executeP2TransportValidation(setArgv, raw).ok, false);
+  });
+
   await test('CLI emits exactly one safe sentinel and a nonzero exit on read or validation failure', async () => {
     for (const readInput of [
       async () => { throw new Error('secret detail'); },

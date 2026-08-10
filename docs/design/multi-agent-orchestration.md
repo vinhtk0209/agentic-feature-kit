@@ -101,3 +101,10 @@ verification when required. A stop receipt is checked against the manifest's run
 and output cap. Thus malformed runner output, over-cap output, or a missing/forged receipt cannot
 become a handoff or final merge. Process launch, timeout killing, and database writes remain
 outside this C1 contract and require a later consumer integration.
+
+The exported CLI also owns wave-level validation through `--mode manifest-set`. Its stdin is an
+exact `{ "manifestEnvelopes": [...] }` object containing one to four envelopes. Every envelope is
+validated individually, then `validateP2RoleTransportSet` requires one run id, one plan hash, and
+unique task/workspace identities for the complete wave. Consumers must run this gate once before
+provisioning any worktree or launching any provider; a mixed or duplicate wave is one atomic
+failure, never a partially launched set.
