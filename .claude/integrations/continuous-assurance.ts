@@ -13,12 +13,16 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { probeContractDetailed } from './contract-probe';
-import { SpecAc, SpecIR, validateSpecIR } from './spec-ir';
+import { stageConfluenceB0Source } from './spec-intake-confluence';
+import { sha256, SpecAc, SpecIR, validateSpecIR } from './spec-ir';
 
 export const ASSURANCE_SENTINEL = 'continuous-assurance/v1';
+/** Exactly one actor output line must start with this marker, followed by a JSON envelope. */
+export const SPEC_REFETCH_SENTINEL = '@@SPEC_REFETCH_RESULT@@';
 
 export class AssuranceManifestError extends Error {
   constructor(message: string) {
@@ -50,7 +54,19 @@ export interface ContractProbeCheck {
   getOnly?: boolean;
 }
 
-export type AssuranceCheck = CommandCheck | ContractProbeCheck;
+export interface SpecRefetchDriftCheck {
+  id: string;
+  kind: 'spec-refetch-drift';
+  /** Existing canonical Spec-IR from the prior approved capture. */
+  baselineIrPath: string;
+  /**
+   * The scheduler-owned source actor. It may call Confluence/MCP outside this module, but must
+   * return the exact sentinel envelope parsed below. There is deliberately no token field here.
+   */
+  actor: { command: string[]; sourceRef: string };
+}
+
+export type AssuranceCheck = CommandCheck | ContractProbeCheck | SpecRefetchDriftCheck;
 
 export interface QuarantineEntry {
   checkId: string;
@@ -137,6 +153,13 @@ function requiredText(value: unknown, label: string): string {
   return value;
 }
 
+function requiredArgv(value: unknown, label: string): string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.some((v) => typeof v !== 'string' || v.length === 0)) {
+    throw new AssuranceManifestError(`${label} must be a non-empty argv array`);
+  }
+  return value as string[];
+}
+
 function uniqueIds(values: string[], label: string): void {
   const seen = new Set<string>();
   for (const value of values) {
@@ -149,10 +172,7 @@ function parseCheck(value: unknown, index: number): AssuranceCheck {
   if (!isObject(value)) throw new AssuranceManifestError(`checks[${index}] must be an object`);
   const id = requiredText(value.id, `checks[${index}].id`);
   if (value.kind === 'command') {
-    if (!Array.isArray(value.command) || value.command.length === 0 || value.command.some((v) => typeof v !== 'string' || v.length === 0)) {
-      throw new AssuranceManifestError(`command check "${id}" must have a non-empty argv array`);
-    }
-    return { id, kind: 'command', command: value.command as string[] };
+    return { id, kind: 'command', command: requiredArgv(value.command, `command check "${id}"`) };
   }
   if (value.kind === 'contract-probe') {
     return {
@@ -162,6 +182,18 @@ function parseCheck(value: unknown, index: number): AssuranceCheck {
       typesPath: requiredText(value.typesPath, `contract-probe "${id}" typesPath`),
       apiPath: requiredText(value.apiPath, `contract-probe "${id}" apiPath`),
       ...(value.getOnly === true ? { getOnly: true } : {}),
+    };
+  }
+  if (value.kind === 'spec-refetch-drift') {
+    if (!isObject(value.actor)) throw new AssuranceManifestError(`spec-refetch-drift "${id}" actor must be an object`);
+    return {
+      id,
+      kind: 'spec-refetch-drift',
+      baselineIrPath: requiredText(value.baselineIrPath, `spec-refetch-drift "${id}" baselineIrPath`),
+      actor: {
+        command: requiredArgv(value.actor.command, `spec-refetch-drift "${id}" actor.command`),
+        sourceRef: requiredText(value.actor.sourceRef, `spec-refetch-drift "${id}" actor.sourceRef`),
+      },
     };
   }
   throw new AssuranceManifestError(`check "${id}" has unsupported kind "${String(value.kind)}"`);
@@ -283,6 +315,70 @@ function summarizeOutput(output: string): string {
   return compact.length > 500 ? `${compact.slice(0, 497)}...` : compact || '(no output)';
 }
 
+interface SpecRefetchEnvelope {
+  v: 1;
+  sourceRef: string;
+  sourceSha256: string;
+  sourceText: string;
+}
+
+/**
+ * Actor protocol is deliberately single-line / single-sentinel: any logging, missing marker,
+ * duplicate marker, malformed JSON, source-ref mismatch, or fake source hash is a hard error.
+ * The raw source stays data inside JSON; it is never executed or treated as instructions.
+ */
+function parseSpecRefetchEnvelope(output: string, expectedSourceRef: string): SpecRefetchEnvelope {
+  const lines = output.replace(/\r\n/g, '\n').split('\n').filter((line) => line.trim() !== '');
+  const sentinelLines = lines.filter((line) => line.trimStart().startsWith(SPEC_REFETCH_SENTINEL));
+  if (sentinelLines.length !== 1) {
+    throw new AssuranceManifestError(`spec-refetch actor requires exactly one ${SPEC_REFETCH_SENTINEL} sentinel; found ${sentinelLines.length}`);
+  }
+  if (lines.length !== 1) throw new AssuranceManifestError('spec-refetch actor emitted non-sentinel output; refusing ambiguous provenance');
+  const encoded = sentinelLines[0].trimStart().slice(SPEC_REFETCH_SENTINEL.length).trim();
+  let parsed: unknown;
+  try { parsed = JSON.parse(encoded); } catch (error) {
+    throw new AssuranceManifestError(`spec-refetch sentinel JSON is malformed: ${(error as Error).message}`);
+  }
+  if (!isObject(parsed)) throw new AssuranceManifestError('spec-refetch sentinel must carry an object');
+  if (parsed.v !== 1) throw new AssuranceManifestError(`spec-refetch sentinel has unsupported v=${String(parsed.v)}`);
+  const sourceRef = requiredText(parsed.sourceRef, 'spec-refetch sentinel sourceRef');
+  const sourceSha256 = requiredText(parsed.sourceSha256, 'spec-refetch sentinel sourceSha256');
+  const sourceText = requiredText(parsed.sourceText, 'spec-refetch sentinel sourceText');
+  if (sourceRef !== expectedSourceRef) throw new AssuranceManifestError(`spec-refetch sourceRef mismatch: expected "${expectedSourceRef}", got "${sourceRef}"`);
+  if (!/^[a-f0-9]{64}$/i.test(sourceSha256)) throw new AssuranceManifestError('spec-refetch sourceSha256 must be a 64-character hex digest');
+  if (sha256(sourceText) !== sourceSha256.toLowerCase()) throw new AssuranceManifestError('spec-refetch sourceSha256 does not identify the exact actor sourceText');
+  return { v: 1, sourceRef, sourceSha256: sourceSha256.toLowerCase(), sourceText };
+}
+
+async function runSpecRefetchDrift(check: SpecRefetchDriftCheck, cwd: string, runCommand?: BatteryExecutor['runCommand']): Promise<{ status: CheckStatus; output: string }> {
+  const command = await (runCommand?.(check.actor.command) ?? defaultRunCommand(check.actor.command, cwd));
+  if (command.exitCode !== 0) {
+    throw new AssuranceManifestError(`spec-refetch actor exited ${command.exitCode === null ? 'without an exit code' : command.exitCode}; no fresh source is trustworthy`);
+  }
+  const envelope = parseSpecRefetchEnvelope(command.output, check.actor.sourceRef);
+  const baseline = readSpecIr(resolveInside(cwd, check.baselineIrPath));
+  if (baseline.sourceRef !== check.actor.sourceRef) {
+    throw new AssuranceManifestError(`baseline Spec-IR sourceRef mismatch: expected "${check.actor.sourceRef}", got "${baseline.sourceRef}"`);
+  }
+  const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'continuous-assurance-refetch-'));
+  try {
+    const staged = stageConfluenceB0Source(envelope.sourceText, stagingDir);
+    // Re-label only the logical source ref; sourceSha256 and all AC quote/anchor provenance remain
+    // canonical adapter output and are validated again before comparison.
+    const refetched: SpecIR = { ...staged.ir, sourceRef: envelope.sourceRef };
+    validateSpecIR(refetched);
+    if (staged.sourceSha256 !== envelope.sourceSha256) throw new AssuranceManifestError('canonical B0 staging hash disagrees with actor sentinel hash');
+    const drift = detectSpecDrift(baseline, refetched);
+    const evidence = JSON.stringify(drift);
+    return {
+      status: drift.length === 0 ? 'pass' : 'fail',
+      output: `spec-refetch sourceRef=${envelope.sourceRef} sourceSha256=${envelope.sourceSha256} drift=${drift.length} evidence=${evidence}`,
+    };
+  } finally {
+    fs.rmSync(stagingDir, { recursive: true, force: true });
+  }
+}
+
 export function buildSlackDigest(results: BatteryCheckResult[], gatePassed: boolean): string {
   const lines = [`*Continuous assurance*: ${gatePassed ? 'PASS' : 'FAIL'} · ${results.length} check(s)`];
   for (const result of results) {
@@ -308,15 +404,21 @@ export async function runBattery(manifest: AssuranceManifest, executor: BatteryE
         status = command.exitCode === 0 ? 'pass' : command.exitCode === null ? 'error' : 'fail';
         output = command.output;
       } else {
-        const { findings, verifiedFields } = probeContractDetailed({
-          httpText: fs.readFileSync(resolveInside(cwd, check.httpPath), 'utf8'),
-          typesText: fs.readFileSync(resolveInside(cwd, check.typesPath), 'utf8'),
-          apiText: fs.readFileSync(resolveInside(cwd, check.apiPath), 'utf8'),
-          getOnly: check.getOnly,
-        });
-        const errors = findings.filter((finding) => finding.level === 'error');
-        status = errors.length === 0 ? 'pass' : 'fail';
-        output = `${errors.length} contract error(s), ${verifiedFields} field(s) verified${errors.length ? `: ${errors.map((f) => `${f.endpoint} ${f.path}`).join('; ')}` : ''}`;
+        if (check.kind === 'contract-probe') {
+          const { findings, verifiedFields } = probeContractDetailed({
+            httpText: fs.readFileSync(resolveInside(cwd, check.httpPath), 'utf8'),
+            typesText: fs.readFileSync(resolveInside(cwd, check.typesPath), 'utf8'),
+            apiText: fs.readFileSync(resolveInside(cwd, check.apiPath), 'utf8'),
+            getOnly: check.getOnly,
+          });
+          const errors = findings.filter((finding) => finding.level === 'error');
+          status = errors.length === 0 ? 'pass' : 'fail';
+          output = `${errors.length} contract error(s), ${verifiedFields} field(s) verified${errors.length ? `: ${errors.map((f) => `${f.endpoint} ${f.path}`).join('; ')}` : ''}`;
+        } else {
+          const result = await runSpecRefetchDrift(check, cwd, executor.runCommand);
+          status = result.status;
+          output = result.output;
+        }
       }
     } catch (error) {
       status = 'error';

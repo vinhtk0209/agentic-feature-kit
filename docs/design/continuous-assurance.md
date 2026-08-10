@@ -39,6 +39,37 @@ number: whitespace, case, terminal punctuation, and `AC-1` formatting do not fla
 edit reports the former and current AC IDs, literal source quotes, and source anchors. This makes a
 human review byte-traceable back to each source version rather than trusting a generated summary.
 
+### §2.1 — Refetch actor manifest entry
+
+To put a source under the nightly battery, add a `spec-refetch-drift` check to the same signed
+manifest. Its actor is a scheduler-owned **argv-only** process; O2 does not embed a Confluence URL
+or token. The actor must print exactly one nonblank line:
+
+```text
+@@SPEC_REFETCH_RESULT@@ {"v":1,"sourceRef":"confluence:<page-id>","sourceSha256":"<sha256>","sourceText":"<raw fetched text>"}
+```
+
+The declared `actor.sourceRef`, sentinel `sourceRef`, and baseline `SpecIR.sourceRef` must match
+byte-for-byte. The sentinel hash must equal the exact `sourceText`; O2 then stages that text through
+`stageConfluenceB0Source` and `validateSpecIR` before drift comparison. Missing, duplicate, malformed,
+or extra actor output is a hard error, never a skipped drift check. A configuration shape is:
+
+```json
+{
+  "id": "confluence-us-123-drift",
+  "kind": "spec-refetch-drift",
+  "baselineIrPath": "docs/specs/US-123/.assurance/baseline-spec-ir.json",
+  "actor": {
+    "command": ["node", "<scheduler-owned-confluence-refetch-actor>.mjs"],
+    "sourceRef": "confluence:<page-id>"
+  }
+}
+```
+
+The shipped `nightly.json` intentionally does not invent this entry: no approved feature baseline,
+Confluence page identity, or scheduler-owned actor argv has been supplied yet. Adding a placeholder
+would manufacture a permanently failing (or silently fake) safety signal.
+
 ## §3 — Quarantine semantics
 
 Quarantine is reporting-only: a quarantined test remains in the battery and executes every night.

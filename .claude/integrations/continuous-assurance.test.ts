@@ -11,6 +11,7 @@ import {
   detectSpecDrift,
   parseAssuranceManifest,
   runBattery,
+  SPEC_REFETCH_SENTINEL,
 } from './continuous-assurance';
 import { SpecIR, sha256 } from './spec-ir';
 
@@ -120,6 +121,74 @@ test('contract-probe battery check uses the existing parser and blocks a real sh
   assert.strictEqual(report.gatePassed, false);
   assert.strictEqual(report.results[0].status, 'fail');
   assert.match(report.results[0].output, /contract error/);
+});
+
+test('spec-refetch-drift stages canonical Confluence B0 text, verifies hash/provenance, then detects drift', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'continuous-assurance-refetch-'));
+  const baseline = ir('AC-1: Learner can view a progress report');
+  fs.writeFileSync(path.join(dir, 'baseline.json'), JSON.stringify(baseline), 'utf8');
+  const sourceText = 'AC-1: Learner can export a progress report';
+  const envelope = {
+    v: 1,
+    sourceRef: 'confluence:DEMO',
+    sourceSha256: sha256(sourceText),
+    sourceText,
+  };
+  const parsed = parseAssuranceManifest(`{
+    "sentinel":"continuous-assurance/v1", "schemaVersion":1,
+    "checks":[{"id":"fresh-spec","kind":"spec-refetch-drift","baselineIrPath":"baseline.json","actor":{"command":["node","actor.js"],"sourceRef":"confluence:DEMO"}}],
+    "quarantine":[]
+  }`);
+  const report = await runBattery(parsed, { cwd: dir, runCommand: (argv) => {
+    assert.deepStrictEqual(argv, ['node', 'actor.js']);
+    return { exitCode: 0, output: `${SPEC_REFETCH_SENTINEL} ${JSON.stringify(envelope)}` };
+  } });
+  assert.strictEqual(report.gatePassed, false);
+  assert.strictEqual(report.results[0].status, 'fail');
+  assert.match(report.results[0].output, /confluence:DEMO/);
+  assert.match(report.results[0].output, /export/);
+  assert.match(report.slackDigest, /fresh-spec/);
+});
+
+test('spec-refetch-drift returns pass evidence when canonical baseline and refetch agree', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'continuous-assurance-refetch-pass-'));
+  const sourceText = 'AC-1: Learner can view a progress report';
+  fs.writeFileSync(path.join(dir, 'baseline.json'), JSON.stringify(ir(sourceText)), 'utf8');
+  const parsed = parseAssuranceManifest(`{
+    "sentinel":"continuous-assurance/v1", "schemaVersion":1,
+    "checks":[{"id":"fresh-spec","kind":"spec-refetch-drift","baselineIrPath":"baseline.json","actor":{"command":["node","actor.js"],"sourceRef":"confluence:DEMO"}}],
+    "quarantine":[]
+  }`);
+  const report = await runBattery(parsed, { cwd: dir, runCommand: () => ({
+    exitCode: 0,
+    output: `${SPEC_REFETCH_SENTINEL} ${JSON.stringify({ v: 1, sourceRef: 'confluence:DEMO', sourceSha256: sha256(sourceText), sourceText })}`,
+  }) });
+  assert.strictEqual(report.gatePassed, true);
+  assert.strictEqual(report.results[0].status, 'pass');
+  assert.match(report.results[0].output, new RegExp(`sourceSha256=${sha256(sourceText)}`));
+  assert.match(report.results[0].output, /drift=0/);
+});
+
+test('spec-refetch-drift rejects missing, duplicate, malformed, and hash-forged sentinel envelopes', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'continuous-assurance-refetch-bad-'));
+  fs.writeFileSync(path.join(dir, 'baseline.json'), JSON.stringify(ir('AC-1: Learner can view')), 'utf8');
+  const parsed = parseAssuranceManifest(`{
+    "sentinel":"continuous-assurance/v1", "schemaVersion":1,
+    "checks":[{"id":"fresh-spec","kind":"spec-refetch-drift","baselineIrPath":"baseline.json","actor":{"command":["node","actor.js"],"sourceRef":"confluence:DEMO"}}],
+    "quarantine":[]
+  }`);
+  const badOutputs = [
+    'ordinary actor output',
+    `${SPEC_REFETCH_SENTINEL} {not json}`,
+    `${SPEC_REFETCH_SENTINEL} {"v":1,"sourceRef":"confluence:OTHER","sourceSha256":"${sha256('AC-1: Learner can view')}","sourceText":"AC-1: Learner can view"}`,
+    `${SPEC_REFETCH_SENTINEL} {"v":1,"sourceRef":"confluence:DEMO","sourceSha256":"${'0'.repeat(64)}","sourceText":"AC-1: Learner can view"}\n${SPEC_REFETCH_SENTINEL} {"v":1}`,
+    `${SPEC_REFETCH_SENTINEL} {"v":1,"sourceRef":"confluence:DEMO","sourceSha256":"${'0'.repeat(64)}","sourceText":"AC-1: Learner can view"}`,
+  ];
+  for (const output of badOutputs) {
+    const report = await runBattery(parsed, { cwd: dir, runCommand: () => ({ exitCode: 0, output }) });
+    assert.strictEqual(report.gatePassed, false);
+    assert.strictEqual(report.results[0].status, 'error');
+  }
 });
 
 void Promise.all(pending).then(() => {
