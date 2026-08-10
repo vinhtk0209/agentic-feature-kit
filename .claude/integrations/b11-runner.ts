@@ -29,7 +29,7 @@
 import { execSync, spawnSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { resolveRoutes, parseUxStates } from './ux-states';
+import { resolveB11ExecutionRoutes, parseUxStates } from './ux-states';
 import { resolveContractHttp, AmbiguousHttpFileError } from './contract-probe';
 import { checkPlaywrightToken } from './version-check';
 
@@ -281,12 +281,12 @@ function writeFile(filePath: string, content: string): void {
 // ─── Step 1: Read routes ──────────────────────────────────────────────────────
 
 function readRoutes(): string[] {
-  // Route resolution lives in ux-states.ts (single source of truth, shared with the integration
-  // test) so the B5 flat schema (states[].route) can never silently diverge from the reader again
-  // — audit F1. parseUxStates returns null on malformed JSON → resolveRoutes → [].
+  // Route planning lives in ux-states.ts (single source of truth, shared with tests). A v2 script
+  // that explicitly self-navigates every resolved route is executed once; incomplete/malformed
+  // proof retains the normal per-route behavior rather than silently reducing coverage.
   const raw = readFile(path.join(specsDir, 'ux-states.json'));
   if (!raw) return [];
-  return resolveRoutes(parseUxStates(raw));
+  return resolveB11ExecutionRoutes(parseUxStates(raw));
 }
 
 function readStateCount(): number {

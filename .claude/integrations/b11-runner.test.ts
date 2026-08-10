@@ -14,6 +14,7 @@
  * Run: npx tsx .claude/integrations/b11-runner.test.ts
  */
 import { computeB11B, computeGatesPass, assertPlaywrightTokenFresh, normalizeHeading, findHeadingLine, detectEol, buildPlaywrightInsert } from './b11-runner';
+import { resolveB11ExecutionRoutes } from './ux-states';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -24,6 +25,9 @@ function test(name: string, fn: () => void) {
   catch (e) { failed += 1; console.log(`❌ ${name}\n     ${(e as Error).message}`); }
 }
 function eq<T>(got: T, want: T, msg: string) { if (got !== want) throw new Error(`${msg}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`); }
+function eqRoutes(got: readonly string[], want: readonly string[], msg: string) {
+  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${msg}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+}
 const exitOf = (gatesPass: boolean) => (gatesPass ? 0 : 1);
 
 // ── Tier B token preflight fixtures (v3.24) ──
@@ -97,6 +101,55 @@ test('JOIN: all routes pass → b11_b=pass → gatesPass=true → exit 0 (legiti
   const b11_b = computeB11B([{ passed: true }, { passed: true }], true);
   eq(b11_b, 'pass', 'route→b11_b');
   eq(exitOf(computeGatesPass('pass', 0, b11_b)), 0, 'legit-pass');
+});
+
+// ── B11 self-navigating interaction scripts — collapse only with complete proof ──
+test('B11 route plan: one self-navigating script covers every resolved route → execute once', () => {
+  const routes = resolveB11ExecutionRoutes({
+    routes: ['/class-management/edit/4', '/class-management/edit/7'],
+    states: [
+      { name: 'class-4', steps: [{ action: 'navigate', url: 'http://localhost:1999/app/class-management/edit/4?reduced=1' }] },
+      { name: 'class-7', steps: [{ action: 'navigate', url: 'http://localhost:1999/app/class-management/edit/7' }] },
+    ],
+    negative_states: [{ name: 'error', steps: [{ action: 'navigate', url: '/app/class-management/edit/4?error=1' }] }],
+  });
+  eqRoutes(routes, ['/class-management/edit/4'], 'complete self-navigation must execute one scenario');
+});
+test('B11 route plan: an explicit navigation in negative_states also proves route coverage', () => {
+  const routes = resolveB11ExecutionRoutes({
+    routes: ['/class-management/edit/4', '/class-management/edit/7'],
+    states: [{ name: 'class-4', steps: [{ action: 'navigate', url: '/app/class-management/edit/4' }] }],
+    negative_states: [{ name: 'class-7-error', steps: [{ action: 'navigate', url: '/app/class-management/edit/7?error=1' }] }],
+  });
+  eqRoutes(routes, ['/class-management/edit/4'], 'negative-state navigation must count as structured proof');
+});
+test('B11 route plan: a missing explicit navigation keeps every route (fail-closed)', () => {
+  const routes = resolveB11ExecutionRoutes({
+    routes: ['/class-management/edit/4', '/class-management/edit/7'],
+    states: [{ name: 'only-class-4', steps: [{ action: 'navigate', url: '/app/class-management/edit/4' }] }],
+  });
+  eqRoutes(routes, ['/class-management/edit/4', '/class-management/edit/7'], 'incomplete route coverage must not collapse');
+});
+test('B11 route plan: malformed state steps keep every route (fail-closed)', () => {
+  const routes = resolveB11ExecutionRoutes({
+    routes: ['/class-management/edit/4', '/class-management/edit/7'],
+    states: [
+      { name: 'class-4', steps: [{ action: 'navigate', url: '/app/class-management/edit/4' }] },
+      { name: 'malformed-class-7' },
+    ],
+  });
+  eqRoutes(routes, ['/class-management/edit/4', '/class-management/edit/7'], 'malformed state must not collapse');
+});
+test('B11 route plan: malformed negative_states keeps every route (fail-closed)', () => {
+  const malformed = {
+    routes: ['/class-management/edit/4', '/class-management/edit/7'],
+    states: [
+      { name: 'class-4', steps: [{ action: 'navigate', url: '/app/class-management/edit/4' }] },
+      { name: 'class-7', steps: [{ action: 'navigate', url: '/app/class-management/edit/7' }] },
+    ],
+    negative_states: { name: 'not-an-array' },
+  } as unknown as Parameters<typeof resolveB11ExecutionRoutes>[0];
+  eqRoutes(resolveB11ExecutionRoutes(malformed), ['/class-management/edit/4', '/class-management/edit/7'], 'malformed negative_states must not collapse');
 });
 
 // ── Tier B auth preflight — fail-closed on every non-ok token state (v3.24) ──

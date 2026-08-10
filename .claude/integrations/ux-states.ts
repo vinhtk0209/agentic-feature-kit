@@ -9,7 +9,14 @@
  */
 
 export interface UxAcAssertion { ac_id?: string; selector?: string; expected?: string; }
-export interface UxState { name?: string; screen?: string; route?: string; ac_assertions?: UxAcAssertion[]; }
+export interface UxInteractionStep { action?: string; url?: string; }
+export interface UxState {
+  name?: string;
+  screen?: string;
+  route?: string;
+  steps?: UxInteractionStep[];
+  ac_assertions?: UxAcAssertion[];
+}
 export interface UxStatesDoc {
   feature?: string;
   routes?: string[];
@@ -39,4 +46,64 @@ export function resolveRoutes(doc: UxStatesDoc | null | undefined): string[] {
   if (!doc) return [];
   if (Array.isArray(doc.routes) && doc.routes.length > 0) return clean(doc.routes);
   return clean((doc.states ?? []).map((s) => s?.route));
+}
+
+/**
+ * Return the outer routes that B11 should execute.  playwright-runner executes the entire v2
+ * interaction script, so an outer execution is redundant only when the parsed script itself
+ * explicitly navigates to every resolved route.  Anything missing or malformed retains the
+ * ordinary per-route behavior: this is deliberately fail-closed against a silent coverage drop.
+ */
+export function resolveB11ExecutionRoutes(doc: UxStatesDoc | null | undefined): string[] {
+  const routes = resolveRoutes(doc);
+  if (routes.length < 2 || !hasCompleteExplicitRouteNavigation(doc, routes)) return routes;
+  return [routes[0]];
+}
+
+/** Pure proof predicate for B11 route-collapse. Exported for direct attack tests. */
+export function hasCompleteExplicitRouteNavigation(
+  doc: UxStatesDoc | null | undefined,
+  routes: readonly string[] = resolveRoutes(doc),
+): boolean {
+  if (!doc || routes.length === 0 || !Array.isArray(doc.states) || doc.states.length === 0) return false;
+  if (doc.negative_states !== undefined && !Array.isArray(doc.negative_states)) return false;
+
+  const navigatedPaths: string[] = [];
+  const allStates = [...doc.states, ...(doc.negative_states ?? [])];
+  for (const state of allStates) {
+    if (!state || !Array.isArray(state.steps)) return false;
+    for (const step of state.steps) {
+      if (!step || typeof step.action !== 'string' || step.action.trim() === '') return false;
+      if (step.action !== 'navigate') continue;
+      if (typeof step.url !== 'string') return false;
+      const navPath = pathnameOf(step.url);
+      if (!navPath) return false;
+      navigatedPaths.push(navPath);
+    }
+  }
+
+  return routes.every((route) => {
+    const routePath = pathnameOf(route);
+    return routePath !== null && navigatedPaths.some((navPath) => matchesRoutePath(navPath, routePath));
+  });
+}
+
+function pathnameOf(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+      ? trimmed
+      : (trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
+    const pathname = new URL(candidate, 'http://b11.invalid').pathname;
+    return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  } catch {
+    return null;
+  }
+}
+
+/** A target route may sit under an app mount path in an explicit browser navigation URL. */
+function matchesRoutePath(navigationPath: string, routePath: string): boolean {
+  if (routePath === '/') return navigationPath === '/';
+  return navigationPath === routePath || navigationPath.endsWith(routePath);
 }
