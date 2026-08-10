@@ -6,7 +6,7 @@
  *   1. Read routes[] from ux-states.json (or extract from states[].screen)
  *   2. Run playwright-runner.ts for each route (serial)
  *   3. Run scoped types + lint checks (errors outside feature folder are pre-existing)
- *   4. Update checklist.md PLAYWRIGHT-* rows
+ *   4. Update checklist.md PLAYWRIGHT-* rows, then enforce coverage from that durable evidence
  *   5. Return structured JSON
  *
  * Usage:
@@ -35,7 +35,7 @@ import { checkPlaywrightToken } from './version-check';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface RouteResult {
+export interface RouteResult {
   route: string;
   passed: boolean;
   checks: Array<{ id: string; passed: boolean; message: string }>;
@@ -75,6 +75,36 @@ export function computeB11B(routeResults: ReadonlyArray<{ passed: boolean }>, ti
  */
 export function computeGatesPass(b11_a: 'pass' | 'fail', coverageErrors: number, b11_b: 'pass' | 'fail' | 'skip'): boolean {
   return b11_a === 'pass' && coverageErrors === 0 && b11_b !== 'fail';
+}
+
+/**
+ * Runs the evidence-producing Tier-B stage before the HR33/34/35/36 reader. Initial captures
+ * legitimately begin below HR35's ratio floor; evaluating it before Playwright would permanently
+ * prevent the only trusted writer from recording the evidence that the final gate must inspect.
+ */
+export async function runTierBThenCoverage(input: {
+  routes: readonly string[];
+  tierBRan: boolean;
+  runRoute: (route: string) => Promise<RouteResult>;
+  updateChecklist: (routeResults: RouteResult[]) => boolean;
+  runCoverage: () => { coverageErrors: number; coverageSummary: string };
+}): Promise<{
+  routeResults: RouteResult[];
+  b11_b: 'pass' | 'fail' | 'skip';
+  checklistUpdated: boolean;
+  coverageErrors: number;
+  coverageSummary: string;
+}> {
+  const routeResults: RouteResult[] = [];
+  if (input.tierBRan) {
+    for (const route of input.routes) routeResults.push(await input.runRoute(route));
+  }
+  const b11_b = computeB11B(routeResults, input.tierBRan);
+  const checklistUpdated = routeResults.length > 0
+    ? input.updateChecklist(routeResults)
+    : false;
+  const { coverageErrors, coverageSummary } = input.runCoverage();
+  return { routeResults, b11_b, checklistUpdated, coverageErrors, coverageSummary };
 }
 
 // ─── Args ────────────────────────────────────────────────────────────────────
@@ -549,31 +579,25 @@ async function main(): Promise<void> {
   // Static analysis
   const { typeErrors, lintErrors, b11_a } = runStaticAnalysis();
 
-  // Coverage gate (HR33/34/35/36) — reported alongside static analysis
-  const { coverageErrors, coverageSummary } = runCoverageGate();
-
   // Contract probe (advisory) — .http contract vs data/types.ts
   const { contractErrors, contractWarnings, contractSummary } = runContractProbe();
 
-  // Playwright
-  const routeResults: RouteResult[] = [];
+  // Tier B writes its checklist evidence before the final HR33/34/35/36 coverage reader runs.
   const tierBRan = !noPlaywright && routes.length > 0;
-  if (tierBRan) {
-    // v3.24 Tier B auth preflight — fail closed on a missing/stale/expiring token
-    // BEFORE any browser context is created. A bad token renders an empty-shell
-    // 401 page that a shell-only assertion would false-pass (the class §4 closes).
-    assertPlaywrightTokenFresh(resolvePlaywrightEnvPath());
-    for (const route of routes) {
-      routeResults.push(await runPlaywrightForRoute(route, playwrightTimeoutMs));
-    }
-  }
-  // Link 1: routeResults → b11_b (pure, tested).
-  const b11_b = computeB11B(routeResults, tierBRan);
-
-  // Update checklist
-  const checklistUpdated = routeResults.length > 0
-    ? updateChecklistPlaywright(routeResults)
-    : false;
+  if (tierBRan) assertPlaywrightTokenFresh(resolvePlaywrightEnvPath());
+  const {
+    routeResults,
+    b11_b,
+    checklistUpdated,
+    coverageErrors,
+    coverageSummary,
+  } = await runTierBThenCoverage({
+    routes,
+    tierBRan,
+    runRoute: (route) => runPlaywrightForRoute(route, playwrightTimeoutMs),
+    updateChecklist: updateChecklistPlaywright,
+    runCoverage: runCoverageGate,
+  });
 
   const passedRoutes = routeResults.filter((r) => r.passed).length;
   const summary = [
