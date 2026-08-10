@@ -15,9 +15,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-  buildBundle, verifyBundle, resumeFromBundles, PHASE_ORDER,
+  buildBundle, verifyBundle, verifyBackendBoundBundle, resumeFromBundles, PHASE_ORDER,
   UnknownPhaseError, MissingArtifactError, EmptyBundleError, ContextBudgetExceededError,
 } from './evidence-bundle';
+import { createEvidenceBinding, normalizeCost, verifyEvidenceBinding, type EvidenceBackendBinding } from './multi-provider-backends';
+import { sha256 } from './spec-ir';
 
 let passed = 0;
 let failed = 0;
@@ -37,6 +39,21 @@ function writeRepoFile(cwd: string, relPath: string, content: string): void {
   const abs = path.join(cwd, relPath);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, content, 'utf8');
+}
+
+function backendBinding(): EvidenceBackendBinding {
+  return createEvidenceBinding({
+    trusted: {
+      identity: { provider: 'codex', modelKey: 'codex', modelId: 'codex-fixture', adapterVersion: 'test-v1' },
+      capabilities: ['execute-phase', 'evidence-binding'],
+      capabilityHash: 'a'.repeat(64),
+    },
+    cost: normalizeCost(undefined),
+  });
+}
+
+function manifestHash(files: Array<{ role: string; path: string; sha256: string; bytes: number }>): string {
+  return sha256([...files].sort((a, b) => a.path.localeCompare(b.path)).map((file) => `${file.role}|${file.path}|${file.sha256}|${file.bytes}`).join('\n'));
 }
 
 // ─── (a) bundle builder collects declared artifacts into an addressable bundle ───────────────
@@ -250,6 +267,90 @@ test('(e) budget: a small bundle within its declared budget builds normally (the
   writeRepoFile(cwd, 'docs/specs/Foo/small.md', 'tiny content');
   const manifest = buildBundle({ featureName: 'Foo', phase: 'B4', cwd, outputs: ['docs/specs/Foo/small.md'] });
   assert(manifest.estimatedTokens <= manifest.budgetTokens, 'a small bundle must not be flagged over budget');
+});
+
+// ─── I2-B: optional v1-compatible backend-binding sidecar ───────────────────────────────────
+
+test('(I2-B) legacy v1 bundle keeps its file-list semantics while strict backend verification refuses an absent claim', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'legacy output');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'] });
+  assert(manifest.schemaVersion === 1, 'legacy manifest schema must remain v1');
+  assert(manifest.files.length === 1 && manifest.files[0].role === 'output', 'legacy file-list must contain only the declared output');
+  assert(verifyBundle('Foo', 'B0', cwd).valid, 'legacy verifyBundle semantics must remain valid');
+  const strict = verifyBackendBoundBundle('Foo', 'B0', cwd);
+  assert(!strict.valid && strict.reason === 'binding-missing', 'strict verifier must not infer a backend claim from a legacy bundle');
+});
+
+test('(I2-B) bound v1 bundle hashes exactly one valid backend-binding sidecar', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: backendBinding() });
+  const entry = manifest.files.find((file) => file.role === 'backend-binding');
+  assert(manifest.schemaVersion === 1 && manifest.files.length === 2, 'sidecar must be additive to schema v1');
+  assert(!!entry && entry.path.endsWith('/backend-binding.json'), 'manifest must hash the generated sidecar');
+  assert(verifyBundle('Foo', 'B0', cwd).valid, 'generic verifier must hash-check a bound sidecar');
+  assert(verifyBackendBoundBundle('Foo', 'B0', cwd).valid, 'strict verifier must accept the valid bound bundle');
+});
+
+test('(I2-B) sidecar tamper or removal fails generic hash verification and strict binding verification', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: backendBinding() });
+  const sidecar = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0', 'backend-binding.json');
+  const tampered = JSON.parse(fs.readFileSync(sidecar, 'utf8')) as EvidenceBackendBinding;
+  tampered.identity.provider = 'claude';
+  assert(!verifyEvidenceBinding(tampered), 'identity mutation must invalidate the binding itself');
+  fs.writeFileSync(sidecar, JSON.stringify(tampered, null, 2), 'utf8');
+  assert(!verifyBundle('Foo', 'B0', cwd).valid, 'tampered sidecar must fail generic file hashing');
+  assert(!verifyBackendBoundBundle('Foo', 'B0', cwd).valid, 'tampered sidecar must fail strict verification');
+  fs.unlinkSync(sidecar);
+  assert(!verifyBundle('Foo', 'B0', cwd).valid, 'removed sidecar must fail generic verification');
+  assert(!verifyBackendBoundBundle('Foo', 'B0', cwd).valid, 'removed sidecar must fail strict verification');
+});
+
+test('(I2-B) duplicate binding sentinel is rejected even if an attacker recomputes the v1 manifest hash', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: backendBinding() });
+  const sidecar = manifest.files.find((file) => file.role === 'backend-binding')!;
+  const forgedFiles = [...manifest.files, { ...sidecar }];
+  const forged = { ...manifest, files: forgedFiles, manifestHash: manifestHash(forgedFiles) };
+  const manifestPath = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0', 'manifest.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(forged, null, 2), 'utf8');
+  assert(verifyBundle('Foo', 'B0', cwd).valid, 'generic v1 verifier permits duplicate hashed paths by legacy design');
+  const strict = verifyBackendBoundBundle('Foo', 'B0', cwd);
+  assert(!strict.valid && strict.reason === 'binding-duplicate', 'strict verifier must reject ambiguous backend-binding sentinels');
+});
+
+test('(I2-B) malformed binding sentinel is rejected even if an attacker recomputes the v1 file and manifest hashes', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: backendBinding() });
+  const sidecarPath = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0', 'backend-binding.json');
+  const malformed = Buffer.from('{"identity":', 'utf8');
+  fs.writeFileSync(sidecarPath, malformed);
+  const forgedFiles = manifest.files.map((file) => file.role === 'backend-binding'
+    ? { ...file, sha256: sha256(malformed), bytes: malformed.length }
+    : file);
+  const forged = { ...manifest, files: forgedFiles, manifestHash: manifestHash(forgedFiles) };
+  const manifestPath = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0', 'manifest.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(forged, null, 2), 'utf8');
+  assert(verifyBundle('Foo', 'B0', cwd).valid, 'generic v1 verifier must accept the attacker-rehashed malformed sidecar');
+  const strict = verifyBackendBoundBundle('Foo', 'B0', cwd);
+  assert(!strict.valid && strict.reason === 'binding-invalid', 'strict verifier must reject malformed backend-binding JSON');
+});
+
+test('(I2-B) invalid binding is refused before the builder creates any partial evidence files', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  const invalid = { ...backendBinding(), bindingHash: 'not-a-valid-hash' };
+  assertThrows(
+    () => buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: invalid }),
+    Error,
+    'invalid backend binding',
+  );
+  assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0')), 'invalid binding must leave zero partial bundle writes');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

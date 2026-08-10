@@ -20,11 +20,9 @@ The following are intentionally out of scope for I2-A:
 - a claim of live provider cost parity.
 
 `EvidenceManifest` v1 has no backend-identity or measured-cost fields. Retrofitting those fields
-without an additive version/parser compatibility proof would risk invalidating P1's hash contract.
-I2-B must define an additive manifest version (or a separately hash-bound sidecar record), prove
-old-manifest readers remain valid, then bind the I2-A identity hash into that durable form. Until
-then, the I2-A binding is an in-memory/pure artifact only and cannot be represented as an existing
-P1 bundle completion.
+without an additive compatibility proof would risk invalidating P1's hash contract. I2-B therefore
+uses a separately hash-bound sidecar record instead of changing the v1 manifest shape; its precise
+compatibility and strict-verification rules are locked in §5.
 
 ## §2. Execution adapter and capability trust contract
 
@@ -100,7 +98,27 @@ provider call:
 6. two distinct trusted keys (Claude and Codex) pass the exact same gate function object and both
    reject a plausible wrong result, while two Claude model keys remain non-aliasing.
 
-I2-B: prove manifest-version/sidecar backward compatibility and persist identity bindings. I2-C:
+I2-C:
 implement one operator-configured non-Claude transport plus a capability smoke test and a neutral
 measured-cost contract. Only after I2-C's same-prompt/same-gates run and cost evidence may the
 roadmap's full I2 definition of done be claimed.
+
+## §5. I2-B — v1-compatible durable backend bindings
+
+`buildBundle` accepts an optional pre-validated `EvidenceBackendBinding`. When present, it writes
+exactly one generated `.evidence/<phase>/backend-binding.json` sidecar and adds its repository-
+relative path, bytes, SHA-256, and reserved `backend-binding` role to the existing manifest's
+`files` array. `schemaVersion` remains `1`; legacy builders do not pass the optional value, produce
+the same file-list semantics, and continue to use the unchanged `verifyBundle` and
+`resumeFromBundles` paths.
+
+The builder calls `verifyEvidenceBinding` before creating any evidence directory, transcript,
+sidecar, or manifest. An absent field means no backend claim; a supplied malformed binding throws
+and leaves no partial bundle writes.
+
+`verifyBackendBoundBundle` is the mandatory strict read path when an I2 execution claims backend
+evidence. It first requires the ordinary v1 hash verification to pass, then requires exactly one
+sentinel identified by the reserved path or role, with both exact expected values. It parses the
+hash-bound sidecar and reuses `verifyEvidenceBinding`. Sidecar removal/tampering, a duplicated or
+aliased sentinel, and any identity/capability/cost mutation all fail closed. Generic P1 callers do
+not infer an I2 claim from an old v1 bundle and retain their existing verification/resume behavior.

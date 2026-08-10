@@ -47,6 +47,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { sha256 } from './spec-ir';
 import { estimateTokens } from './prompt-budget';
+import { verifyEvidenceBinding, type EvidenceBackendBinding } from './multi-provider-backends';
 
 // ─── Canonical B-phase order (feature-from-confluence.md `## B*` headings) ───────────────────
 
@@ -100,10 +101,17 @@ export class ContextBudgetExceededError extends Error {
   }
 }
 
+export class InvalidBackendBindingError extends Error {
+  constructor() {
+    super('evidence-bundle: backend binding is malformed or fails its tamper-evident verification');
+    this.name = 'InvalidBackendBindingError';
+  }
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────────────────────
 
 export interface EvidenceFileEntry {
-  role: 'input' | 'output' | 'transcript';
+  role: 'input' | 'output' | 'transcript' | 'backend-binding';
   path: string; // repo-relative, POSIX separators
   sha256: string;
   bytes: number;
@@ -128,6 +136,8 @@ export interface BuildBundleInput {
   outputs?: string[];
   /** name -> inline text content; written into the bundle itself (not referenced externally). */
   transcripts?: Record<string, string>;
+  /** Optional I2 backend-evidence claim; emitted as one hash-bound sidecar without changing manifest v1. */
+  backendBinding?: EvidenceBackendBinding;
   budgetTokens?: number;
   allowOverBudget?: boolean;
 }
@@ -146,6 +156,15 @@ export interface VerifyResult {
   manifestSelfConsistent: boolean;
   fileMismatches: FileMismatch[];
   manifest?: EvidenceManifest;
+}
+
+export interface BackendBoundVerifyResult {
+  exists: boolean;
+  valid: boolean;
+  /** The unchanged P1 verifier result, retained for callers that need generic v1 diagnostics. */
+  bundle: VerifyResult;
+  reason?: 'bundle-missing' | 'bundle-invalid' | 'binding-missing' | 'binding-duplicate' | 'binding-invalid';
+  backendBinding?: EvidenceBackendBinding;
 }
 
 export interface ResumeBlockedAt {
@@ -176,6 +195,10 @@ function manifestFilePath(cwd: string, feature: string, phase: string): string {
   return path.join(bundleDir(cwd, feature, phase), 'manifest.json');
 }
 
+function backendBindingFilePath(cwd: string, feature: string, phase: string): string {
+  return path.join(bundleDir(cwd, feature, phase), 'backend-binding.json');
+}
+
 /** Deterministic canonical serialization of the file list, sorted by path — the input to
  *  manifestHash. Fixed key order + explicit join (not JSON.stringify on the array) so the hash
  *  never drifts on object-key reordering. */
@@ -193,6 +216,9 @@ export function buildBundle(input: BuildBundleInput): EvidenceManifest {
   if (!input.featureName) throw new Error('evidence-bundle: featureName is required');
   if (!isKnownPhase(input.phase)) throw new UnknownPhaseError(input.phase);
   const phase = input.phase;
+  // An I2 claim must be fully valid before this builder creates a directory, transcript, sidecar,
+  // or manifest. Legacy callers omit the field and keep the byte-level v1 build path unchanged.
+  if (input.backendBinding !== undefined && !verifyEvidenceBinding(input.backendBinding)) throw new InvalidBackendBindingError();
 
   const inputs = input.inputs ?? [];
   const outputs = input.outputs ?? [];
@@ -223,7 +249,19 @@ export function buildBundle(input: BuildBundleInput): EvidenceManifest {
     transcriptWrites.push({ absPath, buf, entry });
   }
 
-  const allEntries = [...refEntries, ...transcriptWrites.map((t) => t.entry)];
+  const backendBindingWrite = input.backendBinding === undefined ? undefined : (() => {
+    const absPath = backendBindingFilePath(cwd, input.featureName, phase);
+    const buf = Buffer.from(`${JSON.stringify(input.backendBinding, null, 2)}\n`, 'utf8');
+    const entry: EvidenceFileEntry = {
+      role: 'backend-binding',
+      path: toPosix(path.relative(cwd, absPath)),
+      sha256: sha256(buf),
+      bytes: buf.length,
+    };
+    return { absPath, buf, entry };
+  })();
+
+  const allEntries = [...refEntries, ...transcriptWrites.map((t) => t.entry), ...(backendBindingWrite ? [backendBindingWrite.entry] : [])];
   if (allEntries.length === 0) throw new EmptyBundleError(input.featureName, phase);
 
   const totalBytes = allEntries.reduce((sum, e) => sum + e.bytes, 0);
@@ -238,6 +276,10 @@ export function buildBundle(input: BuildBundleInput): EvidenceManifest {
   // Pass 2 — all checks passed; now actually write (transcripts + manifest).
   if (transcriptWrites.length > 0) fs.mkdirSync(transcriptsDir, { recursive: true });
   for (const t of transcriptWrites) fs.writeFileSync(t.absPath, t.buf);
+  if (backendBindingWrite) {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(backendBindingWrite.absPath, backendBindingWrite.buf);
+  }
 
   const sortedFiles = [...allEntries].sort((a, b) => a.path.localeCompare(b.path));
   const manifest: EvidenceManifest = {
@@ -295,6 +337,37 @@ export function verifyBundle(featureName: string, phase: string, cwd: string = p
     fileMismatches,
     manifest,
   };
+}
+
+/**
+ * Verify the optional I2 backend-evidence claim. This deliberately does not change
+ * verifyBundle() or resumeFromBundles(): v1 bundles without a claim remain valid to P1 callers.
+ * A caller that claims backend execution must instead use this strict verifier.
+ */
+export function verifyBackendBoundBundle(featureName: string, phase: string, cwd: string = process.cwd()): BackendBoundVerifyResult {
+  const bundle = verifyBundle(featureName, phase, cwd);
+  if (!bundle.exists) return { exists: false, valid: false, bundle, reason: 'bundle-missing' };
+  if (!bundle.valid || !bundle.manifest) return { exists: true, valid: false, bundle, reason: 'bundle-invalid' };
+
+  const expectedPath = toPosix(path.relative(cwd, backendBindingFilePath(cwd, featureName, phase)));
+  const files = Array.isArray(bundle.manifest.files) ? bundle.manifest.files : [];
+  // Treat either the reserved role or the reserved path as a sentinel. This makes an alias,
+  // duplicate, or role substitution fail closed rather than letting it look like a legacy file.
+  const sentinels = files.filter((file) => file.role === 'backend-binding' || file.path === expectedPath);
+  if (sentinels.length === 0) return { exists: true, valid: false, bundle, reason: 'binding-missing' };
+  if (sentinels.length !== 1) return { exists: true, valid: false, bundle, reason: 'binding-duplicate' };
+  const [sidecar] = sentinels;
+  if (sidecar.role !== 'backend-binding' || sidecar.path !== expectedPath) {
+    return { exists: true, valid: false, bundle, reason: 'binding-invalid' };
+  }
+
+  try {
+    const binding = JSON.parse(fs.readFileSync(backendBindingFilePath(cwd, featureName, phase), 'utf8')) as EvidenceBackendBinding;
+    if (!verifyEvidenceBinding(binding)) return { exists: true, valid: false, bundle, reason: 'binding-invalid' };
+    return { exists: true, valid: true, bundle, backendBinding: binding };
+  } catch {
+    return { exists: true, valid: false, bundle, reason: 'binding-invalid' };
+  }
 }
 
 // ─── Resume ────────────────────────────────────────────────────────────────────────────────
