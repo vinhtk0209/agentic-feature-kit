@@ -24,6 +24,28 @@ failure makes `gatePassed=false` and process exit 1. This boundary intentionally
 write, scheduler mutation, or Slack HTTP call. P0 stores the emitted JSON as the phase probe
 transcript; the authorized notification actor can send `slackDigest` verbatim.
 
+### §1.1 — Version-scoped authoritative canary evidence
+
+The emitted schema remains `schemaVersion: 1` for the existing P0 reader, with additive report
+fields `kitVersion` (canonical `N.N.0`) and `observedAt`. Every executed result carries a `canary`
+envelope with its stable manifest `id`, normalized status (`passed`, `mismatch`, or `error`), the
+same canonical kit version and observation instant, and a lowercase SHA-256 `evidenceHash`.
+`evidenceHash` covers only the check's immutable id/kind/quarantine/status/output tuple, not report
+ordering or timestamps. The digest repeats the version, observation instant, canary status, and full
+hash, so an operator can trace the notification to the exact JSON evidence.
+
+`PROMPT_VERSION` in `.claude/commands/feature-from-confluence.md` remains the sole version authority.
+The shared resolver accepts exactly one `vN.N` or `vN.N.0` declaration and emits `N.N.0`.
+Continuous assurance resolves it before executing any check; missing, malformed, duplicate, or
+noncanonical injected values fail closed. Telemetry and verify-record startup use the same resolver
+and therefore stop before any network or git-note write instead of inventing a legacy version.
+Its report validator also rejects duplicate ids, a canary
+whose id/version/status/time/hash does not match its result, or a digest/gate that does not bind the
+exact report. v1 authoritative report, result, and canary objects reject unexpected keys; a command
+output may be the empty string and is still exact evidence (shown as `(no output)` in the digest).
+Existing consumers can continue reading their v1 fields; an O1 adapter must validate this
+authoritative envelope before treating a canary as observed evidence.
+
 ## §2 — Spec-drift detector
 
 The scheduler's fetch step must use the canonical B0 adapter to produce a fresh validated `SpecIR`.

@@ -74,6 +74,30 @@ function runMocked(args: string[], env: Env = {}): SpawnSyncReturns<string> {
   });
 }
 
+/** Run an isolated copy with a broken installed PROMPT_VERSION; no fetch mock is needed because startup must fail first. */
+function runBrokenVersionAuthority(promptSource: string): SpawnSyncReturns<string> {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-tel-version-'));
+  const integrationDir = path.join(root, '.claude', 'integrations');
+  const commandDir = path.join(root, '.claude', 'commands');
+  fs.mkdirSync(integrationDir, { recursive: true });
+  fs.mkdirSync(commandDir, { recursive: true });
+  fs.copyFileSync(TELEMETRY, path.join(integrationDir, 'telemetry.ts'));
+  fs.copyFileSync(path.resolve(__dirname, 'kit-version.ts'), path.join(integrationDir, 'kit-version.ts'));
+  fs.writeFileSync(path.join(commandDir, 'feature-from-confluence.md'), promptSource, 'utf8');
+  try {
+    return spawnSync(`npx tsx "${path.join(integrationDir, 'telemetry.ts')}" verify`, {
+      // Use the existing local tsx dependency; module location, not cwd, defines the authority root.
+      cwd: path.resolve(__dirname, '..', '..'),
+      env: buildEnv({ KIT_TOKEN: 'test-token' }),
+      encoding: 'utf8',
+      shell: true,
+      timeout: 30000,
+    });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
 // ── Tests: KIT_TOKEN guard ────────────────────────────────────────────────────
 
 test('missing KIT_TOKEN → verify exits 1 (no network call)', () => {
@@ -96,12 +120,21 @@ test('missing KIT_TOKEN → verify exits 1 (no network call)', () => {
   }
 });
 
+test('malformed PROMPT_VERSION exits nonzero before telemetry can issue a network request', () => {
+  const r = runBrokenVersionAuthority('PROMPT_VERSION: v3.25.1\n');
+  const out = `${r.stdout}\n${r.stderr}`;
+  assert(r.status !== 0, `broken authority must stop telemetry, got ${r.status}`);
+  assert(out.includes('kit-version:'), `failure must identify authority parsing, got: ${out}`);
+  assert(!out.includes('Token valid') && !out.includes('@@KIT_EVENT@@'), 'telemetry must not enter its network/write path after version failure');
+});
+
 // ── Tests: verify command dispatch ───────────────────────────────────────────
 
 test('verify — valid token → exits 0', () => {
   const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'valid' });
   assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
   assert(r.stdout.includes('✅'), 'stdout should show valid checkmark');
+  assert(r.stdout.includes('"kitVersion":"3.25.0"'), 'the telemetry marker must expose canonical PROMPT_VERSION N.N.0');
 });
 
 test('verify — invalid token → exits 1', () => {

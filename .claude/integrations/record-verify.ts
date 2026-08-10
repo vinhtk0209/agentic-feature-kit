@@ -26,6 +26,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { execFileSync, spawnSync } from 'child_process';
+import { resolveCanonicalKitVersion } from './kit-version';
 
 export const VERIFY_NOTES_REF = 'refs/notes/verify';
 
@@ -155,17 +156,9 @@ function assertNotKitRepo(repoRoot: string): void {
   }
 }
 
-/** Resolve kit version from commands/feature-from-confluence.md PROMPT_VERSION (mirrors telemetry.ts). */
-function resolveKitVersion(repoRoot: string): string {
-  try {
-    const cmdFile = path.join(repoRoot, '.claude', 'commands', 'feature-from-confluence.md');
-    const content = fs.readFileSync(cmdFile, 'utf8');
-    const match = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
-    if (match) return match[1] + '.0';
-  } catch {
-    /* fall through */
-  }
-  return '3.18.0';
+/** Resolve kit version from the shared PROMPT_VERSION authority (mirrors telemetry.ts). */
+export function resolveKitVersion(repoRoot: string): string {
+  return resolveCanonicalKitVersion(repoRoot);
 }
 
 /** Recursively list every `data/` directory at-or-under `root` (the kit's per-feature marker). */

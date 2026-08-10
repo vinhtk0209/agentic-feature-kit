@@ -20,30 +20,24 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveCanonicalKitVersion } from "./kit-version";
 
 const SUPABASE_URL = "https://vkuojxgvkxndftenrdno.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdW9qeGd2a3huZGZ0ZW5yZG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjgwMzMsImV4cCI6MjA5NzAwNDAzM30.MrTuIuN1kghxMXu0yyOW9MtmXVY7xH0-2HSCwTKo2cU";
 
 // Read version from the prompt file so each repo reports its actual installed version.
-// Falls back to the hardcoded value if the file is missing (e.g. in tests).
+// Missing, malformed, or duplicate authority is a startup error: emitting a guessed
+// version would corrupt the dashboard's provenance before any network/write path runs.
 //
 // FORMAT MUST MATCH scripts/sync-to-targets.ts `resolveTargetVersion()` exactly:
 // `major.minor` + ".0" (e.g. "3.17.0"). The dashboard compares repo_runs.last_run_version
 // (written here) with installs.kit_version (written by the sync script); diverging
 // formats would make "installed vs running" mismatch falsely. Keep both in lockstep.
 function resolveKitVersion(): string {
-  try {
-    const thisFile = fileURLToPath(import.meta.url);
-    const cmdFile = path.join(
-      path.dirname(path.dirname(thisFile)),
-      "commands", "feature-from-confluence.md"
-    );
-    const content = fs.readFileSync(cmdFile, "utf8");
-    const match = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
-    if (match) return match[1] + ".0";
-  } catch {}
-  return "3.18.0";
+  const thisFile = fileURLToPath(import.meta.url);
+  const repoRoot = path.dirname(path.dirname(path.dirname(thisFile)));
+  return resolveCanonicalKitVersion(repoRoot);
 }
 const KIT_VERSION = resolveKitVersion();
 

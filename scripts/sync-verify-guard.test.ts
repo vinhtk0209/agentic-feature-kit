@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
-import { evaluateVerifiedSyncAdmission } from "./sync-to-targets";
+import { evaluateVerifiedSyncAdmission, resolveSourceVersionFromPromptContent } from "./sync-to-targets";
 
 async function main(): Promise<void> {
+  assert.equal(resolveSourceVersionFromPromptContent('PROMPT_VERSION: v3.25\n'), '3.25.0');
+  assert.equal(resolveSourceVersionFromPromptContent('PROMPT_VERSION: v3.25.0\n'), '3.25.0');
+  assert.equal(resolveSourceVersionFromPromptContent('PROMPT_VERSION: v3.25.1\n'), null, 'a malformed source version must not reach the sync guard');
+  assert.equal(resolveSourceVersionFromPromptContent('# no PROMPT_VERSION\n'), null, 'a missing source version must not reach the sync guard');
+  assert.equal(resolveSourceVersionFromPromptContent('PROMPT_VERSION: v3.25\nPROMPT_VERSION: v3.26\n'), null, 'duplicate source declarations must not select last-wins');
+
   let countedVersion: string | null = null;
   const taggedUnverified = await evaluateVerifiedSyncAdmission({
     dryRun: false,

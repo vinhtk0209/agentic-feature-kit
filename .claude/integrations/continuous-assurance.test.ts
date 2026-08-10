@@ -8,12 +8,15 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   AssuranceManifestError,
+  AssuranceReportError,
   detectSpecDrift,
   parseAssuranceManifest,
   runBattery,
   SPEC_REFETCH_SENTINEL,
+  validateAuthoritativeBatteryReport,
 } from './continuous-assurance';
 import { SpecIR, sha256 } from './spec-ir';
+import { KitVersionError, resolveCanonicalKitVersion } from './kit-version';
 
 let passed = 0;
 let failed = 0;
@@ -82,6 +85,21 @@ test('assurance manifest rejects duplicate check and quarantine ids before any c
   }`), AssuranceManifestError);
 });
 
+test('authoritative kit version resolver normalizes the sole PROMPT_VERSION and rejects missing, malformed, or duplicate declarations', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'continuous-assurance-version-'));
+  const commandDir = path.join(root, '.claude', 'commands');
+  fs.mkdirSync(commandDir, { recursive: true });
+  const commandFile = path.join(commandDir, 'feature-from-confluence.md');
+  fs.writeFileSync(commandFile, 'PROMPT_VERSION:   v3.25\n', 'utf8');
+  assert.strictEqual(resolveCanonicalKitVersion(root), '3.25.0');
+  fs.writeFileSync(commandFile, 'PROMPT_VERSION: v3.25\nPROMPT_VERSION: v3.26\n', 'utf8');
+  assert.throws(() => resolveCanonicalKitVersion(root), KitVersionError);
+  fs.writeFileSync(commandFile, 'PROMPT_VERSION: v3.25.1\n', 'utf8');
+  assert.throws(() => resolveCanonicalKitVersion(root), KitVersionError);
+  fs.writeFileSync(commandFile, '# no version\n', 'utf8');
+  assert.throws(() => resolveCanonicalKitVersion(root), KitVersionError);
+});
+
 test('seeded regression in a quarantined check still runs and surfaces in the Slack digest', async () => {
   const parsed = parseAssuranceManifest(`{
     "sentinel":"continuous-assurance/v1", "schemaVersion":1,
@@ -105,6 +123,80 @@ test('non-quarantined regression blocks the nightly gate and is reported', async
   });
   assert.strictEqual(report.gatePassed, false);
   assert.match(report.slackDigest, /FAILED.*contract-attack/s);
+});
+
+test('version-scoped canaries bind canonical version, stable check id, status, evidence hash, and observed time deterministically', async () => {
+  const parsed = parseAssuranceManifest(manifest());
+  const first = await runBattery(parsed, {
+    resolveKitVersion: () => '3.25.0',
+    now: () => new Date('2026-08-10T00:00:00.000Z'),
+    runCommand: () => ({ exitCode: 0, output: 'same evidence' }),
+  });
+  const second = await runBattery(parsed, {
+    resolveKitVersion: () => '3.25.0',
+    now: () => new Date('2026-08-11T00:00:00.000Z'),
+    runCommand: () => ({ exitCode: 0, output: 'same evidence' }),
+  });
+  const canary = first.results[0].canary;
+  assert.strictEqual(first.kitVersion, '3.25.0');
+  assert.strictEqual(first.observedAt, '2026-08-10T00:00:00.000Z');
+  assert.deepStrictEqual(canary, {
+    kitVersion: '3.25.0',
+    id: 'contract-attack',
+    status: 'passed',
+    evidenceHash: canary.evidenceHash,
+    observedAt: '2026-08-10T00:00:00.000Z',
+  });
+  assert.match(canary.evidenceHash, /^[a-f0-9]{64}$/);
+  assert.strictEqual(second.results[0].canary.evidenceHash, canary.evidenceHash, 'time fields must not affect evidence identity');
+  assert.match(first.slackDigest, /kit 3\.25\.0/);
+  assert.match(first.slackDigest, new RegExp(canary.evidenceHash));
+  assert.deepStrictEqual(validateAuthoritativeBatteryReport(first), first);
+});
+
+test('authoritative canaries accept silent command output as exact evidence, not a malformed zero-like value', async () => {
+  const report = await runBattery(parseAssuranceManifest(manifest()), {
+    resolveKitVersion: () => '3.25.0',
+    now: () => new Date('2026-08-10T00:00:00.000Z'),
+    runCommand: () => ({ exitCode: 0, output: '' }),
+  });
+  assert.strictEqual(report.results[0].output, '');
+  assert.match(report.slackDigest, /\(no output\)/);
+  assert.match(report.results[0].canary.evidenceHash, /^[a-f0-9]{64}$/);
+  assert.deepStrictEqual(validateAuthoritativeBatteryReport(report), report);
+});
+
+test('authoritative canary report fails closed on malformed versions, mismatched versions, malformed evidence, and duplicate checks', async () => {
+  const report = await runBattery(parseAssuranceManifest(manifest()), {
+    resolveKitVersion: () => '3.25.0',
+    now: () => new Date('2026-08-10T00:00:00.000Z'),
+    runCommand: () => ({ exitCode: 0, output: 'proof' }),
+  });
+  await assert.rejects(() => runBattery(parseAssuranceManifest(manifest()), {
+    resolveKitVersion: () => 'v3.25',
+    runCommand: () => ({ exitCode: 0, output: 'must not execute' }),
+  }), AssuranceReportError);
+  assert.throws(() => validateAuthoritativeBatteryReport({
+    ...report,
+    results: [{ ...report.results[0], canary: { ...report.results[0].canary, kitVersion: '3.24.0' } }],
+  }), AssuranceReportError);
+  assert.throws(() => validateAuthoritativeBatteryReport({
+    ...report,
+    results: [{ ...report.results[0], canary: { ...report.results[0].canary, evidenceHash: 'A'.repeat(64) } }],
+  }), AssuranceReportError);
+  assert.throws(() => validateAuthoritativeBatteryReport({
+    ...report,
+    results: [report.results[0], report.results[0]],
+  }), AssuranceReportError);
+  assert.throws(() => validateAuthoritativeBatteryReport({ ...report, unexpected: true }), AssuranceReportError);
+  assert.throws(() => validateAuthoritativeBatteryReport({
+    ...report,
+    results: [{ ...report.results[0], unexpected: true }],
+  }), AssuranceReportError);
+  assert.throws(() => validateAuthoritativeBatteryReport({
+    ...report,
+    results: [{ ...report.results[0], canary: { ...report.results[0].canary, unexpected: true } }],
+  }), AssuranceReportError);
 });
 
 test('contract-probe battery check uses the existing parser and blocks a real shape mismatch', async () => {

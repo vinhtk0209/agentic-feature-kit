@@ -27,6 +27,7 @@ import {
   recordVerify,
   captureAndRecord,
   pushVerifyRecord,
+  resolveKitVersion,
   VERIFY_NOTES_REF,
   VerifyNote,
 } from './record-verify';
@@ -64,6 +65,10 @@ function makeTargetRepo(withCommit: boolean): string {
   git(dir, ['config', 'user.email', 't@t.t']);
   git(dir, ['config', 'user.name', 'T']);
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: '@target/app' }), 'utf8');
+  // A target that can run the B11 verifier has already received the kit command authority via sync.
+  const commandDir = path.join(dir, '.claude', 'commands');
+  fs.mkdirSync(commandDir, { recursive: true });
+  fs.writeFileSync(path.join(commandDir, 'feature-from-confluence.md'), 'PROMPT_VERSION: v3.25\n', 'utf8');
   if (withCommit) { git(dir, ['add', '-A']); git(dir, ['commit', '-qm', 'init', '--no-verify']); }
   return dir;
 }
@@ -92,6 +97,35 @@ function inDir<T>(dir: string, fn: () => T): T {
 const NESTED = 'src/studio-home/tabs-section/class-management/tabs/ProgressReports';
 
 async function main(): Promise<void> {
+  await test('shared verify label resolver normalizes vN.N and fails closed for malformed or missing authority', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rv-version-'));
+    const commandDir = path.join(dir, '.claude', 'commands');
+    fs.mkdirSync(commandDir, { recursive: true });
+    const commandFile = path.join(commandDir, 'feature-from-confluence.md');
+    fs.writeFileSync(commandFile, 'PROMPT_VERSION: v3.25\n', 'utf8');
+    assert(resolveKitVersion(dir) === '3.25.0', 'vN.N must normalize through shared resolver');
+    fs.writeFileSync(commandFile, 'PROMPT_VERSION: v3.25.1\n', 'utf8');
+    throws(() => resolveKitVersion(dir), /kit-version/, 'malformed authority');
+    fs.writeFileSync(commandFile, '# absent\n', 'utf8');
+    throws(() => resolveKitVersion(dir), /kit-version/, 'missing authority');
+    rm(dir);
+  });
+
+  await test('malformed version authority blocks recordVerify before it can write a git note', () => {
+    const dir = makeTargetRepo(true);
+    scaffoldFeature(dir, 'src/demo');
+    const commandDir = path.join(dir, '.claude', 'commands');
+    fs.mkdirSync(commandDir, { recursive: true });
+    fs.writeFileSync(path.join(commandDir, 'feature-from-confluence.md'), 'PROMPT_VERSION: v3.25.1\n', 'utf8');
+    try {
+      inDir(dir, () => throws(
+        () => recordVerify({ phase: 'verify_complete', codePath: 'src/demo', specName: null, tierA_exit: 0, tierB_exit: null }),
+        /kit-version/, 'malformed version must stop before note write'));
+      const note = git(dir, ['notes', `--ref=${VERIFY_NOTES_REF}`, 'show', 'HEAD']);
+      assert(note.status !== 0, 'a rejected version authority must not write a verify note');
+    } finally { rm(dir); }
+  });
+
   // ── computeVerified truth table ──
   await test('computeVerified: 0/0→true, 0/null→true, 1/0→false, 0/1→false', () => {
     assert(computeVerified(0, 0) === true, '0/0');

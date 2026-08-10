@@ -35,6 +35,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { execFileSync } from "child_process";
+import { parseCanonicalPromptVersion } from "../.claude/integrations/kit-version";
 
 // Resolve kit root from this file's location, not from cwd.
 // (DEV AZURE path has a space -> import.meta.url is URL-encoded; fileURLToPath decodes it.)
@@ -416,6 +417,10 @@ interface InstallReport {
  * repo_runs.last_run_version (written by telemetry); if these two diverge in format,
  * "installed vs running" will mismatch falsely. Keep both in lockstep.
  */
+export function resolveSourceVersionFromPromptContent(content: string): string | null {
+  return parseCanonicalPromptVersion(content);
+}
+
 function resolveTargetVersion(targetRel: string): string | null {
   const cmdFile = path.resolve(
     KIT_ROOT,
@@ -426,8 +431,7 @@ function resolveTargetVersion(targetRel: string): string | null {
   );
   try {
     const content = fs.readFileSync(cmdFile, "utf8");
-    const m = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
-    return m ? m[1] + ".0" : null;
+    return resolveSourceVersionFromPromptContent(content);
   } catch {
     return null;
   }
@@ -553,8 +557,7 @@ function resolveSourceVersion(): string | null {
     const content = SRC_REF
       ? (git(["show", `${SRC_REF}:.claude/commands/feature-from-confluence.md`], "utf8") as string)
       : fs.readFileSync(path.join(SOURCE_CLAUDE, "commands", "feature-from-confluence.md"), "utf8");
-    const m = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
-    return m ? m[1] + ".0" : null;
+    return resolveSourceVersionFromPromptContent(content);
   } catch {
     return null;
   }
