@@ -159,3 +159,19 @@ intentional C1 limitation: the existing binding schema cannot truthfully retain 
 with an unknown USD amount, so it does not fabricate zero or partially measured values. I2-C2 must
 add an additive receipt schema before token-only data can be persisted; a later live/operator slice
 must prove the selected CLI profile, same phase/gates, and dashboard `token_usage` parity.
+
+## §7. I2-C2 — live usage receipt and completion bundle
+
+The dashboard's additive Codex JSONL receipt preserves measured tokens independently from price:
+`usage_status=captured`, `pricing_status=unpriced`, and `cost_est_usd=NULL`. This is compatible with
+the original binding's all-null `unknown` cost; neither side manufactures a zero price. A known USD
+cost remains unavailable until an operator pins an approved rate snapshot.
+
+`scripts/i2-live-evidence-verify.ts` binds the authorized live receipt to a new P1 v1 bundle without
+changing the manifest schema. The bundle contains exactly one backend-binding sidecar, one fixed
+shared-gate transcript, and one run-scoped usage receipt. The verifier reuses the strict I2-B reader,
+replays the same backend-neutral gate, and requires exact provider/model/run identity, one terminal
+completion, safe token counts, a single output occurrence, canonical timestamps, immutable file
+hashes, and honest `NULL`/`unpriced` cost semantics. Wrong but plausible output, cross-run usage,
+fabricated zero price, malformed counts, duplicate output, receipt tamper, and backend substitution
+all fail closed.

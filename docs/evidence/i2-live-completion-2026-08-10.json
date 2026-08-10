@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-10T15:33:12.875Z",
+  "prompt": "Reply with exactly I2_CODEX_LIVE_OK and nothing else.",
+  "expectedOutput": "I2_CODEX_LIVE_OK",
+  "cliVersion": "0.147.0",
+  "sourceBundle": {
+    "featureName": "i2-codex-live-smoke",
+    "phase": "B0",
+    "manifestHash": "1d41f127b35369ea7113ea052a4b9bb864453b741f8b75b0e831e5efebf37348",
+    "bindingHash": "5964639b267ecd50cae6e7e5bba215d5ca9adfa1b4bd2889664e516a3df07f10"
+  },
+  "commandRun": {
+    "id": "c4a2d3ee-c49c-48a0-b7e7-7fb7d6b1619b",
+    "runner": "codex",
+    "model": "gpt-5.6-sol",
+    "status": "passed",
+    "startedAt": "2026-08-10T12:35:46.738Z",
+    "endedAt": "2026-08-10T12:36:09.453Z",
+    "exitCode": 0,
+    "logTailSha256": "25caca4dac6188195cecdce34fe5272511d163868d4f3d76d2b19a7fba1f2685",
+    "logTailBytes": 3085,
+    "exactOutputOccurrences": 1
+  },
+  "tokenUsage": {
+    "runId": "c4a2d3ee-c49c-48a0-b7e7-7fb7d6b1619b",
+    "inputTokens": 16613,
+    "cacheReadTokens": 11008,
+    "outputTokens": 11,
+    "reasoningOutputTokens": 0,
+    "costEstUsd": null,
+    "usageSource": "codex_exec_jsonl",
+    "usageStatus": "captured",
+    "usageError": null,
+    "completionCount": 1,
+    "pricingStatus": "unpriced",
+    "pricingSnapshot": null,
+    "usageObservedAt": "2026-08-10T12:36:09.453Z"
+  }
+}
