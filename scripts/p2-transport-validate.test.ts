@@ -1,0 +1,121 @@
+import * as assert from 'assert';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { Readable } from 'stream';
+import { buildBundle } from '../.claude/integrations/evidence-bundle';
+import {
+  P2_TRANSPORT_ENVELOPE,
+  type P2RoleTransport,
+} from '../.claude/integrations/p2-transport-manifest';
+import {
+  executeP2TransportValidation,
+  formatP2TransportValidationResult,
+  P2_TRANSPORT_VALIDATION_RESULT_SENTINEL,
+  readP2TransportInput,
+  runP2TransportValidationCli,
+} from './p2-transport-validate';
+
+let passed = 0;
+let failed = 0;
+async function test(name: string, run: () => void | Promise<void>): Promise<void> {
+  try { await run(); passed += 1; console.log(`✅ ${name}`); }
+  catch (error) { failed += 1; console.error(`❌ ${name}`, error); }
+}
+
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'p2-transport-cli-'));
+const base = path.join(root, 'worktrees');
+const bundle = buildBundle({ featureName: 'F', phase: 'B1', cwd: root, transcripts: { evidence: 'valid' } });
+const argv = ['--cwd', root, '--approved-workspace-base', base];
+
+function manifest(): P2RoleTransport {
+  return {
+    sentinel: 'p2-role-transport/v1', schemaVersion: 1, planHash: 'a'.repeat(64),
+    runId: 'run-1', taskId: 'task-ui', role: 'ui',
+    workspace: {
+      workspaceId: 'run-1-ui', basePath: base,
+      path: path.join(base, 'run-1-ui'), kind: 'git-worktree',
+    },
+    predecessors: [{
+      featureName: 'F', phase: 'B1', manifestHash: bundle.manifestHash,
+      requireBackendBinding: false,
+    }],
+    outputCapBytes: 1024, timeoutMs: 1000, requireBackendBinding: false,
+    stopReceipt: { kind: 'sidecar-stop', runId: 'run-1' },
+  };
+}
+
+function envelope(value: P2RoleTransport = manifest()): string {
+  return `${P2_TRANSPORT_ENVELOPE}${JSON.stringify(value)}`;
+}
+
+async function main(): Promise<void> {
+  await test('valid stdin envelope returns one canonical normalized manifest result', () => {
+    const result = executeP2TransportValidation(argv, envelope());
+    assert.equal(result.ok, true);
+    assert.equal(result.errorCode, null);
+    assert.equal(result.manifest?.workspace.path, path.resolve(base, 'run-1-ui'));
+    const line = formatP2TransportValidationResult(result);
+    assert.equal(line.split(P2_TRANSPORT_VALIDATION_RESULT_SENTINEL).length - 1, 1);
+    assert.equal(line.includes('\n'), false);
+  });
+
+  await test('missing, duplicate, malformed, and noisy sentinels return safe failure with no manifest', () => {
+    const cases = [
+      JSON.stringify(manifest()),
+      `${envelope()}\n${envelope()}`,
+      `${envelope()}\nnoise`,
+      `${P2_TRANSPORT_ENVELOPE}{bad-json}`,
+    ];
+    for (const raw of cases) {
+      assert.deepEqual(executeP2TransportValidation(argv, raw), {
+        schemaVersion: 1, ok: false, manifest: null, errorCode: 'invalid_transport',
+      });
+    }
+  });
+
+  await test('argument ambiguity fails closed without returning validation detail', () => {
+    assert.equal(executeP2TransportValidation([], envelope()).ok, false);
+    assert.equal(executeP2TransportValidation([...argv, '--cwd', root], envelope()).ok, false);
+    assert.equal(executeP2TransportValidation([...argv, '--unknown', 'x'], envelope()).ok, false);
+  });
+
+  await test('stdin reader enforces a cumulative byte cap across many chunks and multibyte text', async () => {
+    await assert.rejects(() => readP2TransportInput(Readable.from(['1234', '5678', '9']), 8));
+    await assert.rejects(() => readP2TransportInput(Readable.from(['é', 'é']), 3));
+    assert.equal(await readP2TransportInput(Readable.from(['12', '34']), 4), '1234');
+  });
+
+  await test('CLI emits exactly one safe sentinel and a nonzero exit on read or validation failure', async () => {
+    for (const readInput of [
+      async () => { throw new Error('secret detail'); },
+      async () => `${P2_TRANSPORT_ENVELOPE}{bad-json}`,
+    ]) {
+      const lines: string[] = [];
+      const exitCode = await runP2TransportValidationCli(argv, { readInput, writeLine: line => lines.push(line) });
+      assert.equal(exitCode, 1);
+      assert.equal(lines.length, 1);
+      assert.equal(lines[0].startsWith(P2_TRANSPORT_VALIDATION_RESULT_SENTINEL), true);
+      assert.equal(lines[0].includes('secret detail'), false);
+      assert.equal(JSON.parse(lines[0].slice(P2_TRANSPORT_VALIDATION_RESULT_SENTINEL.length)).manifest, null);
+    }
+  });
+
+  await test('CLI success emits one exact sentinel and exit zero', async () => {
+    const lines: string[] = [];
+    const exitCode = await runP2TransportValidationCli(argv, {
+      readInput: async () => envelope(),
+      writeLine: line => lines.push(line),
+    });
+    assert.equal(exitCode, 0);
+    assert.equal(lines.length, 1);
+    const result = JSON.parse(lines[0].slice(P2_TRANSPORT_VALIDATION_RESULT_SENTINEL.length));
+    assert.equal(result.ok, true);
+    assert.equal(result.manifest.taskId, 'task-ui');
+  });
+
+  console.log(`${passed} passed, ${failed} failed`);
+  process.exit(failed ? 1 : 0);
+}
+
+main();
