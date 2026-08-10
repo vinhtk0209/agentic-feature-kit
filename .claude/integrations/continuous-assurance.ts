@@ -346,6 +346,16 @@ function canaryStatus(status: CheckStatus): CanaryStatus {
   return status === 'pass' ? 'passed' : status === 'fail' ? 'mismatch' : 'error';
 }
 
+/**
+ * Node's test reporter adds wall-clock durations to otherwise identical evidence. Preserve the raw
+ * transcript/digest, but remove only those two reporter-owned timing forms from content identity.
+ */
+export function canonicalCanaryEvidenceOutput(output: string): string {
+  return output.replace(/\r\n/g, '\n')
+    .replace(/ \(\d+(?:\.\d+)?ms\)$/gm, ' (<duration-ms>)')
+    .replace(/^(ℹ duration_ms) \d+(?:\.\d+)?$/gm, '$1 <duration-ms>');
+}
+
 /** Hash only immutable check evidence, never run ordering or observation metadata. */
 function evidenceHash(result: Pick<BatteryCheckResult, 'id' | 'kind' | 'quarantined' | 'status' | 'output'>): string {
   return sha256(JSON.stringify({
@@ -353,7 +363,7 @@ function evidenceHash(result: Pick<BatteryCheckResult, 'id' | 'kind' | 'quaranti
     kind: result.kind,
     quarantined: result.quarantined,
     status: result.status,
-    output: result.output,
+    output: canonicalCanaryEvidenceOutput(result.output),
   }));
 }
 

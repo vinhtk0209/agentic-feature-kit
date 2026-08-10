@@ -154,6 +154,21 @@ test('version-scoped canaries bind canonical version, stable check id, status, e
   assert.deepStrictEqual(validateAuthoritativeBatteryReport(first), first);
 });
 
+test('Node test-runner timing metadata is excluded from evidence identity while semantic output remains hash-significant', async () => {
+  const parsed = parseAssuranceManifest(manifest());
+  const execute = (output: string) => runBattery(parsed, {
+    resolveKitVersion: () => '3.25.0',
+    now: () => new Date('2026-08-10T00:00:00.000Z'),
+    runCommand: () => ({ exitCode: 0, output }),
+  });
+  const first = await execute('✔ exact contract (1.234ms)\nℹ duration_ms 12.345');
+  const timingOnly = await execute('✔ exact contract (98.7ms)\nℹ duration_ms 999.1');
+  const semanticChange = await execute('✔ wrong contract (1.234ms)\nℹ duration_ms 12.345');
+  assert.strictEqual(first.results[0].canary.evidenceHash, timingOnly.results[0].canary.evidenceHash);
+  assert.notStrictEqual(first.results[0].canary.evidenceHash, semanticChange.results[0].canary.evidenceHash);
+  assert.notStrictEqual(first.results[0].output, timingOnly.results[0].output, 'raw transcripts remain exact');
+});
+
 test('authoritative canaries accept silent command output as exact evidence, not a malformed zero-like value', async () => {
   const report = await runBattery(parseAssuranceManifest(manifest()), {
     resolveKitVersion: () => '3.25.0',
