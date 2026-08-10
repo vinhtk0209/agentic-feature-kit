@@ -74,3 +74,30 @@ the future transport owner. Each role receives only its own prompt/context plus 
 bundle references. A timeout explicitly reclaims its lease and may retry within the declared bound.
 The merger is unreachable until every role handoff has passed P1/I2 verification, and its output is
 then evaluated by the unchanged final gate.
+
+## 7. Canonical cross-repo transport manifest (P2-C1)
+
+`p2-transport-manifest.ts` is the sole versioned manifest contract between the kit runtime and a
+future dashboard sidecar. The dashboard must invoke this validator (or an exported kit command),
+not copy its types or reimplement its checks. A single-line `@@P2_ROLE_TRANSPORT@@` JSON envelope
+contains exactly one `p2-role-transport/v1` manifest and binds the plan hash, run/task/role,
+timeout, output cap, backend-binding requirement, predecessor P1/I2 bundle references, and stop
+receipt schema.
+
+An operator supplies one approved worktree base. Each manifest names a canonical workspace id and
+a path strictly below that base, with only `kind: "git-worktree"`; traversal, `.git`,
+`node_modules`, junction intent, duplicate workspaces, and ambiguous sentinels are rejected before
+the sidecar can take an action. The contract expressly does not create or remove worktrees. In
+particular, a consumer must never use a `node_modules` junction: one worktree per role/run has its
+own normal filesystem directory.
+
+String checks cannot prove the resulting filesystem has no reparse point. Before a future
+consumer launches a role, it must `lstat` the created workspace and relevant parent chain, resolve
+the real path, and reject any junction/reparse point or resolved path outside the approved base.
+That post-creation check is mandatory consumer work; C1 deliberately grants no filesystem action.
+
+Predecessors are bundle references only, validated through existing P1 verification and strict I2
+verification when required. A stop receipt is checked against the manifest's run/workspace identity
+and output cap. Thus malformed runner output, over-cap output, or a missing/forged receipt cannot
+become a handoff or final merge. Process launch, timeout killing, and database writes remain
+outside this C1 contract and require a later consumer integration.
