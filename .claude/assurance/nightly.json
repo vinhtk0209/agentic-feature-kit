@@ -1,0 +1,22 @@
+{
+  "sentinel": "continuous-assurance/v1",
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "contract-probe-attack-suite",
+      "kind": "command",
+      "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/contract-probe.test.ts"]
+    },
+    {
+      "id": "contract-probe-defer-attack-suite",
+      "kind": "command",
+      "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/contract-probe.defer.test.ts"]
+    },
+    {
+      "id": "checklist-defer-reprobe",
+      "kind": "command",
+      "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/checklist-defer.test.ts"]
+    }
+  ],
+  "quarantine": []
+}
