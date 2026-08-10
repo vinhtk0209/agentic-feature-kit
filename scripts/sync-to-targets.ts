@@ -586,50 +586,72 @@ export async function countVerifiedRuns(version: string): Promise<number> {
   return Number.isNaN(total) ? 0 : total;
 }
 
+export type VerifiedSyncAdmission =
+  | { outcome: "allow"; version: string | null; count: number | null; forced: boolean }
+  | { outcome: "warn" | "deny"; version: string | null; reason: string };
+
+/** Pure/injectable admission decision. A tagged source is versioned, but that is not proof. */
+export async function evaluateVerifiedSyncAdmission(input: {
+  dryRun: boolean;
+  forceUnverified: string | null;
+  sourceRef: string | null;
+  resolveSourceVersion: () => string | null;
+  countVerifiedRuns: (version: string) => Promise<number>;
+}): Promise<VerifiedSyncAdmission> {
+  if (input.forceUnverified) return { outcome: "allow", version: null, count: null, forced: true };
+
+  const sourceLabel = input.sourceRef ? `ref ${input.sourceRef}` : "working tree";
+  const version = input.resolveSourceVersion();
+  if (!version) {
+    const reason = `verify backstop: could not resolve the kit version (PROMPT_VERSION) for ${sourceLabel}.`;
+    return { outcome: input.dryRun ? "warn" : "deny", version: null, reason };
+  }
+
+  let count: number;
+  try {
+    count = await input.countVerifiedRuns(version);
+  } catch (error) {
+    const reason = `verify backstop: cannot reach Supabase to confirm kit ${version} is verified (${(error as Error).message}).`;
+    return { outcome: input.dryRun ? "warn" : "deny", version, reason };
+  }
+  if (count > 0) return { outcome: "allow", version, count, forced: false };
+
+  const reason = `verify backstop: kit ${version} has NO computed-verified run (verify_records empty for it).`;
+  return { outcome: input.dryRun ? "warn" : "deny", version, reason };
+}
+
 /**
  * A1.3 verify backstop. Mirrors assertCleanClaudeTree: FAIL-CLOSED (exit 1), a conscious
  * --force-unverified <reason> override (logged/auditable), and dry-run softens a refusal to a warning.
+ * The same verified=true requirement applies to the working tree and every --ref source.
  */
 async function assertVerifiedForSync(dryRun: boolean, forceUnverified: string | null): Promise<void> {
-  // A --ref deploy ships a committed, tagged version (its own conscious gate) — skip, like the dirty guard.
-  if (SRC_REF) return;
+  const decision = await evaluateVerifiedSyncAdmission({
+    dryRun,
+    forceUnverified,
+    sourceRef: SRC_REF,
+    resolveSourceVersion,
+    countVerifiedRuns,
+  });
 
-  if (forceUnverified) {
+  if (decision.outcome === "allow" && decision.forced) {
     console.warn(`\n⚠️  --force-unverified: syncing WITHOUT a proven verify record.`);
     console.warn(`    Reason (logged): "${forceUnverified}"`);
     console.warn(`    This bypasses the A1.3 backstop — a conscious, auditable override.\n`);
     return;
   }
-
-  const version = resolveSourceVersion();
-  if (!version) {
-    const msg = "verify backstop: could not resolve the kit version (PROMPT_VERSION) being synced.";
-    if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
-    fail(`${msg}\n  Fix the command file's PROMPT_VERSION, or override with --force-unverified "<reason>".`);
+  if (decision.outcome === "allow") {
+    console.log(`✓ verify backstop: kit ${decision.version} has ${decision.count} computed-verified run(s) — sync allowed.`);
+    return;
   }
-
-  let count: number;
-  try {
-    count = await countVerifiedRuns(version);
-  } catch (e) {
-    const msg = `verify backstop: cannot reach Supabase to confirm kit ${version} is verified (${(e as Error).message}).`;
-    if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
-    console.error(`\nERROR: ${msg}`);
-    console.error("  FAIL-CLOSED: an unreachable backstop is not proof. Retry when Supabase is up,");
-    console.error('  or override consciously with --force-unverified "<reason>".\n');
-    await closeFetchSockets();
-    process.exit(1);
-  }
-
-  if (count > 0) {
-    console.log(`✓ verify backstop: kit ${version} has ${count} computed-verified run(s) — sync allowed.`);
+  if (decision.outcome === "warn") {
+    console.warn(`  ! ${decision.reason} (dry run — a real sync would refuse here.)`);
     return;
   }
 
-  const msg = `verify backstop: kit ${version} has NO computed-verified run (verify_records empty for it).`;
-  if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
-  console.error(`\nERROR: ${msg}`);
-  console.error(`  Run a real feature through the B11 wrapper to record a verified run for ${version}, then re-sync.`);
+  console.error(`\nERROR: ${decision.reason}`);
+  console.error("  FAIL-CLOSED: a missing/unreachable verified=true backstop is not proof.");
+  if (decision.version) console.error(`  Run a real feature through B11 to verify ${decision.version}, then re-sync.`);
   console.error('  Or override consciously with --force-unverified "<reason>".\n');
   await closeFetchSockets();
   process.exit(1);
