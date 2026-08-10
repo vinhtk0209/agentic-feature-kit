@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "i2-codex-live-smoke",
+  "phase": "B0",
+  "builtAt": "2026-08-10T12:16:24.373Z",
+  "files": [
+    {
+      "role": "backend-binding",
+      "path": "docs/specs/i2-codex-live-smoke/.evidence/B0/backend-binding.json",
+      "sha256": "f9cccb6cf618246ba0fc8d5ee998fb81876df33b6c814c952c96e09828c3344c",
+      "bytes": 459
+    },
+    {
+      "role": "transcript",
+      "path": "docs/specs/i2-codex-live-smoke/.evidence/B0/transcripts/codex-live-smoke-output.txt",
+      "sha256": "dca804537caf577ddb8cacffeb0605b23701e6232847e059d0e256500fea1c03",
+      "bytes": 16
+    }
+  ],
+  "manifestHash": "1d41f127b35369ea7113ea052a4b9bb864453b741f8b75b0e831e5efebf37348",
+  "estimatedTokens": 119,
+  "budgetTokens": 4000
+}
