@@ -32,7 +32,7 @@ Every adapter implements this minimal injectable interface:
 interface ProviderAdapter {
   identity: { provider, modelKey, modelId, adapterVersion };
   capabilityProbe(): Promise<{ provider, capabilities }>;
-  executePhase(prompt): Promise<{ output }>;
+  executePhase(prompt): Promise<{ output, cost? }>;
 }
 ```
 
@@ -52,8 +52,8 @@ also rejects a non-string output before it invokes the injected gate.
 
 The registry hashes the canonical identity plus sorted capability list. Execution is refused if
 the provider is unregistered, untrusted, insufficiently capable, or its identity changes after
-trust. A production adapter is supplied only by a future transport boundary; tests inject a local
-adapter and never invoke a provider.
+trust. I2-C1 now supplies the Codex CLI production adapter through an injected direct-process
+boundary; tests inject a local process boundary and never invoke a provider.
 
 Registry/trust/execution lookup uses the canonical backend key `percentEncode(provider) + ":" +
 percentEncode(modelKey)`, rather than `provider` alone. The delimiter cannot alias encoded input,
@@ -122,3 +122,40 @@ sentinel identified by the reserved path or role, with both exact expected value
 hash-bound sidecar and reuses `verifyEvidenceBinding`. Sidecar removal/tampering, a duplicated or
 aliased sentinel, and any identity/capability/cost mutation all fail closed. Generic P1 callers do
 not infer an I2 claim from an old v1 bundle and retain their existing verification/resume behavior.
+
+## §6. I2-C1 — operator-pinned Codex CLI transport foundation
+
+`codex-cli-adapter.ts` is the first non-Claude adapter. It takes an injected process executor and
+a non-secret operator configuration that pins the executable, canonical model key, adapter version,
+expected Codex CLI semver, timeout, output cap, and optional per-million
+input/cached-input/output USD rates. It takes an injected `ModelConfig`, calls
+`identityFromModelConfig`, and refuses an unknown key or any provider other than `codex`; arbitrary
+model ID/model-key pairs are impossible. It does not read credentials, environment variables, or
+the registry from disk. The required non-interactive argv is fixed as:
+
+```text
+<executable> exec --ephemeral --json --sandbox read-only --model <pinned-model> -
+```
+
+The phase prompt is passed only on stdin. The adapter always asks its executor for `shell: false`;
+the pinned model is one direct argv value, and prompt text is never interpolated into a shell
+command. Blank prompts are refused before spawning, while normal multiline prompts are preserved.
+Its capability probe is the separate direct argv `<executable> --version`, accepted only for the
+strict `codex-cli X.Y.Z` response form and an exact match with `expectedCliVersion`. The observed
+version is included as `codex-cli-version:<version>` in the capabilities, so the capability hash
+binds the actual CLI version rather than just the operator's assertion.
+
+Execution accepts JSONL only when it contains exactly one `turn.completed` usage sentinel and one
+non-empty completed `agent_message`. It validates safe non-negative `input_tokens`,
+`cached_input_tokens`, and `output_tokens`, with cached input no larger than input. Nonzero exit,
+timeout, malformed/duplicate/missing sentinels, missing final message, and combined stdout/stderr
+output-cap overflow are errors before the shared gate is invoked. The production Node executor
+captures direct-argv output only, returns deterministic exit/signal state, and terminates its child
+tree on timeout (Windows `taskkill /T /F`; detached process group on POSIX where available).
+
+If all three configured rates are present, C1 computes a finite USD estimate and returns a known
+`BackendCost`. If rates are absent, it returns the canonical all-null `unknown` cost. This is an
+intentional C1 limitation: the existing binding schema cannot truthfully retain measured tokens
+with an unknown USD amount, so it does not fabricate zero or partially measured values. I2-C2 must
+add an additive receipt schema before token-only data can be persisted; a later live/operator slice
+must prove the selected CLI profile, same phase/gates, and dashboard `token_usage` parity.

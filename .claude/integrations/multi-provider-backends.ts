@@ -23,7 +23,7 @@ export interface CapabilityProbe {
 export interface ProviderAdapter {
   readonly identity: BackendIdentity;
   capabilityProbe(): Promise<CapabilityProbe>;
-  executePhase(prompt: string): Promise<{ output: string }>;
+  executePhase(prompt: string): Promise<ProviderExecutionResult>;
 }
 
 export interface GateVerdict {
@@ -40,6 +40,12 @@ export interface TrustedBackend {
 export type BackendCost =
   | { status: 'unknown'; inputTokens: null; outputTokens: null; costUsd: null }
   | { status: 'known'; inputTokens: number; outputTokens: number; costUsd: number };
+
+export interface ProviderExecutionResult {
+  output: string;
+  /** Optional so existing output-only adapters remain source-compatible. */
+  cost?: BackendCost;
+}
 
 export interface EvidenceBackendBinding {
   schemaVersion: 1;
@@ -201,7 +207,7 @@ export class ProviderRegistry {
     return trusted ? { ...trusted, identity: { ...trusted.identity }, capabilities: [...trusted.capabilities] } : undefined;
   }
 
-  async execute(key: string, prompt: string, gate: (output: string) => Promise<GateVerdict>): Promise<{ trusted: TrustedBackend; output: string; gate: GateVerdict }> {
+  async execute(key: string, prompt: string, gate: (output: string) => Promise<GateVerdict>): Promise<{ trusted: TrustedBackend; output: string; cost?: BackendCost; gate: GateVerdict }> {
     const registered = this.adapters.get(key);
     const trusted = this.trusted.get(key);
     if (!registered || !trusted) throw new Error(`backend "${key}" is not trusted`);
@@ -211,14 +217,34 @@ export class ProviderRegistry {
     const result = await adapter.executePhase(prompt);
     this.assertRegisteredIdentity(key, registered);
     if (!result || typeof result.output !== 'string') throw new Error(`backend "${key}" execution output is malformed`);
+    const cost = normalizeExecutionCost(result.cost);
     // The caller supplies exactly the same deterministic gate contract for every backend.
     const gateVerdict = await gate(result.output);
-    return { trusted: { ...trusted, identity: { ...trusted.identity }, capabilities: [...trusted.capabilities] }, output: result.output, gate: gateVerdict };
+    return {
+      trusted: { ...trusted, identity: { ...trusted.identity }, capabilities: [...trusted.capabilities] },
+      output: result.output,
+      ...(cost ? { cost } : {}),
+      gate: gateVerdict,
+    };
   }
 
   private assertRegisteredIdentity(key: string, registered: { adapter: ProviderAdapter; registeredIdentity: string }): void {
     if (backendKey(registered.adapter.identity) !== key || identityText(registered.adapter.identity) !== registered.registeredIdentity) {
       throw new Error(`backend "${key}" identity changed after registration`);
     }
+  }
+}
+
+function normalizeExecutionCost(cost: BackendCost | undefined): BackendCost | undefined {
+  if (cost === undefined) return undefined;
+  try {
+    const status = (cost as { status?: unknown }).status;
+    const normalized = status === 'known'
+      ? normalizeCost(cost as Extract<BackendCost, { status: 'known' }>)
+      : status === 'unknown' ? normalizeCost(undefined) : undefined;
+    if (!normalized || JSON.stringify(normalized) !== JSON.stringify(cost)) throw new Error('non-canonical cost');
+    return normalized;
+  } catch {
+    throw new Error('backend execution cost is malformed');
   }
 }

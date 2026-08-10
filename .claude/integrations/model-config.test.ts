@@ -91,6 +91,12 @@ test('DEFAULT_MODEL_CONFIG ships a copilot provider entry', () => {
   assert(providersOf(DEFAULT_MODEL_CONFIG).includes('copilot'), 'copilot listed');
 });
 
+test('the canonical repository model config registers the pinned Codex model identity', () => {
+  const cfg = loadModelConfig(process.cwd());
+  assert(providerOf(cfg, 'codex') === 'codex', 'codex provider');
+  assert(modelId(cfg, 'codex') === 'gpt-5.6-sol', 'pinned Codex model id');
+});
+
 test('loadModelConfig falls back to default on malformed JSON', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mc-'));
   fs.mkdirSync(path.join(tmp, '.claude'));

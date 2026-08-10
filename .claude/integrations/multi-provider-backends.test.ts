@@ -120,6 +120,18 @@ async function main() {
       return { passed: true, detail: 'must not execute' };
     }), /execution output is malformed/);
     assert.equal(gated, false);
+
+    let costGated = false;
+    const malformedCost = adapter();
+    const costRegistry = new ProviderRegistry([malformedCost]);
+    const costKey = backendKey(malformedCost.identity);
+    malformedCost.executePhase = async () => ({ output: 'x', cost: { status: 'known', inputTokens: 0.5, outputTokens: 0, costUsd: 0 } as never });
+    await costRegistry.trust(costKey);
+    await assert.rejects(() => costRegistry.execute(costKey, 'same phase prompt', async () => {
+      costGated = true;
+      return { passed: true, detail: 'must not execute' };
+    }), /execution cost is malformed/);
+    assert.equal(costGated, false);
   });
 
   await test('backend identity binding is tamper-evident and immutable by hash verification', async () => {
