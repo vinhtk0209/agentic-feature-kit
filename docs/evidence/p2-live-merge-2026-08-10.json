@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-10T15:09:00.000Z",
+  "runId": "b12c895d-b72f-48eb-a620-ee2f182ad600",
+  "planHash": "e24bfb220e3cc5a864efa7cad0ad75bae757b5272555102fe5ed9322be0e4d03",
+  "predecessor": {
+    "featureName": "i2-codex-live-smoke",
+    "phase": "B0",
+    "manifestHash": "1d41f127b35369ea7113ea052a4b9bb864453b741f8b75b0e831e5efebf37348",
+    "bindingHash": "5964639b267ecd50cae6e7e5bba215d5ca9adfa1b4bd2889664e516a3df07f10"
+  },
+  "expectedOutput": "I2_CODEX_LIVE_OK",
+  "roles": [
+    {
+      "taskId": "task-dev",
+      "role": "dev",
+      "commandRunId": "e2eff527-6172-4394-9216-3225fe7d2cd1",
+      "status": "passed",
+      "agentMessage": "I2_CODEX_LIVE_OK",
+      "agentMessageCount": 1,
+      "logTailSha256": "763a025a959dcf50b876d4b03e445a9b4275aef4c0d1af88e50a91f55567cd0b",
+      "inputTokens": 16437,
+      "cacheReadTokens": 11008,
+      "outputTokens": 11,
+      "reasoningOutputTokens": 0,
+      "usageSource": "codex_exec_jsonl",
+      "usageStatus": "captured",
+      "pricingStatus": "unpriced"
+    },
+    {
+      "taskId": "task-design",
+      "role": "design",
+      "commandRunId": "ca255080-17e5-4d28-ae73-2ab63446108e",
+      "status": "passed",
+      "agentMessage": "I2_CODEX_LIVE_OK",
+      "agentMessageCount": 1,
+      "logTailSha256": "1617464703d1d7895a15f1849db323a3a04898ddc78d53545fc9763331b87b44",
+      "inputTokens": 16437,
+      "cacheReadTokens": 6912,
+      "outputTokens": 11,
+      "reasoningOutputTokens": 0,
+      "usageSource": "codex_exec_jsonl",
+      "usageStatus": "captured",
+      "pricingStatus": "unpriced"
+    },
+    {
+      "taskId": "task-ui",
+      "role": "ui",
+      "commandRunId": "dc7ac103-2160-4800-9415-c521f217e55e",
+      "status": "passed",
+      "agentMessage": "I2_CODEX_LIVE_OK",
+      "agentMessageCount": 1,
+      "logTailSha256": "fce268e537e22f6e5f26d3095ac250642dca22f300e688d102c729f8145014ab",
+      "inputTokens": 16441,
+      "cacheReadTokens": 11008,
+      "outputTokens": 11,
+      "reasoningOutputTokens": 0,
+      "usageSource": "codex_exec_jsonl",
+      "usageStatus": "captured",
+      "pricingStatus": "unpriced"
+    },
+    {
+      "taskId": "task-figma",
+      "role": "figma",
+      "commandRunId": "9bfb34bc-a770-4e8b-b824-a13ef2bf6e85",
+      "status": "passed",
+      "agentMessage": "I2_CODEX_LIVE_OK",
+      "agentMessageCount": 1,
+      "logTailSha256": "c28615ccda4ff39cde557174856bb21d2dbb344a35d637a1ae7d481759541991",
+      "inputTokens": 16437,
+      "cacheReadTokens": 6912,
+      "outputTokens": 11,
+      "reasoningOutputTokens": 0,
+      "usageSource": "codex_exec_jsonl",
+      "usageStatus": "captured",
+      "pricingStatus": "unpriced"
+    }
+  ]
+}

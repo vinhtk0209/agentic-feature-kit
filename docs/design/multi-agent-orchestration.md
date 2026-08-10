@@ -108,3 +108,19 @@ validated individually, then `validateP2RoleTransportSet` requires one run id, o
 unique task/workspace identities for the complete wave. Consumers must run this gate once before
 provisioning any worktree or launching any provider; a mixed or duplicate wave is one atomic
 failure, never a partially launched set.
+
+## 8. Live operator merge evidence
+
+`scripts/p2-live-merge-verify.ts` verifies the immutable operator snapshot under
+`docs/evidence/` without querying or mutating external systems. The snapshot binds one live
+four-role transport run to four passed command-run identities, exact Codex JSONL agent messages,
+log-tail hashes, and captured token provenance. It then re-verifies the predecessor P1 manifest
+and strict I2 backend binding from disk, constructs the four lease-bound handoffs, and calls the
+same `verifyFinalMerge` core used by the runtime.
+
+The merge rule for the fixed-output canary is intentionally minimal: all four independently
+observed messages must equal the expected output, and that output's SHA-256 must equal the single
+P1 transcript entry in the strict predecessor manifest. The unchanged equality gate runs once on
+the merged output. Four agents agreeing on a plausible but different output therefore cannot
+replace the P1 transcript or pass the final gate. The evidence preserves `unpriced` as an explicit
+accounting state; it never invents a provider cost.
