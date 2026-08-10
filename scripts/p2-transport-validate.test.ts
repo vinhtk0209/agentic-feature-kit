@@ -53,7 +53,9 @@ async function main(): Promise<void> {
   await test('valid stdin envelope returns one canonical normalized manifest result', () => {
     const result = executeP2TransportValidation(argv, envelope());
     assert.equal(result.ok, true);
+    assert.equal(result.kind, 'manifest');
     assert.equal(result.errorCode, null);
+    assert.equal(result.receipt, null);
     assert.equal(result.manifest?.workspace.path, path.resolve(base, 'run-1-ui'));
     const line = formatP2TransportValidationResult(result);
     assert.equal(line.split(P2_TRANSPORT_VALIDATION_RESULT_SENTINEL).length - 1, 1);
@@ -69,7 +71,7 @@ async function main(): Promise<void> {
     ];
     for (const raw of cases) {
       assert.deepEqual(executeP2TransportValidation(argv, raw), {
-        schemaVersion: 1, ok: false, manifest: null, errorCode: 'invalid_transport',
+        schemaVersion: 1, kind: null, ok: false, manifest: null, receipt: null, errorCode: 'invalid_transport',
       });
     }
   });
@@ -84,6 +86,41 @@ async function main(): Promise<void> {
     await assert.rejects(() => readP2TransportInput(Readable.from(['1234', '5678', '9']), 8));
     await assert.rejects(() => readP2TransportInput(Readable.from(['é', 'é']), 3));
     assert.equal(await readP2TransportInput(Readable.from(['12', '34']), 4), '1234');
+  });
+
+  await test('stop-receipt mode validates exact manifest identity, receipt schema, and output cap through the kit parser', () => {
+    const receiptArgv = [...argv, '--mode', 'stop-receipt'];
+    const stopReceipt = JSON.stringify({
+      sentinel: 'p2-role-transport/v1', schemaVersion: 1, kind: 'sidecar-stop',
+      runId: 'run-1', workspaceId: 'run-1-ui', outputBytes: 0, reason: 'completed',
+    });
+    const raw = JSON.stringify({ manifestEnvelope: envelope(), stopReceipt });
+    const result = executeP2TransportValidation(receiptArgv, raw);
+    assert.equal(result.ok, true);
+    assert.equal(result.kind, 'stop-receipt');
+    assert.equal(result.manifest?.runId, 'run-1');
+    assert.equal(result.receipt?.outputBytes, 0);
+    assert.equal(result.receipt?.workspaceId, 'run-1-ui');
+
+    const forged = JSON.stringify({ manifestEnvelope: envelope(), stopReceipt: stopReceipt.replace('run-1-ui', 'other') });
+    assert.equal(executeP2TransportValidation(receiptArgv, forged).ok, false);
+    const overCap = JSON.stringify({ manifestEnvelope: envelope(), stopReceipt: stopReceipt.replace('"outputBytes":0', '"outputBytes":1025') });
+    assert.equal(executeP2TransportValidation(receiptArgv, overCap).ok, false);
+  });
+
+  await test('stop-receipt request rejects missing, extra, malformed, and duplicate manifest-envelope sentinels', () => {
+    const receiptArgv = [...argv, '--mode', 'stop-receipt'];
+    const receipt = JSON.stringify({
+      sentinel: 'p2-role-transport/v1', schemaVersion: 1, kind: 'sidecar-stop', runId: 'run-1',
+      workspaceId: 'run-1-ui', outputBytes: 1, reason: 'completed',
+    });
+    const cases = [
+      JSON.stringify({ stopReceipt: receipt }),
+      JSON.stringify({ manifestEnvelope: envelope(), stopReceipt: receipt, extra: true }),
+      JSON.stringify({ manifestEnvelope: `${envelope()}\n${envelope()}`, stopReceipt: receipt }),
+      JSON.stringify({ manifestEnvelope: JSON.stringify(manifest()), stopReceipt: receipt }),
+    ];
+    for (const raw of cases) assert.equal(executeP2TransportValidation(receiptArgv, raw).ok, false);
   });
 
   await test('CLI emits exactly one safe sentinel and a nonzero exit on read or validation failure', async () => {
@@ -111,6 +148,7 @@ async function main(): Promise<void> {
     assert.equal(lines.length, 1);
     const result = JSON.parse(lines[0].slice(P2_TRANSPORT_VALIDATION_RESULT_SENTINEL.length));
     assert.equal(result.ok, true);
+    assert.equal(result.kind, 'manifest');
     assert.equal(result.manifest.taskId, 'task-ui');
   });
 
