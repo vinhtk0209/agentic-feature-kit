@@ -64,3 +64,13 @@ The final gate has the exact single-agent signature `(mergedOutput) => GateVerdi
 neither role count nor role identity. The orchestrator invokes that one supplied gate once only
 after all handoffs are valid. Adding agents can change the merged content, but cannot select a
 different gate, turn a failing verdict into a pass, or bypass evidence verification.
+
+## 6. Source-only runtime boundary (P2-B)
+
+`multi-agent-runtime.ts` executes validated DAG waves only through an injected `RoleExecutor`.
+Requests are structured data with literal `shell:false`; the kit does not choose a CLI, construct a
+command string, spawn a process, create a worktree, or own a scheduler. The dashboard sidecar is
+the future transport owner. Each role receives only its own prompt/context plus verified predecessor
+bundle references. A timeout explicitly reclaims its lease and may retry within the declared bound.
+The merger is unreachable until every role handoff has passed P1/I2 verification, and its output is
+then evaluated by the unchanged final gate.
