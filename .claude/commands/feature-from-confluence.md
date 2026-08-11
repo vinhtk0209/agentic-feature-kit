@@ -1105,8 +1105,24 @@ Log fidelity results to `docs/specs/<FeatureName>/recovery.log`:
 
 After the markdown file is saved, extract from it:
 - **Feature name**: from the page/file title
+- **Ticket ID**: the explicit canonical-folder ticket when present (for example `US-AD-095`)
 - **API endpoints**: any HTTP method + path patterns found (e.g., `GET /api/v1/...`)
 - **Component / screen names**: headings, UI element names, tab labels
+
+#### Deterministic feature identity (mandatory when Ticket ID is present)
+
+Normalize the concise title-derived feature name to a safe Pascal/alphanumeric token, then run:
+
+```bash
+npx tsx .claude/integrations/feature-identity.ts resolve "<TicketId>" "<suggested-feature-name>"
+```
+
+Require exactly one `@@FEATURE_IDENTITY@@` line and its exact v1 payload. Missing, malformed,
+duplicate, or extra output is a **B0 error**. Use only the returned `featureName` for every
+`docs/specs/<FeatureName>/` and `docs/components/<FeatureName>/` path. A unique existing
+`docs/specs/<TicketId>-*` folder always wins over new title wording. Multiple matching ticket
+folders are ambiguous and MUST STOP before any write; never choose by directory enumeration order.
+When no Ticket ID exists, retain the validated title-derived identity and do not guess a ticket.
 
 ### Step 2 — Check LEGACY (from spec content)
 
@@ -1250,6 +1266,13 @@ Save result to `docs/specs/<FeatureName>/task-type.md` using the structured form
 ```
 
 > Reference: `docs/specs/AdminTaskProcessing/task-type.md` (structured format with evidence table).
+
+Build B0 evidence with `task-type.md` as the compact output plus one short intake transcript that
+records only `sourceRef`, `sourceSha256`, paragraph count, acceptance-criteria count,
+classification, score, and `IMPL_FOLDER`. Do not include `.incoming-spec.md` or
+`.incoming-spec.ir.json` in the B0 bundle: the raw source/IR is intentionally larger than the B0
+context budget, while its exact provenance is retained in the transcript. Verify the resulting B0
+manifest before entering B0.5; do not use `--allow-over-budget` without explicit user approval.
 
 ---
 
