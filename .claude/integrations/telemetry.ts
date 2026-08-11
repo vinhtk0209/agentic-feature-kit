@@ -55,10 +55,15 @@ function resolveRepo(): string {
 }
 const REPO = resolveRepo();
 
-// Runner identity — this file ships inside .claude/ (the Claude edition), so it is always
-// "claude". Session 5's codex/copilot editions will emit their own value. Kept as a constant so
-// the marker payload is self-describing and the dashboard never has to assume the tool.
-const RUNNER = "claude";
+// The sidecar injects the actual runtime identity. Manual/legacy use remains Claude-compatible,
+// while malformed identities fail before any network request or marker can be emitted.
+const RUNNER_ID_RE = /^[a-z][a-z0-9_-]{0,31}$/;
+const RUNNER = process.env.KIT_RUNNER_ID ?? "claude";
+if (!RUNNER_ID_RE.test(RUNNER)) throw new Error("telemetry: invalid KIT_RUNNER_ID");
+const RUN_NONCE = process.env.KIT_EVENT_NONCE;
+if (RUN_NONCE !== undefined && !/^[a-f0-9]{64}$/.test(RUN_NONCE)) {
+  throw new Error("telemetry: invalid KIT_EVENT_NONCE");
+}
 
 /**
  * Emit a machine-readable kit event line on stdout for the dashboard Command-Runner sidecar to
@@ -72,7 +77,7 @@ const RUNNER = "claude";
  */
 function emitKitEvent(ev: Record<string, unknown>): void {
   try {
-    process.stdout.write(`@@KIT_EVENT@@ ${JSON.stringify({ v: 1, ...ev })}\n`);
+    process.stdout.write(`@@KIT_EVENT@@ ${JSON.stringify({ v: 1, ...ev, ...(RUN_NONCE ? { runNonce: RUN_NONCE } : {}) })}\n`);
   } catch {
     /* stdout unavailable — telemetry markers are optional, never block */
   }

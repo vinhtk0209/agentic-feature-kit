@@ -402,7 +402,7 @@ Applied after ★1 SELF-RECOVER exhausts all 3 attempts and still fails. **Do NO
 1.5. Report to telemetry (best-effort — never blocks):
 
    ```bash
-   npx tsx .claude/integrations/telemetry.ts error step_failure "<step-name>" "<last-error-message>" || true
+   npx tsx .claude/integrations/telemetry.ts error step_failure "<step-name>" "<last-error-message>"
    ```
 
 2. Present 3 options:
@@ -556,22 +556,22 @@ Steps are grouped into **8 phases** so the user sees at a glance where they are 
 
 ### Machine marker (for the dashboard sidecar — Session 4)
 
-**Immediately after printing the banner above, emit ONE marker line** so the Command-Runner
+**Immediately after printing the banner above, run the kit-owned emitter exactly once** so the Command-Runner
 sidecar can track the phase and count distinct steps reached (`step_count`) without guessing from
-prose. Print it verbatim on its own line (replace `<BX>` with the current step id, e.g. `B5`):
+prose. Replace `<BX>` with the current step id, e.g. `B5`:
 
-```text
-@@KIT_EVENT@@ {"v":1,"type":"state","phase":"<BX>"}
+```bash
+npx tsx .claude/integrations/kit-event.ts state <BX>
 ```
 
 - One marker per step, every step (including automatic ones). The sidecar counts **distinct**
   `phase` values, so re-printing the same step (e.g. after a retry) does not inflate the count.
-- Keep it a single short line — do not wrap or pretty-print the JSON (the sidecar parses one line).
-- **At a STOP gate (`🛑` — B4 / B6 / B6.5 / B8 / B9 / B10.5 / D-cross-2 when breaking|error): emit an ADDITIONAL marker carrying
-  `"awaiting":"gate"` immediately BEFORE the gate question** (before the "no output, wait for user
-  response" pause), on its own line:
-  ```text
-  @@KIT_EVENT@@ {"v":1,"type":"state","phase":"<BX>","awaiting":"gate"}
+- The emitter writes one compact line. Do not reproduce or hand-author its sentinel JSON.
+- **At a STOP gate (`🛑` — B4 / B6 / B6.5 / B8 / B9 / B10.5 / D-cross-2 when breaking|error): run the emitter a second time
+  with the designed-gate fields immediately BEFORE the gate question** (before the "no output, wait for user
+  response" pause):
+  ```bash
+  npx tsx .claude/integrations/kit-event.ts state <BX> --awaiting gate --expected true
   ```
   This lets the sidecar flag "waiting for a human decision" **deterministically** — so it shows the
   run as awaiting and NEVER auto-approves a workflow gate — instead of guessing from the prompt wording
@@ -581,7 +581,7 @@ prose. Print it verbatim on its own line (replace `<BX>` with the current step i
   marker (no `awaiting` field) clears it back to running.
 - This is the deterministic replacement for prose-parsing (see kit-progress-event-contract.md).
   The version + error markers are emitted by `telemetry.ts` (meta at Step 0, error on failure);
-  this state/phase marker is the only one the command file itself prints.
+  state/phase markers are emitted only by `kit-event.ts`, never by model-authored text.
 
 ---
 

@@ -137,6 +137,19 @@ test('verify — valid token → exits 0', () => {
   assert(r.stdout.includes('"kitVersion":"3.25.0"'), 'the telemetry marker must expose canonical PROMPT_VERSION N.N.0');
 });
 
+test('verify binds dashboard-injected runner identity and run nonce into the meta marker', () => {
+  const nonce = 'b'.repeat(64);
+  const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'valid', KIT_RUNNER_ID: 'codex', KIT_EVENT_NONCE: nonce });
+  assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
+  assert(r.stdout.includes(`"runner":"codex","runNonce":"${nonce}"`), `marker did not bind runner/nonce: ${r.stdout}`);
+});
+
+test('verify rejects malformed dashboard runner identity before network use', () => {
+  const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'valid', KIT_RUNNER_ID: 'codex;forged' });
+  assert(r.status !== 0, `invalid runner must fail closed, got ${r.status}`);
+  assert(!r.stdout.includes('Token valid') && !r.stdout.includes('@@KIT_EVENT@@'), 'invalid runner must not enter telemetry or marker path');
+});
+
 test('verify — invalid token → exits 1', () => {
   const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'invalid' });
   assert(r.status === 1, `expected exit 1, got ${r.status}`);
