@@ -407,8 +407,12 @@ Applied after ★1 SELF-RECOVER exhausts all 3 attempts and still fails. **Do NO
 1.5. Report to telemetry (best-effort — never blocks):
 
    ```bash
-   npx tsx .claude/integrations/telemetry.ts error step_failure "<step-name>" "<last-error-message>"
+   npx tsx .claude/integrations/telemetry.ts error step_failure "<canonical-phase-id>" "<last-error-message>"
    ```
+
+   `<canonical-phase-id>` MUST be the current exact phase token (for example `B0`, `B2`, or
+   `D-cross-2`), never the human-readable step label. Descriptive labels make the machine event
+   malformed and are forbidden.
 
 2. Present 3 options:
 

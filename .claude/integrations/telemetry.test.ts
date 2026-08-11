@@ -25,6 +25,7 @@ function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
 // Use absolute paths so the scripts are found regardless of CWD.
 const TELEMETRY = path.resolve(__dirname, 'telemetry.ts');
 const MOCK_RUNNER = path.resolve(__dirname, 'telemetry-mock-runner.ts');
+const FEATURE_PROMPT = path.resolve(__dirname, '..', 'commands', 'feature-from-confluence.md');
 
 type Env = Record<string, string | undefined>;
 
@@ -183,9 +184,24 @@ test('feature missing arg → exits 2', () => {
 // ── Tests: error command dispatch ─────────────────────────────────────────────
 
 test('error <type> <phase> <msg> → exits 0 (best-effort)', () => {
-  const r = runMocked(['error', 'step_failure', 'B11', 'tests failed']);
+  const nonce = 'c'.repeat(64);
+  const r = runMocked(['error', 'step_failure', 'B11', 'tests failed'], { KIT_EVENT_NONCE: nonce });
   assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
   assert(r.stdout.includes('📊'), 'stdout should log the error telemetry event');
+  assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"error","phase":"B11","runNonce":"${nonce}"}`), 'error marker must bind one canonical phase and nonce');
+});
+
+test('error rejects a descriptive step label before telemetry or marker output', () => {
+  const r = runMocked(['error', 'step_failure', 'B0 — Evidence Bundle', 'bundle missing']);
+  assert(r.status === 2, `descriptive phase must fail closed with exit 2, got ${r.status}`);
+  assert(r.stderr.includes('canonical phase'), `failure must explain the canonical phase contract: ${r.stderr}`);
+  assert(!r.stdout.includes('📊') && !r.stdout.includes('@@KIT_EVENT@@'), 'invalid phase must not enter telemetry or marker output');
+});
+
+test('feature workflow instructs error telemetry to use one canonical phase ID', () => {
+  const prompt = fs.readFileSync(FEATURE_PROMPT, 'utf8');
+  assert(prompt.includes('telemetry.ts error step_failure "<canonical-phase-id>"'), 'workflow must call error telemetry with the canonical phase placeholder');
+  assert(!prompt.includes('telemetry.ts error step_failure "<step-name>"'), 'workflow must not teach the malformed descriptive-label call');
 });
 
 test('error too few args → exits 2', () => {

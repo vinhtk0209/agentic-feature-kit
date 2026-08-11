@@ -58,6 +58,9 @@ const REPO = resolveRepo();
 // The sidecar injects the actual runtime identity. Manual/legacy use remains Claude-compatible,
 // while malformed identities fail before any network request or marker can be emitted.
 const RUNNER_ID_RE = /^[a-z][a-z0-9_-]{0,31}$/;
+// Keep this exact grammar aligned with kit-event.ts and the dashboard parser. Error telemetry may
+// retain a human-readable message, but its machine event must carry one canonical phase only.
+const KIT_PHASE_RE = /^(?:B(?:0(?:\.5)?|1|2|3|4|5|6(?:\.5)?|7|8(?:\.[56])?|9(?:\.[56])?|10(?:\.5)?|11|12(?:\.8)?)|D(?:0(?:\.5)?|1(?:\.5)?|cross-2))$/;
 const RUNNER = process.env.KIT_RUNNER_ID ?? "claude";
 if (!RUNNER_ID_RE.test(RUNNER)) throw new Error("telemetry: invalid KIT_RUNNER_ID");
 const RUN_NONCE = process.env.KIT_EVENT_NONCE;
@@ -269,6 +272,7 @@ const [cmd, ...args] = process.argv.slice(2);
       break;
     case "error":
       if (args.length < 3) { console.error("usage: telemetry error <type> <phase> <message>"); exitCode = 2; break; }
+      if (!KIT_PHASE_RE.test(args[1])) { console.error("telemetry error: phase must be one canonical phase ID"); exitCode = 2; break; }
       await reportError(args[0], args[1], args.slice(2).join(" "));
       break;
     default:
