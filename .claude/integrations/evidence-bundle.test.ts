@@ -14,6 +14,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { spawnSync } from 'child_process';
 import {
   buildBundle, verifyBundle, verifyBackendBoundBundle, resumeFromBundles, PHASE_ORDER,
   UnknownPhaseError, MissingArtifactError, EmptyBundleError, ContextBudgetExceededError,
@@ -30,6 +31,10 @@ function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
 function assertThrows(fn: () => void, ctor: Function, label: string) {
   try { fn(); } catch (e) { assert(e instanceof ctor, `${label}: expected ${ctor.name}, got ${(e as Error)?.constructor?.name}: ${(e as Error).message}`); return; }
   throw new Error(`${label}: expected a throw, got a normal return`);
+}
+function assertUnsafeArtifact(fn: () => void, label: string) {
+  try { fn(); } catch (e) { assert((e as Error).name === 'UnsafeArtifactError', `${label}: expected UnsafeArtifactError, got ${(e as Error)?.constructor?.name}: ${(e as Error).message}`); return; }
+  throw new Error(`${label}: expected an unsafe-artifact throw, got a normal return`);
 }
 
 function mkTmpRepo(): string {
@@ -82,6 +87,61 @@ test('(a) build: fail-closed on a declared-but-missing artifact (never a silent 
   const cwd = mkTmpRepo();
   assertThrows(() => buildBundle({ featureName: 'Foo', phase: 'B5', cwd, outputs: ['docs/specs/Foo/does-not-exist.md'] }), MissingArtifactError, 'missing artifact');
   assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), 'no partial bundle dir left behind after a missing-artifact failure');
+});
+
+test('(a-security) build rejects secret-bearing env and runner credential paths before manifest writes', () => {
+  for (const relPath of ['.env.playwright', '.claude/mcp-server/.env', 'kit-dashboard/runner.secrets.json']) {
+    const cwd = mkTmpRepo();
+    writeRepoFile(cwd, relPath, 'SECRET_VALUE=must-not-be-hashed');
+    assertUnsafeArtifact(() => buildBundle({ featureName: 'Foo', phase: 'B0.5', cwd, inputs: [relPath] }), relPath);
+    assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), `unsafe ${relPath} must not leave a partial evidence directory`);
+  }
+});
+
+test('(a-security) build rejects a repo-escape path before reading or writing evidence', () => {
+  const parent = mkTmpRepo();
+  const cwd = path.join(parent, 'repo');
+  fs.mkdirSync(cwd);
+  writeRepoFile(parent, 'outside.txt', 'outside secret material');
+  assertUnsafeArtifact(() => buildBundle({ featureName: 'Foo', phase: 'B0', cwd, inputs: ['../outside.txt'] }), 'repo escape');
+  assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), 'repo escape must not leave a partial evidence directory');
+});
+
+test('(a-security) documentation env examples remain eligible evidence', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, '.env.example', 'SAFE_PLACEHOLDER=');
+  writeRepoFile(cwd, '.claude/mcp-server/.env.test.example', 'SAFE_PLACEHOLDER=');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0.5', cwd, inputs: ['.env.example', '.claude/mcp-server/.env.test.example'] });
+  assert(manifest.files.length === 2, `expected two safe example inputs, got ${manifest.files.length}`);
+});
+
+test('(a-security) verifier rejects a self-consistent forged manifest that references a secret path', () => {
+  const cwd = mkTmpRepo();
+  const content = 'PLAYWRIGHT_ACCESS_TOKEN=must-not-be-verified';
+  writeRepoFile(cwd, '.env.playwright', content);
+  const files = [{ role: 'input', path: '.env.playwright', sha256: sha256(content), bytes: Buffer.byteLength(content) }];
+  const forged = { schemaVersion: 1, feature: 'Foo', phase: 'B0.5', builtAt: new Date().toISOString(), files, manifestHash: manifestHash(files), estimatedTokens: 1, budgetTokens: 1500 };
+  writeRepoFile(cwd, 'docs/specs/Foo/.evidence/B0.5/manifest.json', `${JSON.stringify(forged, null, 2)}\n`);
+  const result = verifyBundle('Foo', 'B0.5', cwd);
+  assert(result.valid === false, 'secret-referencing forged manifest must fail verification');
+  assert(result.fileMismatches.some((m) => (m as { reason: string }).reason === 'unsafe-path'), `expected unsafe-path mismatch: ${JSON.stringify(result.fileMismatches)}`);
+});
+
+test('(a-security) CLI rejects a secret transcript-file source before copying its content', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, '.env.playwright', 'PLAYWRIGHT_ACCESS_TOKEN=must-not-be-copied');
+  const cli = path.resolve(__dirname, 'evidence-bundle.ts');
+  const tsxCli = path.resolve(__dirname, '..', '..', 'node_modules', 'tsx', 'dist', 'cli.mjs');
+  const result = spawnSync(process.execPath, [tsxCli, cli, 'build', 'Foo', 'B0.5', '--transcript-file', 'preflight=.env.playwright'], { cwd, encoding: 'utf8' });
+  assert(result.status !== 0, `secret transcript-file must fail closed, got ${result.status}`);
+  assert(result.stderr.includes('UnsafeArtifactError'), `CLI must expose the named bounded failure: ${result.stderr}`);
+  assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), 'secret transcript-file must not leave a copied transcript or manifest');
+});
+
+test('(a-security) flagship workflow forbids secret-bearing evidence references at B0.5', () => {
+  const prompt = fs.readFileSync(path.resolve(__dirname, '..', 'commands', 'feature-from-confluence.md'), 'utf8');
+  assert(prompt.includes('Never bundle secret-bearing configuration.'), 'global evidence protocol must forbid secret configuration');
+  assert(prompt.includes('Do not reference `.env.playwright` or any other environment/credential file.'), 'B0.5 must explicitly use non-sensitive status evidence');
 });
 
 test('(a) build: rejects an unknown phase id (typo-safety over PHASE_ORDER)', () => {

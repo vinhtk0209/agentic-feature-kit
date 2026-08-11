@@ -611,6 +611,11 @@ A phase is not complete merely because its prose work or terminal command looked
    Use `--transcript name=<literal short result>` only when no transcript file exists. The bundle
    command itself rejects an empty or over-budget bundle; do not use `--allow-over-budget` unless
    the user explicitly approves the recorded overage.
+   **Never bundle secret-bearing configuration.** `.env`, `.env.*` (except committed
+   `*.example` files), credential/key files, `runner.secrets.json`, repo-escape paths, and
+   symlinks/reparse points are forbidden inputs, outputs, and transcript-file sources. Record only
+   a non-sensitive capability/status transcript (for example `playwright-config=present`) without
+   values or secret-derived hashes. The builder enforces this fail-closed.
 2. Immediately verify the just-written manifest:
    ```bash
    npx tsx .claude/integrations/evidence-bundle.ts verify "<FeatureName>" "<BX>"
@@ -1297,6 +1302,9 @@ Print a one-line warning if either is missing, then proceed to B1 immediately:
 ```
 
 **Do NOT block flow.** Playwright/browser-use are opt-in — they install automatically at B10.5 when the user chooses Yes, or via `/playwright-verify` on first run. This check is informational only.
+
+For the B0.5 evidence bundle, use the non-sensitive command/probe transcript plus
+`task-type.md`. **Do not reference `.env.playwright` or any other environment/credential file.**
 
 ### Check 3 — Repo / route ownership *(v3.17 — Issue E / audit F9: cross-repository blindness — script-backed)*
 

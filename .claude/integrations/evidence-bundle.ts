@@ -87,6 +87,13 @@ export class MissingArtifactError extends Error {
   }
 }
 
+export class UnsafeArtifactError extends Error {
+  constructor(public readonly artifactPath: string, public readonly reason: 'outside-repo' | 'sensitive-path' | 'symlink-or-reparse' | 'invalid-path') {
+    super(`evidence-bundle: refusing unsafe artifact path "${artifactPath}" (${reason})`);
+    this.name = 'UnsafeArtifactError';
+  }
+}
+
 export class EmptyBundleError extends Error {
   constructor(public readonly feature: string, public readonly phase: string) {
     super(`evidence-bundle: refusing to write an empty bundle for ${feature}/${phase} (zero inputs, outputs, and transcripts)`);
@@ -145,7 +152,7 @@ export interface BuildBundleInput {
 export interface FileMismatch {
   path: string;
   role: string;
-  reason: 'missing' | 'hash-mismatch';
+  reason: 'missing' | 'hash-mismatch' | 'unsafe-path';
   expectedSha256?: string;
   actualSha256?: string;
 }
@@ -185,6 +192,46 @@ export interface ResumeState {
 
 function toPosix(p: string): string {
   return p.split(path.sep).join('/');
+}
+
+const SENSITIVE_ARTIFACT_BASENAMES = new Set([
+  '.npmrc', '.yarnrc', '.netrc', '.pypirc',
+  'runner.secrets.json', 'credentials.json', 'secrets.json', 'service-account.json',
+  'id_rsa', 'id_ed25519',
+]);
+
+function isInside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+function isSensitiveArtifactPath(repoRelativePath: string): boolean {
+  return toPosix(repoRelativePath).split('/').some((rawSegment) => {
+    const segment = rawSegment.toLowerCase();
+    const safeEnvExample = segment === '.env.example' || (segment.startsWith('.env.') && segment.endsWith('.example'));
+    if ((segment === '.env' || segment.startsWith('.env.')) && !safeEnvExample) return true;
+    if (SENSITIVE_ARTIFACT_BASENAMES.has(segment)) return true;
+    return /\.(?:pem|p12|pfx|key)$/.test(segment);
+  });
+}
+
+function resolveSafeArtifactPath(cwd: string, artifactPath: string): { abs: string; repoRelative: string } {
+  if (typeof artifactPath !== 'string' || artifactPath.trim() === '' || artifactPath.includes('\0')) {
+    throw new UnsafeArtifactError(String(artifactPath), 'invalid-path');
+  }
+  const root = path.resolve(cwd);
+  const abs = path.resolve(root, artifactPath);
+  if (!isInside(root, abs)) throw new UnsafeArtifactError(artifactPath, 'outside-repo');
+  const repoRelative = toPosix(path.relative(root, abs));
+  if (isSensitiveArtifactPath(repoRelative)) throw new UnsafeArtifactError(artifactPath, 'sensitive-path');
+  if (fs.existsSync(abs)) {
+    const stat = fs.lstatSync(abs);
+    if (stat.isSymbolicLink()) throw new UnsafeArtifactError(artifactPath, 'symlink-or-reparse');
+    const realRoot = fs.realpathSync.native(root);
+    const realArtifact = fs.realpathSync.native(abs);
+    if (!isInside(realRoot, realArtifact)) throw new UnsafeArtifactError(artifactPath, 'outside-repo');
+  }
+  return { abs, repoRelative };
 }
 
 function bundleDir(cwd: string, feature: string, phase: string): string {
@@ -229,10 +276,10 @@ export function buildBundle(input: BuildBundleInput): EvidenceManifest {
   const missing: string[] = [];
   const refEntries: EvidenceFileEntry[] = [];
   const resolveRef = (role: 'input' | 'output', relPath: string): void => {
-    const abs = path.resolve(cwd, relPath);
+    const { abs, repoRelative } = resolveSafeArtifactPath(cwd, relPath);
     if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) { missing.push(relPath); return; }
     const buf = fs.readFileSync(abs);
-    refEntries.push({ role, path: toPosix(path.relative(cwd, abs)), sha256: sha256(buf), bytes: buf.length });
+    refEntries.push({ role, path: repoRelative, sha256: sha256(buf), bytes: buf.length });
   };
   inputs.forEach((p) => resolveRef('input', p));
   outputs.forEach((p) => resolveRef('output', p));
@@ -322,7 +369,13 @@ export function verifyBundle(featureName: string, phase: string, cwd: string = p
   // even if manifest.json itself was left untouched.
   const fileMismatches: FileMismatch[] = [];
   for (const f of manifest.files ?? []) {
-    const abs = path.resolve(cwd, f.path);
+    let abs: string;
+    try {
+      abs = resolveSafeArtifactPath(cwd, f.path).abs;
+    } catch (error) {
+      if (error instanceof UnsafeArtifactError) { fileMismatches.push({ path: String(f.path), role: String(f.role), reason: 'unsafe-path' }); continue; }
+      throw error;
+    }
     if (!fs.existsSync(abs)) { fileMismatches.push({ path: f.path, role: f.role, reason: 'missing' }); continue; }
     const actual = sha256(fs.readFileSync(abs));
     if (actual !== f.sha256) {
@@ -415,7 +468,10 @@ function parseTranscripts(args: string[]): Record<string, string> {
     if (a === '--transcript-file') {
       const raw = args[i + 1] ?? '';
       const eq = raw.indexOf('=');
-      if (eq > 0) out[raw.slice(0, eq)] = fs.readFileSync(raw.slice(eq + 1), 'utf8');
+      if (eq > 0) {
+        const source = resolveSafeArtifactPath(process.cwd(), raw.slice(eq + 1));
+        out[raw.slice(0, eq)] = fs.readFileSync(source.abs, 'utf8');
+      }
     }
   });
   return out;
