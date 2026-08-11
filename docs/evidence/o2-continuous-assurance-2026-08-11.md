@@ -62,6 +62,28 @@ failure and emitted no source sentinel. The full nightly runner then produced:
 - `us-ad-095-progress-reports-spec-drift`: error
 - error evidence: `spec-refetch actor exited 1; no fresh source is trustworthy`
 
+## Scheduled persistence, Slack, and dashboard readback
+
+The dashboard sidecar was restarted with the committed scheduler wiring. Its startup log confirmed
+the production schedule `0 2 * * *`, direct argv-only manifest execution, and healthy preflight.
+For a bounded operator proof, the cron was temporarily changed to every minute and then restored to
+`0 2 * * *`; the final sidecar is healthy with zero active runs and the nightly schedule registered.
+
+Three callbacks occurred while the temporary schedule crossed 14:26, 14:27, and 14:28 local time.
+Each persisted the full result before alerting:
+
+- `phase_queue.phase_id`: `o2-continuous-assurance`
+- `last_probe_result`: `mismatch`
+- latest `last_probe_at`: `2026-08-11T14:28:05.718+07:00`
+- stored transcript: 9,234 UTF-8 bytes
+- immutable audit event: `continuous_assurance_failed`
+- Slack history: three matching `Continuous assurance: FAIL` digests, each binding kit `3.25.0`,
+  all four checks, evidence hashes, and the failed drift reason
+
+Authenticated `/orchestrator` readback renders the O2 phase as `pending` with the latest
+`mismatch` timestamp and expandable transcript. Visual evidence:
+`docs/evidence/o2-continuous-assurance-status-2026-08-11.jpg`.
+
 ## Remaining operator evidence
 
 O2 can only become complete after an approved Confluence credential returns HTTP 200 for both the
