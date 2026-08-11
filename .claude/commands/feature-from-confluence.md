@@ -64,7 +64,12 @@ Before detecting the input type, **strip any workflow flags** from `$ARGUMENTS` 
 
 - Match and remove any `--auto` or `--auto=<comma-list>` token (and any other `--<flag>` tokens) from `$ARGUMENTS`.
 - Store the autonomy value as `AUTONOMY` (see `## AUTONOMY`); persist it later to `context-summary.md` as `autonomyGates`.
-- Store the remaining string (flags removed, trimmed) as `SPEC_INPUT`. Use `SPEC_INPUT` for Step 2 type detection and every B0 fetch/read/intake command. The raw URL/path passed to `fetch_confluence_page` or `Read` MUST NOT contain `--auto`.
+- Recognize `--baseline` and `--new` as explicit task-classification decisions and store the sole
+  value as `TASK_TYPE_OVERRIDE=BASELINE|NEW`. They are mutually exclusive: if both occur, **STOP**
+  with `contradictory task classification flags` before any source read or file write.
+- Strip `--auto`, `--baseline`, and `--new` before setting the remaining trimmed string as
+  `SPEC_INPUT`. Use `SPEC_INPUT` for Step 2 type detection and every B0 fetch/read/intake command.
+  No workflow flag may appear in the raw URL/path passed to an intake boundary or `Read`.
 
 - Recognize these **flag-gated Design-to-UI** tokens separately and remove them before setting `SPEC_INPUT`: `--design-source=figma`, `--figma=<one-or-more-comma-separated-Figma-refs>`, and `--refresh-design`. Set `DESIGN_SOURCE`, `FIGMA_REFS`, and `REFRESH_DESIGN` respectively. The normal flagship path remains unchanged when `DESIGN_SOURCE` is empty.
 
@@ -1172,6 +1177,19 @@ When reporting BASELINE, always show evidence from **all matched signals** — n
 
 ### Step 4 — Show result and confirm with user
 
+Apply an explicit classification override before asking a question:
+
+- If `TASK_TYPE_OVERRIDE == BASELINE`, require the scan score to remain at least 60 and a concrete
+  existing `IMPL_FOLDER`. If either proof is absent, **STOP** fail-closed. Otherwise record BASELINE,
+  skip only this classification question, and continue through B0.5 and the full B1–B12 workflow in
+  ENHANCE mode using that existing folder. Do not exit after an endpoint-only edit.
+- Regardless of the detection score, if `TASK_TYPE_OVERRIDE == NEW`, record NEW and continue the
+  full B1–B12 workflow. Never reuse a discovered existing folder for the new implementation.
+- If `TASK_TYPE_OVERRIDE` is empty, retain the interactive confirmation below.
+
+`--baseline` and `--new` choose only this classification decision. They do not bypass D-cross-2
+breaking/error gates, B9 final confirmation, B9.5 git sync, verification, or any other safety gate.
+
 **If BASELINE**:
 ```
 🔄 BASELINE TASK DETECTED
@@ -1187,7 +1205,7 @@ Confirm:
   [Yes — only update endpoint / existing code]
   [No  — run the full flow B1–B12]
 ```
-- `Yes` → locate the existing `api.ts`, apply changes from spec, done
+- `Yes` → record BASELINE and continue the full B1–B12 workflow in ENHANCE mode using `IMPL_FOLDER`
 - `No` → proceed to B1 as NEW FEATURE
 
 **If NEW**:
