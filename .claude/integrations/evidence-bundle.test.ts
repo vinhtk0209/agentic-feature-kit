@@ -46,6 +46,17 @@ function writeRepoFile(cwd: string, relPath: string, content: string): void {
   fs.writeFileSync(abs, content, 'utf8');
 }
 
+function resolveLoadedTsxCli(): string {
+  const local = path.resolve(__dirname, '..', '..', 'node_modules', 'tsx', 'dist', 'cli.mjs');
+  if (fs.existsSync(local)) return local;
+  const loaded = Object.keys(require.cache).find((candidate) => /[\\/]node_modules[\\/]tsx[\\/]dist[\\/]register-[^\\/]+\.cjs$/.test(candidate));
+  if (!loaded) throw new Error('test harness: unable to locate the loaded tsx runtime');
+  const packageMarker = `${path.sep}node_modules${path.sep}tsx${path.sep}`;
+  const packageIndex = loaded.lastIndexOf(packageMarker);
+  if (packageIndex < 0) throw new Error('test harness: loaded tsx path is malformed');
+  return path.join(loaded.slice(0, packageIndex), 'node_modules', 'tsx', 'dist', 'cli.mjs');
+}
+
 function backendBinding(): EvidenceBackendBinding {
   return createEvidenceBinding({
     trusted: {
@@ -131,7 +142,7 @@ test('(a-security) CLI rejects a secret transcript-file source before copying it
   const cwd = mkTmpRepo();
   writeRepoFile(cwd, '.env.playwright', 'PLAYWRIGHT_ACCESS_TOKEN=must-not-be-copied');
   const cli = path.resolve(__dirname, 'evidence-bundle.ts');
-  const tsxCli = path.resolve(__dirname, '..', '..', 'node_modules', 'tsx', 'dist', 'cli.mjs');
+  const tsxCli = resolveLoadedTsxCli();
   const result = spawnSync(process.execPath, [tsxCli, cli, 'build', 'Foo', 'B0.5', '--transcript-file', 'preflight=.env.playwright'], { cwd, encoding: 'utf8' });
   assert(result.status !== 0, `secret transcript-file must fail closed, got ${result.status}`);
   assert(result.stderr.includes('UnsafeArtifactError'), `CLI must expose the named bounded failure: ${result.stderr}`);
