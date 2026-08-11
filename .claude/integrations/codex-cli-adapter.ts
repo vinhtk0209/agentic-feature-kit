@@ -6,7 +6,7 @@
  */
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { identityFromModelConfig, normalizeCost, type BackendCost, type ProviderAdapter } from './multi-provider-backends';
-import type { ModelConfig } from './model-config';
+import { reasoningEffortForModel, type ModelConfig, type ReasoningEffort } from './model-config';
 
 export interface ProcessExecution {
   exitCode: number | null;
@@ -58,6 +58,7 @@ export interface CodexCliAdapterConfig {
   timeoutMs: number;
   maxOutputBytes: number;
   cwd?: string;
+  reasoningEffort?: ReasoningEffort;
   /** All three rates must be present to derive USD; absent means explicitly unknown. */
   ratesUsdPerMillion?: CodexRatesUsdPerMillion;
 }
@@ -203,6 +204,7 @@ function validateConfig(config: CodexCliAdapterConfig): Required<Omit<CodexCliAd
     timeoutMs: positiveSafeInteger(config.timeoutMs, 'timeoutMs'),
     maxOutputBytes: positiveSafeInteger(config.maxOutputBytes, 'maxOutputBytes'),
     cwd: config.cwd ? nonBlank(config.cwd, 'cwd') : process.cwd(),
+    reasoningEffort: config.reasoningEffort ?? 'default',
     ratesUsdPerMillion: validateRates(config.ratesUsdPerMillion),
   };
 }
@@ -276,6 +278,9 @@ export function createCodexCliAdapter(input: CodexCliAdapterConfig, executor: Pr
     throw new CodexCliAdapterError(`modelKey is not registered: ${(error as Error).message}`);
   }
   if (identity.provider !== 'codex') throw new CodexCliAdapterError('modelKey must resolve to provider "codex"');
+  let reasoningEffort: ReasoningEffort;
+  try { reasoningEffort = reasoningEffortForModel(config.modelConfig, config.modelKey, config.reasoningEffort); }
+  catch (error) { throw new CodexCliAdapterError((error as Error).message); }
   return {
     identity,
     async capabilityProbe() {
@@ -288,13 +293,16 @@ export function createCodexCliAdapter(input: CodexCliAdapterConfig, executor: Pr
       if (!match) throw new CodexCliAdapterError('capability probe did not return strict "codex-cli X.Y.Z"');
       const observedVersion = match[1];
       if (observedVersion !== config.expectedCliVersion) throw new CodexCliAdapterError('capability probe version does not match expectedCliVersion');
-      return { provider: 'codex', capabilities: ['execute-phase', 'evidence-binding', `codex-cli-version:${observedVersion}`] };
+      return { provider: 'codex', capabilities: ['execute-phase', 'evidence-binding', `codex-cli-version:${observedVersion}`, `reasoning-effort:${reasoningEffort}`] };
     },
     async executePhase(prompt: string) {
       if (typeof prompt !== 'string' || !prompt.trim()) throw new CodexCliAdapterError('phase prompt must be non-blank');
+      const effortArgs = reasoningEffort === 'default'
+        ? []
+        : ['-c', `model_reasoning_effort="${reasoningEffort}"`];
       const result = await executor.execute({
         executable: config.executable,
-        args: ['exec', '--ephemeral', '--json', '--sandbox', 'read-only', '--model', identity.modelId, '-'],
+        args: ['exec', '--ephemeral', '--json', '--sandbox', 'read-only', '--model', identity.modelId, ...effortArgs, '-'],
         stdin: prompt, cwd: config.cwd,
         timeoutMs: config.timeoutMs, maxOutputBytes: config.maxOutputBytes, shell: false,
       });

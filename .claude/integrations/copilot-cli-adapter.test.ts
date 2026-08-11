@@ -18,8 +18,8 @@ const CONFIG = normalizeConfig({
   models: {
     claude: { id: 'claude-fixture', provider: 'claude' },
     legacy: { id: 'github-copilot', provider: 'copilot' },
-    'copilot-codex': { id: 'gpt-5.3-codex', provider: 'copilot' },
-    'copilot-gpt': { id: 'gpt-5.4', provider: 'copilot' },
+    'copilot-codex': { id: 'gpt-5.3-codex', provider: 'copilot', reasoningEfforts: ['default', 'high'] },
+    'copilot-gpt': { id: 'gpt-5.4', provider: 'copilot', reasoningEfforts: ['default', 'xhigh'] },
   },
 });
 
@@ -91,6 +91,25 @@ async function main() {
     assert.equal(executor.calls[0].stdin, '');
     assert.equal(executor.calls[0].shell, false);
     assert.equal(execution.cost?.status, 'unknown');
+  });
+
+  await test('reasoning effort is model-scoped, inert argv, and capability-bound', async () => {
+    const executor = new FakeExecutor([version(), result('OK')]);
+    const adapter = createCopilotCliAdapter({
+      executable: 'copilot', modelConfig: CONFIG, modelKey: 'copilot-gpt', adapterVersion: 'copilot-cli-v1',
+      expectedCliVersion: '1.0.79', timeoutMs: 60_000, maxOutputBytes: 1_000_000, cwd: 'fixture',
+      reasoningEffort: 'xhigh',
+    }, executor);
+    const probe = await adapter.capabilityProbe();
+    assert.ok(probe.capabilities.includes('reasoning-effort:xhigh'));
+    await adapter.executePhase('prompt');
+    assert.deepEqual(executor.calls[1].args.slice(0, 7), ['-p', 'prompt', '-s', '--model', 'gpt-5.4', '--reasoning-effort', 'xhigh']);
+    const rejected = new FakeExecutor([]);
+    assert.throws(() => createCopilotCliAdapter({
+      executable: 'copilot', modelConfig: CONFIG, modelKey: 'copilot-gpt', adapterVersion: 'copilot-cli-v1',
+      expectedCliVersion: '1.0.79', timeoutMs: 60_000, maxOutputBytes: 1_000_000, reasoningEffort: 'max',
+    }, rejected), /not supported/);
+    assert.equal(rejected.calls.length, 0);
   });
 
   await test('auth/nonzero, timeout, cap, stderr, blank output, and oversized prompt fail closed', async () => {

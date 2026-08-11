@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Explicit provider-neutral I2 live smoke for Codex CLI, Copilot CLI, and xAI Grok. */
+/** Explicit provider-neutral I2 live smoke for Codex, Copilot, Gemini, and xAI Grok. */
 import * as path from 'path';
 import {
   createCodexCliAdapter,
@@ -7,6 +7,7 @@ import {
   type ProcessExecutor,
 } from '../.claude/integrations/codex-cli-adapter';
 import { createCopilotCliAdapter } from '../.claude/integrations/copilot-cli-adapter';
+import { createGeminiCliAdapter } from '../.claude/integrations/gemini-cli-adapter';
 import {
   createGrokApiAdapter,
   createGrokFetchExecutor,
@@ -22,7 +23,7 @@ import {
   type GateVerdict,
   type ProviderAdapter,
 } from '../.claude/integrations/multi-provider-backends';
-import { loadModelConfig, type ModelConfig } from '../.claude/integrations/model-config';
+import { loadModelConfig, type ModelConfig, type ReasoningEffort } from '../.claude/integrations/model-config';
 
 export const I2_PROVIDER_LIVE_OK = 'I2_PROVIDER_LIVE_OK';
 export const I2_PROVIDER_LIVE_PROMPT = 'Reply with exactly I2_PROVIDER_LIVE_OK and nothing else.';
@@ -30,7 +31,7 @@ export const I2_PROVIDER_SMOKE_RESULT_SENTINEL = '@@I2_PROVIDER_SMOKE_RESULT@@';
 
 const SMOKE_TIMEOUT_MS = 60_000;
 const SMOKE_MAX_OUTPUT_BYTES = 1_000_000;
-type SmokeProvider = 'codex' | 'copilot' | 'grok';
+type SmokeProvider = 'codex' | 'copilot' | 'gemini' | 'grok';
 
 export interface ProviderSmokeResult {
   schemaVersion: 1;
@@ -40,6 +41,7 @@ export interface ProviderSmokeResult {
   modelId: string | null;
   adapterVersion: string | null;
   runtimeVersion: string | null;
+  reasoningEffort: ReasoningEffort | null;
   costStatus: 'known' | 'unknown' | null;
   inputTokens: number | null;
   outputTokens: number | null;
@@ -64,7 +66,9 @@ interface SmokeOptions {
   evidenceRoot?: string;
   executable?: string;
   expectedCliVersion?: string;
+  entrypoint?: string;
   baseUrl?: string;
+  reasoningEffort?: ReasoningEffort;
 }
 
 function emptyResult(): ProviderSmokeResult {
@@ -76,6 +80,7 @@ function emptyResult(): ProviderSmokeResult {
     modelId: null,
     adapterVersion: null,
     runtimeVersion: null,
+    reasoningEffort: null,
     costStatus: null,
     inputTokens: null,
     outputTokens: null,
@@ -107,7 +112,7 @@ function parseArgs(argv: readonly string[]): SmokeOptions {
       options.confirmed = true;
       continue;
     }
-    if (!['--provider', '--model-key', '--evidence-root', '--executable', '--expected-cli-version', '--base-url'].includes(arg)) {
+    if (!['--provider', '--model-key', '--evidence-root', '--executable', '--expected-cli-version', '--entrypoint', '--base-url', '--reasoning-effort'].includes(arg)) {
       throw new Error('unknown provider smoke CLI argument');
     }
     if (seen.has(arg)) throw new Error(`duplicate ${arg}`);
@@ -116,14 +121,16 @@ function parseArgs(argv: readonly string[]): SmokeOptions {
     seen.add(arg);
     index += 1;
     if (arg === '--provider') {
-      if (value !== 'codex' && value !== 'copilot' && value !== 'grok') throw new Error('unsupported provider');
+      if (value !== 'codex' && value !== 'copilot' && value !== 'gemini' && value !== 'grok') throw new Error('unsupported provider');
       options.provider = value;
     }
     if (arg === '--model-key') options.modelKey = value;
     if (arg === '--evidence-root') options.evidenceRoot = value;
     if (arg === '--executable') options.executable = value;
     if (arg === '--expected-cli-version') options.expectedCliVersion = value;
+    if (arg === '--entrypoint') options.entrypoint = value;
     if (arg === '--base-url') options.baseUrl = value;
+    if (arg === '--reasoning-effort') options.reasoningEffort = value as ReasoningEffort;
   }
   return options;
 }
@@ -133,10 +140,13 @@ function requireOperatorInputs(options: SmokeOptions): asserts options is SmokeO
   if (!options.provider || !options.modelKey || !options.evidenceRoot) throw new Error('missing common live smoke option');
   if (options.provider === 'grok') {
     if (!options.baseUrl) throw new Error('Grok live smoke requires --base-url');
-    if (options.executable || options.expectedCliVersion) throw new Error('Grok live smoke rejects CLI options');
+    if (options.executable || options.expectedCliVersion || options.entrypoint) throw new Error('Grok live smoke rejects CLI options');
+    if (options.reasoningEffort && options.reasoningEffort !== 'default') throw new Error('Grok live smoke supports only default reasoning effort');
   } else {
     if (!options.executable || !options.expectedCliVersion) throw new Error('CLI live smoke requires executable and expected version');
     if (options.baseUrl) throw new Error('CLI live smoke rejects --base-url');
+    if (options.provider === 'gemini' && !options.entrypoint) throw new Error('Gemini live smoke requires --entrypoint');
+    if (options.provider !== 'gemini' && options.entrypoint) throw new Error('non-Gemini CLI live smoke rejects --entrypoint');
   }
 }
 
@@ -176,10 +186,11 @@ function createAdapter(
     timeoutMs: SMOKE_TIMEOUT_MS,
     maxOutputBytes: SMOKE_MAX_OUTPUT_BYTES,
     cwd,
+    reasoningEffort: options.reasoningEffort,
   };
-  return options.provider === 'codex'
-    ? createCodexCliAdapter(common, processExecutor)
-    : createCopilotCliAdapter(common, processExecutor);
+  if (options.provider === 'codex') return createCodexCliAdapter(common, processExecutor);
+  if (options.provider === 'copilot') return createCopilotCliAdapter(common, processExecutor);
+  return createGeminiCliAdapter({ ...common, entrypoint: options.entrypoint! }, processExecutor);
 }
 
 /** The exact backend-neutral gate object shared by all providers. */
@@ -213,6 +224,7 @@ export async function executeI2ProviderLiveSmoke(
       modelId: adapter.identity.modelId,
       adapterVersion: adapter.identity.adapterVersion,
       runtimeVersion: options.provider === 'grok' ? null : options.expectedCliVersion!,
+      reasoningEffort: options.reasoningEffort ?? 'default',
     };
     const registry = new ProviderRegistry([adapter]);
     const key = backendKey(adapter.identity);

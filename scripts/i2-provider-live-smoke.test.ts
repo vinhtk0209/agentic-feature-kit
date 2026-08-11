@@ -27,8 +27,9 @@ async function test(name: string, fn: () => void | Promise<void>) {
 const MODEL_CONFIG = normalizeConfig({
   primary: 'codex',
   models: {
-    codex: { id: 'gpt-5.6-sol', provider: 'codex' },
-    'copilot-gpt-5.3-codex': { id: 'gpt-5.3-codex', provider: 'copilot' },
+    codex: { id: 'gpt-5.6-sol', provider: 'codex', reasoningEfforts: ['default', 'high'] },
+    'copilot-gpt-5.3-codex': { id: 'gpt-5.3-codex', provider: 'copilot', reasoningEfforts: ['default', 'high'] },
+    'gemini-2.5-pro': { id: 'gemini-2.5-pro', provider: 'gemini' },
     'grok-4.5': { id: 'grok-4.5', provider: 'grok' },
   },
 });
@@ -85,6 +86,15 @@ function common(root: string, provider: string, modelKey: string): string[] {
 
 function cliArgs(root: string, provider: 'codex' | 'copilot', modelKey: string): string[] {
   return [...common(root, provider, modelKey), '--executable', provider, '--expected-cli-version', '1.2.3'];
+}
+
+function geminiArgs(root: string): string[] {
+  return [
+    ...common(root, 'gemini', 'gemini-2.5-pro'),
+    '--executable', 'node',
+    '--entrypoint', 'C:\\gemini\\bundle\\gemini.js',
+    '--expected-cli-version', '0.54.4',
+  ];
 }
 
 function grokArgs(root: string): string[] {
@@ -164,6 +174,54 @@ async function main() {
     assert.equal(verifyBackendBoundBundle('i2-provider-live-smoke-codex', 'B0', root).valid, true);
   });
 
+  await test('selected reasoning effort is carried through argv, result, and strict evidence capability binding', async () => {
+    const root = tempRoot();
+    const processExecutor = new FakeProcessExecutor([
+      processResult('codex-cli 1.2.3\n'),
+      processResult(codexJsonl()),
+    ]);
+    const result = await executeI2ProviderLiveSmoke(
+      [...cliArgs(root, 'codex', 'codex'), '--reasoning-effort', 'high'],
+      dependencies(root, { processExecutor }),
+    );
+    assert.equal(result.pass, true);
+    assert.equal(result.reasoningEffort, 'high');
+    assert.deepEqual(processExecutor.calls[1].args.slice(-3), ['-c', 'model_reasoning_effort="high"', '-']);
+    const highBinding = JSON.parse(fs.readFileSync(path.join(evidencePath(root, 'codex'), 'B0', 'backend-binding.json'), 'utf8'));
+    const defaultRoot = tempRoot();
+    const defaultExecutor = new FakeProcessExecutor([
+      processResult('codex-cli 1.2.3\n'),
+      processResult(codexJsonl()),
+    ]);
+    assert.equal((await executeI2ProviderLiveSmoke(
+      cliArgs(defaultRoot, 'codex', 'codex'),
+      dependencies(defaultRoot, { processExecutor: defaultExecutor }),
+    )).pass, true);
+    const defaultBinding = JSON.parse(fs.readFileSync(path.join(evidencePath(defaultRoot, 'codex'), 'B0', 'backend-binding.json'), 'utf8'));
+    assert.notEqual(highBinding.capabilityHash, defaultBinding.capabilityHash, 'effort must alter the trusted capability hash');
+  });
+
+  await test('Gemini direct CLI passes the shared gate with pinned entrypoint/model evidence', async () => {
+    const root = tempRoot();
+    const processExecutor = new FakeProcessExecutor([
+      processResult('0.54.4\n'),
+      processResult(JSON.stringify({ response: I2_PROVIDER_LIVE_OK, stats: { models: {} } })),
+    ]);
+    const result = await executeI2ProviderLiveSmoke(geminiArgs(root), dependencies(root, { processExecutor }));
+    assert.equal(result.pass, true);
+    assert.equal(result.provider, 'gemini');
+    assert.equal(result.modelId, 'gemini-2.5-pro');
+    assert.equal(result.runtimeVersion, '0.54.4');
+    assert.equal(result.costStatus, 'unknown');
+    assert.equal(result.strictValid, true);
+    assert.deepEqual(processExecutor.calls[0].args, ['C:\\gemini\\bundle\\gemini.js', '--version']);
+    assert.deepEqual(processExecutor.calls[1].args, [
+      'C:\\gemini\\bundle\\gemini.js', '-p', I2_PROVIDER_LIVE_PROMPT, '--output-format', 'json',
+      '--model', 'gemini-2.5-pro', '--approval-mode', 'plan', '--skip-trust',
+    ]);
+    assert.equal(verifyBackendBoundBundle('i2-provider-live-smoke-gemini', 'B0', root).valid, true);
+  });
+
   await test('missing Grok key fails before HTTP and never serializes a credential field', async () => {
     const root = tempRoot();
     const httpExecutor = new FakeHttpExecutor([]);
@@ -203,6 +261,14 @@ async function main() {
     const grok = new FakeHttpExecutor([http({ id: 'grok-4.5' }), grokExecution('plausible but wrong')]);
     assert.equal((await executeI2ProviderLiveSmoke(grokArgs(grokRoot), dependencies(grokRoot, { httpExecutor: grok, apiKeyLoader: () => 'secret' }))).pass, false);
     assertNoEvidence(grokRoot, 'grok');
+
+    const geminiRoot = tempRoot();
+    const gemini = new FakeProcessExecutor([
+      processResult('0.54.4\n'),
+      processResult(JSON.stringify({ response: `${I2_PROVIDER_LIVE_OK} extra`, stats: {} })),
+    ]);
+    assert.equal((await executeI2ProviderLiveSmoke(geminiArgs(geminiRoot), dependencies(geminiRoot, { processExecutor: gemini }))).pass, false);
+    assertNoEvidence(geminiRoot, 'gemini');
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

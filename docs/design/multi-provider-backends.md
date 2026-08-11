@@ -235,3 +235,30 @@ must never infer identity from a UI label.
 - TypeScript remains appropriate because execution is network/process bound and the measured local
   parser is not a hot path. A Rust/Go/Python rewrite requires new profiling evidence under the
   existing performance ADR; language novelty is not evidence of a faster end-to-end run.
+
+## §9. Model-scoped reasoning effort and Gemini CLI
+
+Reasoning effort is an execution capability, not a cosmetic UI preference. Each model entry may
+declare a non-empty `reasoningEfforts` list and must include `default`. Missing declarations are
+normalized to `default` only for backward compatibility. A request that is not in the selected
+model's list fails before any capability or execution process starts.
+
+Codex binds a non-default selection through the direct argv pair
+`-c model_reasoning_effort="<effort>"`; Copilot uses
+`--reasoning-effort <effort>`. Gemini CLI `0.54.4` exposes no equivalent option, so its configured
+models accept only `default`. Every adapter includes `reasoning-effort:<value>` in the trusted
+capability set. Consequently a different effort produces a different capability hash and a
+different strict evidence binding even when provider, model, and adapter version are unchanged.
+
+`gemini-cli-adapter.ts` follows the same direct-process contract as the other CLI adapters. The
+operator pins native Node, an absolute JavaScript entrypoint, exact CLI semver, model key, timeout,
+and output cap. Execution uses headless JSON, explicit model selection, plan approval mode, and
+`--skip-trust`; malformed/error/blank response envelopes, missing stats, stderr, nonzero exit,
+timeout, and cap overflow fail before the shared gate. Credentials remain outside the adapter.
+The dashboard maps its masked `RUNNER_GEMINI_API_KEY` secret to the official `GEMINI_API_KEY`
+environment variable only for Gemini processes.
+
+Model availability is runtime evidence. A documented model ID is not added to the live-ready
+catalog when the current account rejects it. Conversely, adding a model never creates a new gate:
+it requires a registry entry, an exact entitlement probe, model-specific effort declarations, and
+the same provider-neutral gate/evidence checks.

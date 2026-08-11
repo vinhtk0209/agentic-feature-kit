@@ -36,7 +36,7 @@ const MODEL_CONFIG = normalizeConfig({
   primary: 'claude',
   models: {
     claude: { id: 'claude-fixture', provider: 'claude' },
-    codex: { id: 'gpt-5.6-sol', provider: 'codex' },
+    codex: { id: 'gpt-5.6-sol', provider: 'codex', reasoningEfforts: ['default', 'high'] },
   },
 });
 
@@ -87,6 +87,21 @@ async function main() {
     assert.equal(registry.getTrusted(key)?.identity.modelId, 'gpt-5.6-sol');
     assert.deepEqual(executor.calls[1].args, ['exec', '--ephemeral', '--json', '--sandbox', 'read-only', '--model', 'gpt-5.6-sol', '-']);
     assert.equal(executor.calls[1].shell, false);
+  });
+
+  await test('reasoning effort is model-scoped, inert argv, and capability-bound', async () => {
+    const executor = new FakeExecutor([versionResult(), phaseResult(jsonl())]);
+    const { registry, key } = await trusted(executor, config({ reasoningEffort: 'high' }));
+    const trustedBackend = registry.getTrusted(key)!;
+    await registry.execute(key, 'prompt', async () => ({ passed: true, detail: 'fixture' }));
+    assert.ok(trustedBackend.capabilities.includes('reasoning-effort:high'));
+    assert.deepEqual(executor.calls[1].args, [
+      'exec', '--ephemeral', '--json', '--sandbox', 'read-only', '--model', 'gpt-5.6-sol',
+      '-c', 'model_reasoning_effort="high"', '-',
+    ]);
+    const rejected = new FakeExecutor([]);
+    assert.throws(() => createCodexCliAdapter(config({ reasoningEffort: 'max' }), rejected), /not supported/);
+    assert.equal(rejected.calls.length, 0);
   });
 
   await test('unknown or non-Codex model keys are refused before the capability process starts', () => {

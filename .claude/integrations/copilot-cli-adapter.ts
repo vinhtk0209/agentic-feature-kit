@@ -6,7 +6,7 @@
  * caller pins a registered model key and the expected observed CLI version.
  */
 import { identityFromModelConfig, normalizeCost, type ProviderAdapter } from './multi-provider-backends';
-import type { ModelConfig } from './model-config';
+import { reasoningEffortForModel, type ModelConfig, type ReasoningEffort } from './model-config';
 import type { ProcessExecution, ProcessExecutor } from './codex-cli-adapter';
 
 export interface CopilotCliAdapterConfig {
@@ -18,6 +18,7 @@ export interface CopilotCliAdapterConfig {
   timeoutMs: number;
   maxOutputBytes: number;
   cwd?: string;
+  reasoningEffort?: ReasoningEffort;
 }
 
 const SEMVER = '(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:0|[1-9]\\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9]\\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?';
@@ -73,6 +74,9 @@ export function createCopilotCliAdapter(input: CopilotCliAdapterConfig, executor
   catch (error) { throw new CopilotCliAdapterError(`modelKey is not registered: ${(error as Error).message}`); }
   if (identity.provider !== 'copilot') throw new CopilotCliAdapterError('modelKey must resolve to provider "copilot"');
   if (identity.modelId === 'github-copilot') throw new CopilotCliAdapterError('legacy Copilot selector is not an executable model id');
+  let reasoningEffort: ReasoningEffort;
+  try { reasoningEffort = reasoningEffortForModel(input.modelConfig, modelKey, input.reasoningEffort); }
+  catch (error) { throw new CopilotCliAdapterError((error as Error).message); }
 
   return {
     identity,
@@ -86,7 +90,7 @@ export function createCopilotCliAdapter(input: CopilotCliAdapterConfig, executor
       if (match[1] !== expectedCliVersion) throw new CopilotCliAdapterError('capability probe version does not match expectedCliVersion');
       return {
         provider: 'copilot',
-        capabilities: ['execute-phase', 'evidence-binding', `copilot-cli-version:${match[1]}`, `model-selection:${identity.modelId}`],
+        capabilities: ['execute-phase', 'evidence-binding', `copilot-cli-version:${match[1]}`, `model-selection:${identity.modelId}`, `reasoning-effort:${reasoningEffort}`],
       };
     },
     async executePhase(prompt: string) {
@@ -98,6 +102,7 @@ export function createCopilotCliAdapter(input: CopilotCliAdapterConfig, executor
           '-p', prompt,
           '-s',
           '--model', identity.modelId,
+          ...(reasoningEffort === 'default' ? [] : ['--reasoning-effort', reasoningEffort]),
           '--no-ask-user',
           '--allow-all-tools',
           '--deny-tool=shell,write',

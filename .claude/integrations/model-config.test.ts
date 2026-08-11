@@ -7,7 +7,7 @@ import * as os from 'os';
 import * as path from 'path';
 import {
   normalizeConfig, loadModelConfig, resolveModelChain, modelLabel, modelId,
-  providerOf, providersOf, modelsByProvider, DEFAULT_MODEL_CONFIG,
+  providerOf, providersOf, modelsByProvider, reasoningEffortForModel, DEFAULT_MODEL_CONFIG,
 } from './model-config';
 
 let passed = 0; let failed = 0;
@@ -91,12 +91,42 @@ test('DEFAULT_MODEL_CONFIG ships a copilot provider entry', () => {
   assert(providersOf(DEFAULT_MODEL_CONFIG).includes('copilot'), 'copilot listed');
 });
 
-test('the canonical repository model config registers the pinned Codex model identity', () => {
+test('reasoning effort is model-scoped, defaults explicitly, and rejects malformed declarations', () => {
+  const cfg = normalizeConfig({
+    primary: 'a',
+    models: {
+      a: { id: 'x', reasoningEfforts: ['default', 'low', 'high'] },
+      b: { id: 'y' },
+    },
+  });
+  assert(reasoningEffortForModel(cfg, 'a') === 'default', 'missing request resolves to provider default');
+  assert(reasoningEffortForModel(cfg, 'a', 'high') === 'high', 'declared effort accepted');
+  let unsupported = false;
+  try { reasoningEffortForModel(cfg, 'b', 'high') } catch { unsupported = true }
+  assert(unsupported, 'undeclared effort must fail closed');
+  for (const invalid of [[], ['high'], ['default', 'turbo']]) {
+    let threw = false;
+    try { normalizeConfig({ primary: 'x', models: { x: { id: 'x', reasoningEfforts: invalid } } }) } catch { threw = true }
+    assert(threw, `invalid effort declaration must throw: ${JSON.stringify(invalid)}`);
+  }
+});
+
+test('the canonical repository model config registers pinned runner-specific model identities', () => {
   const cfg = loadModelConfig(process.cwd());
   assert(cfg.primary === 'codex', 'Codex must be the active primary after Claude subscription removal');
-  assert(JSON.stringify(cfg.fallback) === JSON.stringify(['copilot-gpt-5.3-codex', 'copilot-gpt-5.4']), 'only live-capable Copilot models are active fallbacks');
+  assert(JSON.stringify(cfg.fallback) === JSON.stringify(['copilot-gpt-5.3-codex', 'gemini-2.5-pro', 'copilot-gpt-5.4', 'gemini-2.5-flash']), 'fallback order must preserve runner/model identity');
   assert(providerOf(cfg, 'codex') === 'codex', 'codex provider');
   assert(modelId(cfg, 'codex') === 'gpt-5.6-sol', 'pinned Codex model id');
+  assert(JSON.stringify(modelsByProvider(cfg).codex) === JSON.stringify(['codex', 'codex-terra', 'codex-luna']), 'Codex model set');
+  assert(JSON.stringify(modelsByProvider(cfg).copilot) === JSON.stringify([
+    'copilot', 'copilot-gpt-5.3-codex', 'copilot-gpt-5.4', 'copilot-claude-sonnet-4.6',
+    'copilot-claude-haiku-4.5', 'copilot-gemini-3.1-pro-preview', 'copilot-gemini-3.5-flash',
+    'copilot-gemini-3.6-flash',
+  ]), 'Copilot model set');
+  assert(JSON.stringify(modelsByProvider(cfg).gemini) === JSON.stringify(['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']), 'Gemini model set');
+  assert(JSON.stringify(cfg.models.codex.reasoningEfforts) === JSON.stringify(['default', 'none', 'low', 'medium', 'high', 'xhigh', 'max']), 'Codex effort set');
+  assert(JSON.stringify(cfg.models['copilot-gpt-5.4'].reasoningEfforts) === JSON.stringify(['default', 'none', 'low', 'medium', 'high', 'xhigh']), 'Copilot GPT-5.4 effort set');
+  assert(JSON.stringify(cfg.models['gemini-2.5-pro'].reasoningEfforts) === JSON.stringify(['default']), 'Gemini direct CLI does not expose an effort flag');
 });
 
 test('loadModelConfig falls back to default on malformed JSON', () => {
