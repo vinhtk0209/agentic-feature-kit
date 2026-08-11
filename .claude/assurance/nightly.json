@@ -16,6 +16,15 @@
       "id": "checklist-defer-reprobe",
       "kind": "command",
       "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/checklist-defer.test.ts"]
+    },
+    {
+      "id": "us-ad-095-progress-reports-spec-drift",
+      "kind": "spec-refetch-drift",
+      "baselineIrPath": ".claude/assurance/baselines/us-ad-095-progress-reports.spec-ir.json",
+      "actor": {
+        "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/confluence-refetch-actor.ts"],
+        "sourceRef": "confluence:830569842"
+      }
     }
   ],
   "quarantine": []

@@ -1,0 +1,470 @@
+{
+  "schemaVersion": 1,
+  "sourceKind": "raw-us",
+  "sourceRef": "confluence:830569842",
+  "sourceSha256": "0ef9ec3fc7061a66fec739731603a8621c1bb09357ff91ffa86682b2ae3075ea",
+  "title": "[US-AD-095][ILT & vILT] [Class Mgnt] Class Details - Progress & Reports",
+  "paragraphs": [
+    {
+      "anchor": "line:1",
+      "text": "# [US-AD-095][ILT & vILT] [Class Mgnt] Class Details - Progress & Reports"
+    },
+    {
+      "anchor": "line:2",
+      "text": "**Space:** iSuite 2026"
+    },
+    {
+      "anchor": "line:3",
+      "text": "**Page ID:** 830569842"
+    },
+    {
+      "anchor": "line:4",
+      "text": "**Source:** https://insight.fsoft.com.vn/conf/spaces/ISUITE2026/pages/830569842/US-AD-095+ILT+vILT+Class+Mgnt+Class+Details+-+Progress+Reports"
+    },
+    {
+      "anchor": "line:5",
+      "text": "**Jira Ticket:** ISUITE2026-514 (US-AD-095)"
+    },
+    {
+      "anchor": "line:7",
+      "text": "---"
+    },
+    {
+      "anchor": "line:9",
+      "text": "## Functional Specifications Requirement"
+    },
+    {
+      "anchor": "line:11",
+      "text": "### Objective"
+    },
+    {
+      "anchor": "line:13",
+      "text": "| # | Requirement | Notes |"
+    },
+    {
+      "anchor": "line:14",
+      "text": "|---|-------------|-------|"
+    },
+    {
+      "anchor": "line:15",
+      "text": "| 1 | Provide an overview dashboard showing **class-level learning performance** | Focus on ILT/vILT class completion and attendance |"
+    },
+    {
+      "anchor": "line:16",
+      "text": "| 2 | Display **Class Completion Rate** based on learners completing required learning sessions | Certification is granted when class learning is completed |"
+    },
+    {
+      "anchor": "line:17",
+      "text": "| 3 | Display **Attendance Rate** reflecting learners' participation across all required sessions | Core KPI for ILT/vILT classes |"
+    },
+    {
+      "anchor": "line:18",
+      "text": "| 4 | Clearly distinguish **class-level completion metrics** from **learner-level completion metrics** | Learner-level metric is named \"Learner Completion (%)\" |"
+    },
+    {
+      "anchor": "line:19",
+      "text": "| 5 | Provide **Assessment Status Overview** to show exam participation and outcomes | Assessment does not affect class completion or certification |"
+    },
+    {
+      "anchor": "line:20",
+      "text": "| 6 | Allow admins to **filter assessment analytics by specific exam** within the class | Prevent empty or misleading charts |"
+    },
+    {
+      "anchor": "line:21",
+      "text": "| 7 | Visualize **Assessment Performance** using score distribution charts | Used for analytical and instructional insight only |"
+    },
+    {
+      "anchor": "line:22",
+      "text": "| 8 | Display **Assessment trend over time** based on selected assessment filter | Supports monitoring learner engagement with exams |"
+    },
+    {
+      "anchor": "line:23",
+      "text": "| 9 | Identify and surface **At-Risk Learners** based on attendance, completion, or assessment signals | Risk is informative, not a certification blocker |"
+    },
+    {
+      "anchor": "line:24",
+      "text": "| 10 | Provide a **Learner Detail Table** summarizing completion, attendance, assessment status, and score | Supports sorting, scanning, and drill-down |"
+    },
+    {
+      "anchor": "line:25",
+      "text": "| 11 | Enable navigation from **Learner Name** to learner-specific assessment details within the class | Context remains at class level |"
+    },
+    {
+      "anchor": "line:26",
+      "text": "| 12 | Support **exportable reports (CSV, PDF)** reflecting current dashboard filters | Used for audit, review, and offline analysis |"
+    },
+    {
+      "anchor": "line:28",
+      "text": "### Scope Of Work"
+    },
+    {
+      "anchor": "line:30",
+      "text": "| # | Scope Of Work | Detail |"
+    },
+    {
+      "anchor": "line:31",
+      "text": "|---|---------------|--------|"
+    },
+    {
+      "anchor": "line:32",
+      "text": "| 1 | Class Performance Overview Dashboard | Overview section: completion rate, attendance rate, assessment status, at-risk indicators |"
+    },
+    {
+      "anchor": "line:33",
+      "text": "| 2 | Class Completion Rate Calculation & Display | Based on learners completing all required learning sessions. Certification from learning completion, not assessment |"
+    },
+    {
+      "anchor": "line:34",
+      "text": "| 3 | Attendance Rate Calculation & Visualization | Overall attendance rate across all required ILT/vILT sessions; visualize trends |"
+    },
+    {
+      "anchor": "line:35",
+      "text": "| 4 | Clear Distinction Class-Level vs Learner-Level Metrics | Class Completion Rate (KPI) vs Learner Completion (%) in table |"
+    },
+    {
+      "anchor": "line:36",
+      "text": "| 5 | Assessment Status Overview | Passed, Incomplete, Not Attempted — reporting/analytical only |"
+    },
+    {
+      "anchor": "line:37",
+      "text": "| 6 | Assessment Filtering by Exam | Filter by selected exam or All Exams; prevent empty charts |"
+    },
+    {
+      "anchor": "line:38",
+      "text": "| 7 | Assessment Performance Analytics | Score distribution charts based on filter |"
+    },
+    {
+      "anchor": "line:39",
+      "text": "| 8 | Assessment Activity Trend Analysis | Trends over time (submissions/day, avg scores) based on filter |"
+    },
+    {
+      "anchor": "line:40",
+      "text": "| 9 | At-Risk Learner Identification | Based on attendance, completion progress, assessment participation |"
+    },
+    {
+      "anchor": "line:41",
+      "text": "| 10 | Learner Detail Table | Learner completion (%), attendance (%), assessment score, status |"
+    },
+    {
+      "anchor": "line:42",
+      "text": "| 11 | Learner Assessment Drill-down Navigation | From Learner Name → learner-specific assessment detail within same class context |"
+    },
+    {
+      "anchor": "line:43",
+      "text": "| 12 | Report Export Functionality | CSV and PDF, reflecting current filters |"
+    },
+    {
+      "anchor": "line:45",
+      "text": "## User Story"
+    },
+    {
+      "anchor": "line:47",
+      "text": "**As** an Admin"
+    },
+    {
+      "anchor": "line:48",
+      "text": "**I want to** view class-level progress, attendance, and assessment reports in a centralized **Progress & Reports** section"
+    },
+    {
+      "anchor": "line:49",
+      "text": "**So that** I can monitor learner completion and attendance for certification, analyze assessment outcomes, identify at-risk learners early, and export reports."
+    },
+    {
+      "anchor": "line:51",
+      "text": "## Component Description"
+    },
+    {
+      "anchor": "line:53",
+      "text": "| No | EN Component | Type | Mandatory | Description / Rules | Data mapping |"
+    },
+    {
+      "anchor": "line:54",
+      "text": "|----|--------------|------|-----------|---------------------|--------------|"
+    },
+    {
+      "anchor": "line:55",
+      "text": "| 1 | Dashboard Title | Display text | Yes | Page title \"Progress & Reports\". Static, aligned with Class Details nav | — |"
+    },
+    {
+      "anchor": "line:56",
+      "text": "| 2 | Assessment Filter | Dropdown | Conditional | Filter analytics by specific exam or All Exams (default). Applies to Status, Performance, Over Time charts. Only published+assigned assessments shown. On change → reload assessment dataset. Edge: no exam → filter empty state; selected exam no submission → empty state | class.assessments.id |"
+    },
+    {
+      "anchor": "line:57",
+      "text": "| 3 | Assessment Empty State | Empty state | Conditional | Shown when selected assessment has no submission data. Related charts hidden. Message \"No assessment data available for the selected exam\". No zero-value charts | assessment.submissions |"
+    },
+    {
+      "anchor": "line:58",
+      "text": "| 4 | Assessment Performance | Bar chart | Conditional | Score distribution using predefined buckets (e.g. 0–5, 5–10, >10). Buckets follow assessment max score & grading setup. Rendered only when ≥1 valid score exists. Not for certification | assessment.scores |"
+    },
+    {
+      "anchor": "line:59",
+      "text": "| 5 | Assessment Over Time | Line chart | Conditional | Assessment activity trends over time. Metric: number of submissions per day = count(submissions grouped by submission_date) | assessment.submissions.created_at |"
+    },
+    {
+      "anchor": "line:60",
+      "text": "| 6 | Assessment Status | Donut/Pie chart | Conditional | Participation status: Passed (submitted, score ≥ passing), Incomplete (submitted, score < passing), Not Attempted (no submission). Informational only. Shown only when ≥1 assessment available | assessment.submissions.status |"
+    },
+    {
+      "anchor": "line:61",
+      "text": "| 7 | Learner Completion Rate | KPI Card | Yes | % learners completed class based solely on learning session completion (ILT/vILT attendance). Completed = meets attendance threshold or all mandatory sessions (class config). Exam results excluded. Formula: (completed learners / total enrolled) × 100. total_enrolled=0 → 0% | class.learners.completed_count, class.learners.total |"
+    },
+    {
+      "anchor": "line:62",
+      "text": "| 8 | Attendance Rate | KPI Card | Yes | Overall attendance across all required sessions. Formula: attended_sessions / (total_sessions × total_learners) × 100. Cancelled sessions excluded. vILT valid only if participation ≥ configured duration (default 80%). Auto-recalculated | attendance.records |"
+    },
+    {
+      "anchor": "line:63",
+      "text": "| 9 | Export Reports | Button group | Conditional | Export as CSV or PDF. Reflects current filters (assessment filter, date range). Authorized roles only | aggregated report data |"
+    },
+    {
+      "anchor": "line:64",
+      "text": "| 10 | Learner Detail Table | Data table | Yes | Learner Completion (%), Attendance (%), Score, Assessment Status. Reflects current Assessment Filter. Pagination & sorting. No edit | learner.metrics |"
+    },
+    {
+      "anchor": "line:65",
+      "text": "| 11 | Learner Name | Link | Yes | Clickable → Learner Assessment Detail page within same class context. Validates permission (Admin/Instructor). Shows exam list, attempt history, scores, status. Back preserves class context + filter. Not global learner profile | learner.id |"
+    },
+    {
+      "anchor": "line:66",
+      "text": "| 12 | Learner Progress (%) | Number | Yes | Individual learner completion % based on learning items/sessions completed within class. Tooltip explains formula, clarifies differs from class completion rate | learner.progress |"
+    },
+    {
+      "anchor": "line:67",
+      "text": "| 13 | Learner Attendance (%) | Number | Yes | Attendance % per learner across required sessions. Used as at-risk signal | learner.attendance |"
+    },
+    {
+      "anchor": "line:68",
+      "text": "| 14 | Score | Display text | Conditional | Learner's score for selected assessment as X/Y (actual/max). Hidden or \"—\" if not attempted | assessment.score |"
+    },
+    {
+      "anchor": "line:69",
+      "text": "| 15 | Assessment Status (learner) | Status text | Conditional | Learner's status for selected exam: Completed, Incomplete, Not Attempted. Derived from submission+grading, independent of learning completion | assessment.submission.status |"
+    },
+    {
+      "anchor": "line:71",
+      "text": "## Acceptance Criteria"
+    },
+    {
+      "anchor": "line:73",
+      "text": "| AC# | Given | When | Then | Message |"
+    },
+    {
+      "anchor": "line:74",
+      "text": "|-----|-------|------|------|---------|"
+    },
+    {
+      "anchor": "line:75",
+      "text": "| AC1 | Admin/Instructor on Class Details | Screen loads | System displays **Progress & Reports** tab | — |"
+    },
+    {
+      "anchor": "line:76",
+      "text": "| AC2 | Admin/Instructor on Class Details | Clicks Progress & Reports tab | Dashboard displayed | — |"
+    },
+    {
+      "anchor": "line:77",
+      "text": "| AC3 | Class has ≥1 published+assigned assessment | P&R loads | Assessment Filter shown with default **All Exams** | — |"
+    },
+    {
+      "anchor": "line:78",
+      "text": "| AC4 | Class has no published assessment | P&R loads | Assessment Filter + all assessment components hidden | — |"
+    },
+    {
+      "anchor": "line:79",
+      "text": "| AC5 | Filter = All Exams | Assessment section renders | Status, Performance, Over Time show **aggregated data** | — |"
+    },
+    {
+      "anchor": "line:80",
+      "text": "| AC6 | Admin selects specific exam | Filter changes | Status, Performance, Over Time reloaded for selected exam | — |"
+    },
+    {
+      "anchor": "line:81",
+      "text": "| AC7 | Selected exam has no submissions | Charts attempt render | All assessment charts hidden + empty state | \"No assessment data available for the selected exam.\" |"
+    },
+    {
+      "anchor": "line:82",
+      "text": "| AC8 | Selected exam has ≥1 valid score | Performance renders | Score distribution using predefined buckets | — |"
+    },
+    {
+      "anchor": "line:83",
+      "text": "| AC9 | Selected exam has submission history | Over Time renders | Submission trend per day using configured metric | — |"
+    },
+    {
+      "anchor": "line:84",
+      "text": "| AC10 | Class has enrolled learners | P&R loads | Learner Completion Rate based only on learning completion | — |"
+    },
+    {
+      "anchor": "line:85",
+      "text": "| AC11 | Class has zero enrolled learners | P&R loads | Learner Completion Rate = **0%** | — |"
+    },
+    {
+      "anchor": "line:86",
+      "text": "| AC12 | ILT/vILT sessions exist | P&R loads | Attendance Rate from valid records, excluding cancelled sessions | — |"
+    },
+    {
+      "anchor": "line:87",
+      "text": "| AC13 | Attendance/sessions updated | User refreshes P&R | Attendance Rate reflects latest data | — |"
+    },
+    {
+      "anchor": "line:88",
+      "text": "| AC14 | Learner data exists | P&R loads | Learner Detail Table displayed | — |"
+    },
+    {
+      "anchor": "line:89",
+      "text": "| AC15 | Learner completion data exists | Table renders | Learner Progress (%) with correct calculation | — |"
+    },
+    {
+      "anchor": "line:90",
+      "text": "| AC16 | Learner attendance data exists | Table renders | Learner Attendance (%) displayed correctly | — |"
+    },
+    {
+      "anchor": "line:91",
+      "text": "| AC17 | Admin/Instructor clicks learner name | System validates permission | Navigates to Learner Assessment Detail scoped to same class | — |"
+    },
+    {
+      "anchor": "line:92",
+      "text": "| AC18 | Learner Assessment Detail loaded | Learner has assigned exams | Displays exam list, attempts, scores, statuses | — |"
+    },
+    {
+      "anchor": "line:93",
+      "text": "| AC19 | On Learner Assessment Detail | User navigates back | Returns to P&R and preserves filter state | — |"
+    },
+    {
+      "anchor": "line:95",
+      "text": "## Images (prototype)"
+    },
+    {
+      "anchor": "line:96",
+      "text": "- Business workflow diagram"
+    },
+    {
+      "anchor": "line:97",
+      "text": "- Assessment filter interaction"
+    },
+    {
+      "anchor": "line:98",
+      "text": "- Class basic information layout"
+    },
+    {
+      "anchor": "line:99",
+      "text": "- Assessment Filter dropdown, Assessment Performance bar chart, Assessment Over Time line chart, Assessment Status donut, Learner Completion Rate KPI, Attendance Rate KPI, Learner Detail Table"
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "text": "| AC1 | Admin/Instructor on Class Details | Screen loads | System displays **Progress & Reports** tab | — |",
+      "sourceAnchor": "line:75",
+      "sourceQuote": "| AC1 | Admin/Instructor on Class Details | Screen loads | System displays **Progress & Reports** tab | — |"
+    },
+    {
+      "id": "AC-2",
+      "text": "| AC2 | Admin/Instructor on Class Details | Clicks Progress & Reports tab | Dashboard displayed | — |",
+      "sourceAnchor": "line:76",
+      "sourceQuote": "| AC2 | Admin/Instructor on Class Details | Clicks Progress & Reports tab | Dashboard displayed | — |"
+    },
+    {
+      "id": "AC-3",
+      "text": "| AC3 | Class has ≥1 published+assigned assessment | P&R loads | Assessment Filter shown with default **All Exams** | — |",
+      "sourceAnchor": "line:77",
+      "sourceQuote": "| AC3 | Class has ≥1 published+assigned assessment | P&R loads | Assessment Filter shown with default **All Exams** | — |"
+    },
+    {
+      "id": "AC-4",
+      "text": "| AC4 | Class has no published assessment | P&R loads | Assessment Filter + all assessment components hidden | — |",
+      "sourceAnchor": "line:78",
+      "sourceQuote": "| AC4 | Class has no published assessment | P&R loads | Assessment Filter + all assessment components hidden | — |"
+    },
+    {
+      "id": "AC-5",
+      "text": "| AC5 | Filter = All Exams | Assessment section renders | Status, Performance, Over Time show **aggregated data** | — |",
+      "sourceAnchor": "line:79",
+      "sourceQuote": "| AC5 | Filter = All Exams | Assessment section renders | Status, Performance, Over Time show **aggregated data** | — |"
+    },
+    {
+      "id": "AC-6",
+      "text": "| AC6 | Admin selects specific exam | Filter changes | Status, Performance, Over Time reloaded for selected exam | — |",
+      "sourceAnchor": "line:80",
+      "sourceQuote": "| AC6 | Admin selects specific exam | Filter changes | Status, Performance, Over Time reloaded for selected exam | — |"
+    },
+    {
+      "id": "AC-7",
+      "text": "| AC7 | Selected exam has no submissions | Charts attempt render | All assessment charts hidden + empty state | \"No assessment data available for the selected exam.\" |",
+      "sourceAnchor": "line:81",
+      "sourceQuote": "| AC7 | Selected exam has no submissions | Charts attempt render | All assessment charts hidden + empty state | \"No assessment data available for the selected exam.\" |"
+    },
+    {
+      "id": "AC-8",
+      "text": "| AC8 | Selected exam has ≥1 valid score | Performance renders | Score distribution using predefined buckets | — |",
+      "sourceAnchor": "line:82",
+      "sourceQuote": "| AC8 | Selected exam has ≥1 valid score | Performance renders | Score distribution using predefined buckets | — |"
+    },
+    {
+      "id": "AC-9",
+      "text": "| AC9 | Selected exam has submission history | Over Time renders | Submission trend per day using configured metric | — |",
+      "sourceAnchor": "line:83",
+      "sourceQuote": "| AC9 | Selected exam has submission history | Over Time renders | Submission trend per day using configured metric | — |"
+    },
+    {
+      "id": "AC-10",
+      "text": "| AC10 | Class has enrolled learners | P&R loads | Learner Completion Rate based only on learning completion | — |",
+      "sourceAnchor": "line:84",
+      "sourceQuote": "| AC10 | Class has enrolled learners | P&R loads | Learner Completion Rate based only on learning completion | — |"
+    },
+    {
+      "id": "AC-11",
+      "text": "| AC11 | Class has zero enrolled learners | P&R loads | Learner Completion Rate = **0%** | — |",
+      "sourceAnchor": "line:85",
+      "sourceQuote": "| AC11 | Class has zero enrolled learners | P&R loads | Learner Completion Rate = **0%** | — |"
+    },
+    {
+      "id": "AC-12",
+      "text": "| AC12 | ILT/vILT sessions exist | P&R loads | Attendance Rate from valid records, excluding cancelled sessions | — |",
+      "sourceAnchor": "line:86",
+      "sourceQuote": "| AC12 | ILT/vILT sessions exist | P&R loads | Attendance Rate from valid records, excluding cancelled sessions | — |"
+    },
+    {
+      "id": "AC-13",
+      "text": "| AC13 | Attendance/sessions updated | User refreshes P&R | Attendance Rate reflects latest data | — |",
+      "sourceAnchor": "line:87",
+      "sourceQuote": "| AC13 | Attendance/sessions updated | User refreshes P&R | Attendance Rate reflects latest data | — |"
+    },
+    {
+      "id": "AC-14",
+      "text": "| AC14 | Learner data exists | P&R loads | Learner Detail Table displayed | — |",
+      "sourceAnchor": "line:88",
+      "sourceQuote": "| AC14 | Learner data exists | P&R loads | Learner Detail Table displayed | — |"
+    },
+    {
+      "id": "AC-15",
+      "text": "| AC15 | Learner completion data exists | Table renders | Learner Progress (%) with correct calculation | — |",
+      "sourceAnchor": "line:89",
+      "sourceQuote": "| AC15 | Learner completion data exists | Table renders | Learner Progress (%) with correct calculation | — |"
+    },
+    {
+      "id": "AC-16",
+      "text": "| AC16 | Learner attendance data exists | Table renders | Learner Attendance (%) displayed correctly | — |",
+      "sourceAnchor": "line:90",
+      "sourceQuote": "| AC16 | Learner attendance data exists | Table renders | Learner Attendance (%) displayed correctly | — |"
+    },
+    {
+      "id": "AC-17",
+      "text": "| AC17 | Admin/Instructor clicks learner name | System validates permission | Navigates to Learner Assessment Detail scoped to same class | — |",
+      "sourceAnchor": "line:91",
+      "sourceQuote": "| AC17 | Admin/Instructor clicks learner name | System validates permission | Navigates to Learner Assessment Detail scoped to same class | — |"
+    },
+    {
+      "id": "AC-18",
+      "text": "| AC18 | Learner Assessment Detail loaded | Learner has assigned exams | Displays exam list, attempts, scores, statuses | — |",
+      "sourceAnchor": "line:92",
+      "sourceQuote": "| AC18 | Learner Assessment Detail loaded | Learner has assigned exams | Displays exam list, attempts, scores, statuses | — |"
+    },
+    {
+      "id": "AC-19",
+      "text": "| AC19 | On Learner Assessment Detail | User navigates back | Returns to P&R and preserves filter state | — |",
+      "sourceAnchor": "line:93",
+      "sourceQuote": "| AC19 | On Learner Assessment Detail | User navigates back | Returns to P&R and preserves filter state | — |"
+    }
+  ],
+  "warnings": []
+}

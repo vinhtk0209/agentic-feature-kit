@@ -88,9 +88,14 @@ or extra actor output is a hard error, never a skipped drift check. A configurat
 }
 ```
 
-The shipped `nightly.json` intentionally does not invent this entry: no approved feature baseline,
-Confluence page identity, or scheduler-owned actor argv has been supplied yet. Adding a placeholder
-would manufacture a permanently failing (or silently fake) safety signal.
+The shipped manifest now includes the approved US-AD-095 page (`confluence:830569842`) and a
+canonical baseline staged from the preserved 2026-07-03 raw intake artifact. The actor reads the
+full page URL from `O2_CONFLUENCE_URL`, never argv, and delegates fetching to the existing
+`fetch_confluence_page` MCP tool so the returned text has the same shape as B0 intake. A complete
+`RUNNER_CONFLUENCE_USER`/`RUNNER_CONFLUENCE_PASS` pair takes precedence over a leftover bearer
+token; incomplete Basic credentials fail closed. Credentials are mapped only into the child
+process environment, removed from runner aliases before the MCP spawn, and never enter the
+sentinel, transcript, manifest, or baseline. A 401/403 is a failed drift check, not a skip.
 
 ## §3 — Quarantine semantics
 

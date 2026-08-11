@@ -274,6 +274,27 @@ test('AC-fidelity: validateSpecIR accepts a well-formed IR (sourceQuote is a rea
   assert(validated.acceptanceCriteria.length === 1, 'expected the AC to survive validation');
 });
 
+test('AC-fidelity: raw-US extracts numbered acceptance criteria from a Markdown table row', () => {
+  const source = [
+    '| AC# | Given | When | Then | Message |',
+    '|-----|-------|------|------|---------|',
+    '| AC1 | Admin opens reports | Screen loads | Progress is visible | — |',
+    '| AC2 | No learners exist | Screen loads | Completion is 0% | — |',
+  ].join('\n');
+  const ir = adaptRawUs(source, 'table.md');
+  assert(
+    JSON.stringify(ir.acceptanceCriteria.map((ac) => ac.sourceAnchor)) === JSON.stringify(['line:3', 'line:4']),
+    `expected table-row anchors line:3/line:4, got ${JSON.stringify(ir.acceptanceCriteria)}`,
+  );
+  assert(
+    JSON.stringify(ir.acceptanceCriteria.map((ac) => ac.sourceQuote)) === JSON.stringify([
+      '| AC1 | Admin opens reports | Screen loads | Progress is visible | — |',
+      '| AC2 | No learners exist | Screen loads | Completion is 0% | — |',
+    ]),
+    `expected literal table-row provenance, got ${JSON.stringify(ir.acceptanceCriteria)}`,
+  );
+});
+
 test('AC-fidelity: validateSpecIR REJECTS an AC whose sourceAnchor does not resolve to any paragraph', () => {
   const ir: SpecIR = {
     schemaVersion: 1, sourceKind: 'raw-us', sourceRef: 'x', sourceSha256: 'x', title: null,
