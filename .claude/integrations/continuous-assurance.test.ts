@@ -54,6 +54,12 @@ test('drift false-positive corpus: whitespace/case/AC-number cosmetics produce n
   assert.deepStrictEqual(result, []);
 });
 
+test('drift false-positive corpus: Confluence table AC labels and emphasis are cosmetic', () => {
+  const before = ir('| AC1 | Admin opens reports | Screen loads | Progress & Reports appears |');
+  const after = ir('| **AC-1** | Admin opens reports | Screen loads | **Progress & Reports** appears |');
+  assert.deepStrictEqual(detectSpecDrift(before, after), []);
+});
+
 test('drift semantic AC edit is flagged with old and new quote-level provenance', () => {
   const result = detectSpecDrift(ir('AC-1: Learner can view a progress report', 'line:3'), ir('AC-1: Learner can export a progress report', 'line:9'));
   assert.strictEqual(result.length, 1);

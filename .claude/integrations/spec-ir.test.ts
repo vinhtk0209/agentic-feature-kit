@@ -276,20 +276,21 @@ test('AC-fidelity: validateSpecIR accepts a well-formed IR (sourceQuote is a rea
 
 test('AC-fidelity: raw-US extracts numbered acceptance criteria from a Markdown table row', () => {
   const source = [
+    'Acceptance criteria',
     '| AC# | Given | When | Then | Message |',
     '|-----|-------|------|------|---------|',
     '| AC1 | Admin opens reports | Screen loads | Progress is visible | — |',
-    '| AC2 | No learners exist | Screen loads | Completion is 0% | — |',
+    '| **AC2** | No learners exist | Screen loads | Completion is 0% | — |',
   ].join('\n');
   const ir = adaptRawUs(source, 'table.md');
   assert(
-    JSON.stringify(ir.acceptanceCriteria.map((ac) => ac.sourceAnchor)) === JSON.stringify(['line:3', 'line:4']),
-    `expected table-row anchors line:3/line:4, got ${JSON.stringify(ir.acceptanceCriteria)}`,
+    JSON.stringify(ir.acceptanceCriteria.map((ac) => ac.sourceAnchor)) === JSON.stringify(['line:4', 'line:5']),
+    `expected table-row anchors line:4/line:5, got ${JSON.stringify(ir.acceptanceCriteria)}`,
   );
   assert(
     JSON.stringify(ir.acceptanceCriteria.map((ac) => ac.sourceQuote)) === JSON.stringify([
       '| AC1 | Admin opens reports | Screen loads | Progress is visible | — |',
-      '| AC2 | No learners exist | Screen loads | Completion is 0% | — |',
+      '| **AC2** | No learners exist | Screen loads | Completion is 0% | — |',
     ]),
     `expected literal table-row provenance, got ${JSON.stringify(ir.acceptanceCriteria)}`,
   );

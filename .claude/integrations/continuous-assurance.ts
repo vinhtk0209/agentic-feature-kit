@@ -262,7 +262,10 @@ export function parseAssuranceManifest(raw: string): AssuranceManifest {
 function normalizeAcText(value: string): string {
   return value
     .trim()
-    .replace(/^\s*(?:AC[-\s]?\d+|acceptance\s+criteria\s*\d+)\s*[:.)-]?\s*/i, '')
+    .replace(/^\s*\|\s*(?:\*\*|__)?AC[-\s]?\d+(?:\*\*|__)?\s*\|\s*/i, '')
+    .replace(/^\s*(?:\*\*|__)?(?:AC[-\s]?\d+|acceptance\s+criteria\s*\d+)(?:\*\*|__)?\s*[:.)-]?\s*/i, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
     .replace(/[.。]+$/u, '')
     .replace(/\s+/g, ' ')
     .toLocaleLowerCase('en-US');

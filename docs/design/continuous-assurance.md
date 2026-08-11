@@ -97,6 +97,30 @@ token; incomplete Basic credentials fail closed. Credentials are mapped only int
 process environment, removed from runner aliases before the MCP spawn, and never enter the
 sentinel, transcript, manifest, or baseline. A 401/403 is a failed drift check, not a skip.
 
+The Confluence MCP first performs the normal direct JSON request. If and only if the response is
+HTTP `403` with the exact `cf-mitigated: challenge` header, it may retry through an isolated,
+headless browser named by the absolute `CONFLUENCE_BROWSER_EXECUTABLE` path. The browser launch is
+ephemeral (no persistent profile or copied cookies), receives credentials only as request headers,
+blocks every cross-origin request/redirect so those headers cannot leave the approved Confluence
+origin, and disables service workers. Direct HTTP redirects are also disabled. The transport is
+bounded by a 12-second direct timeout, a 40-second browser timeout, and a 4 MiB JSON body
+cap; the combined ceiling remains below the actor's 90-second RPC deadline. Ordinary `401`/`403`, missing or
+non-regular executables, non-JSON responses, malformed JSON, and oversized responses fail closed;
+none of them is reclassified as source evidence.
+
+`export_view` tables are normalized by the MCP into one pipe-delimited Markdown line per HTML
+`<tr>` before B0 staging. This avoids Turndown's default table flattening, which can merge AC1–AC19
+into one paragraph and create a false mass-removal signal. A regression passes the rendered table
+through the real `stageConfluenceB0Source` adapter and requires a distinct literal quote/anchor for
+every AC row.
+
+Baseline replacement is an explicit operator boundary, not an automatic response to drift. The
+`scripts/o2-capture-baseline.ts` command requires the approved sourceRef, the already observed exact
+source SHA-256, the expected AC count, a baseline-root-confined output path, and
+`--replace-existing`. It stages through the same B0 adapter, validates the full Spec-IR, writes with
+a local rollback file, and emits only a metadata sentinel. Any identity/hash/count/path mismatch
+fails before replacing the prior baseline.
+
 ## §3 — Quarantine semantics
 
 Quarantine is reporting-only: a quarantined test remains in the battery and executes every night.

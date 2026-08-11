@@ -16,7 +16,7 @@ type RpcMessage = { id?: number; result?: unknown; error?: { message?: string } 
 
 const SOURCE_CAP_BYTES = 2 * 1024 * 1024;
 const RPC_OUTPUT_CAP_BYTES = 4 * 1024 * 1024;
-const RPC_TIMEOUT_MS = 60_000;
+export const CONFLUENCE_MCP_RPC_TIMEOUT_MS = 90_000;
 
 export class ConfluenceRefetchActorError extends Error {
   constructor(message: string) {
@@ -170,7 +170,7 @@ class McpClient {
       const timeout = setTimeout(() => {
         this.waiters.delete(id);
         reject(new ConfluenceRefetchActorError(`timeout waiting for MCP ${method}`));
-      }, RPC_TIMEOUT_MS);
+      }, CONFLUENCE_MCP_RPC_TIMEOUT_MS);
       this.waiters.set(id, {
         resolve: (message) => { clearTimeout(timeout); resolve(message); },
         reject: (error) => { clearTimeout(timeout); reject(error); },

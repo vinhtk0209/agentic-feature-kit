@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   buildConfluenceRefetchEnvelope,
   childEnvForMcp,
+  CONFLUENCE_MCP_RPC_TIMEOUT_MS,
   formatConfluenceRefetchEnvelope,
   parseConfluencePageIdentity,
   runConfluenceRefetchActor,
@@ -9,6 +10,7 @@ import {
 import { sha256 } from './spec-ir';
 
 async function main(): Promise<void> {
+  assert.equal(CONFLUENCE_MCP_RPC_TIMEOUT_MS, 90_000, 'live browser fallback must fit inside the MCP RPC deadline');
   const pageUrl = 'https://insight.fsoft.com.vn/conf/spaces/ISUITE2026/pages/830569842/US-AD-095';
 
   assert.deepEqual(parseConfluencePageIdentity(pageUrl), {
@@ -50,11 +52,17 @@ async function main(): Promise<void> {
     RUNNER_CONFLUENCE_PASS: 'current-password',
     RUNNER_CONFLUENCE_TOKEN: 'stale-token',
     CONFLUENCE_TOKEN: 'another-stale-token',
+    CONFLUENCE_BROWSER_EXECUTABLE: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   });
   assert.equal(basic.CONFLUENCE_USER, 'short-user');
   assert.equal(basic.CONFLUENCE_PASS, 'current-password');
   assert.equal(basic.CONFLUENCE_TOKEN, undefined, 'Basic auth must not be shadowed by a stale PAT');
   assert.equal(basic.RUNNER_CONFLUENCE_USER, undefined, 'runner aliases must not be forwarded after mapping');
+  assert.equal(
+    basic.CONFLUENCE_BROWSER_EXECUTABLE,
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'non-secret browser transport configuration must reach the MCP child',
+  );
   assert.throws(
     () => childEnvForMcp({ RUNNER_CONFLUENCE_USER: 'short-user', RUNNER_CONFLUENCE_TOKEN: 'fallback-token' }),
     /requires both user and password/,
