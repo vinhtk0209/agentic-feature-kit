@@ -4,6 +4,7 @@ import {
   childEnvForMcp,
   CONFLUENCE_MCP_RPC_TIMEOUT_MS,
   formatConfluenceRefetchEnvelope,
+  mcpServerNodeArgv,
   parseConfluencePageIdentity,
   runConfluenceRefetchActor,
 } from './confluence-refetch-actor';
@@ -11,6 +12,12 @@ import { sha256 } from './spec-ir';
 
 async function main(): Promise<void> {
   assert.equal(CONFLUENCE_MCP_RPC_TIMEOUT_MS, 90_000, 'live browser fallback must fit inside the MCP RPC deadline');
+  assert.deepEqual(
+    mcpServerNodeArgv(['--require', 'preflight.cjs', '--import', 'loader.mjs', '--eval', 'attack()', '--inspect']),
+    ['--require', 'preflight.cjs', '--import', 'loader.mjs', '.claude/mcp-server/index.ts'],
+    'the child must inherit only loader pairs and never eval/debug payloads',
+  );
+  assert.throws(() => mcpServerNodeArgv(['--eval', 'attack()']), /no TypeScript loader/);
   const pageUrl = 'https://insight.fsoft.com.vn/conf/spaces/ISUITE2026/pages/830569842/US-AD-095';
 
   assert.deepEqual(parseConfluencePageIdentity(pageUrl), {

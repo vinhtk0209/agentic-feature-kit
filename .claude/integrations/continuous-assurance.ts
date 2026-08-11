@@ -20,10 +20,16 @@ import { probeContractDetailed } from './contract-probe';
 import { stageConfluenceB0Source } from './spec-intake-confluence';
 import { sha256, SpecAc, SpecIR, validateSpecIR } from './spec-ir';
 import { isCanonicalKitVersion, resolveCanonicalKitVersion } from './kit-version';
+import {
+  parseSpecRefetchEnvelope,
+  SPEC_REFETCH_SENTINEL,
+  type SpecRefetchEnvelope,
+} from './spec-refetch-contract';
+
+export { parseSpecRefetchEnvelope, SPEC_REFETCH_SENTINEL, type SpecRefetchEnvelope } from './spec-refetch-contract';
 
 export const ASSURANCE_SENTINEL = 'continuous-assurance/v1';
 /** Exactly one actor output line must start with this marker, followed by a JSON envelope. */
-export const SPEC_REFETCH_SENTINEL = '@@SPEC_REFETCH_RESULT@@';
 
 export class AssuranceManifestError extends Error {
   constructor(message: string) {
@@ -411,41 +417,6 @@ function resolveReportKitVersion(executor: BatteryExecutor): string {
     throw new AssuranceReportError(`cannot resolve authoritative kit version: ${error instanceof Error ? error.message : String(error)}`);
   }
   return requireCanonicalReportVersion(candidate, 'kitVersion');
-}
-
-interface SpecRefetchEnvelope {
-  v: 1;
-  sourceRef: string;
-  sourceSha256: string;
-  sourceText: string;
-}
-
-/**
- * Actor protocol is deliberately single-line / single-sentinel: any logging, missing marker,
- * duplicate marker, malformed JSON, source-ref mismatch, or fake source hash is a hard error.
- * The raw source stays data inside JSON; it is never executed or treated as instructions.
- */
-function parseSpecRefetchEnvelope(output: string, expectedSourceRef: string): SpecRefetchEnvelope {
-  const lines = output.replace(/\r\n/g, '\n').split('\n').filter((line) => line.trim() !== '');
-  const sentinelLines = lines.filter((line) => line.trimStart().startsWith(SPEC_REFETCH_SENTINEL));
-  if (sentinelLines.length !== 1) {
-    throw new AssuranceManifestError(`spec-refetch actor requires exactly one ${SPEC_REFETCH_SENTINEL} sentinel; found ${sentinelLines.length}`);
-  }
-  if (lines.length !== 1) throw new AssuranceManifestError('spec-refetch actor emitted non-sentinel output; refusing ambiguous provenance');
-  const encoded = sentinelLines[0].trimStart().slice(SPEC_REFETCH_SENTINEL.length).trim();
-  let parsed: unknown;
-  try { parsed = JSON.parse(encoded); } catch (error) {
-    throw new AssuranceManifestError(`spec-refetch sentinel JSON is malformed: ${(error as Error).message}`);
-  }
-  if (!isObject(parsed)) throw new AssuranceManifestError('spec-refetch sentinel must carry an object');
-  if (parsed.v !== 1) throw new AssuranceManifestError(`spec-refetch sentinel has unsupported v=${String(parsed.v)}`);
-  const sourceRef = requiredText(parsed.sourceRef, 'spec-refetch sentinel sourceRef');
-  const sourceSha256 = requiredText(parsed.sourceSha256, 'spec-refetch sentinel sourceSha256');
-  const sourceText = requiredText(parsed.sourceText, 'spec-refetch sentinel sourceText');
-  if (sourceRef !== expectedSourceRef) throw new AssuranceManifestError(`spec-refetch sourceRef mismatch: expected "${expectedSourceRef}", got "${sourceRef}"`);
-  if (!/^[a-f0-9]{64}$/i.test(sourceSha256)) throw new AssuranceManifestError('spec-refetch sourceSha256 must be a 64-character hex digest');
-  if (sha256(sourceText) !== sourceSha256.toLowerCase()) throw new AssuranceManifestError('spec-refetch sourceSha256 does not identify the exact actor sourceText');
-  return { v: 1, sourceRef, sourceSha256: sourceSha256.toLowerCase(), sourceText };
 }
 
 async function runSpecRefetchDrift(check: SpecRefetchDriftCheck, cwd: string, runCommand?: BatteryExecutor['runCommand']): Promise<{ status: CheckStatus; output: string }> {

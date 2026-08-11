@@ -2,7 +2,7 @@
 import { createHash, timingSafeEqual } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { intakeSpecFile } from './spec-intake';
+import { adaptRawUs } from './spec-intake-raw-us';
 import { SpecIR, validateSpecIR } from './spec-ir';
 
 export class ConfluenceB0SourceError extends Error {
@@ -31,7 +31,7 @@ export function stageConfluenceB0Source(source: string, stagingDir: string): Sta
   if (staged.length !== legacyB0Input.length || !timingSafeEqual(staged, legacyB0Input)) {
     throw new ConfluenceB0SourceError('candidate staging is not byte-equivalent to the legacy B0 input');
   }
-  const ir = intakeSpecFile(stagedPath, 'raw-us');
+  const ir = adaptRawUs(staged.toString('utf8'), stagedPath);
   validateSpecIR(ir);
   const sourceSha256 = createHash('sha256').update(legacyB0Input).digest('hex');
   if (ir.sourceSha256 !== sourceSha256) {

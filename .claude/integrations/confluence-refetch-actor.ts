@@ -8,7 +8,7 @@
  */
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import * as path from 'node:path';
-import { SPEC_REFETCH_SENTINEL } from './continuous-assurance';
+import { SPEC_REFETCH_SENTINEL } from './spec-refetch-contract';
 import { sha256 } from './spec-ir';
 
 type Env = Record<string, string | undefined>;
@@ -114,8 +114,7 @@ class McpClient {
   private readonly waiters = new Map<number, { resolve: (value: RpcMessage) => void; reject: (error: Error) => void }>();
 
   constructor(kitRoot: string, env: Env) {
-    const tsxCli = path.join(kitRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
-    this.child = spawn(process.execPath, [tsxCli, '.claude/mcp-server/index.ts'], {
+    this.child = spawn(process.execPath, mcpServerNodeArgv(process.execArgv), {
       cwd: kitRoot,
       env: childEnvForMcp(env) as NodeJS.ProcessEnv,
       shell: false,
@@ -186,6 +185,24 @@ class McpClient {
   close(): void {
     this.child.kill();
   }
+}
+
+/** Preserve only the current TypeScript loader flags; never inherit eval/print/debug payloads. */
+export function mcpServerNodeArgv(execArgv: readonly string[]): string[] {
+  const result: string[] = [];
+  const paired = new Set(['--require', '-r', '--import', '--loader', '--experimental-loader']);
+  for (let index = 0; index < execArgv.length; index += 1) {
+    const flag = execArgv[index];
+    if (!paired.has(flag)) continue;
+    const value = execArgv[index + 1];
+    if (!value) throw new ConfluenceRefetchActorError(`missing value for inherited Node loader flag ${flag}`);
+    result.push(flag, value);
+    index += 1;
+  }
+  if (result.length === 0) {
+    throw new ConfluenceRefetchActorError('current process has no TypeScript loader for the MCP child');
+  }
+  return [...result, '.claude/mcp-server/index.ts'];
 }
 
 function extractMcpSource(result: unknown): string {
