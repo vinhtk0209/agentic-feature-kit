@@ -175,3 +175,63 @@ completion, safe token counts, a single output occurrence, canonical timestamps,
 hashes, and honest `NULL`/`unpriced` cost semantics. Wrong but plausible output, cross-run usage,
 fabricated zero price, malformed counts, duplicate output, receipt tamper, and backend substitution
 all fail closed.
+
+## §8. ADR — one direct normalized transport for Codex, Copilot, and Grok
+
+**Status:** Accepted
+**Date:** 2026-08-11
+**Decider:** operator
+
+### Context
+
+Claude Code subscription access is no longer available on the operator host. A real Codex feature
+run also proved that routing machine-readable JSONL through a 120-column Windows ConPTY can insert
+redraw/wrap bytes and make otherwise valid usage fail closed. The same run proved that an MCP
+process is not the sidecar child process: telemetry invoked from MCP does not inherit the
+sidecar-injected runner secrets. GitHub Copilot CLI is an official non-interactive transport with
+explicit model selection, while Grok exposes an official Responses/streaming API rather than a
+required local CLI.
+
+### Decision
+
+The kit remains the sole owner of provider identity, capability probing, same-gate semantics, and
+evidence binding. Production adapters use direct `shell:false` process or HTTP boundaries and
+return one provider-neutral result. The dashboard may implement a bounded provider transport
+decoder for live streaming and usage capture, but it must not invent provider identity, gate, or
+evidence semantics; its decoder must be attack-tested against the same pinned wire contract and it
+must never infer identity from a UI label.
+
+- **Codex:** keep the existing direct native CLI adapter and exact JSONL usage sentinel.
+- **Copilot:** use the official `copilot -p <prompt> --model <pinned-model>` non-interactive mode as
+  direct argv. The prompt is one bounded, non-secret argv value because the CLI has no stdin prompt
+  contract. Disable built-in MCPs and deny shell/write tools for the fixed smoke. CLI version and
+  the requested model are capability-bound; absent OAuth/token state is `unavailable`, never pass.
+- **Grok:** use the official xAI `/v1/models/<id>` probe and `/v1/responses` execution endpoint with
+  redirect refusal, timeout, response cap, strict output/usage parsing, and an injected API key.
+  Missing `XAI_API_KEY` means `unavailable` and performs zero requests.
+- **All providers:** use the same fixed prompt and the exact same gate function. Unknown pricing
+  remains all-null; token counts must never be converted to zero merely because USD pricing is
+  absent. Every live result is bound to provider, model key/id, adapter version, observed runtime
+  capability, output evidence hash, and strict P1 bundle verification.
+
+### Options considered
+
+| Option | Complexity | Evidence quality | Decision |
+|---|---:|---:|---|
+| Keep every CLI behind PTY and add more escape-sequence heuristics | low initially | low; real Codex JSONL was corrupted | rejected |
+| Direct provider adapter with one normalized result/evidence contract | medium | high; raw transport is parsed before UI/PTY | accepted |
+| Implement separate provider parsing and gates inside the dashboard | high | low; creates a second source of truth | rejected |
+
+### Consequences
+
+- Adding a model under an already supported provider is a registry/config change plus capability
+  smoke, not a new gate implementation.
+- Adding a provider still requires one adapter and attacks for executable/API substitution,
+  authentication absence, malformed/duplicate output, timeout/cap, identity mutation, and same-gate
+  rejection. If the provider is also launched from the dashboard, add one registry entry, one
+  direct transport implementation, one bounded decoder when the wire format is structured, and a
+  conformance canary proving the decoder cannot manufacture kit evidence. A registry entry alone
+  does not make a provider usable.
+- TypeScript remains appropriate because execution is network/process bound and the measured local
+  parser is not a hot path. A Rust/Go/Python rewrite requires new profiling evidence under the
+  existing performance ADR; language novelty is not evidence of a faster end-to-end run.

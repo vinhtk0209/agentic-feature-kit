@@ -37,7 +37,11 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
     sonnet: { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', provider: 'claude' },
     haiku: { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', provider: 'claude' },
     fable: { id: 'claude-fable-5', label: 'Fable 5', provider: 'claude' },
-    copilot: { id: 'github-copilot', label: 'GitHub Copilot', provider: 'copilot' },
+    copilot: { id: 'github-copilot', label: 'GitHub Copilot (legacy selector)', provider: 'copilot' },
+    'copilot-gpt-5.3-codex': { id: 'gpt-5.3-codex', label: 'Copilot · GPT-5.3 Codex', provider: 'copilot' },
+    'copilot-gpt-5.4': { id: 'gpt-5.4', label: 'Copilot · GPT-5.4', provider: 'copilot' },
+    codex: { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', provider: 'codex' },
+    'grok-4.5': { id: 'grok-4.5', label: 'Grok 4.5', provider: 'grok' },
   },
 };
 

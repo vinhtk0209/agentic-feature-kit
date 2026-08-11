@@ -93,6 +93,8 @@ test('DEFAULT_MODEL_CONFIG ships a copilot provider entry', () => {
 
 test('the canonical repository model config registers the pinned Codex model identity', () => {
   const cfg = loadModelConfig(process.cwd());
+  assert(cfg.primary === 'codex', 'Codex must be the active primary after Claude subscription removal');
+  assert(JSON.stringify(cfg.fallback) === JSON.stringify(['copilot-gpt-5.3-codex', 'copilot-gpt-5.4']), 'only live-capable Copilot models are active fallbacks');
   assert(providerOf(cfg, 'codex') === 'codex', 'codex provider');
   assert(modelId(cfg, 'codex') === 'gpt-5.6-sol', 'pinned Codex model id');
 });
