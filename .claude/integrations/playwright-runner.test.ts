@@ -18,7 +18,7 @@ import {
   deriveFeatureEndpoints, urlMatchesEndpoint, EndpointDerivationError,
   resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
   replaceSummarySection, countChecklistSection, updateChecklistRows,
-  buildUnitTestSpawnSpec, resolveVisualCaptureSpec,
+  buildUnitTestSpawnSpec, resolveVisualCaptureSpec, shouldCaptureInteractionScreenshots,
 } from './playwright-runner';
 
 let passed = 0;
@@ -52,6 +52,25 @@ test('visual capture rejects malformed, duplicate, and unbounded selectors fail-
     try { resolveVisualCaptureSpec(attack); } catch { rejected = true; }
     assert(rejected, `malformed visual capture must fail closed: ${JSON.stringify(attack)}`);
   }
+});
+
+test('visual baseline states capture once while non-baseline and non-visual states preserve interaction screenshots', () => {
+  assert(
+    shouldCaptureInteractionScreenshots(true, 'visual-baselines/tooltip.png') === false,
+    'active visual baseline must skip the redundant interaction screenshot',
+  );
+  assert(
+    shouldCaptureInteractionScreenshots(false, 'visual-baselines/tooltip.png') === true,
+    'disabled visual diff must preserve the explicit interaction screenshot',
+  );
+  assert(
+    shouldCaptureInteractionScreenshots(true, undefined) === true,
+    'states without baselines must preserve the explicit interaction screenshot',
+  );
+  assert(
+    shouldCaptureInteractionScreenshots(true, '   ') === true,
+    'blank baseline values must not silently suppress evidence screenshots',
+  );
 });
 
 // ── B11 unit-test process boundary ───────────────────────────────────────────

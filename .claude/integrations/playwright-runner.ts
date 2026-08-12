@@ -334,6 +334,19 @@ export interface VisualCaptureSpec {
   masks: string[];
 }
 
+/**
+ * A visual-baseline state already receives one deterministic screenshot after all interaction
+ * steps complete (see the state loop below). Replaying a `steps[].screenshot` immediately before
+ * that capture is both redundant and state-changing for short-lived overlays such as tooltips.
+ * Keep explicit interaction screenshots everywhere else, including when visual diff is disabled.
+ */
+export function shouldCaptureInteractionScreenshots(
+  visualDiffEnabled: boolean,
+  baseline: unknown,
+): boolean {
+  return !(visualDiffEnabled && typeof baseline === 'string' && baseline.trim().length > 0);
+}
+
 export function resolveVisualCaptureSpec(input: {
   visual_selector?: unknown;
   visual_masks?: unknown;
@@ -957,6 +970,7 @@ async function runInteractionState(
   stateName: string,
   screenshotDir: string,
   timestamp: string,
+  captureInteractionScreenshots = true,
 ): Promise<{ passed: boolean; evidence: string }> {
   try {
     for (const step of steps) {
@@ -977,6 +991,7 @@ async function runInteractionState(
           await page.waitForSelector(step.selector!, { timeout: step.timeout ?? 10_000 });
           break;
         case 'screenshot': {
+          if (!captureInteractionScreenshots) break;
           fs.mkdirSync(screenshotDir, { recursive: true });
           const p = path.join(screenshotDir, `${stateName}-${step.label.replace(/\s+/g, '_')}-${timestamp}.png`);
           await page.screenshot({ path: p, fullPage: true });
@@ -1631,7 +1646,14 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
           continue;
         }
 
-        const stepResult = await runInteractionState(page, state.steps, state.name, screenshotDir, timestamp);
+        const stepResult = await runInteractionState(
+          page,
+          state.steps,
+          state.name,
+          screenshotDir,
+          timestamp,
+          shouldCaptureInteractionScreenshots(visualDiffEnabled, state.baseline),
+        );
         if (!stepResult.passed) {
           // Root step failure — mark this state's assertions failed and trigger cascade
           cascadeFrom = { stateName: state.name, evidence: stepResult.evidence };
