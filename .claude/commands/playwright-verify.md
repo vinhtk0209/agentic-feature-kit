@@ -56,6 +56,38 @@ separately. Missing, malformed, absent, or duplicate state names are errors.
 
 ---
 
+## BOUNDED RUNNER-SMOKE FAST PATH
+
+When `RUNNER_SMOKE=true`, run exactly this single verification immediately after argument
+validation and skip Setup plus every remaining verification, checklist-update, and self-recovery
+step. `playwright-runner.ts` loads the repo's `.env.playwright` itself before resolving
+`DEV_SERVER_URL`, `PUBLIC_PATH`, and browser auth; do not substitute the generic Setup default.
+
+```bash
+npx tsx .claude/integrations/playwright-runner.ts ROUTE \
+  --screenshot \
+  --feature-name FEATURE_NAME \
+  --interactions INTERACTIONS \
+  --state-name STATE_NAME \
+  --runner-smoke
+```
+
+The subprocess must exit `0`, its JSON result must have `passed=true`,
+`PLAYWRIGHT-SMOKE-SCOPE` must pass with `state=STATE_NAME`, and the selected state's AC/UI
+verdicts must pass. Do not edit source, checklist, baselines, or interaction files. Do not
+auto-fix a failure. Do not run the error-state pass or unit suite.
+
+End this smoke with exactly one result sentinel. A pass MUST carry non-empty concrete evidence:
+
+```text
+@@PROBE_RESULT@@ {"v":1,"phase":"i2-multi-model-backends","checked_for":"copilot-feature-smoke","result":"pass","evidence":[{"kind":"playwright","ref":"STATE_NAME","value":"selected interaction and assertions passed"}]}
+```
+
+On any failure, emit the same single sentinel with `result="mismatch"` and a non-empty
+`detail`; never infer pass from provider exit code. Then STOP.
+
+---
+
 ## SETUP
 
 ### Step 1 — PKG_MANAGER detection
@@ -125,34 +157,6 @@ Print: `🌐 Dev server: [DEV_SERVER_URL or http://localhost:8000]`
 ---
 
 ## VERIFICATION
-
-### Bounded runner-smoke fast path
-
-When `RUNNER_SMOKE=true`, run exactly this single verification and skip all remaining
-verification, checklist-update, and self-recovery steps:
-
-```bash
-npx tsx .claude/integrations/playwright-runner.ts ROUTE \
-  --screenshot \
-  --feature-name FEATURE_NAME \
-  --interactions INTERACTIONS \
-  --state-name STATE_NAME \
-  --runner-smoke
-```
-
-The subprocess must exit `0`, its JSON result must have `passed=true`,
-`PLAYWRIGHT-SMOKE-SCOPE` must pass with `state=STATE_NAME`, and the selected state's AC/UI
-verdicts must pass. Do not edit source, checklist, baselines, or interaction files. Do not
-auto-fix a failure. Do not run the error-state pass or unit suite.
-
-End this smoke with exactly one result sentinel. A pass MUST carry non-empty concrete evidence:
-
-```text
-@@PROBE_RESULT@@ {"v":1,"phase":"i2-multi-model-backends","checked_for":"copilot-feature-smoke","result":"pass","evidence":[{"kind":"playwright","ref":"STATE_NAME","value":"selected interaction and assertions passed"}]}
-```
-
-On any failure, emit the same single sentinel with `result="mismatch"` and a non-empty
-`detail`; never infer pass from provider exit code. Then STOP.
 
 ### Step 1 — Playwright run
 
