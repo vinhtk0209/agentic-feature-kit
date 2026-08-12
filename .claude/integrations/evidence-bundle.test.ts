@@ -17,6 +17,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import {
   buildBundle, verifyBundle, verifyBackendBoundBundle, resumeFromBundles, PHASE_ORDER,
+  CONDITIONAL_EVIDENCE_PHASES,
   UnknownPhaseError, MissingArtifactError, EmptyBundleError, ContextBudgetExceededError,
 } from './evidence-bundle';
 import { createEvidenceBinding, normalizeCost, verifyEvidenceBinding, type EvidenceBackendBinding } from './multi-provider-backends';
@@ -169,6 +170,29 @@ test('(a) build: refuses an empty bundle (zero inputs/outputs/transcripts)', () 
 test('PHASE_ORDER covers all 23 B-phases from the flagship command (B0..B12.8)', () => {
   assert(PHASE_ORDER.length === 23, `expected 23 phases, got ${PHASE_ORDER.length}: ${PHASE_ORDER.join(',')}`);
   assert(PHASE_ORDER[0] === 'B0' && PHASE_ORDER[PHASE_ORDER.length - 1] === 'B12.8', 'order runs B0 -> B12.8');
+});
+
+test('D-cross-2 has a fail-closed evidence contract without becoming an unconditional resume phase', () => {
+  assert(CONDITIONAL_EVIDENCE_PHASES.length === 1 && CONDITIONAL_EVIDENCE_PHASES[0] === 'D-cross-2', 'conditional evidence registry must contain exact D-cross-2');
+  assert(!(PHASE_ORDER as readonly string[]).includes('D-cross-2'), 'conditional D-cross-2 must not block ineligible CREATE resumes');
+
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/components/Foo/RECONCILE.json', '{"verdict":"clean"}\n');
+  const built = buildBundle({
+    featureName: 'Foo',
+    phase: 'D-cross-2',
+    cwd,
+    outputs: ['docs/components/Foo/RECONCILE.json'],
+    transcripts: { parser: 'parser=exact-existing-contract-parser\nverdict=clean\n' },
+  });
+  assert(built.phase === 'D-cross-2');
+  assert(verifyBundle('Foo', 'D-cross-2', cwd).valid, 'executed D-cross-2 must produce a verifiable manifest');
+  assert(resumeFromBundles('Foo', cwd).resumeFromPhase === 'B0', 'conditional evidence must not reorder the 23 B-phase resume chain');
+
+  const prompt = fs.readFileSync(path.resolve(__dirname, '..', 'commands', 'feature-from-confluence.md'), 'utf8');
+  assert(prompt.includes('MUST be **two separate tool invocations**'), 'STOP-gate emitters must never be compounded into duplicate sentinel output');
+  assert(prompt.includes('evidence-bundle.ts build "<FeatureName>" "D-cross-2"'), 'executed D-cross-2 must build a durable manifest');
+  assert(prompt.includes('evidence-bundle.ts verify "<FeatureName>" "D-cross-2"'), 'executed D-cross-2 must verify before branching');
 });
 
 // ─── (b) sha256 manifest: per-file + top-level hash ──────────────────────────────────────────

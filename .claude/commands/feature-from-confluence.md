@@ -582,6 +582,10 @@ npx tsx .claude/integrations/kit-event.ts state <BX>
   ```bash
   npx tsx .claude/integrations/kit-event.ts state <BX> --awaiting gate --expected true
   ```
+  The phase-start emitter and the designed-gate emitter MUST be **two separate tool invocations**.
+  Never join them with `;`, `&&`, `|`, a script block, or any other compound shell expression.
+  Compound invocations are intentionally evidence-ineligible; combining the two sentinels makes
+  the run fail closed instead of creating a resumable gate.
   This lets the sidecar flag "waiting for a human decision" **deterministically** — so it shows the
   run as awaiting and NEVER auto-approves a workflow gate — instead of guessing from the prompt wording
   (some gate phrasings match no signature → the run would stall silently; a numbered-menu gate could be
@@ -597,7 +601,8 @@ npx tsx .claude/integrations/kit-event.ts state <BX>
 ## Evidence bundle protocol — mandatory at every B-phase boundary (P1)
 
 `evidence-bundle.ts` is the durable completion contract. This protocol applies to **every one of
-the 23 B-phases** from `B0` through `B12.8`, including automatic and dynamically skipped phases.
+the 23 B-phases** from `B0` through `B12.8`, including automatic and dynamically skipped phases,
+and to `D-cross-2` whenever that conditional phase actually runs.
 A phase is not complete merely because its prose work or terminal command looked successful.
 
 1. At the end of each successful phase, identify the exact existing input artifacts, output
@@ -1619,7 +1624,19 @@ After user responds: run **★5 CONTEXT SUMMARY** → save to `docs/specs/<Featu
      --specs      docs/specs/<FeatureName>
    ```
    It writes `docs/components/<FeatureName>/RECONCILE.json` (deterministic source) + `RECONCILE.md` (pure projection) and exits non-zero on `breaking`/`error`.
-3. **Read `verdict` from RECONCILE.json** and branch:
+3. **Build and verify the D-cross-2 evidence bundle before branching.** Use the exact REAL contract
+   path selected above as an input, both reconciliation files as outputs, and the parser transcript
+   written by `d-cross-2.ts`:
+   ```bash
+   npx tsx .claude/integrations/evidence-bundle.ts build "<FeatureName>" "D-cross-2" \
+     --inputs "<REAL-contract-path>" \
+     --outputs "docs/components/<FeatureName>/RECONCILE.json,docs/components/<FeatureName>/RECONCILE.md" \
+     --transcript-file "parser=docs/specs/<FeatureName>/.evidence/D-cross-2/parser-transcript.txt"
+   npx tsx .claude/integrations/evidence-bundle.ts verify "<FeatureName>" "D-cross-2"
+   ```
+   Missing, malformed, duplicate, over-budget, or hash-mismatched evidence is a phase failure. Do
+   not print a verdict or continue until the verifier returns `valid:true`.
+4. **Read `verdict` from RECONCILE.json** and branch:
    - **`clean` / `changes`** → advisory. Print a one-line summary + point to `RECONCILE.md`, then **CONTINUE to B5** (no stop). For `changes`, the added/optional fields are a human TODO for `types.ts`/`api.ts` — they do NOT block.
    - **`error`** → **fail-closed STOP.** Print the machine `reason` code and do NOT silently continue. Distinguish cause **(b)** wrong-invocation (`not-enhance-no-existing-code`) from the cause **(a)** data-problem codes (`missing-declared-contract` / `malformed-existing-code` / `malformed-contract` / `same-source-degeneracy` / `vacuous-no-compared-shapes`), and ask how to proceed.
    - **`breaking`** → **STOP gate** (below).

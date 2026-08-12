@@ -49,7 +49,7 @@ import { sha256 } from './spec-ir';
 import { estimateTokens } from './prompt-budget';
 import { verifyEvidenceBinding, type EvidenceBackendBinding } from './multi-provider-backends';
 
-// ─── Canonical B-phase order (feature-from-confluence.md `## B*` headings) ───────────────────
+// ─── Canonical phase registry ───────────────────────────────────────────────────────────────────────
 
 export const PHASE_ORDER = [
   'B0', 'B0.5', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B6.5', 'B7', 'B8', 'B8.5', 'B8.6',
@@ -57,15 +57,24 @@ export const PHASE_ORDER = [
 ] as const;
 export type Phase = typeof PHASE_ORDER[number];
 
-export function isKnownPhase(phase: string): phase is Phase {
-  return (PHASE_ORDER as readonly string[]).includes(phase);
+// D-cross-2 is conditional (ENHANCE + REAL only), so it must not be inserted into PHASE_ORDER:
+// bundles-only resume cannot infer whether a skipped run was eligible. When the phase does run,
+// however, it has the same fail-closed build/verify contract as every B-phase.
+export const CONDITIONAL_EVIDENCE_PHASES = ['D-cross-2'] as const;
+export type ConditionalEvidencePhase = typeof CONDITIONAL_EVIDENCE_PHASES[number];
+export type EvidencePhase = Phase | ConditionalEvidencePhase;
+
+export function isKnownPhase(phase: string): phase is EvidencePhase {
+  return (PHASE_ORDER as readonly string[]).includes(phase)
+    || (CONDITIONAL_EVIDENCE_PHASES as readonly string[]).includes(phase);
 }
 
 // Order-of-magnitude budgets, not tuned measurements — gate/STOP phases (B4, B6, B8, B9, B9.5,
 // B9.6, B10.5) produce little to no file output so get small budgets; content-generation phases
 // (B1, B5, B7, B10, B11) get the largest. Override per-call via buildBundle's `budgetTokens`.
-export const DEFAULT_PHASE_BUDGET_TOKENS: Record<Phase, number> = {
+export const DEFAULT_PHASE_BUDGET_TOKENS: Record<EvidencePhase, number> = {
   'B0': 4000, 'B0.5': 1500, 'B1': 6000, 'B2': 2000, 'B3': 4000, 'B4': 1000,
+  'D-cross-2': 6000,
   'B5': 8000, 'B6': 1000, 'B6.5': 3000, 'B7': 6000, 'B8': 1000, 'B8.5': 2000, 'B8.6': 4000,
   'B9': 1000, 'B9.5': 1000, 'B9.6': 1000, 'B10': 12000, 'B10.5': 1000, 'B11': 10000, 'B12': 3000,
   'B12.5': 2000, 'B12.6': 2000, 'B12.8': 2000,
@@ -127,7 +136,7 @@ export interface EvidenceFileEntry {
 export interface EvidenceManifest {
   schemaVersion: 1;
   feature: string;
-  phase: Phase;
+  phase: EvidencePhase;
   builtAt: string;
   files: EvidenceFileEntry[];
   manifestHash: string;
