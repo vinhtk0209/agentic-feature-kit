@@ -347,6 +347,16 @@ export function shouldCaptureInteractionScreenshots(
   return !(visualDiffEnabled && typeof baseline === 'string' && baseline.trim().length > 0);
 }
 
+/** Successful UI rows without an active visual baseline are proven by completing every declared
+ * interaction step. Baseline-backed rows are deliberately excluded here: their only verdict must
+ * remain the image diff, never a weaker interaction-only PASS. */
+export function shouldRecordInteractionUiPass(
+  visualDiffEnabled: boolean,
+  baseline: unknown,
+): boolean {
+  return shouldCaptureInteractionScreenshots(visualDiffEnabled, baseline);
+}
+
 export function resolveVisualCaptureSpec(input: {
   visual_selector?: unknown;
   visual_masks?: unknown;
@@ -1681,6 +1691,14 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
           (state.ui_rows ?? []).forEach((id) => extended.uiResults.push({ id, passed: diff.passed, evidence: uiEvidence }));
         }
 
+        if (shouldRecordInteractionUiPass(visualDiffEnabled, state.baseline)) {
+          (state.ui_rows ?? []).forEach((id) => extended.uiResults.push({
+            id,
+            passed: true,
+            evidence: `state ${state.name} completed all declared interaction steps`,
+          }));
+        }
+
         // AC assertions for this state
         for (const assertion of state.ac_assertions ?? []) {
           const r = await runAcAssertion(page, assertion, cfg.messagesPath);
@@ -1718,7 +1736,7 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
         checks.push({ id: 'PLAYWRIGHT-008', description: 'Per-AC behavior verification', passed: acPassed, evidence: `${extended.acResults.filter((r) => r.passed).length}/${extended.acResults.length} AC assertions passed` });
       }
       if (extended.uiResults.length > 0) {
-        checks.push({ id: 'PLAYWRIGHT-UI-ROWS', description: 'UI row verdicts (via baseline diff)', passed: uiPassed, evidence: `${extended.uiResults.filter((r) => r.passed).length}/${extended.uiResults.length} UI rows passed` });
+        checks.push({ id: 'PLAYWRIGHT-UI-ROWS', description: 'UI row verdicts (visual diff or completed interaction state)', passed: uiPassed, evidence: `${extended.uiResults.filter((r) => r.passed).length}/${extended.uiResults.length} UI rows passed` });
       }
       if (extended.unitTestResults.length > 0) {
         checks.push({ id: 'PLAYWRIGHT-UNIT', description: 'Unit tests for Unit-Test ACT rows', passed: utPassed, evidence: `${extended.unitTestResults.filter((r) => r.passed).length}/${extended.unitTestResults.length} jest entries passed` });

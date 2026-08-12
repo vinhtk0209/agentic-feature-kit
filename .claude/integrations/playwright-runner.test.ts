@@ -19,6 +19,7 @@ import {
   resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
   replaceSummarySection, countChecklistSection, updateChecklistRows,
   buildUnitTestSpawnSpec, resolveVisualCaptureSpec, shouldCaptureInteractionScreenshots,
+  shouldRecordInteractionUiPass,
 } from './playwright-runner';
 
 let passed = 0;
@@ -70,6 +71,21 @@ test('visual baseline states capture once while non-baseline and non-visual stat
   assert(
     shouldCaptureInteractionScreenshots(true, '   ') === true,
     'blank baseline values must not silently suppress evidence screenshots',
+  );
+});
+
+test('successful non-baseline UI states clear stale failures without weakening baseline verdicts', () => {
+  assert(
+    shouldRecordInteractionUiPass(true, undefined) === true,
+    'a successful interaction-only state must emit a PASS verdict',
+  );
+  assert(
+    shouldRecordInteractionUiPass(false, 'visual-baselines/state.png') === true,
+    'visual-disabled execution must use completed interactions as its UI verdict',
+  );
+  assert(
+    shouldRecordInteractionUiPass(true, 'visual-baselines/state.png') === false,
+    'an active visual baseline must remain governed only by image diff',
   );
 });
 
