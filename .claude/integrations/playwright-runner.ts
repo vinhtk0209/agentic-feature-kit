@@ -957,7 +957,7 @@ export function buildUnitTestSpawnSpec(entry: UnitTestEntry, cwd = process.cwd()
     throw new Error('unit-test-grep-invalid');
   }
   const jestBin = path.join(cwd, 'node_modules', 'jest', 'bin', 'jest.js');
-  const args = [jestBin, entry.test_file, '--no-coverage'];
+  const args = [jestBin, entry.test_file, '--no-coverage', '--runInBand'];
   if (entry.grep !== undefined) args.push('-t', entry.grep);
   return {
     command: process.execPath,

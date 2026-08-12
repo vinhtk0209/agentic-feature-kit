@@ -160,6 +160,7 @@ test('unit-test spawn keeps regex metacharacters in one opaque argv item with no
   const spec = buildUnitTestSpawnSpec({ ac_id: 'ACT-BR4', test_file: 'feature/data/api.test.ts', grep }, 'C:\\repo');
   assert(spec.command === process.execPath, 'Jest must run through the current native Node executable');
   assert(spec.options.shell === false, 'unit-test execution must never enable a command shell');
+  assert(spec.args.filter((arg) => arg === '--runInBand').length === 1, 'Jest must use one deterministic in-band worker');
   assert(spec.args[spec.args.length - 1] === grep, 'grep pattern must remain one byte-identical argv item');
   assert(spec.args.filter((arg) => arg === '-t').length === 1, 'grep must have exactly one -t selector');
 });
