@@ -60,7 +60,7 @@ const REPO = resolveRepo();
 const RUNNER_ID_RE = /^[a-z][a-z0-9_-]{0,31}$/;
 // Keep this exact grammar aligned with kit-event.ts and the dashboard parser. Error telemetry may
 // retain a human-readable message, but its machine event must carry one canonical phase only.
-const KIT_PHASE_RE = /^(?:B(?:0(?:\.5)?|1|2|3|4|5|6(?:\.5)?|7|8(?:\.[56])?|9(?:\.[56])?|10(?:\.5)?|11|12(?:\.8)?)|D(?:0(?:\.5)?|1(?:\.5)?|cross-2))$/;
+const KIT_PHASE_RE = /^(?:B(?:0(?:\.5)?|1|2|3|4|5|6(?:\.5)?|7|8(?:\.[56])?|9(?:\.[56])?|10(?:\.5)?|11|12(?:\.8)?)|D(?:0(?:\.5)?|1(?:\.5)?)|D-cross-2)$/;
 const RUNNER = process.env.KIT_RUNNER_ID ?? "claude";
 if (!RUNNER_ID_RE.test(RUNNER)) throw new Error("telemetry: invalid KIT_RUNNER_ID");
 const RUN_NONCE = process.env.KIT_EVENT_NONCE;

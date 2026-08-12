@@ -39,8 +39,14 @@ test('binds the run nonce and designed gate metadata', () => {
   assert(result.stdout === `@@KIT_EVENT@@ {"v":1,"type":"state","phase":"B6","awaiting":"gate","expected":true,"runNonce":"${nonce}"}\n`, `unexpected stdout: ${result.stdout}`);
 });
 
+test('emits the exact canonical D-cross-2 phase token', () => {
+  const result = run(['state', 'D-cross-2']);
+  assert(result.status === 0, `expected exit 0, got ${result.status}: ${result.stderr}`);
+  assert(result.stdout === '@@KIT_EVENT@@ {"v":1,"type":"state","phase":"D-cross-2"}\n', `unexpected stdout: ${result.stdout}`);
+});
+
 for (const args of [
-  [], ['state'], ['state', '<BX>'], ['state', 'B99'], ['state', 'B5', '--awaiting', 'maybe'],
+  [], ['state'], ['state', '<BX>'], ['state', 'B99'], ['state', 'Dcross-2'], ['state', 'B5', '--awaiting', 'maybe'],
   ['state', 'B5', '--awaiting', 'gate', '--awaiting', 'gate'], ['state', 'B5', '--unknown', 'x'],
 ]) {
   test(`rejects malformed or ambiguous argv: ${JSON.stringify(args)}`, () => {

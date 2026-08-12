@@ -5,7 +5,7 @@
  * no filesystem, network, or shell access; one valid invocation emits exactly one sentinel line.
  */
 
-const PHASE_RE = /^(?:B(?:0(?:\.5)?|1|2|3|4|5|6(?:\.5)?|7|8(?:\.[56])?|9(?:\.[56])?|10(?:\.5)?|11|12(?:\.8)?)|D(?:0(?:\.5)?|1(?:\.5)?|cross-2))$/;
+const PHASE_RE = /^(?:B(?:0(?:\.5)?|1|2|3|4|5|6(?:\.5)?|7|8(?:\.[56])?|9(?:\.[56])?|10(?:\.5)?|11|12(?:\.8)?)|D(?:0(?:\.5)?|1(?:\.5)?)|D-cross-2)$/;
 const NONCE_RE = /^[a-f0-9]{64}$/;
 const AWAITING = new Set(['gate', 'permission', 'none']);
 

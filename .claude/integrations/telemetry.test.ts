@@ -191,6 +191,20 @@ test('error <type> <phase> <msg> → exits 0 (best-effort)', () => {
   assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"error","phase":"B11","runNonce":"${nonce}"}`), 'error marker must bind one canonical phase and nonce');
 });
 
+test('error accepts the exact canonical D-cross-2 phase token', () => {
+  const nonce = 'd'.repeat(64);
+  const r = runMocked(['error', 'step_failure', 'D-cross-2', 'contract drift'], { KIT_EVENT_NONCE: nonce });
+  assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
+  assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"error","phase":"D-cross-2","runNonce":"${nonce}"}`), 'error marker must preserve the exact canonical D-cross-2 token');
+});
+
+test('error rejects the historical Dcross-2 typo before telemetry or marker output', () => {
+  const r = runMocked(['error', 'step_failure', 'Dcross-2', 'contract drift']);
+  assert(r.status === 2, `historical typo must fail closed with exit 2, got ${r.status}`);
+  assert(r.stderr.includes('canonical phase'), `failure must explain the canonical phase contract: ${r.stderr}`);
+  assert(!r.stdout.includes('📊') && !r.stdout.includes('@@KIT_EVENT@@'), 'invalid phase must not enter telemetry or marker output');
+});
+
 test('error rejects a descriptive step label before telemetry or marker output', () => {
   const r = runMocked(['error', 'step_failure', 'B0 — Evidence Bundle', 'bundle missing']);
   assert(r.status === 2, `descriptive phase must fail closed with exit 2, got ${r.status}`);
