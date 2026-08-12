@@ -226,7 +226,7 @@ interface AcAssertion {
   expected: string;
 }
 
-interface StateV2 {
+export interface StateV2 {
   name: string;
   route?: string;
   steps: InteractionStep[];
@@ -244,7 +244,7 @@ export interface UnitTestEntry {
   grep?: string;
 }
 
-interface InteractionScriptV2 {
+export interface InteractionScriptV2 {
   feature?: string;
   states: StateV2[];
   negative_states?: StateV2[];
@@ -332,6 +332,22 @@ async function injectAuthTokens(page: Page): Promise<boolean> {
 export interface VisualCaptureSpec {
   selector?: string;
   masks: string[];
+}
+
+const STATE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+/**
+ * Select one declarative v2 state for a bounded cross-runner smoke. Missing, malformed,
+ * or duplicate names fail closed so a provider cannot silently run a different interaction.
+ */
+export function selectInteractionStates(script: InteractionScriptV2, stateName?: string): StateV2[] {
+  const allStates = [...(script.states ?? []), ...(script.negative_states ?? [])];
+  if (stateName === undefined) return allStates;
+  if (!STATE_NAME_PATTERN.test(stateName)) throw new Error('state name is malformed');
+  const matches = allStates.filter((state) => state?.name === stateName);
+  if (matches.length === 0) throw new Error(`state not found: ${stateName}`);
+  if (matches.length !== 1) throw new Error(`state name is ambiguous: ${stateName}`);
+  return matches;
 }
 
 /**
@@ -1134,6 +1150,8 @@ interface RunnerConfig {
   dataReadySelector?: string; // Z.2: per-route data-ready selector (else bounded networkidle)
   dataGate?: boolean;         // §4 data-reached gate; ON unless explicitly false (static route)
   apiPath?: string;           // §8.1 AA.3: feature data/api.ts (cross-check source for E_feat scope)
+  stateName?: string;         // bounded runner smoke: execute exactly one named v2 state
+  runnerSmoke?: boolean;      // skip unrelated unit-test entries; never weakens the selected state
 }
 
 // ── §4 Tier B data-reached assertion + Z.2 bounded wait (v3.24) ──────────────
@@ -1644,7 +1662,15 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       // (running them produces misleading assertion evidence rather than real failures).
       let cascadeFrom: { stateName: string; evidence: string } | null = null;
       let cascadeBlockedCount = 0;
-      const allStates = [...(scriptV2.states ?? []), ...(scriptV2.negative_states ?? [])];
+      const allStates = selectInteractionStates(scriptV2, cfg.stateName);
+      if (cfg.stateName) {
+        checks.push({
+          id: 'PLAYWRIGHT-SMOKE-SCOPE',
+          description: 'Bounded runner smoke selected exactly one interaction state',
+          passed: true,
+          evidence: `state=${cfg.stateName}`,
+        });
+      }
 
       for (const state of allStates) {
         if (cascadeFrom) {
@@ -1717,9 +1743,11 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       }
 
       // Unit tests (not cascade-blocked — they run independently via jest)
-      for (const unitTest of scriptV2.unit_tests ?? []) {
-        const r = runUnitTestEntry(unitTest);
-        extended.unitTestResults.push({ id: unitTest.ac_id, passed: r.passed, evidence: r.evidence });
+      if (!cfg.runnerSmoke) {
+        for (const unitTest of scriptV2.unit_tests ?? []) {
+          const r = runUnitTestEntry(unitTest);
+          extended.unitTestResults.push({ id: unitTest.ac_id, passed: r.passed, evidence: r.evidence });
+        }
       }
 
       // Aggregate v2 verdicts into checks
@@ -1940,6 +1968,8 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
   const auditCssPath = flagValue('--audit-css');
   const apiPath = flagValue('--api-path'); // §8.1 feature data/api.ts for E_feat cross-check
   const messagesPath = flagValue('--messages-path');
+  const stateName = flagValue('--state-name');
+  const runnerSmoke = args.includes('--runner-smoke');
   const thresholdRaw = flagValue('--visual-diff-threshold');
   const visualDiffThreshold = thresholdRaw ? parseFloat(thresholdRaw) : undefined;
 
@@ -1958,12 +1988,30 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     }
   }
 
+  if (stateName !== undefined) {
+    if (!scriptV2) {
+      console.error('Error: --state-name requires a v2 --interactions file');
+      process.exit(1);
+    }
+    try {
+      selectInteractionStates(scriptV2, stateName);
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  }
+  if (runnerSmoke && stateName === undefined) {
+    console.error('Error: --runner-smoke requires --state-name');
+    process.exit(1);
+  }
+
   if (!route) {
     console.error(
       'Usage: npx tsx .claude/integrations/playwright-runner.ts <route> [--screenshot] [--feature-name <name>] [--mock-error]\n' +
       '       [--interactions <path>] [--visual-baseline <png>] [--visual-baseline-dir <dir>] [--ac-checklist <md>]\n' +
       '       [--audit-a11y] [--audit-css <visual-properties.md>] [--messages-path <messages.ts>] [--visual-diff-threshold <%>]\n' +
       '       [--api-path <data/api.ts>]  (§8.1: feature api.ts for E_feat-scoped §4 data gate)\n' +
+      '       [--state-name <name> --runner-smoke]  (execute exactly one v2 interaction; skip unrelated unit entries)\n' +
       '       [--visual-diff]  (opt-in: enable visual baseline diffs; off by default)',
     );
     process.exit(1);
@@ -1988,6 +2036,8 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     dataReadySelector,
     dataGate,
     apiPath,
+    stateName,
+    runnerSmoke,
   })
     .then(printResult)
     .catch(console.error);

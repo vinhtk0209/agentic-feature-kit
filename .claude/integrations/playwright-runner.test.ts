@@ -20,6 +20,7 @@ import {
   replaceSummarySection, countChecklistSection, updateChecklistRows,
   buildUnitTestSpawnSpec, resolveVisualCaptureSpec, shouldCaptureInteractionScreenshots,
   shouldRecordInteractionUiPass,
+  selectInteractionStates, InteractionScriptV2,
 } from './playwright-runner';
 
 let passed = 0;
@@ -87,6 +88,40 @@ test('successful non-baseline UI states clear stale failures without weakening b
     shouldRecordInteractionUiPass(true, 'visual-baselines/state.png') === false,
     'an active visual baseline must remain governed only by image diff',
   );
+});
+
+// ── Cross-runner bounded state smoke ────────────────────────────────────────
+
+const focusedStates: InteractionScriptV2 = {
+  states: [
+    { name: 'load-dashboard', steps: [] },
+    { name: 'authorized-csv-export-current-filter', steps: [] },
+  ],
+  negative_states: [{ name: 'csv-export-unauthorized-401', steps: [] }],
+};
+
+test('bounded runner smoke selects exactly one named positive or negative state', () => {
+  const positive = selectInteractionStates(focusedStates, 'authorized-csv-export-current-filter');
+  assert(positive.length === 1 && positive[0].name === 'authorized-csv-export-current-filter', 'positive state must remain exact');
+  const negative = selectInteractionStates(focusedStates, 'csv-export-unauthorized-401');
+  assert(negative.length === 1 && negative[0].name === 'csv-export-unauthorized-401', 'negative state must remain exact');
+  assert(selectInteractionStates(focusedStates).length === 3, 'no filter must preserve the full v2 sequence');
+});
+
+test('bounded runner smoke rejects missing, malformed, and duplicate state names fail-closed', () => {
+  const duplicate: InteractionScriptV2 = {
+    states: [{ name: 'same', steps: [] }],
+    negative_states: [{ name: 'same', steps: [] }],
+  };
+  for (const [script, name] of [
+    [focusedStates, 'missing'],
+    [focusedStates, '../escape'],
+    [duplicate, 'same'],
+  ] as Array<[InteractionScriptV2, string]>) {
+    let rejected = false;
+    try { selectInteractionStates(script, name); } catch { rejected = true; }
+    assert(rejected, `state selection must reject ${name}`);
+  }
 });
 
 // ── B11 unit-test process boundary ───────────────────────────────────────────
