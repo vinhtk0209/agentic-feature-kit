@@ -235,7 +235,7 @@ interface StateV2 {
   ac_assertions?: AcAssertion[];
 }
 
-interface UnitTestEntry {
+export interface UnitTestEntry {
   ac_id: string;
   test_file: string;
   grep?: string;
@@ -831,15 +831,59 @@ function updateChecklistSummary(
   if (updated !== text) fs.writeFileSync(checklistPath, updated, 'utf8');
 }
 
-function runUnitTestEntry(entry: UnitTestEntry): { passed: boolean; evidence: string } {
-  // Use npx jest directly with --no-coverage to avoid threshold failures and speed up runs.
+export interface UnitTestSpawnSpec {
+  command: string;
+  args: string[];
+  options: {
+    cwd: string;
+    encoding: 'utf8';
+    shell: false;
+    timeout: number;
+    maxBuffer: number;
+    windowsHide: true;
+  };
+}
+
+/**
+ * Build the Jest child-process boundary without a shell. The grep value is one opaque argv item,
+ * so regex metacharacters such as `(...)|...` cannot become PowerShell/cmd syntax.
+ */
+export function buildUnitTestSpawnSpec(entry: UnitTestEntry, cwd = process.cwd()): UnitTestSpawnSpec {
+  if (typeof entry.test_file !== 'string' || entry.test_file.trim().length === 0) {
+    throw new Error('unit-test-file-invalid');
+  }
+  if (entry.grep !== undefined && (typeof entry.grep !== 'string' || entry.grep.length === 0)) {
+    throw new Error('unit-test-grep-invalid');
+  }
+  const jestBin = path.join(cwd, 'node_modules', 'jest', 'bin', 'jest.js');
+  const args = [jestBin, entry.test_file, '--no-coverage'];
+  if (entry.grep !== undefined) args.push('-t', entry.grep);
+  return {
+    command: process.execPath,
+    args,
+    options: {
+      cwd,
+      encoding: 'utf8',
+      shell: false,
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+      windowsHide: true,
+    },
+  };
+}
+
+export function runUnitTestEntry(entry: UnitTestEntry): { passed: boolean; evidence: string } {
+  // Use the target's local Jest binary with --no-coverage to avoid threshold failures and keep
+  // test selection identical across platforms without routing user-controlled patterns through a shell.
   try {
     const { spawnSync } = require('child_process') as typeof import('child_process');
-    const args = ['jest', entry.test_file, '--no-coverage'];    if (entry.grep) args.push('-t', entry.grep);
-    const r = spawnSync('npx', args, { encoding: 'utf8', shell: true });
+    const spec = buildUnitTestSpawnSpec(entry);
+    if (!fs.existsSync(spec.args[0])) return { passed: false, evidence: 'jest binary missing' };
+    const r = spawnSync(spec.command, spec.args, spec.options);
     const out = `${r.stdout}\n${r.stderr}`;
     const passed = r.status === 0 && /PASS/.test(out);
-    return { passed, evidence: passed ? `jest pass: ${entry.test_file}` : `jest fail (exit ${r.status})` };
+    const exit = r.status === null ? 'null' : String(r.status);
+    return { passed, evidence: passed ? `jest pass: ${entry.test_file}` : `jest fail (exit ${exit})` };
   } catch (err) {
     return { passed: false, evidence: err instanceof Error ? err.message : String(err) };
   }

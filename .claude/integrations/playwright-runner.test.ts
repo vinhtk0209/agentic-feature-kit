@@ -18,6 +18,7 @@ import {
   deriveFeatureEndpoints, urlMatchesEndpoint, EndpointDerivationError,
   resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
   replaceSummarySection, countChecklistSection, updateChecklistRows,
+  buildUnitTestSpawnSpec,
 } from './playwright-runner';
 
 let passed = 0;
@@ -26,6 +27,28 @@ function test(name: string, fn: () => void) {
   try { fn(); passed += 1; console.log(`✅ ${name}`); } catch (e) { failed += 1; console.log(`❌ ${name}\n     ${(e as Error).message}`); }
 }
 function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
+
+// ── B11 unit-test process boundary ───────────────────────────────────────────
+
+test('unit-test spawn keeps regex metacharacters in one opaque argv item with no shell', () => {
+  const grep = 'assessment charts — (single collapsed endpoint, carries exam_id|ALL filter omits exam_id)';
+  const spec = buildUnitTestSpawnSpec({ ac_id: 'ACT-BR4', test_file: 'feature/data/api.test.ts', grep }, 'C:\\repo');
+  assert(spec.command === process.execPath, 'Jest must run through the current native Node executable');
+  assert(spec.options.shell === false, 'unit-test execution must never enable a command shell');
+  assert(spec.args[spec.args.length - 1] === grep, 'grep pattern must remain one byte-identical argv item');
+  assert(spec.args.filter((arg) => arg === '-t').length === 1, 'grep must have exactly one -t selector');
+});
+
+test('unit-test spawn rejects blank file and grep values before process creation', () => {
+  for (const entry of [
+    { ac_id: 'A', test_file: '' },
+    { ac_id: 'A', test_file: 'x.test.ts', grep: '' },
+  ]) {
+    let rejected = false;
+    try { buildUnitTestSpawnSpec(entry, 'C:\\repo'); } catch { rejected = true; }
+    assert(rejected, 'malformed unit-test selector must fail closed');
+  }
+});
 
 // ── analyzeCascade ────────────────────────────────────────────────────
 
