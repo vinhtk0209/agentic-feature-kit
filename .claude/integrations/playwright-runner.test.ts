@@ -21,6 +21,7 @@ import {
   buildUnitTestSpawnSpec, resolveVisualCaptureSpec, shouldCaptureInteractionScreenshots,
   shouldRecordInteractionUiPass,
   selectInteractionStates, InteractionScriptV2,
+  meaningfulContentVerdict,
 } from './playwright-runner';
 
 let passed = 0;
@@ -122,6 +123,13 @@ test('bounded runner smoke rejects missing, malformed, and duplicate state names
     try { selectInteractionStates(script, name); } catch { rejected = true; }
     assert(rejected, `state selection must reject ${name}`);
   }
+});
+
+test('meaningful-content verdict is deterministic and can be reassessed after a selected state', () => {
+  assert(meaningfulContentVerdict('short shell').passed === false, 'short pre-interaction shell must fail');
+  const postState = meaningfulContentVerdict('x'.repeat(101), 'selected state export-csv');
+  assert(postState.passed === true, 'post-state feature content must pass at the existing threshold');
+  assert(postState.evidence.includes('after selected state export-csv: 101 chars'), 'evidence must name the assessment point');
 });
 
 // ── B11 unit-test process boundary ───────────────────────────────────────────

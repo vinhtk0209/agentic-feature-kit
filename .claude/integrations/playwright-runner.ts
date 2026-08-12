@@ -1154,6 +1154,11 @@ interface RunnerConfig {
   runnerSmoke?: boolean;      // skip unrelated unit-test entries; never weakens the selected state
 }
 
+export function meaningfulContentVerdict(bodyText: string, stage = 'initial load'): { passed: boolean; evidence: string } {
+  const length = bodyText.trim().length;
+  return { passed: length > 100, evidence: `Body text length after ${stage}: ${length} chars` };
+}
+
 // ── §4 Tier B data-reached assertion + Z.2 bounded wait (v3.24) ──────────────
 // The load-bearing measurement-layer guard. A stale/absent token lets the app
 // render its SHELL while every data call 401s → an empty page that a shell-only
@@ -1590,11 +1595,11 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
 
     // Check 5: Page has meaningful content (not blank)
     const bodyText = await page.locator('body').innerText();
+    const contentVerdict = meaningfulContentVerdict(bodyText);
     checks.push({
       id: 'PLAYWRIGHT-005',
       description: 'Page renders meaningful content (not blank)',
-      passed: bodyText.trim().length > 100,
-      evidence: `Body text length: ${bodyText.trim().length} chars`,
+      ...contentVerdict,
     });
 
     // ── §4 Tier B data-reached — assessment MOVED (§8.2 AA.2) ──
@@ -1769,6 +1774,16 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       if (extended.unitTestResults.length > 0) {
         checks.push({ id: 'PLAYWRIGHT-UNIT', description: 'Unit tests for Unit-Test ACT rows', passed: utPassed, evidence: `${extended.unitTestResults.filter((r) => r.passed).length}/${extended.unitTestResults.length} jest entries passed` });
       }
+    }
+
+    // A bounded smoke intentionally targets a tab/button interaction. Reassess meaningful content
+    // after that exact state; the pre-interaction Class Details shell is not the feature verdict.
+    if (cfg.runnerSmoke) {
+      const finalBodyText = await page.locator('body').innerText();
+      const finalVerdict = meaningfulContentVerdict(finalBodyText, `selected state ${cfg.stateName}`);
+      const contentIndex = checks.findIndex((check) => check.id === 'PLAYWRIGHT-005');
+      if (contentIndex < 0) throw new Error('PLAYWRIGHT-005 result is missing');
+      checks[contentIndex] = { ...checks[contentIndex], ...finalVerdict };
     }
 
     // ── §4 Tier B data-reached assertion — assessed AFTER interaction steps (§8.2 AA.2) ──
