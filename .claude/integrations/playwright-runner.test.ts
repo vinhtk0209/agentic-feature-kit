@@ -95,12 +95,16 @@ test('successful non-baseline UI states clear stale failures without weakening b
 
 test('runner-smoke command uses one direct shell invocation and forbids task delegation', () => {
   const command = fs.readFileSync(path.join(process.cwd(), '.claude', 'commands', 'playwright-verify.md'), 'utf8');
+  const smokeStart = command.indexOf('## BOUNDED RUNNER-SMOKE FAST PATH');
+  const smokeEnd = command.indexOf('\n## SETUP', smokeStart);
+  assert(smokeStart >= 0 && smokeEnd > smokeStart, 'runner-smoke section must have exact boundaries');
+  const smoke = command.slice(smokeStart, smokeEnd);
   assert(
-    command.includes('node node_modules/tsx/dist/cli.mjs .claude/integrations/playwright-runner.ts ROUTE'),
+    smoke.includes('node node_modules/tsx/dist/cli.mjs .claude/integrations/playwright-runner.ts ROUTE'),
     'runner smoke must use the checked-in direct Node entrypoint',
   );
-  assert(command.includes('Do not delegate this command to a task or subagent'), 'runner smoke must forbid delegation');
-  assert(!command.includes('npx tsx .claude/integrations/playwright-runner.ts ROUTE'), 'runner smoke must not use the Windows shim path');
+  assert(smoke.includes('Do not delegate this command to a task or subagent'), 'runner smoke must forbid delegation');
+  assert(!smoke.includes('npx tsx .claude/integrations/playwright-runner.ts ROUTE'), 'runner smoke must not use the Windows shim path');
 });
 
 const focusedStates: InteractionScriptV2 = {
