@@ -1801,10 +1801,36 @@ key scan. No code changed. (`missing_project_knowledge`: the CORS misread came f
 
 > Design-first in `docs/design/measurement-layer-tier-b-environment.md` §9 (approved 2026-07-16). First real bump since v3.24 — this is a guard **behavior change** (a token state that previously THREW now passes), not a Tier-B internal fix, so it takes its own version (v3.25) rather than folding into v3.24. 5 stamps bumped (cmd copyright / PROMPT_VERSION / progress-banner / README / package.json). Code change (threshold + test) is a SEPARATE commit from the stamp/doc bump, per canary rule.
 
-<!-- @lesson id="L-2026-07-16-001" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by="b11-runner.test.ts" test_status="enforced" live_validated="false" kit_version="3.25.0" observed_at="2026-07-16T00:00:00.000Z" -->
+<!-- @lesson id="L-2026-07-16-001" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by="b11-runner.test.ts" test_status="enforced" live_validated="true" kit_version="3.25.0" observed_at="2026-07-16T00:00:00.000Z" -->
 ### Change AA.4 — the 24h `expiring-soon` threshold is physically unsatisfiable by a freshly-minted token
 **Where**: `.claude/integrations/version-check.ts:65` — `const WARN_THRESHOLD_MS = 24 * 60 * 60 * 1000` → `6 * 60 * 60 * 1000`. One definition, one usage (`:83`, strict `<`, unchanged). Consumers unchanged: fail-closed B11 preflight `assertPlaywrightTokenFresh` (`b11-runner.ts:153`, THROWS) + warn-only `--playwright` CLI (`version-check.ts:125`, exit 0).
 **Why**: the auth backend mints Playwright access tokens with native TTL < 24h — observed live 2026-07-16 during the Block-5 STEP-1 preflight: a token freshly minted by `npm run workflow:login` read `msRemaining ≈ 23.66h` → `status=expiring-soon` → the preflight THREW `tierB-token-expiring`. Because `TTL_native (~23.66h) < WARN_THRESHOLD_MS (24h)`, no wall-clock instant exists at which the guard reports `ok` for this backend → the fail-closed preflight is structurally unpassable, blocking every honest B11 capture (distinct from the earlier genuinely-stale ~71h halt).
 **What (fix)**: lower the threshold to 6h. Preserves the invariant the guard exists for — fail closed on a token that could lapse MID-RUN — because the worst-case authenticated window is `routes.length × 10min` (per-route ceiling `playwrightTimeoutMs = 600_000`, `b11-runner.ts:469`; routes sequential; token checked once at preflight `b11-runner.ts:487`), ~1h realistic, well under 6h. 6h sits below the observed TTL floor (~23.66h) so a fresh token now reads `ok` with headroom, and above the worst-case run + margin so a real mid-run lapse is still caught. Verdict order (missing → expired → expiring → ok) and the strict-`<` operator are untouched; only the expiring↔ok boundary value moves.
 **Enforced by (tests)**: `b11-runner.test.ts` — re-pinned boundary "EXPIRES_AT exactly 6h ahead → ok (not expiring)"; expiring case held at `+5h` (still `<6h` → throws); NEW AA.4 regression "fresh TTL_native-sized token (~23.5h) → does NOT throw" (this THREW under the 24h threshold — proven RED before the constant change, GREEN after). Suite: 23 passed, 0 failed.
-**Proof boundary — NOT yet live-validated (`live_validated=false`)**: proven by the RED→GREEN test transition + `tsc` only. NO real B11 browser capture has passed the preflight with this threshold yet. Flip `live_validated` → true after the first honest capture reaches Playwright with a real fresh (<24h) token that the 6h guard admits.
+**Live validation (2026-08-12)**: the honest ProgressReports capture passed the fail-closed B11 preflight with a freshly refreshed token, then completed visual `9/9`, UI `15/15`, AC `25/25`, and computed record-verify Tier A/B `0/0`. The live validation is bound to run `run-1786550374983-7888d526` and the I1 registry below; it does not relax the 6h boundary.
+
+---
+
+## 2026-08-12 — v3.25: first provenance-gated 6F N→N+1 cycle
+
+<!-- @lesson id="L-2026-08-12-001" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by="self-improvement-cycle.test.ts" test_status="enforced" live_validated="true" kit_version="3.25.0" observed_at="2026-08-12T16:17:01.003Z" -->
+### Change I1.1 — canonical record verification must retain the complete B11 state-evidence contract
+
+**Run N:** `run-1786549352630-cff07274` recorded Tier A/B `1/1` and computed
+`verified=false`. Its noncanonical Tier-A command omitted the required `--ux-states` input. The
+visual runner also performed a redundant interaction screenshot before its scoped baseline capture,
+and a successful interaction-only state could leave an older cascade failure in the checklist.
+
+**Correction:** the canonical workflow's Tier-A command retains checklist + `--ux-states` + hard
+gate bindings. Commits `a8e0c90` and `a30416a` ensure an active visual-baseline state captures only
+once, while a successful non-baseline interaction writes its own PASS verdict. Baseline-backed rows
+remain governed exclusively by visual diff; no gate is weakened.
+
+**Run N+1:** `run-1786550374983-7888d526` on the same target HEAD and content hash recorded Tier A/B
+`0/0`, computed `verified=true`, visual `9/9`, UI `15/15`, and AC `25/25`. The canonical before/after
+metric is `computed_verify_pass: 0→1`.
+
+**Registry evidence:** `docs/evidence/i1-self-improvement-cycle-2026-08-12.json` binds the two live
+rows, Git note, source artifacts, phase `B11`, task type `BASELINE`, enforcement tests, and a
+tamper-evident hash chain. This is a mechanism-proven single-case lesson under §5.0/§5.1, not an
+N≥20 population claim.

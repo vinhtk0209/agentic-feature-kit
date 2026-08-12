@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "cycles": [
+    {
+      "schemaVersion": 1,
+      "lesson": {
+        "id": "L-2026-08-12-001",
+        "title": "Preserve the canonical B11 state-evidence contract",
+        "classification": "automated_gate",
+        "rootCause": "workflow_design_flaw",
+        "phase": "B11",
+        "taskType": "BASELINE",
+        "kitVersion": "3.25.0",
+        "generatedFromRunId": "run-1786549352630-cff07274",
+        "enforcedBy": [
+          "self-improvement-cycle.test.ts:canonical record-verify Tier A wiring",
+          "playwright-runner.test.ts:visual baseline states capture once",
+          "playwright-runner.test.ts:successful interaction-only state emits PASS"
+        ],
+        "liveValidated": true,
+        "observedAt": "2026-08-12T16:17:01.003Z"
+      },
+      "provenance": {
+        "projectRef": "vkuojxgvkxndftenrdno",
+        "snapshotSha256": "d1c82c036fc980b1b9dcab318bf36aff98a6c07ca84a26b9343672248a7699e9",
+        "verifiedGitNoteSha256": "bf1f3a058a4a8f9b4a99e209c09e0ee060f0ad6a7f8fa6b04a278a975a2b92ef",
+        "sourceArtifacts": [
+          {
+            "ref": "capture@f4a3dad:docs/evidence/i1-b11-live-authoring-2026-08-12.md",
+            "sha256": "13108e1636909e96e801dfd915464b07217d6b481b3d0a1ded75b4430d766d0c"
+          },
+          {
+            "ref": "capture@f4a3dad:docs/evidence/i1-b12-finalization-2026-08-12.md",
+            "sha256": "b227c02ea12fc083273a36956c620b1b95f6dfb75fbcbee9835a583365363f16"
+          }
+        ],
+        "rows": [
+          {
+            "runnerRunId": "run-1786549352630-cff07274",
+            "headSha": "924a35926ba28345d6e4ffe7cdafe1ba6b5a1850",
+            "feature": "US-AD-095-ProgressReports",
+            "taskType": "BASELINE",
+            "phase": "B11",
+            "kitVersion": "3.25.0",
+            "tierAExit": 1,
+            "tierBExit": 1,
+            "verified": false,
+            "contentHash": "a844049d2861382d5dd3334a0474cbb9bd4275ab747065ee17758997fd41cbf1",
+            "recordedAt": "2026-08-12T15:44:58.240Z"
+          },
+          {
+            "runnerRunId": "run-1786550374983-7888d526",
+            "headSha": "924a35926ba28345d6e4ffe7cdafe1ba6b5a1850",
+            "feature": "US-AD-095-ProgressReports",
+            "taskType": "BASELINE",
+            "phase": "B11",
+            "kitVersion": "3.25.0",
+            "tierAExit": 0,
+            "tierBExit": 0,
+            "verified": true,
+            "contentHash": "a844049d2861382d5dd3334a0474cbb9bd4275ab747065ee17758997fd41cbf1",
+            "recordedAt": "2026-08-12T16:03:13.596Z"
+          }
+        ]
+      },
+      "metric": {
+        "name": "computed_verify_pass",
+        "before": 0,
+        "after": 1,
+        "delta": 1
+      },
+      "status": "verified",
+      "rollbackRequired": false,
+      "previousCycleHash": null,
+      "cycleHash": "bdd36d4783eaecffd7973b84daa1d2bcf3553ee52bb09c721e2f1daa217f09ed"
+    }
+  ],
+  "registryHash": "877d1e8bf64da658d2cf0075570060ae726c265246f2cbda0bbce930d2fee080"
+}
