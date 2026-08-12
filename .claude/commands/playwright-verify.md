@@ -69,6 +69,7 @@ launchers. Invoke the shell tool directly exactly once using the checked-in `tsx
 node node_modules/tsx/dist/cli.mjs .claude/integrations/playwright-runner.ts ROUTE \
   --screenshot \
   --feature-name FEATURE_NAME \
+  --api-path FEATURE_FOLDER/data/api.ts \
   --interactions INTERACTIONS \
   --state-name STATE_NAME \
   --runner-smoke

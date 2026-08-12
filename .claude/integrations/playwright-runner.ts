@@ -1958,6 +1958,11 @@ function printResult(result: TestResult): void {
   console.log(JSON.stringify(result, null, 2));
 }
 
+/** CLI contract: a rendered failed verification must still terminate non-zero. */
+export function verificationExitCode(result: Pick<TestResult, 'passed'>): 0 | 1 {
+  return result.passed ? 0 : 1;
+}
+
 // Run the CLI only when invoked directly (not when imported by the test).
 if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\/g, '/'))) {
   const args = process.argv.slice(2);
@@ -2054,6 +2059,12 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     stateName,
     runnerSmoke,
   })
-    .then(printResult)
-    .catch(console.error);
+    .then((result) => {
+      printResult(result);
+      process.exitCode = verificationExitCode(result);
+    })
+    .catch((error) => {
+      console.error(error);
+      process.exitCode = 1;
+    });
 }

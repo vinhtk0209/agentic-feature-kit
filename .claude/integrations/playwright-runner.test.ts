@@ -22,6 +22,7 @@ import {
   shouldRecordInteractionUiPass,
   selectInteractionStates, InteractionScriptV2,
   meaningfulContentVerdict,
+  verificationExitCode,
 } from './playwright-runner';
 
 let passed = 0;
@@ -104,7 +105,13 @@ test('runner-smoke command uses one direct shell invocation and forbids task del
     'runner smoke must use the checked-in direct Node entrypoint',
   );
   assert(smoke.includes('Do not delegate this command to a task or subagent'), 'runner smoke must forbid delegation');
+  assert(smoke.includes('--api-path FEATURE_FOLDER/data/api.ts'), 'runner smoke must bind the feature API source');
   assert(!smoke.includes('npx tsx .claude/integrations/playwright-runner.ts ROUTE'), 'runner smoke must not use the Windows shim path');
+});
+
+test('CLI exit code fails closed when the rendered verification result fails', () => {
+  assert(verificationExitCode({ passed: true }) === 0, 'a passing result must exit zero');
+  assert(verificationExitCode({ passed: false }) === 1, 'a failing result must exit non-zero');
 });
 
 const focusedStates: InteractionScriptV2 = {
