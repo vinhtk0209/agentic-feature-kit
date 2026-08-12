@@ -93,6 +93,16 @@ test('successful non-baseline UI states clear stale failures without weakening b
 
 // ── Cross-runner bounded state smoke ────────────────────────────────────────
 
+test('runner-smoke command uses one direct shell invocation and forbids task delegation', () => {
+  const command = fs.readFileSync(path.join(process.cwd(), '.claude', 'commands', 'playwright-verify.md'), 'utf8');
+  assert(
+    command.includes('node node_modules/tsx/dist/cli.mjs .claude/integrations/playwright-runner.ts ROUTE'),
+    'runner smoke must use the checked-in direct Node entrypoint',
+  );
+  assert(command.includes('Do not delegate this command to a task or subagent'), 'runner smoke must forbid delegation');
+  assert(!command.includes('npx tsx .claude/integrations/playwright-runner.ts ROUTE'), 'runner smoke must not use the Windows shim path');
+});
+
 const focusedStates: InteractionScriptV2 = {
   states: [
     { name: 'load-dashboard', steps: [] },

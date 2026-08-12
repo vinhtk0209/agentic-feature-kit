@@ -62,9 +62,11 @@ When `RUNNER_SMOKE=true`, run exactly this single verification immediately after
 validation and skip Setup plus every remaining verification, checklist-update, and self-recovery
 step. `playwright-runner.ts` loads the repo's `.env.playwright` itself before resolving
 `DEV_SERVER_URL`, `PUBLIC_PATH`, and browser auth; do not substitute the generic Setup default.
+Do not delegate this command to a task or subagent and do not inspect setup or try alternative
+launchers. Invoke the shell tool directly exactly once using the checked-in `tsx` module entrypoint.
 
 ```bash
-npx tsx .claude/integrations/playwright-runner.ts ROUTE \
+node node_modules/tsx/dist/cli.mjs .claude/integrations/playwright-runner.ts ROUTE \
   --screenshot \
   --feature-name FEATURE_NAME \
   --interactions INTERACTIONS \
