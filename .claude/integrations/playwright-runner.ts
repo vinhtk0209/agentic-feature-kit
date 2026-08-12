@@ -231,6 +231,9 @@ interface StateV2 {
   route?: string;
   steps: InteractionStep[];
   baseline?: string;       // path to spec image for visual diff
+  design_reference?: string; // retained source-design image reviewed before approving the app baseline
+  visual_selector?: string; // optional single element captured for a privacy-safe, state-scoped diff
+  visual_masks?: string[];  // optional selectors masked in both baseline-capture and verification runs
   ui_rows?: string[];      // UI-XXX IDs verified by this state's baseline diff
   ac_assertions?: AcAssertion[];
 }
@@ -326,8 +329,67 @@ async function injectAuthTokens(page: Page): Promise<boolean> {
 
 // ── Helpers for v3.6 verification (visual diff, axe, css audit, checklist) ─
 
-async function takeScreenshotAt(page: Page, targetPath: string): Promise<void> {
+export interface VisualCaptureSpec {
+  selector?: string;
+  masks: string[];
+}
+
+export function resolveVisualCaptureSpec(input: {
+  visual_selector?: unknown;
+  visual_masks?: unknown;
+}): VisualCaptureSpec {
+  let selector: string | undefined;
+  if (input.visual_selector !== undefined) {
+    if (typeof input.visual_selector !== 'string') throw new Error('visual_selector must be a string');
+    selector = input.visual_selector.trim();
+    if (selector.length === 0 || selector.length > 512 || /[\r\n\0]/.test(selector)) {
+      throw new Error('visual_selector must be a nonblank single-line selector of at most 512 characters');
+    }
+  }
+
+  if (input.visual_masks !== undefined && !Array.isArray(input.visual_masks)) {
+    throw new Error('visual_masks must be an array');
+  }
+  const rawMasks = input.visual_masks ?? [];
+  if (rawMasks.length > 16) throw new Error('visual_masks supports at most 16 selectors');
+  const masks = rawMasks.map((value) => {
+    if (typeof value !== 'string') throw new Error('every visual mask must be a string');
+    const mask = value.trim();
+    if (mask.length === 0 || mask.length > 512 || /[\r\n\0]/.test(mask)) {
+      throw new Error('every visual mask must be a nonblank single-line selector of at most 512 characters');
+    }
+    return mask;
+  });
+  if (new Set(masks).size !== masks.length) throw new Error('visual_masks must not contain duplicates');
+  return { selector, masks };
+}
+
+async function takeScreenshotAt(
+  page: Page,
+  targetPath: string,
+  capture?: VisualCaptureSpec,
+): Promise<void> {
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  if (capture) {
+    const mask = capture.masks.map((selector) => page.locator(selector));
+    const screenshotOptions = {
+      path: targetPath,
+      animations: 'disabled' as const,
+      caret: 'hide' as const,
+      mask,
+      maskColor: '#7f7f7f',
+    };
+    if (capture.selector) {
+      const locator = page.locator(capture.selector);
+      const count = await locator.count();
+      if (count !== 1) throw new Error(`visual_selector must resolve exactly once; got ${count}: ${capture.selector}`);
+      await locator.scrollIntoViewIfNeeded();
+      await locator.screenshot(screenshotOptions);
+      return;
+    }
+    await page.screenshot({ ...screenshotOptions, fullPage: true });
+    return;
+  }
   await page.screenshot({ path: targetPath, fullPage: true });
 }
 
@@ -1581,7 +1643,10 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
         // Per-state screenshot
         const stateSlug = state.name.replace(/[^a-zA-Z0-9-]/g, '_');
         const stateShot = path.join(screenshotDir, `state-${stateSlug}-${timestamp}.png`);
-        await takeScreenshotAt(page, stateShot);
+        const visualCapture = visualDiffEnabled && state.baseline
+          ? resolveVisualCaptureSpec(state)
+          : undefined;
+        await takeScreenshotAt(page, stateShot, visualCapture);
 
         // Visual baseline diff for this state (uses ui_rows) — opt-in only (--visual-diff)
         if (visualDiffEnabled && state.baseline) {

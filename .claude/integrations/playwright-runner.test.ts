@@ -18,7 +18,7 @@ import {
   deriveFeatureEndpoints, urlMatchesEndpoint, EndpointDerivationError,
   resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
   replaceSummarySection, countChecklistSection, updateChecklistRows,
-  buildUnitTestSpawnSpec,
+  buildUnitTestSpawnSpec, resolveVisualCaptureSpec,
 } from './playwright-runner';
 
 let passed = 0;
@@ -27,6 +27,32 @@ function test(name: string, fn: () => void) {
   try { fn(); passed += 1; console.log(`✅ ${name}`); } catch (e) { failed += 1; console.log(`❌ ${name}\n     ${(e as Error).message}`); }
 }
 function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
+
+// ── B11 visual capture boundary ─────────────────────────────────────────────
+
+test('visual capture preserves one element selector and bounded privacy masks', () => {
+  const spec = resolveVisualCaptureSpec({
+    visual_selector: "[data-testid='pr-performance-chart']",
+    visual_masks: ['.pr-learner-link', '[data-private]'],
+  });
+  assert(spec.selector === "[data-testid='pr-performance-chart']", 'selector must remain exact');
+  assert(spec.masks.join('|') === '.pr-learner-link|[data-private]', 'mask order and text must remain exact');
+});
+
+test('visual capture rejects malformed, duplicate, and unbounded selectors fail-closed', () => {
+  const attacks = [
+    { visual_selector: '' },
+    { visual_selector: 'a\nbutton' },
+    { visual_masks: 'not-an-array' },
+    { visual_masks: ['.same', '.same'] },
+    { visual_masks: Array.from({ length: 17 }, (_, i) => `.mask-${i}`) },
+  ];
+  for (const attack of attacks) {
+    let rejected = false;
+    try { resolveVisualCaptureSpec(attack); } catch { rejected = true; }
+    assert(rejected, `malformed visual capture must fail closed: ${JSON.stringify(attack)}`);
+  }
+});
 
 // ── B11 unit-test process boundary ───────────────────────────────────────────
 
