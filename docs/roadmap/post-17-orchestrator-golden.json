@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "post-17-orchestrator-golden",
+  "capturedOn": "2026-08-13",
+  "purpose": "Same-input conservation baseline for comparing the current monolith with a later decomposed orchestrator.",
+  "authority": {
+    "audit": "docs/evidence/roadmap-17-of-17-audit-2026-08-13.md",
+    "handoff": "workspace:HANDOFF.md",
+    "verificationKind": "sanctioned live canonical feature capture"
+  },
+  "inputIdentity": {
+    "sourceKind": "confluence",
+    "sourcePageId": "830569842",
+    "sourceSha256": "dd36b30b0c1c162bafac9f6b464105da6ad3310014a13ce81931f02d41c9ea93",
+    "sourceBytes": 19310,
+    "paragraphCount": 95,
+    "acceptanceCriteriaCount": 19,
+    "featureName": "US-AD-095-ProgressReports",
+    "taskDecision": "BASELINE",
+    "taskDecisionScore": 80
+  },
+  "referenceExecution": {
+    "kitVersion": "3.25.0",
+    "verifiedRunId": "run-1786560631191-1cd57bdc",
+    "verifiedImplementationCommit": "94c682cf370402f5fca86b90e20efed95b141b15",
+    "finalizedCaptureCommit": "fbe3291",
+    "tierAExit": 0,
+    "tierBExit": 0,
+    "verified": true,
+    "contentHash": "4ba67560faf6cd54250c684efea84c221e025a87ff805df702759683bd702af3",
+    "phaseBundleCount": 23,
+    "resumeResult": "DONE"
+  },
+  "requiredPhaseCoverage": [
+    "B0", "B0.5", "B1", "B2", "B3", "B4", "B5", "B6", "B6.5", "B7", "B8",
+    "B8.5", "B8.6", "B9", "B9.5", "B9.6", "B10", "B10.5", "B11", "B12",
+    "B12.5", "B12.6", "B12.8"
+  ],
+  "conditionalPhaseDisposition": {
+    "D-cross-2": "executed-and-evidence-verified"
+  },
+  "requiredGateSemantics": [
+    {"phase":"B4","decision":"human-or-explicit-authorized-autonomy","mayAdapterAutoApprove":false},
+    {"phase":"D-cross-2","decision":"human-on-breaking-or-error","mayAdapterAutoApprove":false},
+    {"phase":"B6","decision":"human-or-explicit-authorized-autonomy","mayAdapterAutoApprove":false},
+    {"phase":"B6.5","decision":"human-or-explicit-named-autonomy","mayAdapterAutoApprove":false},
+    {"phase":"B8","decision":"human-or-explicit-authorized-autonomy","mayAdapterAutoApprove":false},
+    {"phase":"B9","decision":"literal-yes-y-confirm","mayAdapterAutoApprove":false},
+    {"phase":"B10.5","decision":"explicit-browser-opt-in-or-opt-out","mayAdapterAutoApprove":false},
+    {"phase":"B11","decision":"record-verify-computed-true","mayAdapterAutoApprove":false},
+    {"phase":"B12","decision":"verified-ratio-policy","mayAdapterAutoApprove":false}
+  ],
+  "requiredArtifactClasses": [
+    {"id":"source-provenance","patterns":["docs/specs/<FeatureName>/raw-spec.md","docs/specs/<FeatureName>/task-type.md"]},
+    {"id":"normalized-spec","patterns":["docs/specs/<FeatureName>/processed.md"]},
+    {"id":"scope-and-resume","patterns":["docs/specs/<FeatureName>/context-summary.md","docs/specs/<FeatureName>/recovery.log"]},
+    {"id":"design-and-plan","patterns":["docs/specs/<FeatureName>/diagram.md","docs/specs/<FeatureName>/steps.md","docs/specs/<FeatureName>/checklist.md"]},
+    {"id":"executable-test-plan","patterns":["docs/specs/<FeatureName>/ux-states.json","src/<feature-folder>/**/*.test.*"]},
+    {"id":"api-contract","patterns":["docs/components/<FeatureName>/<FeatureName>.full.http"]},
+    {"id":"implementation","patterns":["src/<feature-folder>/**"]},
+    {"id":"closeout","patterns":["docs/components/<FeatureName>/ACCESS_GUIDE.md","docs/components/<FeatureName>/ARTIFACTS.md"]},
+    {"id":"phase-evidence","patterns":["docs/specs/<FeatureName>/.evidence/<phase>/manifest.json"]},
+    {"id":"trusted-verification","patterns":["refs/notes/verify@<verifiedImplementationCommit>","verify_records/<verifiedRunId>"]}
+  ],
+  "referenceVerificationMetrics": {
+    "route": "1/1",
+    "visual": "9/9",
+    "acceptanceCriteria": "25/25",
+    "uiVerdicts": "16/16",
+    "namedJestRows": "3/3",
+    "coverageErrors": 0,
+    "liveOverviewHttpStatus": 200
+  },
+  "comparisonRules": {
+    "mustRemainEqual": [
+      "input source identity and source hash",
+      "stable feature identity",
+      "normalized acceptance-criteria set",
+      "mandatory phase coverage and conditional-phase disposition",
+      "human/computed gate semantics and decisions",
+      "required artifact-class coverage",
+      "trusted verification derivation and final verified verdict"
+    ],
+    "mustNotRegress": [
+      "focused and full test outcomes",
+      "acceptance-criteria coverage",
+      "UI verification coverage",
+      "content-addressed evidence validity",
+      "resume result",
+      "secret-path and external-write protections"
+    ],
+    "permittedDifferences": [
+      "timestamps and generated run identifiers",
+      "provider, model, and token accounting metadata",
+      "manifest hashes when their declared content legitimately differs",
+      "implementation formatting or file partitioning when semantic behavior and all required artifact classes are conserved",
+      "latency and cost measurements when reported rather than hidden"
+    ],
+    "forbiddenClaims": [
+      "transport or action smoke reported as planning parity",
+      "byte-identical output required as a substitute for semantic and gate conservation",
+      "missing phase or artifact treated as an acceptable provider difference",
+      "provider-specific gate weakening",
+      "done claimed without a trusted computed verify result"
+    ]
+  },
+  "candidateEvidenceRequirements": [
+    "Bind the candidate to this exact input identity or explicitly create a new versioned golden.",
+    "Verify every mandatory phase bundle and the conditional disposition using the shared evidence contract.",
+    "Produce a machine-readable artifact-class inventory and gate-decision transcript.",
+    "Run the same trusted Tier A and Tier B derivation without accepting a model-supplied verified flag.",
+    "Report semantic, evidence, gate, quality, latency, and cost differences separately."
+  ]
+}

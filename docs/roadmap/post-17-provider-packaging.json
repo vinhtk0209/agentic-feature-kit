@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "post-17-provider-packaging",
+  "verifiedOn": "2026-08-13",
+  "distributionBoundary": {
+    "mode": "private-local-repository",
+    "allowed": [
+      "versioned provider bundles committed in the source-of-truth repository",
+      "local manifest and content validation",
+      "offline clean-copy smoke tests without provider credentials"
+    ],
+    "requiresSeparateAuthorization": [
+      "installation into user or admin directories",
+      "marketplace registration or publication",
+      "public release or repository visibility changes",
+      "external provider execution",
+      "sync or push"
+    ],
+    "licenseBoundary": "Internal private distribution only; public licensing is deferred to P17-018."
+  },
+  "sharedCore": {
+    "rule": "Schemas, deterministic scripts, fixtures, gate semantics, and evidence validation live once in the provider-neutral core.",
+    "adapterRule": "Provider bundles contain discovery metadata and thin invocation instructions only; they cannot fork business rules or verification semantics.",
+    "versionRule": "Every provider bundle records the same shared core version and fails validation on version drift."
+  },
+  "providers": [
+    {
+      "id": "codex",
+      "officialSources": [
+        {"url":"https://developers.openai.com/codex/skills/","claim":"Repository skills use a SKILL.md directory and Codex discovers repo skills under .agents/skills."},
+        {"url":"https://developers.openai.com/plugins/build/plugins","claim":"A distributable plugin requires .codex-plugin/plugin.json and may contain skills, MCP configuration, assets, and hooks."}
+      ],
+      "authoringSurface": ".agents/skills/<skill-name>/SKILL.md",
+      "distributionRoot": "dist/codex/<bundle-name>",
+      "requiredPaths": [
+        ".codex-plugin/plugin.json",
+        "skills/project-intelligence/SKILL.md",
+        "skills/workflow-orchestrator/SKILL.md"
+      ],
+      "optionalPaths": ["skills/*/scripts", "skills/*/references", "skills/*/assets", "hooks", ".mcp.json"],
+      "agentBoundary": "Codex uses skill workflows plus the host's bounded subagent capability; no invented provider manifest is required for a standalone agent.",
+      "validation": ["plugin manifest validator", "skill quick validator", "package content allowlist", "clean-copy discovery smoke"]
+    },
+    {
+      "id": "claude",
+      "officialSources": [
+        {"url":"https://code.claude.com/docs/en/plugins","claim":"A Claude Code plugin uses .claude-plugin/plugin.json with skills and agents at the plugin root."},
+        {"url":"https://code.claude.com/docs/en/plugins-reference","claim":"Skills live under skills/<name>/SKILL.md and custom agents live under agents/*.md with YAML frontmatter."}
+      ],
+      "authoringSurface": ".claude/skills/<skill-name>/SKILL.md and .claude/agents/<agent-name>.md",
+      "distributionRoot": "dist/claude/<bundle-name>",
+      "requiredPaths": [
+        ".claude-plugin/plugin.json",
+        "skills/project-intelligence/SKILL.md",
+        "skills/workflow-orchestrator/SKILL.md",
+        "agents/project-intelligence.md",
+        "agents/workflow-orchestrator.md"
+      ],
+      "optionalPaths": ["hooks/hooks.json", ".mcp.json", "settings.json", "bin"],
+      "agentBoundary": "Agents provide isolated context and tool limits; plugin skills remain namespaced and refer to the shared core contracts.",
+      "validation": ["plugin manifest schema", "skill frontmatter", "agent frontmatter", "package content allowlist", "local --plugin-dir discovery smoke when separately authorized"]
+    },
+    {
+      "id": "copilot",
+      "officialSources": [
+        {"url":"https://docs.github.com/en/copilot/concepts/agents/about-agent-skills","claim":"Project skills are supported under .github/skills, .claude/skills, or .agents/skills and use the open Agent Skills format."},
+        {"url":"https://docs.github.com/en/copilot/reference/custom-agents-configuration","claim":"Custom agents use Markdown profiles with required description and supported YAML frontmatter."},
+        {"url":"https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents","claim":"Repository custom agents live under .github/agents as .agent.md files."}
+      ],
+      "authoringSurface": ".github/skills/<skill-name>/SKILL.md and .github/agents/<agent-name>.agent.md",
+      "distributionRoot": "dist/copilot/<bundle-name>",
+      "requiredPaths": [
+        ".github/skills/project-intelligence/SKILL.md",
+        ".github/skills/workflow-orchestrator/SKILL.md",
+        ".github/agents/project-intelligence.agent.md",
+        ".github/agents/workflow-orchestrator.agent.md"
+      ],
+      "optionalPaths": [".github/copilot-instructions.md", ".github/instructions/*.instructions.md", ".github/prompts/*.prompt.md"],
+      "agentBoundary": "No fabricated Copilot plugin manifest is introduced. The installable unit is a versioned repository bundle of official project skills and custom-agent profiles.",
+      "previewBoundary": "Prompt files are optional because their support remains surface-specific and preview; they are not the primary workflow contract.",
+      "validation": ["Agent Skills validation", "custom-agent frontmatter validation", "package content allowlist", "clean-copy project discovery smoke"]
+    }
+  ],
+  "crossProviderAcceptance": [
+    "Exactly one Codex, one Claude, and one Copilot provider entry exists.",
+    "Every official source uses an authoritative provider documentation host.",
+    "Each provider declares both Project Intelligence and Workflow Orchestrator surfaces.",
+    "No provider adapter is allowed to contain shared business rules or weaken gate/evidence semantics.",
+    "No installation, publication, sync, push, or external execution occurs during input preparation."
+  ]
+}

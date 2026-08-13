@@ -20,7 +20,8 @@ The roadmap uses one provider-neutral shared core. Provider packages are thin ad
 
 - **Codex:** repository/user skills while authoring, then an installable plugin for distribution.
 - **Claude:** Claude-compatible skills, commands, and specialized-agent adapters.
-- **Copilot:** Copilot prompt, instruction, and agent adapters.
+- **Copilot:** project skills and custom-agent adapters; prompt files remain optional because their
+  availability is surface-specific and preview.
 - **Shared core:** normalized schemas, deterministic scripts, fixtures, and evidence contracts.
 
 Provider adapters must not fork business rules or evidence semantics. A transport/action smoke is
@@ -58,13 +59,13 @@ When complete:
 |---|---:|---:|---|---|---|
 | P17-000 | P0 | 0 | done | Tracking and readiness foundation | A malformed catalog or missing input fails closed and is visible on `/roadmap`. |
 | P17-001 | P0 | 1 | ready | Project Intelligence skill and agent contract | Prevents wrong-framework, fake-i18n, wrong-router, and target-specific fallback scaffolding. |
-| P17-002 | P0 | 1 | needs_input | Workflow Orchestrator decomposition contract | Replaces the monolith with bounded phases that can resume from verified evidence. |
+| P17-002 | P0 | 1 | ready | Workflow Orchestrator decomposition contract | Replaces the monolith with bounded phases that can resume from verified evidence. |
 | P17-003 | P1 | 2 | backlog | Provider-neutral semantic specification model | Makes equivalent Confluence/Jira/file requirements normalize to the same intent. |
 | P17-004 | P1 | 2 | backlog | Provider-neutral specification adapters | Removes operational dependence on one Confluence source or instance. |
 | P17-005 | P1 | 2 | backlog | Project-derived conditional quality gates | Adds relevant i18n/router/style checks without false framework assumptions. |
 | P17-006 | P1 | 3 | backlog | Phase-aware model selection and routing | Allows explicit quality/cost/latency routing without silent provider substitution. |
 | P17-007 | P1 | 4 | backlog | Normalized same-input provider parity | Separates action smoke from real planning/implementation parity. |
-| P17-008 | P0 | 3 | needs_input | Installable distribution bundles | Produces validated Codex, Claude, and Copilot bundles over one shared core. |
+| P17-008 | P0 | 3 | ready | Installable distribution bundles | Produces validated Codex, Claude, and Copilot bundles over one shared core. |
 | P17-009 | P1 | 2 | backlog | Cross-platform release qualification | Proves Windows and Linux behavior in CI, including paths, quoting, setup, and process cleanup. |
 | P17-010 | P1 | 2 | backlog | CLI reliability and direct integration tests | Makes malformed input and I/O failures explicit for feedback/KPI/public CLI paths. |
 | P17-011 | P1 | 2 | backlog | Honest isolated-worktree browser verification | Stops `infra-blocked` from being confused with verified browser behavior. |
@@ -80,13 +81,9 @@ When complete:
 
 ## Inputs still required before their implementation
 
-- **P17-002:** an approved phase-boundary map generated from the current flagship and a golden
-  same-input conservation baseline.
 - **P17-004:** privacy-safe minimal Jira and Azure DevOps source fixtures.
 - **P17-006:** the provider-neutral phase capability matrix produced after decomposition.
 - **P17-007:** a golden cross-provider fixture and explicit approval for bounded provider runs.
-- **P17-008:** current official Claude/Copilot packaging contracts plus the intended public/private
-  distribution boundary.
 - **P17-014:** an approved distributed topology and trust boundary.
 - **P17-016:** retention and tenant-isolation policy.
 - **P17-017:** a measurable RAG benefit benchmark and approved indexing/privacy boundary.

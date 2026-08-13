@@ -1,0 +1,152 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "post-17-orchestrator-boundaries",
+  "generatedOn": "2026-08-13",
+  "approvalBasis": "operator-confirmed post-17 scope",
+  "source": {
+    "path": ".claude/commands/feature-from-confluence.md",
+    "gitCommit": "ceff52345351da873250868c9666d4f1000d2387",
+    "gitBlob": "1900e29c790332eadab0a86441724e1b6a697a95",
+    "sha256": "627a44d0c7139d269ed14b3629ecb0e0a1be2414d12354bbc744832de18fe449",
+    "lineCount": 2691
+  },
+  "runtimeContracts": {
+    "phaseRegistry": ".claude/integrations/evidence-bundle.ts#PHASE_ORDER",
+    "stateEmitter": ".claude/integrations/kit-event.ts",
+    "evidenceBundle": ".claude/integrations/evidence-bundle.ts",
+    "trustedVerifyWriter": ".claude/integrations/record-verify.ts",
+    "roleDag": ".claude/integrations/multi-agent-orchestration.ts"
+  },
+  "globalInvariants": [
+    "Every mandatory phase is represented exactly once and keeps the current canonical order.",
+    "D-cross-2 stays conditional and never changes the 23-phase bundle-only resume order.",
+    "Every executed or dynamically skipped phase produces and verifies a content-addressed evidence bundle before advancement.",
+    "Resume trusts only verified bundles and stops at the first missing or invalid mandatory phase.",
+    "A STOP phase emits its start marker and awaiting-gate marker as two separate tool invocations.",
+    "Only record-verify.ts computes and writes the B11 verified verdict from captured tier exit codes.",
+    "Provider adapters cannot auto-approve, remove, or weaken a gate defined by this contract.",
+    "Provider adapters cannot edit target .Codex directories, sync, push, publish, or perform external writes without explicit authorization."
+  ],
+  "mandatoryPhaseOrder": [
+    "B0", "B0.5", "B1", "B2", "B3", "B4", "B5", "B6", "B6.5", "B7", "B8",
+    "B8.5", "B8.6", "B9", "B9.5", "B9.6", "B10", "B10.5", "B11", "B12",
+    "B12.5", "B12.6", "B12.8"
+  ],
+  "conditionalPhases": ["D-cross-2"],
+  "stages": [
+    {
+      "id": "INTAKE",
+      "displayOrder": 1,
+      "phases": ["B0", "B0.5", "B1", "B2", "B3"],
+      "skill": "project-intake-and-profile",
+      "agentPolicy": "B0 establishes normalized source identity first; B1, B2, and B3 may then run as bounded workers with isolated outputs.",
+      "inputs": ["validated spec reference or file", "repository instructions", "project profile signals", "prior feedback summary"],
+      "outputs": ["canonical Spec-IR", "stable feature identity", "task type", "processed spec", "image evidence or skip record", "convention and feedback lenses"],
+      "gatePolicy": "Input, identity, fidelity, ownership, and contradiction failures stop fail-closed; no framework is inferred from absence.",
+      "sideEffects": ["write kit-defined staging/spec artifacts", "read repository state", "optional bounded image retrieval"]
+    },
+    {
+      "id": "SCOPE",
+      "displayOrder": 2,
+      "phases": ["B4", "D-cross-2"],
+      "skill": "scope-and-contract-reconciliation",
+      "agentPolicy": "Analysis may be delegated, but the main orchestrator owns all human decisions and gate markers.",
+      "inputs": ["processed spec", "lenses", "project profile", "contract status", "existing code when enhancing"],
+      "outputs": ["confirmed scope summary", "contract provenance", "optional reconciliation report"],
+      "gatePolicy": "B4 is a human STOP; D-cross-2 is conditional and stops on breaking or error verdicts.",
+      "sideEffects": ["write context summary", "write deterministic reconciliation artifacts"]
+    },
+    {
+      "id": "DESIGN",
+      "displayOrder": 3,
+      "phases": ["B5", "B6", "B6.5", "B7"],
+      "skill": "feature-design-and-plan",
+      "agentPolicy": "A bounded design worker may draft artifacts; B6 and B6.5 decisions remain in the main orchestrator.",
+      "inputs": ["confirmed scope", "project profile", "spec and image evidence", "reference features", "contract provenance"],
+      "outputs": ["diagram", "steps", "checklist", "ux-state plan", "design decisions", "implementation plan"],
+      "gatePolicy": "B6 is a human STOP; B6.5 is a human STOP when active; ambiguity in package choice also stops.",
+      "sideEffects": ["write planning and design artifacts only"]
+    },
+    {
+      "id": "APPROVE",
+      "displayOrder": 4,
+      "phases": ["B8", "B8.5", "B8.6", "B9"],
+      "skill": "plan-approval-and-contract",
+      "agentPolicy": "Deterministic probes may run in workers; B8 and B9 approvals are owned by the main orchestrator.",
+      "inputs": ["implementation plan", "working-tree state", "project API conventions", "real or provisional contract provenance"],
+      "outputs": ["approved plan", "conflict report", "authoritative HTTP contract", "final confirmation state"],
+      "gatePolicy": "B8 is a human STOP; unresolved conflict stops; B9 always requires literal yes/y/confirm and is never auto-approved.",
+      "sideEffects": ["read git state", "write API and reconciliation documentation"]
+    },
+    {
+      "id": "PREP",
+      "displayOrder": 5,
+      "phases": ["B9.5", "B9.6"],
+      "skill": "implementation-preflight",
+      "agentPolicy": "Run in the main orchestrator because git/network/package side effects require one auditable authority boundary.",
+      "inputs": ["literal final approval", "resolved branch", "declared package plan"],
+      "outputs": ["updated branch state", "package-install transcript or explicit skip/failure decision"],
+      "gatePolicy": "Merge conflicts, unsafe branch resolution, and dependency conflicts stop before implementation.",
+      "sideEffects": ["git fetch/pull when authorized by the workflow", "bounded package installation after conflict checks"]
+    },
+    {
+      "id": "BUILD",
+      "displayOrder": 6,
+      "phases": ["B10", "B10.5", "B11"],
+      "skill": "implement-and-verify",
+      "agentPolicy": "B10 may use one implementation agent; B11 may use isolated static/browser verifiers; one unchanged final gate evaluates merged output.",
+      "inputs": ["approved plan", "project profile", "processed spec", "HTTP contract", "ux-state plan", "clean preflight state"],
+      "outputs": ["feature code and tests", "updated ux states", "verification evidence", "computed verify record"],
+      "gatePolicy": "Implementation STOP conditions return to the main orchestrator; B10.5 is explicit opt-in; B11 advances only when record-verify computes verified=true.",
+      "sideEffects": ["write feature code and tests", "optional local browser process", "trusted verification metadata write only after its separate authorization boundary"]
+    },
+    {
+      "id": "DONE",
+      "displayOrder": 7,
+      "phases": ["B12"],
+      "skill": "verified-closeout",
+      "agentPolicy": "The main orchestrator owns the terminal claim; no worker may claim done independently.",
+      "inputs": ["verified B11 result", "final checklist ratios", "all prior evidence bundles"],
+      "outputs": ["truthful completion summary", "access guide", "artifact index", "finalized resume memory"],
+      "gatePolicy": "The done claim is blocked when verification ratios violate HARD RULE 35 unless the user explicitly acknowledges the gap.",
+      "sideEffects": ["write closeout documentation", "never commit or push without a new explicit instruction"]
+    },
+    {
+      "id": "LEARN",
+      "displayOrder": 8,
+      "phases": ["B12.5", "B12.6", "B12.8"],
+      "skill": "feedback-and-reconciliation",
+      "agentPolicy": "Learning analysis may be isolated; prompt mutation remains user-approved and reconciliation is report-only.",
+      "inputs": ["completed run metrics", "recovery log", "feedback history", "optional real contract"],
+      "outputs": ["feedback metrics", "lint-gap proposals", "approved prompt evolution record", "optional contract drift report"],
+      "gatePolicy": "Learning is non-blocking; B12.6 changes require explicit approval; B12.8 never auto-edits feature code.",
+      "sideEffects": ["append bounded local learning artifacts", "no provider publication or remote learning-data upload"]
+    }
+  ],
+  "phases": [
+    {"id":"B0","title":"Fetch / Read Spec + Task Type Detection","stage":"INTAKE","sourceLines":[917,1283],"execution":"sequential","gate":"fail-closed-input","inputs":["spec input","project context"],"outputs":["incoming Spec-IR","stable feature identity","task-type.md","B0 evidence"]},
+    {"id":"B0.5","title":"Pre-flight Check","stage":"INTAKE","sourceLines":[1284,1370],"execution":"sequential","gate":"conditional-ownership-stop","inputs":["task type","git/package/route probes"],"outputs":["preflight transcript","B0.5 evidence"]},
+    {"id":"B1","title":"Process Spec","stage":"INTAKE","sourceLines":[1371,1444],"execution":"parallel-after-B0","gate":"collision-stop","inputs":["validated staging source","stable feature identity"],"outputs":["raw-spec.md","processed.md","context-summary.md","B1 evidence"]},
+    {"id":"B2","title":"Process Images","stage":"INTAKE","sourceLines":[1445,1468],"execution":"parallel-after-B0","gate":"image-fidelity-stop","inputs":["spec image references"],"outputs":["images and annotations or exact skip/failure transcript","B2 evidence"]},
+    {"id":"B3","title":"Fetch SpecKit","stage":"INTAKE","sourceLines":[1469,1559],"execution":"parallel-after-B0","gate":"none","inputs":["processed spec","feedback analysis"],"outputs":["speckit-lenses.md","feedback lens","B3 evidence"]},
+    {"id":"B4","title":"Confirm Scope","stage":"SCOPE","sourceLines":[1560,1598],"execution":"sequential","gate":"human-stop","inputs":["processed spec","lenses","image annotations"],"outputs":["confirmed context summary","contract status","B4 evidence"]},
+    {"id":"D-cross-2","title":"Design / Existing-contract Reconciliation","stage":"SCOPE","sourceLines":[1599,1665],"execution":"conditional","gate":"conditional-human-stop","inputs":["REAL contract","existing api.ts and types.ts"],"outputs":["RECONCILE.json","RECONCILE.md","conditional evidence"]},
+    {"id":"B5","title":"Create Output Files","stage":"DESIGN","sourceLines":[1666,1682],"execution":"parallel-drafts","gate":"self-evaluation","inputs":["confirmed scope","templates","project profile"],"outputs":["diagram.md","steps.md","checklist.md","ux-states.json stub","B5 evidence"]},
+    {"id":"B6","title":"User Confirm Files","stage":"DESIGN","sourceLines":[1683,1707],"execution":"sequential","gate":"human-stop","inputs":["B5 artifacts"],"outputs":["file approval","updated context summary","B6 evidence"]},
+    {"id":"B6.5","title":"Design Review","stage":"DESIGN","sourceLines":[1708,1762],"execution":"conditional-by-complexity","gate":"human-stop","inputs":["scope","image evidence","reuse candidates","project profile"],"outputs":["approved design decisions","B6.5 evidence"]},
+    {"id":"B7","title":"Plan","stage":"DESIGN","sourceLines":[1763,1842],"execution":"sequential","gate":"conditional-ambiguity-stop","inputs":["approved design","naming reference","package evidence"],"outputs":["implementation plan","B7 evidence"]},
+    {"id":"B8","title":"User Confirm Plan","stage":"APPROVE","sourceLines":[1843,1866],"execution":"sequential","gate":"human-stop","inputs":["implementation plan"],"outputs":["plan approval","updated context summary","B8 evidence"]},
+    {"id":"B8.5","title":"Conflict Check","stage":"APPROVE","sourceLines":[1867,1905],"execution":"automatic","gate":"conflict-stop","inputs":["git and package state"],"outputs":["conflict transcript","B8.5 evidence"]},
+    {"id":"B8.6","title":"API Contract","stage":"APPROVE","sourceLines":[1906,2007],"execution":"automatic","gate":"none","inputs":["contract provenance","project API conventions","processed spec"],"outputs":["full HTTP contract","access/reconciliation documentation","B8.6 evidence"]},
+    {"id":"B9","title":"Final Confirm","stage":"APPROVE","sourceLines":[2008,2033],"execution":"sequential","gate":"literal-human-stop","inputs":["scope","design","plan","contract","conflict status"],"outputs":["finalConfirmed=true","B9 evidence"]},
+    {"id":"B9.5","title":"Git Sync","stage":"PREP","sourceLines":[2034,2098],"execution":"automatic-after-approval","gate":"merge-conflict-stop","inputs":["final approval","branch and remote state"],"outputs":["updated branch transcript","B9.5 evidence"]},
+    {"id":"B9.6","title":"Package Install","stage":"PREP","sourceLines":[2099,2146],"execution":"automatic-after-git","gate":"dependency-conflict-stop","inputs":["declared dependency plan"],"outputs":["install or skip transcript","B9.6 evidence"]},
+    {"id":"B10","title":"Implement","stage":"BUILD","sourceLines":[2147,2206],"execution":"isolated-implementation-agent","gate":"breaking-change-stop","inputs":["approved plan","processed spec","contract","project profile","ux-state plan"],"outputs":["feature code","tests","updated ux states","B10 evidence"]},
+    {"id":"B10.5","title":"Playwright Gate","stage":"BUILD","sourceLines":[2207,2231],"execution":"sequential","gate":"human-stop","inputs":["implemented feature","browser capability"],"outputs":["explicit browser choice","B10.5 evidence"]},
+    {"id":"B11","title":"Verify","stage":"BUILD","sourceLines":[2232,2382],"execution":"isolated-static-and-browser-agents","gate":"computed-verified-stop","inputs":["feature code","tests","checklist","ux states","contract"],"outputs":["static/browser evidence","updated checklist","trusted verify record","B11 evidence"]},
+    {"id":"B12","title":"Done","stage":"DONE","sourceLines":[2383,2509],"execution":"sequential","gate":"verified-ratio-stop","inputs":["verified B11","checklist ratios","all evidence"],"outputs":["truthful summary","ACCESS_GUIDE.md","ARTIFACTS.md","done memory","B12 evidence"]},
+    {"id":"B12.5","title":"Feedback Collection","stage":"LEARN","sourceLines":[2510,2600],"execution":"automatic-non-blocking","gate":"none","inputs":["run metrics","recovery log"],"outputs":["feedback log","lint-gap proposals","B12.5 evidence"]},
+    {"id":"B12.6","title":"Propose Prompt Improvement","stage":"LEARN","sourceLines":[2601,2655],"execution":"conditional","gate":"explicit-change-approval","inputs":["eligible feedback patterns"],"outputs":["approved prompt evolution or skip record","B12.6 evidence"]},
+    {"id":"B12.8","title":"Contract Reconciliation","stage":"LEARN","sourceLines":[2656,2691],"execution":"conditional-report-only","gate":"none","inputs":["PROVISIONAL status","later real contract"],"outputs":["RECONCILE.md report","B12.8 evidence"]}
+  ]
+}
