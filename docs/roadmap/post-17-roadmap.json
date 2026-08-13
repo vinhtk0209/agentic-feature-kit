@@ -177,7 +177,7 @@
       "initiative": "P17-I1",
       "wave": 2,
       "priority": "P1",
-      "status": "backlog",
+      "status": "done",
       "dependencies": ["P17-001"],
       "backlogRefs": ["9", "feedback: no i18n check", "feedback: no route registration", "feedback: no SCSS gate"],
       "problem": "Static or missing gates either create false failures or miss project-specific regressions.",

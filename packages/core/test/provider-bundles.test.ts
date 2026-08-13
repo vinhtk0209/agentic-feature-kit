@@ -26,7 +26,7 @@ interface ProviderRegistry {
     checksumFile: string
     manifest: string
     nodeEngine: string
-    runtime: { projectIntelligence: string; workflowOrchestrator: string }
+    runtime: { projectIntelligence: string; conditionalQualityGates: string; workflowOrchestrator: string }
   }
   providers: ProviderEntry[]
 }
@@ -47,6 +47,7 @@ function assertSkill(relative: string, expectedHash: string | null, skillName: '
   assert.match(content, new RegExp(`^---\\nname: ${skillName}\\ndescription: .+\\nlicense: Apache-2\\.0\\n---\\n`))
   if (skillName === 'project-intelligence') {
     assert.match(content, /@@PROJECT_PROFILE@@/)
+    assert.match(content, /@@CONDITIONAL_GATES@@/)
     assert.match(content, /status` is `needs_input`/)
     assert.match(content, /Do not reproduce its detection rules/)
     assert.ok(!content.includes('react-dom'), `${relative} must not copy framework business rules`)
@@ -64,8 +65,8 @@ function assertSkill(relative: string, expectedHash: string | null, skillName: '
 const registry = parseJson<ProviderRegistry>('providers/provider-bundles.json')
 assert.equal(registry.schemaVersion, '1.0.0')
 assert.equal(registry.product, 'agentic-feature-kit')
-assert.equal(registry.bundleVersion, '0.2.0')
-assert.equal(registry.sharedCoreVersion, '1.0.0')
+assert.equal(registry.bundleVersion, '0.3.0')
+assert.equal(registry.sharedCoreVersion, '1.1.0')
 assert.equal(registry.sourceMode, 'monorepo')
 assert.deepEqual(registry.distribution, {
   builder: 'scripts/build-provider-bundles.ts',
@@ -76,6 +77,7 @@ assert.deepEqual(registry.distribution, {
   nodeEngine: '>=20',
   runtime: {
     projectIntelligence: 'runtime/project-intelligence.cjs',
+    conditionalQualityGates: 'runtime/conditional-quality-gates.cjs',
     workflowOrchestrator: 'runtime/workflow-orchestrator.cjs',
   },
 })
@@ -86,6 +88,7 @@ assert.match(projectCore, /PROJECT_PROFILE_SCHEMA_VERSION = '1\.0\.0'/)
 assert.match(projectCore, /PROJECT_PROFILE_SENTINEL = '@@PROJECT_PROFILE@@'/)
 assert.match(projectCore, /export function validateProjectProfile/)
 assert.match(projectCore, /export function parseProjectProfileEnvelope/)
+assert.match(projectCore, /project-intelligence\\\.\(\?:ts\|js\|cjs\|mjs\)/)
 assert.doesNotMatch(projectCore, /\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink/)
 
 const orchestratorCore = read('packages/core/src/workflow-orchestrator.ts')
@@ -95,12 +98,22 @@ assert.match(orchestratorCore, /export function resumeFromPhaseEnvelopes/)
 assert.match(orchestratorCore, /export function compareCandidateToGolden/)
 assert.doesNotMatch(orchestratorCore, /\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink/)
 
+const conditionalGatesCore = read('packages/core/src/conditional-quality-gates.ts')
+assert.match(conditionalGatesCore, /CONDITIONAL_GATES_SCHEMA_VERSION = '1\.0\.0'/)
+assert.match(conditionalGatesCore, /CONDITIONAL_GATES_SENTINEL = '@@CONDITIONAL_GATES@@'/)
+assert.match(conditionalGatesCore, /export function evaluateConditionalQualityGates/)
+assert.match(conditionalGatesCore, /export function validateConditionalGateResult/)
+assert.doesNotMatch(conditionalGatesCore, /\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink/)
+
 const profileSchema = parseJson<Record<string, unknown>>('docs/schemas/project-profile.schema.json')
 assert.equal(profileSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
-assert.equal((profileSchema.properties as Record<string, { const?: string }>).schemaVersion.const, registry.sharedCoreVersion)
+assert.equal((profileSchema.properties as Record<string, { const?: string }>).schemaVersion.const, '1.0.0')
+const conditionalGatesSchema = parseJson<Record<string, unknown>>('docs/schemas/conditional-quality-gates.schema.json')
+assert.equal(conditionalGatesSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
+assert.equal((conditionalGatesSchema.properties as Record<string, { const?: string }>).schemaVersion.const, '1.0.0')
 const orchestratorSchema = parseJson<Record<string, unknown>>('docs/schemas/orchestrator-phase-envelope.schema.json')
 assert.equal(orchestratorSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
-assert.equal((orchestratorSchema.properties as Record<string, { const?: string }>).contractVersion.const, registry.sharedCoreVersion)
+assert.equal((orchestratorSchema.properties as Record<string, { const?: string }>).contractVersion.const, '1.0.0')
 
 let projectSkillHash: string | null = null
 let orchestratorSkillHash: string | null = null
@@ -109,7 +122,8 @@ for (const provider of registry.providers) {
   const readme = read(`${provider.root}/README.md`)
   assertNoPlaceholders(`${provider.root}/README.md`, readme)
   assert.match(readme, /Apache-2\.0/)
-  assert.match(readme, /0\.2\.0/)
+  assert.match(readme, /0\.3\.0/)
+  assert.match(readme, /conditional-quality-gates\.cjs/)
   assert.ok(readme.split(/\s+/).length >= 120, `${provider.id} README is too thin for a public source package`)
 
   projectSkillHash = assertSkill(`${provider.root}/${provider.skill}`, projectSkillHash, 'project-intelligence')
@@ -165,4 +179,4 @@ for (const entry of fs.readdirSync(path.join(root, 'providers'), { recursive: tr
   assert.ok(!/^\.env(?:\.|$)/.test(entry.name), `provider package contains forbidden environment file ${entry.name}`)
 }
 
-console.log('provider-bundles.test: PASS (3 providers, 2 byte-identical skills, one core version, manifest/agent/security contracts)')
+console.log('provider-bundles.test: PASS (3 providers, 2 byte-identical skills, 3 shared runtimes, version/schema/manifest/agent/security contracts)')

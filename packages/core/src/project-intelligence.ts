@@ -682,4 +682,7 @@ export function runProjectIntelligenceCli(args: string[] = process.argv.slice(2)
   }
 }
 
-if (require.main === module) process.exit(runProjectIntelligenceCli())
+const projectIntelligenceEntrypoint = process.argv[1]?.replace(/\\/g, '/') ?? ''
+if (require.main === module && /(?:^|\/)project-intelligence\.(?:ts|js|cjs|mjs)$/.test(projectIntelligenceEntrypoint)) {
+  process.exit(runProjectIntelligenceCli())
+}

@@ -14,7 +14,7 @@ plugin discovery layout.
    that marketplace; do not copy only the `skills/` directory.
 4. Verify local runtime availability without provider execution:
    `node runtime/project-intelligence.cjs <repository-root>` and pipe a JSON request to
-   `node runtime/workflow-orchestrator.cjs resume`.
+   `node runtime/conditional-quality-gates.cjs` or `node runtime/workflow-orchestrator.cjs resume`.
 5. Restart or open a new Codex task after installation so discovery is refreshed.
 
 The package does not modify marketplace configuration automatically and contains no credentials,
@@ -28,8 +28,8 @@ styling stack, data layer, package manager, task names, or reference-feature lay
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.2.0` |
-| Shared core schema | `1.0.0` |
+| Bundle version | `0.3.0` |
+| Shared core version | `1.1.0` |
 | Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
 | Distribution stage | Deterministic directory + ZIP archive |
@@ -47,6 +47,7 @@ skills/project-intelligence/agents/openai.yaml
 skills/workflow-orchestrator/SKILL.md
 skills/workflow-orchestrator/agents/openai.yaml
 runtime/project-intelligence.cjs
+runtime/conditional-quality-gates.cjs
 runtime/workflow-orchestrator.cjs
 docs/schemas/*
 docs/roadmap/post-17-orchestrator-*.json
@@ -68,6 +69,7 @@ From the Agentic Feature Kit repository root:
 npm ci
 npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
+npm run test:conditional-quality-gates
 npm run test:provider-bundles
 npm run test:provider-distribution
 ```
@@ -80,6 +82,10 @@ runtime validator.
 The Workflow Orchestrator then uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT@@` response to
 create or validate phase envelopes, resume from a verified prefix, and compare semantic conservation
 against the sanctioned golden. It never turns a provider action smoke into completion evidence.
+
+The Conditional Quality Gates runtime consumes the validated profile and bounded changed-file
+evidence. It emits one `@@CONDITIONAL_GATES@@` envelope and activates i18n, router, or style checks
+only when the profile proves that system exists. Unknown/conflicting profiles cannot pass.
 
 ## Failure and security behavior
 

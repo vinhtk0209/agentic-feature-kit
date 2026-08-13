@@ -14,7 +14,7 @@ add a self-contained Node 20+ runtime, schemas, contracts, license, and a conten
    update local invocation paths if that directory is not the extracted bundle root.
 4. Verify the runtime offline before asking Copilot to use the skills:
    `node runtime/project-intelligence.cjs <repository-root>` and pipe a JSON request to
-   `node runtime/workflow-orchestrator.cjs resume`.
+   `node runtime/conditional-quality-gates.cjs` or `node runtime/workflow-orchestrator.cjs resume`.
 5. Commit repository customization only through that repository's normal review process.
 
 The bundle has no plugin manifest, credentials, provider calls, or forked business rules. Copilot
@@ -29,8 +29,8 @@ manager, task names, or reference-feature layout.
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.2.0` |
-| Shared core schema | `1.0.0` |
+| Bundle version | `0.3.0` |
+| Shared core version | `1.1.0` |
 | Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
 | Distribution stage | Deterministic repository bundle + ZIP archive |
@@ -48,6 +48,7 @@ customization unit is repository `.github` content.
 .github/skills/workflow-orchestrator/SKILL.md
 .github/agents/workflow-orchestrator.agent.md
 runtime/project-intelligence.cjs
+runtime/conditional-quality-gates.cjs
 runtime/workflow-orchestrator.cjs
 docs/schemas/*
 docs/roadmap/post-17-orchestrator-*.json
@@ -70,6 +71,7 @@ From the Agentic Feature Kit repository root:
 npm ci
 npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
+npm run test:conditional-quality-gates
 npm run test:provider-bundles
 npm run test:provider-distribution
 ```
@@ -81,6 +83,10 @@ the CLI arguments are invalid. The agent must stop on any invalid transport or `
 The Workflow Orchestrator uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT@@` response to
 create or validate phase envelopes, resume from verified evidence, and preserve literal human and
 trusted computed gates. Delegated agents cannot alter the canonical phase order or claim done.
+
+The Conditional Quality Gates runtime consumes the validated profile and bounded changed-file
+evidence. It emits one `@@CONDITIONAL_GATES@@` envelope and activates i18n, router, or style checks
+only when the profile proves that system exists. Unknown/conflicting profiles cannot pass.
 
 ## Failure and security behavior
 

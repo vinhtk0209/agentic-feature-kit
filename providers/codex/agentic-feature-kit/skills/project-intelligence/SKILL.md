@@ -24,6 +24,14 @@ prompt or infer a framework from missing evidence.
    paths. Ask only for inputs that can resolve those issues.
 6. If `status` is `ready`, use the recorded capabilities and reference features as planning inputs.
    Keep absent gates disabled; never fabricate router, i18n, styling, or task conventions.
+7. Before claiming a feature change satisfies project-specific UI quality rules, prepare one bounded
+   request containing the validated profile plus `changeScope`, `desiredRoute`, and the changed
+   files. Run `node runtime/conditional-quality-gates.cjs` in a distribution bundle or
+   `npx tsx packages/core/src/conditional-quality-gates.ts` in a source checkout, with the request
+   on stdin.
+8. Accept exactly one `@@CONDITIONAL_GATES@@` schema `1.0.0` envelope. Stop on `fail` or
+   `needs_input`; do not reinterpret `not_applicable`, remove evidence, or recreate gate rules in
+   provider instructions.
 
 ## Safety and output
 

@@ -13,7 +13,7 @@ runtime, schemas, contracts, license, and a content-addressed `bundle-manifest.j
    publication is a separate operator action.
 4. Verify the packaged runtime offline first:
    `node runtime/project-intelligence.cjs <repository-root>` and pipe a JSON request to
-   `node runtime/workflow-orchestrator.cjs resume`.
+   `node runtime/conditional-quality-gates.cjs` or `node runtime/workflow-orchestrator.cjs resume`.
 5. Require the plugin validator to pass before distributing the directory or archive.
 
 The package contains no credentials, hooks, MCP configuration, or provider-specific gate logic.
@@ -28,8 +28,8 @@ reference-feature layout.
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.2.0` |
-| Shared core schema | `1.0.0` |
+| Bundle version | `0.3.0` |
+| Shared core version | `1.1.0` |
 | Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
 | Distribution stage | Deterministic directory + ZIP archive |
@@ -47,6 +47,7 @@ agents/project-intelligence.md
 skills/workflow-orchestrator/SKILL.md
 agents/workflow-orchestrator.md
 runtime/project-intelligence.cjs
+runtime/conditional-quality-gates.cjs
 runtime/workflow-orchestrator.cjs
 docs/schemas/*
 docs/roadmap/post-17-orchestrator-*.json
@@ -69,6 +70,7 @@ From the Agentic Feature Kit repository root:
 npm ci
 npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
+npm run test:conditional-quality-gates
 npm run test:provider-bundles
 npm run test:provider-distribution
 claude plugin validate providers/claude/agentic-feature-kit --strict
@@ -81,6 +83,10 @@ the CLI arguments are invalid. The skill must stop on any invalid transport or `
 The Workflow Orchestrator uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT@@` response to
 create or validate phase envelopes, resume from verified evidence, and preserve literal human and
 trusted computed gates. Its agent coordinates work but cannot approve its own STOP conditions.
+
+The Conditional Quality Gates runtime consumes the validated profile and bounded changed-file
+evidence. It emits one `@@CONDITIONAL_GATES@@` envelope and activates i18n, router, or style checks
+only when the profile proves that system exists. Unknown/conflicting profiles cannot pass.
 
 ## Failure and security behavior
 

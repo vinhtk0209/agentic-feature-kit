@@ -55,6 +55,22 @@ and semantic transforms must conserve requirement identities and provenance.
 The public JSON Schema is `docs/schemas/semantic-spec.schema.json`. Source transports remain adapter
 concerns and are deliberately outside this core contract.
 
+## Conditional Quality Gates
+
+`src/conditional-quality-gates.ts` consumes a validated Project Profile plus bounded feature-change
+evidence. It activates i18n completeness, router registration, and style ownership checks only when
+the profile positively detects those systems. Absent systems are `not_applicable`; unknown or
+conflicting profiles are `needs_input` and cannot pass.
+
+```bash
+npx tsx packages/core/src/conditional-quality-gates.ts < request.json
+```
+
+The command is read-only and emits one `@@CONDITIONAL_GATES@@` envelope. Every verdict cites the
+profile and/or feature files that produced it. CSS-in-JS, Tailwind, React Native styles, CSS, and
+SCSS are evaluated only against detected implementations, so a CSS-in-JS project is never forced
+through an SCSS-only rule. The result schema is `docs/schemas/conditional-quality-gates.schema.json`.
+
 ## Stability
 
 - Schema version: `1.0.0`

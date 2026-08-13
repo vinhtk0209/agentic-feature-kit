@@ -62,7 +62,7 @@ When complete:
 | P17-002 | P0 | 1 | done | Workflow Orchestrator decomposition contract | Replaces the monolith with bounded phases that can resume from verified evidence. |
 | P17-003 | P1 | 2 | done | Provider-neutral semantic specification model | Makes equivalent Confluence/Jira/file requirements normalize to the same intent. |
 | P17-004 | P1 | 2 | backlog | Provider-neutral specification adapters | Removes operational dependence on one Confluence source or instance. |
-| P17-005 | P1 | 2 | backlog | Project-derived conditional quality gates | Adds relevant i18n/router/style checks without false framework assumptions. |
+| P17-005 | P1 | 2 | done | Project-derived conditional quality gates | Adds relevant i18n/router/style checks without false framework assumptions. |
 | P17-006 | P1 | 3 | backlog | Phase-aware model selection and routing | Allows explicit quality/cost/latency routing without silent provider substitution. |
 | P17-007 | P1 | 4 | backlog | Normalized same-input provider parity | Separates action smoke from real planning/implementation parity. |
 | P17-008 | P0 | 3 | done | Installable distribution bundles | Produces validated Codex, Claude, and Copilot bundles over one shared core. |

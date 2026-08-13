@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
   "product": "agentic-feature-kit",
-  "bundleVersion": "0.2.0",
-  "sharedCoreVersion": "1.0.0",
+  "bundleVersion": "0.3.0",
+  "sharedCoreVersion": "1.1.0",
   "sourceMode": "monorepo",
   "distribution": {
     "builder": "scripts/build-provider-bundles.ts",
@@ -13,6 +13,7 @@
     "nodeEngine": ">=20",
     "runtime": {
       "projectIntelligence": "runtime/project-intelligence.cjs",
+      "conditionalQualityGates": "runtime/conditional-quality-gates.cjs",
       "workflowOrchestrator": "runtime/workflow-orchestrator.cjs"
     }
   },
