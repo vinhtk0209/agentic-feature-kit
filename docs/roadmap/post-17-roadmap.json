@@ -61,7 +61,7 @@
       "initiative": "P17-I3",
       "wave": 0,
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "dependencies": [],
       "backlogRefs": ["operator-approved Wave 0"],
       "problem": "The post-17 backlog needs one versioned source of truth and a visible fail-closed readiness gate.",

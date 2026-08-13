@@ -56,7 +56,7 @@ When complete:
 
 | ID | Priority | Wave | Status | Task | What completion handles |
 |---|---:|---:|---|---|---|
-| P17-000 | P0 | 0 | in_progress | Tracking and readiness foundation | A malformed catalog or missing input fails closed and is visible on `/roadmap`. |
+| P17-000 | P0 | 0 | done | Tracking and readiness foundation | A malformed catalog or missing input fails closed and is visible on `/roadmap`. |
 | P17-001 | P0 | 1 | ready | Project Intelligence skill and agent contract | Prevents wrong-framework, fake-i18n, wrong-router, and target-specific fallback scaffolding. |
 | P17-002 | P0 | 1 | needs_input | Workflow Orchestrator decomposition contract | Replaces the monolith with bounded phases that can resume from verified evidence. |
 | P17-003 | P1 | 2 | backlog | Provider-neutral semantic specification model | Makes equivalent Confluence/Jira/file requirements normalize to the same intent. |
