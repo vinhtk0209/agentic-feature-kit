@@ -272,7 +272,7 @@
       "initiative": "P17-I3",
       "wave": 2,
       "priority": "P1",
-      "status": "backlog",
+      "status": "done",
       "dependencies": ["P17-000"],
       "backlogRefs": ["feedback: feedback-analyzer tests", "feedback: kpi-report tests", "feedback: error handling"],
       "problem": "Large public CLI scripts lack focused malformed-input, I/O, argument, and atomic-output tests.",

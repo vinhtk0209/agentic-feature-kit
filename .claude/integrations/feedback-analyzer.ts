@@ -14,6 +14,12 @@
 
 import fs from 'fs';
 import path from 'path';
+import {
+  CliReliabilityError,
+  classifyFileReadError,
+  emitCliError,
+  parseStrictFlags,
+} from './cli-reliability';
 
 // ─── Friction Types ──────────────────────────────────────────────────────────
 
@@ -370,17 +376,32 @@ function parseUserEntry(lines: string[]): UserEntry | null {
   return { timestamp, featureName, type: 'user', text };
 }
 
-function parseHistory(content: string): Entry[] {
+function parseHistory(content: string, strictInput = false): Entry[] {
   const entries: Entry[] = [];
   const blocks = content.split(/\n{2,}/).filter((b) => b.trim());
-  for (const block of blocks) {
+  for (let blockIndex = 0; blockIndex < blocks.length; blockIndex += 1) {
+    const block = blocks[blockIndex];
     const lines = block.trim().split('\n');
     if (!lines[0]) continue;
     if (lines[0].includes('[auto]')) {
       const e = parseAutoEntry(lines);
+      const complete = e
+        && Number.isFinite(Date.parse(e.timestamp))
+        && lines.length >= 3
+        && /reflection_final:\s*\d+%/.test(lines[1])
+        && /recoveries:\s*\d+/.test(lines[1])
+        && /b11_a:\s*(pass|fail)/.test(lines[1])
+        && /b11_b:\s*(pass|fail|skipped)/.test(lines[1])
+        && /b9_6:\s*(pass|fail|skip)/.test(lines[2]);
+      if (strictInput && !complete) {
+        throw new CliReliabilityError('MALFORMED_INPUT', `malformed auto feedback entry at block ${blockIndex + 1}`);
+      }
       if (e) entries.push(e);
     } else if (lines[0].includes('[user]')) {
       const e = parseUserEntry(lines);
+      if (strictInput && (!e || !Number.isFinite(Date.parse(e.timestamp)) || !e.text)) {
+        throw new CliReliabilityError('MALFORMED_INPUT', `malformed user feedback entry at block ${blockIndex + 1}`);
+      }
       if (e) entries.push(e);
     }
   }
@@ -718,13 +739,22 @@ function buildRootCauseFrequency(autoEntries: AutoEntry[], patterns: Pattern[]):
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
-export function analyze(historyFile: string): AnalysisResult {
+export function analyze(
+  historyFile: string,
+  options: Readonly<{ strictInput?: boolean; requireFile?: boolean }> = {},
+): AnalysisResult {
   if (!fs.existsSync(historyFile)) {
+    if (options.requireFile) throw new CliReliabilityError('INPUT_NOT_FOUND', `input file not found: ${historyFile}`);
     return { totalRuns: 0, userEntries: 0, patterns: [], topPatterns: [], highPriority: [] };
   }
 
-  const content = fs.readFileSync(historyFile, 'utf-8').replace(/\r\n/g, '\n');
-  const entries = parseHistory(content);
+  let content: string;
+  try {
+    content = fs.readFileSync(historyFile, 'utf-8').replace(/\r\n/g, '\n');
+  } catch (error) {
+    throw classifyFileReadError(error, historyFile);
+  }
+  const entries = parseHistory(content, options.strictInput);
   const autoEntries = entries.filter((e) => e.type === 'auto') as AutoEntry[];
   const autoCount = autoEntries.length;
   const userCount = entries.filter((e) => e.type === 'user').length;
@@ -802,21 +832,32 @@ function printSummary(result: AnalysisResult, classifyFrictionMode: boolean): vo
   }
 }
 
-if (process.argv[1] && process.argv[1].includes('feedback-analyzer')) {
-  const cliArgs = process.argv.slice(2);
-  const histIdx = cliArgs.indexOf('--history-file');
-  const historyFile =
-    histIdx >= 0
-      ? cliArgs[histIdx + 1]
-      : path.join(process.cwd(), 'docs/specs/.feedback-history.md');
-
-  const summaryMode = cliArgs.includes('--summary');
-  const classifyFrictionMode = cliArgs.includes('--classify-friction');
-  const result = analyze(historyFile);
+export function runFeedbackAnalyzerCli(args: readonly string[], cwd = process.cwd()): void {
+  const flags = parseStrictFlags(args, {
+    '--history-file': 'value',
+    '--summary': 'boolean',
+    '--classify-friction': 'boolean',
+  });
+  const explicitHistory = flags.get('--history-file');
+  const historyFile = typeof explicitHistory === 'string'
+    ? path.resolve(cwd, explicitHistory)
+    : path.join(cwd, 'docs/specs/.feedback-history.md');
+  const summaryMode = flags.has('--summary');
+  const classifyFrictionMode = flags.has('--classify-friction');
+  const result = analyze(historyFile, { strictInput: true, requireFile: typeof explicitHistory === 'string' });
 
   if (summaryMode || classifyFrictionMode) {
     printSummary(result, classifyFrictionMode);
   } else {
-    console.log(JSON.stringify(result, null, 2));
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  }
+}
+
+const feedbackLauncher = process.argv[1]?.replace(/\\/g, '/') ?? '';
+if (require.main === module && /feedback-analyzer\.(?:ts|js|cjs|mjs)$/.test(feedbackLauncher)) {
+  try {
+    runFeedbackAnalyzerCli(process.argv.slice(2));
+  } catch (error) {
+    process.exitCode = emitCliError('feedback-analyzer', error);
   }
 }

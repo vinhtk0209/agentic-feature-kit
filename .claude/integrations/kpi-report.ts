@@ -18,6 +18,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { FrictionLevel } from './feedback-analyzer';
+import {
+  CliReliabilityError,
+  atomicWriteTextFile,
+  classifyFileReadError,
+  emitCliError,
+  parseStrictFlags,
+} from './cli-reliability';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -65,16 +72,28 @@ interface KpiReport {
 
 // ─── Reader ──────────────────────────────────────────────────────────────────
 
-function readKpiHistory(filePath: string): RunKPI[] {
-  if (!fs.existsSync(filePath)) return [];
-  const lines = fs.readFileSync(filePath, 'utf-8').replace(/\r\n/g, '\n').split('\n');
+function readKpiHistory(filePath: string, requireFile = false): RunKPI[] {
+  if (!fs.existsSync(filePath)) {
+    if (requireFile) throw new CliReliabilityError('INPUT_NOT_FOUND', `input file not found: ${filePath}`);
+    return [];
+  }
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf-8').replace(/\r\n/g, '\n');
+  } catch (error) {
+    throw classifyFileReadError(error, filePath);
+  }
+  const lines = content.split('\n');
   const records: RunKPI[] = [];
-  for (const line of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
     const t = line.trim();
     if (!t) continue;
     try {
       records.push(JSON.parse(t) as RunKPI);
-    } catch { /* skip malformed */ }
+    } catch {
+      throw new CliReliabilityError('MALFORMED_INPUT', `malformed KPI JSON at line ${lineIndex + 1}`);
+    }
   }
   return records;
 }
@@ -223,64 +242,77 @@ function buildDashboard(report: KpiReport, allRecords: RunKPI[]): string {
 
 // ─── CLI ────────────────────────────────────────────────────────────────────
 
-const cliArgs = process.argv.slice(2);
-const kpiFileIdx = cliArgs.indexOf('--kpi-file');
-const kpiFile =
-  kpiFileIdx >= 0
-    ? cliArgs[kpiFileIdx + 1]
-    : path.join(process.cwd(), 'docs', 'specs', '.kpi-history.jsonl');
+export function runKpiReportCli(args: readonly string[], cwd = process.cwd()): void {
+  const flags = parseStrictFlags(args, {
+    '--kpi-file': 'value',
+    '--last-n': 'value',
+    '--json': 'boolean',
+    '--by-version': 'boolean',
+    '--dashboard': 'boolean',
+  });
+  const modes = ['--json', '--by-version', '--dashboard'].filter((flag) => flags.has(flag));
+  if (modes.length > 1) throw new CliReliabilityError('ARGUMENT_ERROR', `output modes are mutually exclusive: ${modes.join(', ')}`);
+  const explicitKpiFile = flags.get('--kpi-file');
+  const kpiFile = typeof explicitKpiFile === 'string'
+    ? path.resolve(cwd, explicitKpiFile)
+    : path.join(cwd, 'docs', 'specs', '.kpi-history.jsonl');
+  const rawLastN = flags.get('--last-n');
+  const lastN = typeof rawLastN === 'string' ? Number(rawLastN) : undefined;
+  if (lastN !== undefined && (!Number.isSafeInteger(lastN) || lastN <= 0)) {
+    throw new CliReliabilityError('ARGUMENT_ERROR', '--last-n must be a positive safe integer');
+  }
+  const allRecords = readKpiHistory(kpiFile, typeof explicitKpiFile === 'string');
+  const report = buildReport(allRecords, lastN);
 
-const lastNIdx = cliArgs.indexOf('--last-n');
-const lastN = lastNIdx >= 0 ? parseInt(cliArgs[lastNIdx + 1], 10) : undefined;
-
-const jsonMode = cliArgs.includes('--json');
-const byVersionMode = cliArgs.includes('--by-version');
-const dashboardMode = cliArgs.includes('--dashboard');
-
-const allRecords = readKpiHistory(kpiFile);
-const report = buildReport(allRecords, lastN);
-
-if (dashboardMode) {
-  const md = buildDashboard(report, allRecords);
-  const dashboardPath = path.join(process.cwd(), 'docs', 'claude-commands', 'DASHBOARD.md');
-  fs.mkdirSync(path.dirname(dashboardPath), { recursive: true });
-  fs.writeFileSync(dashboardPath, md, 'utf-8');
-  console.log(`Dashboard written to ${dashboardPath}`);
-} else if (jsonMode) {
-  console.log(JSON.stringify(report, null, 2));
-} else if (byVersionMode) {
-  if (report.versionSummaries.length === 0) {
-    console.log('No KPI data found.');
+  if (flags.has('--dashboard')) {
+    const md = buildDashboard(report, allRecords);
+    const dashboardPath = path.join(cwd, 'docs', 'claude-commands', 'DASHBOARD.md');
+    atomicWriteTextFile(dashboardPath, md);
+    console.log(`Dashboard written to ${dashboardPath}`);
+  } else if (flags.has('--json')) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } else if (flags.has('--by-version')) {
+    if (report.versionSummaries.length === 0) {
+      console.log('No KPI data found.');
+    } else {
+      console.log('\n📊 KPI by Prompt Version\n');
+      console.log('Version'.padEnd(12) + 'Runs'.padEnd(6) + 'AvgFriction'.padEnd(13) + 'Smooth+Minor%'.padEnd(15) + 'B11-A Pass%');
+      console.log('─'.repeat(60));
+      for (const vs of report.versionSummaries) {
+        console.log(
+          vs.version.padEnd(12) +
+          String(vs.runs).padEnd(6) +
+          String(vs.avgFriction).padEnd(13) +
+          `${vs.smoothPct}%`.padEnd(15) +
+          `${vs.b11aPassPct}%`
+        );
+      }
+    }
   } else {
-    console.log('\n📊 KPI by Prompt Version\n');
-    console.log('Version'.padEnd(12) + 'Runs'.padEnd(6) + 'AvgFriction'.padEnd(13) + 'Smooth+Minor%'.padEnd(15) + 'B11-A Pass%');
-    console.log('─'.repeat(60));
-    for (const vs of report.versionSummaries) {
-      console.log(
-        vs.version.padEnd(12) +
-        String(vs.runs).padEnd(6) +
-        String(vs.avgFriction).padEnd(13) +
-        `${vs.smoothPct}%`.padEnd(15) +
-        `${vs.b11aPassPct}%`
-      );
+    if (report.totalRuns === 0) {
+      console.log('No KPI data found. Run a feature to populate .kpi-history.jsonl');
+    } else {
+      console.log(`\n📈 KPI Summary — ${report.totalRuns} runs\n`);
+      console.log(`  Avg friction: ${frictionBar(report.avgFriction)}`);
+      const lc = report.frictionLevelCounts;
+      console.log(`  Levels: smooth=${lc.smooth} minor=${lc.minor} moderate=${lc.moderate} high=${lc.high} failed=${lc.failed}`);
+      if (report.topRootCauses.length > 0) {
+        console.log(`  Top root causes: ${report.topRootCauses.slice(0, 3).map((r) => `${r.category}(${r.count})`).join(', ')}`);
+      }
+      console.log('');
+      console.log('  Last 5 runs:');
+      for (const r of report.recentRuns.slice(-5)) {
+        console.log(`    ${r.timestamp.slice(0, 10)} ${r.featureName}: score=${r.frictionScore} [${r.frictionLevel}] b11_a=${r.b11_a}`);
+      }
     }
   }
-} else {
-  // Default: human summary
-  if (report.totalRuns === 0) {
-    console.log('No KPI data found. Run a feature to populate .kpi-history.jsonl');
-  } else {
-    console.log(`\n📈 KPI Summary — ${report.totalRuns} runs\n`);
-    console.log(`  Avg friction: ${frictionBar(report.avgFriction)}`);
-    const lc = report.frictionLevelCounts;
-    console.log(`  Levels: smooth=${lc.smooth} minor=${lc.minor} moderate=${lc.moderate} high=${lc.high} failed=${lc.failed}`);
-    if (report.topRootCauses.length > 0) {
-      console.log(`  Top root causes: ${report.topRootCauses.slice(0, 3).map((r) => `${r.category}(${r.count})`).join(', ')}`);
-    }
-    console.log('');
-    console.log('  Last 5 runs:');
-    for (const r of report.recentRuns.slice(-5)) {
-      console.log(`    ${r.timestamp.slice(0, 10)} ${r.featureName}: score=${r.frictionScore} [${r.frictionLevel}] b11_a=${r.b11_a}`);
-    }
+}
+
+const kpiLauncher = process.argv[1]?.replace(/\\/g, '/') ?? '';
+if (require.main === module && /kpi-report\.(?:ts|js|cjs|mjs)$/.test(kpiLauncher)) {
+  try {
+    runKpiReportCli(process.argv.slice(2));
+  } catch (error) {
+    process.exitCode = emitCliError('kpi-report', error);
   }
 }

@@ -67,7 +67,7 @@ When complete:
 | P17-007 | P1 | 4 | backlog | Normalized same-input provider parity | Separates action smoke from real planning/implementation parity. |
 | P17-008 | P0 | 3 | done | Installable distribution bundles | Produces validated Codex, Claude, and Copilot bundles over one shared core. |
 | P17-009 | P1 | 2 | backlog | Cross-platform release qualification | Proves Windows and Linux behavior in CI, including paths, quoting, setup, and process cleanup. |
-| P17-010 | P1 | 2 | backlog | CLI reliability and direct integration tests | Makes malformed input and I/O failures explicit for feedback/KPI/public CLI paths. |
+| P17-010 | P1 | 2 | done | CLI reliability and direct integration tests | Makes malformed input and I/O failures explicit for feedback/KPI/public CLI paths. |
 | P17-011 | P1 | 2 | backlog | Honest isolated-worktree browser verification | Stops `infra-blocked` from being confused with verified browser behavior. |
 | P17-012 | P1 | 2 | backlog | Convention and stack portability audit | Gates Open edX conventions instead of treating them as universal defaults. |
 | P17-013 | P1 | 2 | backlog | Documentation and runtime claim audit | Detects version, parity, generated-edition, and documentation drift. |
