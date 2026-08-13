@@ -291,7 +291,7 @@
       "initiative": "P17-I3",
       "wave": 2,
       "priority": "P1",
-      "status": "backlog",
+      "status": "in_progress",
       "dependencies": ["P17-001"],
       "backlogRefs": ["feedback: worktree limitation"],
       "problem": "A feature route unavailable from an isolated worktree can be labeled infra-blocked without proving the exact code in a browser.",

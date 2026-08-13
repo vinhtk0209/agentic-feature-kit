@@ -13,7 +13,8 @@
  * deterministic suite — that integration is the Block-5 capture). This proves the LOGIC exhaustively.
  * Run: npx tsx .claude/integrations/b11-runner.test.ts
  */
-import { computeB11B, computeGatesPass, assertPlaywrightTokenFresh, normalizeHeading, findHeadingLine, detectEol, buildPlaywrightInsert } from './b11-runner';
+import { computeB11B, computeGatesPass, assertPlaywrightTokenFresh, normalizeHeading, findHeadingLine, detectEol, buildPlaywrightInsert, browserTargetRouteResult } from './b11-runner';
+import { createBrowserTargetRequirement, validateBrowserTargetProvenance } from './worktree-browser-target';
 import { resolveB11ExecutionRoutes } from './ux-states';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -29,6 +30,21 @@ function eqRoutes(got: readonly string[], want: readonly string[], msg: string) 
   if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${msg}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
 }
 const exitOf = (gatesPass: boolean) => (gatesPass ? 0 : 1);
+
+test('P17-011 missing linked-worktree target becomes structured needs_input and fails B11-B', () => {
+  const target = createBrowserTargetRequirement({
+    cwd: process.cwd(),
+    route: '/feature',
+    reasonCode: 'browser-target-config-required',
+    evidence: ['linked worktree requires --browser-target-config'],
+  });
+  const route = browserTargetRouteResult('/feature', target);
+  eq(validateBrowserTargetProvenance(target), true, 'provenance validates');
+  eq(route.status, 'needs_input', 'route status');
+  eq(route.passed, false, 'needs_input never passes');
+  eq(route.targetProvenanceHash, target.contentHash, 'route binds provenance');
+  eq(computeB11B([route], true), 'fail', 'needs_input gates B11-B');
+});
 
 // ── Tier B token preflight fixtures (v3.24) ──
 // Real .env.playwright is NEVER touched: each case writes an isolated temp file and

@@ -32,12 +32,22 @@ import * as path from 'path';
 import { resolveB11ExecutionRoutes, parseUxStates } from './ux-states';
 import { resolveContractHttp, AmbiguousHttpFileError } from './contract-probe';
 import { checkPlaywrightToken } from './version-check';
+import {
+  createBrowserTargetRequirement,
+  isLinkedGitWorktree,
+  loadBrowserTargetConfig,
+  prepareBrowserTarget,
+  type BrowserTargetProvenance,
+  type BrowserTargetSession,
+} from './worktree-browser-target';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface RouteResult {
   route: string;
   passed: boolean;
+  status?: 'verified' | 'failed' | 'needs_input' | 'rejected';
+  targetProvenanceHash?: string;
   checks: Array<{ id: string; passed: boolean; message: string }>;
   screenshotPath?: string;
 }
@@ -52,6 +62,7 @@ interface B11Result {
   contractWarnings: number;
   routeResults: RouteResult[];
   checklistUpdated: boolean;
+  browserTarget: BrowserTargetProvenance | null;
   summary: string;
 }
 
@@ -123,6 +134,8 @@ const featureName = args[0] ?? ''; // '' only on a non-CLI import (main() never 
 const featurePathIdx = args.indexOf('--feature-path');
 const featurePath = featurePathIdx >= 0 ? args[featurePathIdx + 1] : null;
 const noPlaywright = args.includes('--no-playwright');
+const browserTargetConfigIdx = args.indexOf('--browser-target-config');
+const browserTargetConfigPath = browserTargetConfigIdx >= 0 ? args[browserTargetConfigIdx + 1] : null;
 
 const cwd = process.cwd();
 const specsDir = path.join(cwd, 'docs', 'specs', featureName);
@@ -215,6 +228,7 @@ function run(cmd: string, timeoutMs = 120_000): { code: number; stdout: string; 
 async function runPlaywrightSpawn(
   cmd: string,
   timeoutMs: number,
+  envOverrides: NodeJS.ProcessEnv = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     const proc = spawn(cmd, {
@@ -222,6 +236,7 @@ async function runPlaywrightSpawn(
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: process.platform !== 'win32',
+      env: { ...process.env, ...envOverrides },
     });
     let stdout = '';
     let stderr = '';
@@ -300,7 +315,11 @@ function readStateCount(): number {
 
 // ─── Step 2: Run playwright for each route ────────────────────────────────────
 
-async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<RouteResult> {
+async function runPlaywrightForRoute(
+  route: string,
+  timeoutMs: number,
+  browserTarget: BrowserTargetSession | null = null,
+): Promise<RouteResult> {
   const runnerPath = path.join(integrationsDir, 'playwright-runner.ts');
   if (!fs.existsSync(runnerPath)) {
     return { route, passed: false, checks: [{ id: 'RUNNER', passed: false, message: 'playwright-runner.ts not found' }] };
@@ -340,7 +359,11 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
     apiPathArg,
   ].filter(Boolean).join(' ');
 
-  const { code, stdout, stderr } = await runPlaywrightSpawn(cmd, timeoutMs);
+  const { code, stdout, stderr } = await runPlaywrightSpawn(
+    cmd,
+    timeoutMs,
+    browserTarget?.serverUrl ? { DEV_SERVER_URL: browserTarget.serverUrl } : {},
+  );
 
   // playwright-runner outputs JSON — try to parse it
   try {
@@ -354,6 +377,8 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
       return {
         route,
         passed: parsed.passed ?? code === 0,
+        status: (parsed.passed ?? code === 0) ? 'verified' : 'failed',
+        targetProvenanceHash: browserTarget?.provenance.contentHash,
         checks: parsed.checks ?? [],
         screenshotPath: parsed.screenshotPath,
       };
@@ -365,7 +390,23 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
   return {
     route,
     passed: code === 0,
+    status: code === 0 ? 'verified' : 'failed',
+    targetProvenanceHash: browserTarget?.provenance.contentHash,
     checks: [{ id: 'PLAYWRIGHT-RUN', passed: code === 0, message: stdout || stderr }],
+  };
+}
+
+export function browserTargetRouteResult(route: string, target: BrowserTargetProvenance): RouteResult {
+  return {
+    route,
+    passed: false,
+    status: target.status === 'rejected' ? 'rejected' : 'needs_input',
+    targetProvenanceHash: target.contentHash,
+    checks: [{
+      id: 'WORKTREE-BROWSER-TARGET',
+      passed: false,
+      message: `${target.reasonCode}: ${target.evidence.join('; ')}`,
+    }],
   };
 }
 
@@ -394,8 +435,9 @@ function runStaticAnalysis(): { typeErrors: number; lintErrors: number; b11_a: '
   if (featurePath) {
     const lintResult = run(`npx eslint --ext .js,.jsx,.ts,.tsx "${featurePath}" 2>&1`);
     const lintOutput = lintResult.stdout + lintResult.stderr;
-    lintErrors = (lintOutput.match(/\d+ error/g) ?? [])
-      .reduce((sum, m) => sum + parseInt(m, 10), 0);
+    for (const match of lintOutput.match(/\d+ error/g) ?? []) {
+      lintErrors += parseInt(match, 10);
+    }
   }
 
   const b11_a: 'pass' | 'fail' = typeErrors === 0 && lintErrors === 0 ? 'pass' : 'fail';
@@ -584,26 +626,65 @@ async function main(): Promise<void> {
 
   // Tier B writes its checklist evidence before the final HR33/34/35/36 coverage reader runs.
   const tierBRan = !noPlaywright && routes.length > 0;
-  if (tierBRan) assertPlaywrightTokenFresh(resolvePlaywrightEnvPath());
+  const identityRequired = tierBRan && (isLinkedGitWorktree(cwd) || browserTargetConfigPath !== null);
+  let browserTarget: BrowserTargetProvenance | null = null;
+  let browserTargetSession: BrowserTargetSession | null = null;
+  if (identityRequired) {
+    if (!browserTargetConfigPath) {
+      browserTarget = createBrowserTargetRequirement({
+        cwd,
+        route: routes[0],
+        reasonCode: 'browser-target-config-required',
+        evidence: ['linked worktree requires --browser-target-config', 'serve the exact worktree or provide byte identity'],
+      });
+    } else {
+      try {
+        const config = loadBrowserTargetConfig(browserTargetConfigPath);
+        browserTargetSession = await prepareBrowserTarget({ cwd, route: routes[0], config });
+        browserTarget = browserTargetSession.provenance;
+      } catch (error) {
+        browserTarget = createBrowserTargetRequirement({
+          cwd,
+          route: routes[0],
+          status: 'rejected',
+          reasonCode: 'browser-target-config-invalid',
+          evidence: [error instanceof Error ? error.message : String(error)],
+        });
+      }
+    }
+  }
+  const targetBlocked = browserTarget !== null && browserTarget.status !== 'verified';
+  let tierResult: Awaited<ReturnType<typeof runTierBThenCoverage>>;
+  try {
+    if (tierBRan && !targetBlocked) assertPlaywrightTokenFresh(resolvePlaywrightEnvPath());
+    tierResult = await runTierBThenCoverage({
+      routes,
+      tierBRan,
+      runRoute: (route) => targetBlocked && browserTarget
+        ? Promise.resolve(browserTargetRouteResult(route, browserTarget))
+        : runPlaywrightForRoute(route, playwrightTimeoutMs, browserTargetSession),
+      updateChecklist: updateChecklistPlaywright,
+      runCoverage: runCoverageGate,
+    });
+  } finally {
+    await browserTargetSession?.close();
+  }
   const {
     routeResults,
     b11_b,
     checklistUpdated,
     coverageErrors,
     coverageSummary,
-  } = await runTierBThenCoverage({
-    routes,
-    tierBRan,
-    runRoute: (route) => runPlaywrightForRoute(route, playwrightTimeoutMs),
-    updateChecklist: updateChecklistPlaywright,
-    runCoverage: runCoverageGate,
-  });
+  } = tierResult;
 
   const passedRoutes = routeResults.filter((r) => r.passed).length;
   const summary = [
     `Static: types=${typeErrors} errors, lint=${lintErrors} errors (b11_a=${b11_a})`,
     coverageSummary,
     contractSummary,
+    browserTarget
+      ? `Browser target: ${browserTarget.status}/${browserTarget.reasonCode} (${browserTarget.contentHash})`
+      : 'Browser target: main-workspace legacy server contract',
     routes.length > 0
       ? `Playwright: ${passedRoutes}/${routeResults.length} routes passed (b11_b=${b11_b})`
       : 'Playwright: no routes defined (b11_b=skip)',
@@ -619,6 +700,7 @@ async function main(): Promise<void> {
     contractWarnings,
     routeResults,
     checklistUpdated,
+    browserTarget,
     summary,
   };
 
@@ -630,7 +712,7 @@ async function main(): Promise<void> {
     fs.mkdirSync(specsDir, { recursive: true });
     writeFile(
       path.join(specsDir, '.b11-result.json'),
-      JSON.stringify({ b11_a, b11_b, coverageErrors, writtenAt: new Date().toISOString() }, null, 2),
+      JSON.stringify({ b11_a, b11_b, coverageErrors, browserTarget, writtenAt: new Date().toISOString() }, null, 2),
     );
   } catch { /* non-fatal — stdout JSON remains the primary contract */ }
 
