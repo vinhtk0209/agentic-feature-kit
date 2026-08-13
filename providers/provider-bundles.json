@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0",
+  "product": "agentic-feature-kit",
+  "bundleVersion": "0.1.0",
+  "sharedCoreVersion": "1.0.0",
+  "sourceMode": "monorepo",
+  "providers": [
+    {
+      "id": "codex",
+      "root": "providers/codex/agentic-feature-kit",
+      "manifest": ".codex-plugin/plugin.json",
+      "skill": "skills/project-intelligence/SKILL.md",
+      "agent": null
+    },
+    {
+      "id": "claude",
+      "root": "providers/claude/agentic-feature-kit",
+      "manifest": ".claude-plugin/plugin.json",
+      "skill": "skills/project-intelligence/SKILL.md",
+      "agent": "agents/project-intelligence.md"
+    },
+    {
+      "id": "copilot",
+      "root": "providers/copilot/agentic-feature-kit",
+      "manifest": null,
+      "skill": ".github/skills/project-intelligence/SKILL.md",
+      "agent": ".github/agents/project-intelligence.agent.md"
+    }
+  ]
+}

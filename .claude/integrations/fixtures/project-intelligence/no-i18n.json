@@ -1,0 +1,10 @@
+{
+  "files": {
+    "package.json": "{\"dependencies\":{\"react\":\"19.0.0\",\"react-dom\":\"19.0.0\",\"react-router-dom\":\"7.0.0\",\"tailwindcss\":\"4.0.0\"},\"devDependencies\":{\"typescript\":\"5.0.0\"}}",
+    "package-lock.json": "{}",
+    "tsconfig.json": "{}",
+    "tailwind.config.ts": "export default {}",
+    "src/orders/OrdersPage.tsx": "export const OrdersPage = () => null",
+    "src/orders/data/api.ts": "export const loadOrders = () => null"
+  }
+}

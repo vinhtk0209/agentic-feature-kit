@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vinhtk0209/agentic-feature-kit/schemas/project-profile-1.0.0.json",
+  "title": "Agentic Feature Kit Project Profile",
+  "description": "Provider-neutral, evidence-backed repository capability profile emitted by Project Intelligence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "status", "repository", "framework", "language", "packageManager",
+    "router", "i18n", "styling", "dataLayer", "conventions", "taskTaxonomy",
+    "evidenceBoundary", "instructions", "referenceFeatures", "gates", "issues", "evidencePaths"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "status": { "enum": ["ready", "needs_input"] },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rootName", "fingerprint"],
+      "properties": {
+        "rootName": { "type": "string", "minLength": 1 },
+        "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "framework": { "$ref": "#/$defs/frameworkEvidence" },
+    "language": { "$ref": "#/$defs/languageEvidence" },
+    "packageManager": { "$ref": "#/$defs/packageManagerEvidence" },
+    "router": { "$ref": "#/$defs/capability" },
+    "i18n": { "$ref": "#/$defs/capability" },
+    "styling": { "$ref": "#/$defs/capability" },
+    "dataLayer": { "$ref": "#/$defs/capability" },
+    "conventions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["httpClients", "uiLibraries", "importAliases", "featureLayouts", "evidence"],
+      "properties": {
+        "httpClients": { "$ref": "#/$defs/capability" },
+        "uiLibraries": { "$ref": "#/$defs/capability" },
+        "importAliases": { "$ref": "#/$defs/stringSet" },
+        "featureLayouts": { "$ref": "#/$defs/stringSet" },
+        "evidence": { "$ref": "#/$defs/stringSet" }
+      }
+    },
+    "taskTaxonomy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dev", "build", "test", "lint", "typecheck", "format", "e2e", "evidence"],
+      "properties": {
+        "dev": { "$ref": "#/$defs/stringSet" },
+        "build": { "$ref": "#/$defs/stringSet" },
+        "test": { "$ref": "#/$defs/stringSet" },
+        "lint": { "$ref": "#/$defs/stringSet" },
+        "typecheck": { "$ref": "#/$defs/stringSet" },
+        "format": { "$ref": "#/$defs/stringSet" },
+        "e2e": { "$ref": "#/$defs/stringSet" },
+        "evidence": { "$ref": "#/$defs/stringSet" }
+      }
+    },
+    "evidenceBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceRoots", "testRoots", "instructionFiles", "ignoredSegments", "traversalDepth", "symlinkPolicy"],
+      "properties": {
+        "sourceRoots": { "$ref": "#/$defs/stringSet" },
+        "testRoots": { "$ref": "#/$defs/stringSet" },
+        "instructionFiles": { "$ref": "#/$defs/stringSet" },
+        "ignoredSegments": { "$ref": "#/$defs/stringSet" },
+        "traversalDepth": { "type": "integer", "minimum": 0 },
+        "symlinkPolicy": { "const": "do-not-follow" }
+      }
+    },
+    "instructions": { "$ref": "#/$defs/stringSet" },
+    "referenceFeatures": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "signals"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "signals": { "$ref": "#/$defs/stringSet" }
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["i18n", "router", "styling"],
+      "properties": {
+        "i18n": { "type": "boolean" },
+        "router": { "type": "boolean" },
+        "styling": { "type": "boolean" }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "evidence"],
+        "properties": {
+          "code": {
+            "enum": [
+              "package-json-malformed", "tsconfig-malformed", "framework-conflict",
+              "framework-unknown", "router-framework-conflict", "package-manager-conflict",
+              "unsafe-repository-entry"
+            ]
+          },
+          "message": { "type": "string", "minLength": 1 },
+          "evidence": { "$ref": "#/$defs/stringSet" }
+        }
+      }
+    },
+    "evidencePaths": { "$ref": "#/$defs/stringSet" }
+  },
+  "$defs": {
+    "stringSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "implementations", "evidence"],
+      "properties": {
+        "state": { "enum": ["present", "absent", "conflict"] },
+        "implementations": { "$ref": "#/$defs/stringSet" },
+        "evidence": { "$ref": "#/$defs/stringSet" }
+      }
+    },
+    "frameworkEvidence": {
+      "allOf": [
+        { "$ref": "#/$defs/evidenceBase" },
+        { "properties": { "value": { "type": ["string", "null"], "enum": ["react-web", "react-native", "vue", "angular", null] } } }
+      ]
+    },
+    "languageEvidence": {
+      "allOf": [
+        { "$ref": "#/$defs/evidenceBase" },
+        { "properties": { "value": { "type": ["string", "null"], "enum": ["typescript", "javascript", null] } } }
+      ]
+    },
+    "packageManagerEvidence": {
+      "allOf": [
+        { "$ref": "#/$defs/evidenceBase" },
+        { "properties": { "value": { "type": ["string", "null"], "enum": ["bun", "pnpm", "yarn", "npm", null] } } }
+      ]
+    },
+    "evidenceBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "confidence", "evidence"],
+      "properties": {
+        "value": { "type": ["string", "null"] },
+        "confidence": { "enum": ["confirmed", "unknown", "conflict"] },
+        "evidence": { "$ref": "#/$defs/stringSet" }
+      }
+    }
+  }
+}

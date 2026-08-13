@@ -4,13 +4,33 @@
 
 > **One command. Your spec becomes convention-compliant, PR-ready code — with human-in-the-loop gates, a deterministic self-test toolchain, and a self-improvement loop.**
 >
-> Kit version **v3.25**. **Claude Code only** and **tech-stack agnostic** — it reads your project's conventions from `CLAUDE.md`.
+> Kit version **v3.25**. The flagship workflow currently runs in Claude Code. Post-17 provider-neutral
+> capabilities are being released incrementally for Codex, Claude Code, and GitHub Copilot under
+> `providers/`; each capability declares its own readiness and compatibility boundary.
 
 ## Requirements
 
 - **Node ≥ 20** (`.nvmrc` pins 24), npm
 - **Claude Code** (the slash commands live in `.claude/commands/`)
 - Optional: **Playwright** (UI verification, auto-installed via devDeps) and a **Confluence MCP** (optional spec source — see below)
+
+## Provider packages (post-17)
+
+The versioned provider source packages live under `providers/`, while all shared business rules
+live once under `packages/core/`. The first available contract is **Project Intelligence**: a
+read-only repository profiler that prevents framework, router, i18n, styling, and task-convention
+guesses before feature planning.
+
+| Provider | Supported source surface | Current status |
+|---|---|---|
+| Codex | `.codex-plugin/plugin.json` + Agent Skill | Project Intelligence source adapter `0.1.0` |
+| Claude Code | `.claude-plugin/plugin.json` + skill + read-only agent | Project Intelligence source adapter `0.1.0` |
+| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Project Intelligence source adapter `0.1.0` |
+
+These are public-ready source packages, not yet self-contained install archives. `P17-002` adds the
+provider-neutral Workflow Orchestrator; `P17-008` produces versioned standalone bundles and clean
+install smoke evidence. See `providers/README.md` for the exact security, validation, and release
+boundaries. No package publication or marketplace registration is performed by the build/test flow.
 
 ## Setup
 

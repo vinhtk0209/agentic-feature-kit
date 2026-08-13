@@ -16,7 +16,7 @@
       "external provider execution",
       "sync or push"
     ],
-    "licenseBoundary": "Internal private distribution only; public licensing is deferred to P17-018."
+    "licenseBoundary": "Source artifacts are public-ready under the repository Apache-2.0 license; publication, marketplace registration, and repository visibility changes remain separately authorized operations."
   },
   "sharedCore": {
     "rule": "Schemas, deterministic scripts, fixtures, gate semantics, and evidence validation live once in the provider-neutral core.",
@@ -31,7 +31,7 @@
         {"url":"https://developers.openai.com/plugins/build/plugins","claim":"A distributable plugin requires .codex-plugin/plugin.json and may contain skills, MCP configuration, assets, and hooks."}
       ],
       "authoringSurface": ".agents/skills/<skill-name>/SKILL.md",
-      "distributionRoot": "dist/codex/<bundle-name>",
+      "distributionRoot": "providers/codex/<bundle-name>",
       "requiredPaths": [
         ".codex-plugin/plugin.json",
         "skills/project-intelligence/SKILL.md",
@@ -48,7 +48,7 @@
         {"url":"https://code.claude.com/docs/en/plugins-reference","claim":"Skills live under skills/<name>/SKILL.md and custom agents live under agents/*.md with YAML frontmatter."}
       ],
       "authoringSurface": ".claude/skills/<skill-name>/SKILL.md and .claude/agents/<agent-name>.md",
-      "distributionRoot": "dist/claude/<bundle-name>",
+      "distributionRoot": "providers/claude/<bundle-name>",
       "requiredPaths": [
         ".claude-plugin/plugin.json",
         "skills/project-intelligence/SKILL.md",
@@ -68,7 +68,7 @@
         {"url":"https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents","claim":"Repository custom agents live under .github/agents as .agent.md files."}
       ],
       "authoringSurface": ".github/skills/<skill-name>/SKILL.md and .github/agents/<agent-name>.agent.md",
-      "distributionRoot": "dist/copilot/<bundle-name>",
+      "distributionRoot": "providers/copilot/<bundle-name>",
       "requiredPaths": [
         ".github/skills/project-intelligence/SKILL.md",
         ".github/skills/workflow-orchestrator/SKILL.md",

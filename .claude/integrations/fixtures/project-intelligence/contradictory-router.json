@@ -1,0 +1,9 @@
+{
+  "files": {
+    "package.json": "{\"dependencies\":{\"react\":\"19.0.0\",\"react-dom\":\"19.0.0\",\"vue-router\":\"4.0.0\"},\"devDependencies\":{\"typescript\":\"5.0.0\"}}",
+    "package-lock.json": "{}",
+    "tsconfig.json": "{}",
+    "src/home/HomePage.tsx": "export const HomePage = () => null",
+    "src/home/data/api.ts": "export const loadHome = () => null"
+  }
+}
