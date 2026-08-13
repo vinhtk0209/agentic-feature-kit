@@ -113,10 +113,10 @@
       "initiative": "P17-I2",
       "wave": 1,
       "priority": "P0",
-      "status": "ready",
+      "status": "done",
       "dependencies": ["P17-000", "P17-001"],
       "backlogRefs": ["1", "14", "16", "feedback: workflow too long", "feedback: refactor coupling"],
-      "problem": "The 2,691-line flagship command couples intake, planning, gates, execution, evidence, and learning into one context-heavy artifact.",
+      "problem": "The 2,692-line flagship command couples intake, planning, gates, execution, evidence, and learning into one context-heavy artifact.",
       "scope": ["phase boundary map", "typed input/output envelopes", "content-addressed evidence handoffs", "resume semantics", "provider adapter contract"],
       "outOfScope": ["automatic prompt mutation", "unbounded multi-agent dispatch", "provider marketplace publication"],
       "readiness": {

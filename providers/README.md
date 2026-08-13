@@ -14,8 +14,8 @@ invented plugin manifest: its supported distribution unit is the repository cust
 
 ## Development status
 
-Version `0.1.0` contains the Project Intelligence adapter contract. The Workflow Orchestrator is
-added by `P17-002`; self-contained archive builds and clean-install smoke tests belong to `P17-008`.
+Version `0.2.0` contains both Project Intelligence and the Workflow Orchestrator source adapters.
+Self-contained archive builds and clean-install smoke tests belong to `P17-008`.
 Until that task is complete, use these packages from an Agentic Feature Kit source checkout.
 
 ## Security boundary

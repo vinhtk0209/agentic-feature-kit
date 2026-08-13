@@ -23,12 +23,12 @@ guesses before feature planning.
 
 | Provider | Supported source surface | Current status |
 |---|---|---|
-| Codex | `.codex-plugin/plugin.json` + Agent Skill | Project Intelligence source adapter `0.1.0` |
-| Claude Code | `.claude-plugin/plugin.json` + skill + read-only agent | Project Intelligence source adapter `0.1.0` |
-| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Project Intelligence source adapter `0.1.0` |
+| Codex | `.codex-plugin/plugin.json` + Agent Skills | Project Intelligence + Workflow Orchestrator source adapters `0.2.0` |
+| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Project Intelligence + Workflow Orchestrator source adapters `0.2.0` |
+| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Project Intelligence + Workflow Orchestrator source adapters `0.2.0` |
 
-These are public-ready source packages, not yet self-contained install archives. `P17-002` adds the
-provider-neutral Workflow Orchestrator; `P17-008` produces versioned standalone bundles and clean
+These are public-ready source packages, not yet self-contained install archives. The
+provider-neutral Workflow Orchestrator contract is available; `P17-008` produces versioned standalone bundles and clean
 install smoke evidence. See `providers/README.md` for the exact security, validation, and release
 boundaries. No package publication or marketplace registration is performed by the build/test flow.
 

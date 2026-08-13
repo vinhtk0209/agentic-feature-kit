@@ -9,7 +9,7 @@ reference-feature layout.
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.1.0` |
+| Bundle version | `0.2.0` |
 | Shared core schema | `1.0.0` |
 | Runtime | Node.js 20+ with `tsx` |
 | License | Apache-2.0 |
@@ -25,6 +25,8 @@ Local source validation does not install or enable the plugin.
 .claude-plugin/plugin.json
 skills/project-intelligence/SKILL.md
 agents/project-intelligence.md
+skills/workflow-orchestrator/SKILL.md
+agents/workflow-orchestrator.md
 README.md
 ```
 
@@ -47,6 +49,10 @@ claude plugin validate providers/claude/agentic-feature-kit --strict
 The profiler emits one `@@PROJECT_PROFILE@@` JSON envelope. Exit `0` means the profile is ready;
 exit `1` means the profile is valid but needs input (or inspection failed safely); exit `2` means
 the CLI arguments are invalid. The skill must stop on any invalid transport or `needs_input` status.
+
+The Workflow Orchestrator uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT@@` response to
+create or validate phase envelopes, resume from verified evidence, and preserve literal human and
+trusted computed gates. Its agent coordinates work but cannot approve its own STOP conditions.
 
 ## Failure and security behavior
 

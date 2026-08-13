@@ -9,6 +9,8 @@ interface ProviderEntry {
   manifest: string | null
   skill: string
   agent: string | null
+  orchestratorSkill: string
+  orchestratorAgent: string | null
 }
 
 interface ProviderRegistry {
@@ -30,53 +32,78 @@ function assertNoPlaceholders(relative: string, value: string): void {
   assert.ok(!value.includes('Local developer'), `${relative} contains scaffold author metadata`)
 }
 
-function assertSkill(relative: string, expectedHash: string | null): string {
+function assertSkill(relative: string, expectedHash: string | null, skillName: 'project-intelligence' | 'workflow-orchestrator'): string {
   const content = read(relative)
   assertNoPlaceholders(relative, content)
-  assert.match(content, /^---\nname: project-intelligence\ndescription: .+\nlicense: Apache-2\.0\n---\n/)
-  assert.match(content, /@@PROJECT_PROFILE@@/)
-  assert.match(content, /status` is `needs_input`/)
-  assert.match(content, /Do not reproduce its detection rules/)
-  assert.ok(!content.includes('react-dom'), `${relative} must not copy framework business rules`)
+  assert.match(content, new RegExp(`^---\\nname: ${skillName}\\ndescription: .+\\nlicense: Apache-2\\.0\\n---\\n`))
+  if (skillName === 'project-intelligence') {
+    assert.match(content, /@@PROJECT_PROFILE@@/)
+    assert.match(content, /status` is `needs_input`/)
+    assert.match(content, /Do not reproduce its detection rules/)
+    assert.ok(!content.includes('react-dom'), `${relative} must not copy framework business rules`)
+  } else {
+    assert.match(content, /@@ORCHESTRATOR_RESULT@@/)
+    assert.match(content, /Provider adapters never auto-approve a gate/)
+    assert.match(content, /B11 requires the trusted verifier's computed pass/)
+    assert.ok(!content.includes('sourceLines'), `${relative} must not copy phase-boundary business rules`)
+  }
   const hash = sha256(content)
-  if (expectedHash) assert.equal(hash, expectedHash, 'provider skill adapters must stay byte-identical')
+  if (expectedHash) assert.equal(hash, expectedHash, `${skillName} provider adapters must stay byte-identical`)
   return hash
 }
 
 const registry = parseJson<ProviderRegistry>('providers/provider-bundles.json')
 assert.equal(registry.schemaVersion, '1.0.0')
 assert.equal(registry.product, 'agentic-feature-kit')
-assert.equal(registry.bundleVersion, '0.1.0')
+assert.equal(registry.bundleVersion, '0.2.0')
 assert.equal(registry.sharedCoreVersion, '1.0.0')
 assert.equal(registry.sourceMode, 'monorepo')
 assert.deepEqual(registry.providers.map((entry) => entry.id), ['codex', 'claude', 'copilot'])
 
-const coreSource = read('packages/core/src/project-intelligence.ts')
-assert.match(coreSource, /PROJECT_PROFILE_SCHEMA_VERSION = '1\.0\.0'/)
-assert.match(coreSource, /PROJECT_PROFILE_SENTINEL = '@@PROJECT_PROFILE@@'/)
-assert.match(coreSource, /export function validateProjectProfile/)
-assert.match(coreSource, /export function parseProjectProfileEnvelope/)
-assert.doesNotMatch(coreSource, /\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink/)
+const projectCore = read('packages/core/src/project-intelligence.ts')
+assert.match(projectCore, /PROJECT_PROFILE_SCHEMA_VERSION = '1\.0\.0'/)
+assert.match(projectCore, /PROJECT_PROFILE_SENTINEL = '@@PROJECT_PROFILE@@'/)
+assert.match(projectCore, /export function validateProjectProfile/)
+assert.match(projectCore, /export function parseProjectProfileEnvelope/)
+assert.doesNotMatch(projectCore, /\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink/)
 
-const schema = parseJson<Record<string, unknown>>('docs/schemas/project-profile.schema.json')
-assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema')
-assert.equal((schema.properties as Record<string, { const?: string }>).schemaVersion.const, registry.sharedCoreVersion)
+const orchestratorCore = read('packages/core/src/workflow-orchestrator.ts')
+assert.match(orchestratorCore, /ORCHESTRATOR_CONTRACT_VERSION = '1\.0\.0'/)
+assert.match(orchestratorCore, /export function validatePhaseEnvelope/)
+assert.match(orchestratorCore, /export function resumeFromPhaseEnvelopes/)
+assert.match(orchestratorCore, /export function compareCandidateToGolden/)
+assert.doesNotMatch(orchestratorCore, /\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink/)
 
-let skillHash: string | null = null
+const profileSchema = parseJson<Record<string, unknown>>('docs/schemas/project-profile.schema.json')
+assert.equal(profileSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
+assert.equal((profileSchema.properties as Record<string, { const?: string }>).schemaVersion.const, registry.sharedCoreVersion)
+const orchestratorSchema = parseJson<Record<string, unknown>>('docs/schemas/orchestrator-phase-envelope.schema.json')
+assert.equal(orchestratorSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
+assert.equal((orchestratorSchema.properties as Record<string, { const?: string }>).contractVersion.const, registry.sharedCoreVersion)
+
+let projectSkillHash: string | null = null
+let orchestratorSkillHash: string | null = null
 for (const provider of registry.providers) {
   assert.ok(fs.statSync(path.join(root, provider.root)).isDirectory())
   const readme = read(`${provider.root}/README.md`)
   assertNoPlaceholders(`${provider.root}/README.md`, readme)
   assert.match(readme, /Apache-2\.0/)
-  assert.match(readme, /0\.1\.0/)
-  assert.ok(readme.split(/\s+/).length >= 70, `${provider.id} README is too thin for a public source package`)
+  assert.match(readme, /0\.2\.0/)
+  assert.ok(readme.split(/\s+/).length >= 120, `${provider.id} README is too thin for a public source package`)
 
-  skillHash = assertSkill(`${provider.root}/${provider.skill}`, skillHash)
+  projectSkillHash = assertSkill(`${provider.root}/${provider.skill}`, projectSkillHash, 'project-intelligence')
+  orchestratorSkillHash = assertSkill(`${provider.root}/${provider.orchestratorSkill}`, orchestratorSkillHash, 'workflow-orchestrator')
   if (provider.agent) {
     const agent = read(`${provider.root}/${provider.agent}`)
     assertNoPlaceholders(`${provider.root}/${provider.agent}`, agent)
     assert.match(agent, /^---\nname: project-intelligence\ndescription: .+\n/)
     assert.match(agent, /Do not edit files/)
+  }
+  if (provider.orchestratorAgent) {
+    const agent = read(`${provider.root}/${provider.orchestratorAgent}`)
+    assertNoPlaceholders(`${provider.root}/${provider.orchestratorAgent}`, agent)
+    assert.match(agent, /^---\nname: workflow-orchestrator\ndescription: .+\n/)
+    assert.match(agent, /Never\s+auto-approve/)
   }
 
   if (provider.manifest) {
@@ -92,15 +119,18 @@ const codex = registry.providers.find((entry) => entry.id === 'codex')!
 const codexManifest = parseJson<Record<string, unknown>>(`${codex.root}/${codex.manifest}`)
 assert.equal(codexManifest.skills, './skills/')
 assert.equal(codex.agent, null, 'Codex bundle must not invent a standalone agent manifest')
+assert.equal(codex.orchestratorAgent, null, 'Codex bundle must not invent a standalone orchestrator agent manifest')
 
 const claude = registry.providers.find((entry) => entry.id === 'claude')!
 const claudeManifest = parseJson<Record<string, unknown>>(`${claude.root}/${claude.manifest}`)
-assert.deepEqual(claudeManifest.agents, ['./agents/project-intelligence.md'])
+assert.deepEqual(claudeManifest.agents, ['./agents/project-intelligence.md', './agents/workflow-orchestrator.md'])
 assert.match(read(`${claude.root}/${claude.agent}`), /disallowedTools: Write, Edit/)
+assert.match(read(`${claude.root}/${claude.orchestratorAgent}`), /skills: project-intelligence, workflow-orchestrator/)
 
 const copilot = registry.providers.find((entry) => entry.id === 'copilot')!
 assert.equal(copilot.manifest, null, 'Copilot must use repository skill/agent surfaces, not a fabricated plugin manifest')
 assert.match(read(`${copilot.root}/${copilot.agent}`), /tools: \["read", "search", "execute"\]/)
+assert.match(read(`${copilot.root}/${copilot.orchestratorAgent}`), /tools: \["read", "search", "edit", "execute", "agent"\]/)
 
 const packaging = parseJson<{ providers: Array<{ id: string; distributionRoot: string }> }>('docs/roadmap/post-17-provider-packaging.json')
 for (const provider of registry.providers) {
@@ -114,4 +144,4 @@ for (const entry of fs.readdirSync(path.join(root, 'providers'), { recursive: tr
   assert.ok(!/^\.env(?:\.|$)/.test(entry.name), `provider package contains forbidden environment file ${entry.name}`)
 }
 
-console.log('provider-bundles.test: PASS (3 providers, one core version, identical thin skills, manifest/agent/security contracts)')
+console.log('provider-bundles.test: PASS (3 providers, 2 byte-identical skills, one core version, manifest/agent/security contracts)')

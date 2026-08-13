@@ -8,7 +8,7 @@ styling stack, data layer, package manager, task names, or reference-feature lay
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.1.0` |
+| Bundle version | `0.2.0` |
 | Shared core schema | `1.0.0` |
 | Runtime | Node.js 20+ with `tsx` |
 | License | Apache-2.0 |
@@ -25,6 +25,8 @@ exists.
 .codex-plugin/plugin.json
 skills/project-intelligence/SKILL.md
 skills/project-intelligence/agents/openai.yaml
+skills/workflow-orchestrator/SKILL.md
+skills/workflow-orchestrator/agents/openai.yaml
 README.md
 ```
 
@@ -46,6 +48,10 @@ The profiler emits one `@@PROJECT_PROFILE@@` JSON envelope. Exit `0` means the p
 exit `1` means the profile is valid but needs input (or inspection failed safely); exit `2` means
 the CLI arguments are invalid. Provider instructions must not parse ad-hoc text or bypass the
 runtime validator.
+
+The Workflow Orchestrator then uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT@@` response to
+create or validate phase envelopes, resume from a verified prefix, and compare semantic conservation
+against the sanctioned golden. It never turns a provider action smoke into completion evidence.
 
 ## Failure and security behavior
 

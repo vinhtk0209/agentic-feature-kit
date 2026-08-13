@@ -9,7 +9,7 @@ manager, task names, or reference-feature layout.
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.1.0` |
+| Bundle version | `0.2.0` |
 | Shared core schema | `1.0.0` |
 | Runtime | Node.js 20+ with `tsx` |
 | License | Apache-2.0 |
@@ -25,6 +25,8 @@ unit is the repository's `.github` content.
 ```text
 .github/skills/project-intelligence/SKILL.md
 .github/agents/project-intelligence.agent.md
+.github/skills/workflow-orchestrator/SKILL.md
+.github/agents/workflow-orchestrator.agent.md
 README.md
 ```
 
@@ -46,6 +48,10 @@ npm run test:provider-bundles
 The profiler emits one `@@PROJECT_PROFILE@@` JSON envelope. Exit `0` means the profile is ready;
 exit `1` means the profile is valid but needs input (or inspection failed safely); exit `2` means
 the CLI arguments are invalid. The agent must stop on any invalid transport or `needs_input` status.
+
+The Workflow Orchestrator uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT@@` response to
+create or validate phase envelopes, resume from verified evidence, and preserve literal human and
+trusted computed gates. Delegated agents cannot alter the canonical phase order or claim done.
 
 ## Failure and security behavior
 

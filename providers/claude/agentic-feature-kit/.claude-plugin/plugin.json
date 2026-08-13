@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "agentic-feature-kit",
   "displayName": "Agentic Feature Kit",
-  "version": "0.1.0",
-  "description": "Evidence-backed project intelligence and provider-neutral feature workflow contracts for Claude Code.",
+  "version": "0.2.0",
+  "description": "Evidence-backed project intelligence and a resumable provider-neutral feature workflow for Claude Code.",
   "author": {
     "name": "Agentic Feature Kit contributors",
     "url": "https://github.com/vinhtk0209"
@@ -13,5 +13,5 @@
   "license": "Apache-2.0",
   "keywords": ["agentic-workflow", "project-intelligence", "software-delivery"],
   "skills": "./skills/",
-  "agents": ["./agents/project-intelligence.md"]
+  "agents": ["./agents/project-intelligence.md", "./agents/workflow-orchestrator.md"]
 }

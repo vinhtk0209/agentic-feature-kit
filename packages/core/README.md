@@ -26,6 +26,21 @@ kit's existing Node 20+ runtime, and completes the bounded depth-two scan withou
 performance bottleneck. Python, Rust, or Go may replace a component only after a reproducible
 benchmark or missing Node capability is recorded; language novelty alone is not a migration reason.
 
+## Workflow Orchestrator
+
+The Orchestrator contract validates all 23 mandatory phases plus conditional `D-cross-2`, exact
+input/output keys, content-addressed artifact references, non-auto-approved gates, chained
+transitions, resume prefixes, and conservation against the sanctioned golden capture.
+
+```bash
+npx tsx packages/core/src/workflow-orchestrator-cli.ts resume
+```
+
+Requests are bounded JSON on stdin. The CLI emits exactly one `@@ORCHESTRATOR_RESULT@@` envelope
+and never writes files. Supported modes are `create-envelope`, `validate-envelope`, `resume`,
+and `compare-golden`. Provider skills remain thin and cannot redefine ordering, gates, evidence,
+or completion semantics.
+
 ## Stability
 
 - Schema version: `1.0.0`
