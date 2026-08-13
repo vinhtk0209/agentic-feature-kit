@@ -253,7 +253,7 @@
       "initiative": "P17-I3",
       "wave": 2,
       "priority": "P1",
-      "status": "backlog",
+      "status": "in_progress",
       "dependencies": ["P17-000"],
       "backlogRefs": ["feedback: zero Windows bugs", "feedback: real Windows CI", "feedback: shell date/stat"],
       "problem": "Local Windows fixes exist, but GitHub CI currently proves only Ubuntu.",

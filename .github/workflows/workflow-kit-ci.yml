@@ -1,13 +1,8 @@
 # Workflow Kit CI — runs the deterministic self-test + drift gates for the
 # .claude/ feature-from-confluence toolchain on every PR / push to develop|main.
 #
-# Scope note (intentional): this gates ONLY the workflow kit (`npm run test:kit`,
-# which chains the 13 integration test suites + `workflow:index --check` + the
-# prompt-budget ratchet `--gate`). It deliberately does NOT run full-app
-# `npm run types` / `npm run lint` / `npm test`, which currently carry
-# pre-existing app type/lint debt unrelated to the kit and would make this red
-# on day one. Enabling full-app gates is a separate cleanup (see
-# docs/claude-commands/AUDIT-ACTION-LIST.md).
+# Scope note: this qualifies the workflow kit on both supported release
+# platforms. Full host-application checks remain outside this kit boundary.
 name: Workflow Kit CI
 
 on:
@@ -15,9 +10,22 @@ on:
   push:
     branches: [develop, main]
 
+permissions:
+  contents: read
+
 jobs:
   kit-verify:
-    runs-on: ubuntu-latest
+    name: Kit verify (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+          - platform: windows
+            os: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,5 +34,44 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Run cross-platform smoke
+        env:
+          QUALIFICATION_PLATFORM: ${{ matrix.platform }}
+          QUALIFICATION_OUT: artifacts/cross-platform/${{ matrix.platform }}.json
+        run: npm run test:cross-platform
       - name: Run workflow-kit self-test + drift gates
         run: npm run test:kit
+      - name: Upload platform qualification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qualification-${{ matrix.platform }}
+          path: artifacts/cross-platform/${{ matrix.platform }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  release-gate:
+    name: Release qualification gate
+    if: always()
+    needs: [kit-verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      MATRIX_RESULT: ${{ needs.kit-verify.result }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install gate dependencies
+        run: npm ci --ignore-scripts
+      - name: Download platform qualifications
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: qualification-*
+          path: artifacts/cross-platform
+          merge-multiple: true
+      - name: Require the complete successful matrix
+        run: npm run release:matrix-gate -- artifacts/cross-platform
