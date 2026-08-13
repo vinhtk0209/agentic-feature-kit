@@ -1,5 +1,25 @@
 # Agentic Feature Kit for Codex
 
+This directory is a Codex plugin source package. Release ZIPs add a self-contained Node 20+ runtime,
+schemas, contracts, license, and a content-addressed `bundle-manifest.json` without changing the
+plugin discovery layout.
+
+## Verify and use
+
+1. Verify the release ZIP against the adjacent `SHA256SUMS` entry.
+2. Extract it and keep `agentic-feature-kit/` as the plugin root; `.codex-plugin/plugin.json` must
+   remain directly below that root.
+3. Add that root to a configured local or team marketplace, or place it under the standard personal
+   marketplace's `plugins/agentic-feature-kit` source path. Use Codex's supported plugin UI/CLI for
+   that marketplace; do not copy only the `skills/` directory.
+4. Verify local runtime availability without provider execution:
+   `node runtime/project-intelligence.cjs <repository-root>` and pipe a JSON request to
+   `node runtime/workflow-orchestrator.cjs resume`.
+5. Restart or open a new Codex task after installation so discovery is refreshed.
+
+The package does not modify marketplace configuration automatically and contains no credentials,
+hooks, MCP servers, or standalone-agent manifest. Both skills call one bundled shared core.
+
 The Codex source package exposes evidence-backed Project Intelligence as an Agent Skill. It profiles
 the repository before implementation so Codex does not guess the framework, router, i18n system,
 styling stack, data layer, package manager, task names, or reference-feature layout.
@@ -10,14 +30,13 @@ styling stack, data layer, package manager, task names, or reference-feature lay
 |---|---|
 | Bundle version | `0.2.0` |
 | Shared core schema | `1.0.0` |
-| Runtime | Node.js 20+ with `tsx` |
+| Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
-| Distribution stage | Versioned source package |
+| Distribution stage | Deterministic directory + ZIP archive |
 
-This package is public-ready source, but it is not yet a self-contained install archive. `P17-008`
-will add the archive builder, content allowlist, clean-install smoke test, and release checksum. Do
-not copy this directory into a user plugin directory and claim install parity before that evidence
-exists.
+The release directory and ZIP are self-contained and covered by clean-copy runtime smoke tests. The
+source package in this repository intentionally omits generated runtime files; create them with
+`npm run build:providers`.
 
 ## Package layout
 
@@ -27,6 +46,14 @@ skills/project-intelligence/SKILL.md
 skills/project-intelligence/agents/openai.yaml
 skills/workflow-orchestrator/SKILL.md
 skills/workflow-orchestrator/agents/openai.yaml
+runtime/project-intelligence.cjs
+runtime/workflow-orchestrator.cjs
+docs/schemas/*
+docs/roadmap/post-17-orchestrator-*.json
+bundle-manifest.json
+LICENSE
+THIRD_PARTY_NOTICES.md
+licenses/typescript-LICENSE.txt
 README.md
 ```
 
@@ -42,6 +69,7 @@ npm ci
 npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
 npm run test:provider-bundles
+npm run test:provider-distribution
 ```
 
 The profiler emits one `@@PROJECT_PROFILE@@` JSON envelope. Exit `0` means the profile is ready;
@@ -65,8 +93,8 @@ against the sanctioned golden. It never turns a provider action smoke into compl
 ## Compatibility
 
 The source package is validated against the local Codex plugin ingestion contract with the official
-plugin and skill validators. The canonical business logic remains in `packages/core`; this adapter
-contains discovery metadata and invocation policy only.
+plugin and skill validators. Canonical source remains in `packages/core`; release launchers are
+generated from that source, and the adapter contains discovery metadata and invocation policy only.
 
 See [`providers/README.md`](../../README.md) for the cross-provider version contract and the
 repository root `LICENSE` for Apache-2.0 terms.

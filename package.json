@@ -20,6 +20,7 @@
     "model:chain": "npx tsx .claude/integrations/model-config.ts",
     "hooks:list": "npx tsx .claude/integrations/hooks.ts --list",
     "build:copilot": "npx tsx scripts/build-copilot-edition.ts",
+    "build:providers": "npx tsx scripts/build-provider-bundles.ts",
     "changelog": "npx tsx scripts/changelog.ts",
     "release": "npx tsx scripts/changelog.ts --write",
     "release:dry": "npx tsx scripts/changelog.ts --dry",
@@ -112,6 +113,7 @@
     "test:provider-bundles": "npx tsx packages/core/test/provider-bundles.test.ts",
     "test:workflow-orchestrator": "npx tsx packages/core/test/workflow-orchestrator.test.ts",
     "test:workflow-orchestrator-cli": "npx tsx packages/core/test/workflow-orchestrator-cli.test.ts",
+    "test:provider-distribution": "npx tsx scripts/build-provider-bundles.test.ts",
     "test:sync-rollback": "npx tsx scripts/sync-rollback.test.ts",
     "test:sync-verify-guard": "npx tsx scripts/sync-verify-guard.test.ts",
     "test:build-copilot": "npx tsx scripts/build-copilot-edition.test.ts",
@@ -124,7 +126,7 @@
     "test:design-match-handoff": "npx tsx .claude/integrations/design-match-handoff.test.ts",
     "test:design-to-ui-wiring": "npx tsx .claude/commands/feature-from-confluence.design-to-ui-wiring.test.ts",
     "test:design-to-ui-dry-run": "npx tsx .claude/integrations/design-to-ui-dry-run.test.ts",
-    "test:kit": "npm run test:lint-feature && npm run test:classification-flags && npm run test:ownership && npm run test:integration && npm run test:record-verify && npm run test:b11-runner && npm run test:b11-runner-order && npm run test:eval-feature && npm run test:eval-ab && npm run test:eval-regression && npm run test:lesson-registry && npm run test:improve-trigger && npm run test:self-improvement-cycle && npm run test:prompt-budget && npm run test:contract-probe && npm run test:contract-probe-realfile && npm run test:contract-probe-defer && npm run test:continuous-assurance && npm run test:confluence-http && npm run test:confluence-markdown && npm run test:o2-baseline-capture && npm run test:confluence-refetch-actor && npm run test:confluence-b0-intake && npm run test:baseline-http-gen && npm run test:d-cross-2 && npm run test:learned-config && npm run test:friction-meter && npm run test:feature-index && npm run test:feature-digest && npm run test:memory && npm run test:regression-corpus && npm run test:model-config && npm run test:multi-provider && npm run test:codex-cli-adapter && npm run test:copilot-cli-adapter && npm run test:gemini-cli-adapter && npm run test:grok-api-adapter && npm run test:i2-codex-smoke && npm run test:i2-provider-smoke && npm run test:i2-live-evidence && npm run test:multi-agent-orchestration && npm run test:multi-agent-runtime && npm run test:p2-transport && npm run test:p2-transport-cli && npm run test:p2-operator-demo && npm run test:p2-live-merge && npm run test:evidence-bundle && npm run test:pre-commit && npm run test:hooks && npm run test:changelog && npm run test:post-17-roadmap && npm run test:post-17-wave-1-inputs && npm run test:project-intelligence && npm run test:provider-bundles && npm run test:workflow-orchestrator && npm run test:workflow-orchestrator-cli && npm run test:sync-rollback && npm run test:sync-verify-guard && npm run test:build-copilot && npm run test:telemetry && npm run test:kit-event && npm run test:playwright-runner && npm run test:design-matcher && npm run test:figma-rest-source && npm run version:check && npm run workflow:index:check && npx tsx .claude/integrations/prompt-budget.ts --gate && npm run check:lessons-sync",
+    "test:kit": "npm run test:lint-feature && npm run test:classification-flags && npm run test:ownership && npm run test:integration && npm run test:record-verify && npm run test:b11-runner && npm run test:b11-runner-order && npm run test:eval-feature && npm run test:eval-ab && npm run test:eval-regression && npm run test:lesson-registry && npm run test:improve-trigger && npm run test:self-improvement-cycle && npm run test:prompt-budget && npm run test:contract-probe && npm run test:contract-probe-realfile && npm run test:contract-probe-defer && npm run test:continuous-assurance && npm run test:confluence-http && npm run test:confluence-markdown && npm run test:o2-baseline-capture && npm run test:confluence-refetch-actor && npm run test:confluence-b0-intake && npm run test:baseline-http-gen && npm run test:d-cross-2 && npm run test:learned-config && npm run test:friction-meter && npm run test:feature-index && npm run test:feature-digest && npm run test:memory && npm run test:regression-corpus && npm run test:model-config && npm run test:multi-provider && npm run test:codex-cli-adapter && npm run test:copilot-cli-adapter && npm run test:gemini-cli-adapter && npm run test:grok-api-adapter && npm run test:i2-codex-smoke && npm run test:i2-provider-smoke && npm run test:i2-live-evidence && npm run test:multi-agent-orchestration && npm run test:multi-agent-runtime && npm run test:p2-transport && npm run test:p2-transport-cli && npm run test:p2-operator-demo && npm run test:p2-live-merge && npm run test:evidence-bundle && npm run test:pre-commit && npm run test:hooks && npm run test:changelog && npm run test:post-17-roadmap && npm run test:post-17-wave-1-inputs && npm run test:project-intelligence && npm run test:provider-bundles && npm run test:workflow-orchestrator && npm run test:workflow-orchestrator-cli && npm run test:provider-distribution && npm run test:sync-rollback && npm run test:sync-verify-guard && npm run test:build-copilot && npm run test:telemetry && npm run test:kit-event && npm run test:playwright-runner && npm run test:design-matcher && npm run test:figma-rest-source && npm run version:check && npm run workflow:index:check && npx tsx .claude/integrations/prompt-budget.ts --gate && npm run check:lessons-sync",
     "test": "npm run test:kit"
   },
   "devDependencies": {
@@ -133,6 +135,7 @@
     "playwright": "^1.60.0",
     "@playwright/test": "^1.60.0",
     "@axe-core/playwright": "^4.11.3",
+    "esbuild": "~0.28.0",
     "@types/pngjs": "^6.0.5",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0"

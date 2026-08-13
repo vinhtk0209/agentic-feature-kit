@@ -1,5 +1,25 @@
 # Agentic Feature Kit for GitHub Copilot
 
+This directory is a repository customization bundle, not a fabricated Copilot plugin. Release ZIPs
+add a self-contained Node 20+ runtime, schemas, contracts, license, and a content-addressed
+`bundle-manifest.json`; official discovery content remains under `.github/skills/` and
+`.github/agents/`.
+
+## Verify and use
+
+1. Verify the release ZIP against the adjacent `SHA256SUMS` entry.
+2. Extract it outside the destination repository and review `bundle-manifest.json`.
+3. Copy the extracted `.github/skills/` and `.github/agents/` trees into the repository that should
+   use them. Keep `runtime/` and `docs/` together in a stable project-owned tool directory, then
+   update local invocation paths if that directory is not the extracted bundle root.
+4. Verify the runtime offline before asking Copilot to use the skills:
+   `node runtime/project-intelligence.cjs <repository-root>` and pipe a JSON request to
+   `node runtime/workflow-orchestrator.cjs resume`.
+5. Commit repository customization only through that repository's normal review process.
+
+The bundle has no plugin manifest, credentials, provider calls, or forked business rules. Copilot
+skills and agent profiles rely on the same shared runtime and contract versions as Codex and Claude.
+
 The GitHub Copilot source bundle exposes evidence-backed Project Intelligence through the supported
 repository skill and custom-agent surfaces. It profiles the repository before implementation so
 Copilot does not guess the framework, router, i18n system, styling stack, data layer, package
@@ -11,14 +31,14 @@ manager, task names, or reference-feature layout.
 |---|---|
 | Bundle version | `0.2.0` |
 | Shared core schema | `1.0.0` |
-| Runtime | Node.js 20+ with `tsx` |
+| Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
-| Distribution stage | Versioned repository source bundle |
+| Distribution stage | Deterministic repository bundle + ZIP archive |
 
-This bundle is public-ready source, but it is not yet a self-contained copy/install artifact.
-`P17-008` will add the content allowlist, clean-copy discovery smoke, version checksum, and release
-archive. GitHub Copilot has no plugin manifest in this bundle because its documented customization
-unit is the repository's `.github` content.
+The release directory and ZIP are self-contained and covered by clean-copy runtime smoke tests. The
+source package in this repository intentionally omits generated runtime files; create them with
+`npm run build:providers`. GitHub Copilot has no plugin manifest because its documented
+customization unit is repository `.github` content.
 
 ## Bundle layout
 
@@ -27,6 +47,14 @@ unit is the repository's `.github` content.
 .github/agents/project-intelligence.agent.md
 .github/skills/workflow-orchestrator/SKILL.md
 .github/agents/workflow-orchestrator.agent.md
+runtime/project-intelligence.cjs
+runtime/workflow-orchestrator.cjs
+docs/schemas/*
+docs/roadmap/post-17-orchestrator-*.json
+bundle-manifest.json
+LICENSE
+THIRD_PARTY_NOTICES.md
+licenses/typescript-LICENSE.txt
 README.md
 ```
 
@@ -43,6 +71,7 @@ npm ci
 npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
 npm run test:provider-bundles
+npm run test:provider-distribution
 ```
 
 The profiler emits one `@@PROJECT_PROFILE@@` JSON envelope. Exit `0` means the profile is ready;
@@ -66,8 +95,9 @@ trusted computed gates. Delegated agents cannot alter the canonical phase order 
 
 The bundle follows GitHub's `.github/skills/<name>/SKILL.md` and
 `.github/agents/<name>.agent.md` conventions. It intentionally contains no fabricated provider
-manifest. The canonical business logic remains in `packages/core`; this adapter contains only
-discovery metadata, portable tool aliases, and invocation policy.
+manifest. Canonical source remains in `packages/core`; release launchers are generated from that
+source, and the adapter contains only discovery metadata, portable tool aliases, and invocation
+policy.
 
 See [`providers/README.md`](../../README.md) for the cross-provider version contract and the
 repository root `LICENSE` for Apache-2.0 terms.

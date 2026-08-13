@@ -12,10 +12,12 @@ prompt or infer a framework from missing evidence.
 ## Workflow
 
 1. Resolve the repository root the user placed in scope.
-2. Resolve the packaged shared-core launcher. In a source checkout, the canonical entry point is
+2. Resolve the packaged shared-core launcher. In a distribution bundle, use
+   `runtime/project-intelligence.cjs`; in a source checkout, use
    `packages/core/src/project-intelligence.ts`.
-3. Run the launcher with exactly one repository-root argument. In a source checkout:
-   `npx tsx packages/core/src/project-intelligence.ts <repository-root>`.
+3. Run the launcher with exactly one repository-root argument. Prefer
+   `node runtime/project-intelligence.cjs <repository-root>` from an extracted bundle. In a source
+   checkout, use `npx tsx packages/core/src/project-intelligence.ts <repository-root>`.
 4. Accept exactly one stdout line beginning with `@@PROJECT_PROFILE@@` and validate the JSON as
    Project Profile schema `1.0.0`.
 5. If `status` is `needs_input`, stop feature planning and report every issue with its evidence

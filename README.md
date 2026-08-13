@@ -23,14 +23,17 @@ guesses before feature planning.
 
 | Provider | Supported source surface | Current status |
 |---|---|---|
-| Codex | `.codex-plugin/plugin.json` + Agent Skills | Project Intelligence + Workflow Orchestrator source adapters `0.2.0` |
-| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Project Intelligence + Workflow Orchestrator source adapters `0.2.0` |
-| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Project Intelligence + Workflow Orchestrator source adapters `0.2.0` |
+| Codex | `.codex-plugin/plugin.json` + Agent Skills | Self-contained directory + deterministic ZIP `0.2.0` |
+| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Self-contained directory + deterministic ZIP `0.2.0` |
+| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Self-contained repository bundle + deterministic ZIP `0.2.0` |
 
-These are public-ready source packages, not yet self-contained install archives. The
-provider-neutral Workflow Orchestrator contract is available; `P17-008` produces versioned standalone bundles and clean
-install smoke evidence. See `providers/README.md` for the exact security, validation, and release
-boundaries. No package publication or marketplace registration is performed by the build/test flow.
+Run `npm run build:providers` to generate all three distributions under ignored
+`dist/provider-bundles/0.2.0/`. Every bundle carries the same bundled Node 20+ shared runtime,
+schemas/contracts, Apache-2.0 license, content-addressed manifest, and release checksum. The clean
+distribution suite executes both capabilities from extracted archives without `tsx`, a source
+checkout, or repository `node_modules`. See `providers/README.md` for provider-specific use and
+verification. No installation, package publication, marketplace registration, provider execution,
+sync, or push is performed by the build/test flow.
 
 ## Setup
 

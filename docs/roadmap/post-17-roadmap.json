@@ -234,7 +234,7 @@
       "initiative": "P17-I3",
       "wave": 3,
       "priority": "P0",
-      "status": "ready",
+      "status": "done",
       "dependencies": ["P17-001", "P17-002"],
       "backlogRefs": ["4", "feedback: no npm package", "feedback: private release gaps"],
       "problem": "Copying a private repository is not an installable, versioned product distribution story.",

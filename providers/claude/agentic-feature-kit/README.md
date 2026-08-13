@@ -1,5 +1,24 @@
 # Agentic Feature Kit for Claude Code
 
+This directory is a Claude Code plugin source package. Release ZIPs add a self-contained Node 20+
+runtime, schemas, contracts, license, and a content-addressed `bundle-manifest.json` while keeping
+`.claude-plugin/plugin.json`, `skills/`, and `agents/` at the plugin root.
+
+## Verify and use
+
+1. Verify the release ZIP against the adjacent `SHA256SUMS` entry.
+2. Extract it and keep `agentic-feature-kit/` as the plugin root.
+3. For a bounded local evaluation, start Claude Code with its documented
+   `--plugin-dir <path-to-agentic-feature-kit>` option. Permanent installation or marketplace
+   publication is a separate operator action.
+4. Verify the packaged runtime offline first:
+   `node runtime/project-intelligence.cjs <repository-root>` and pipe a JSON request to
+   `node runtime/workflow-orchestrator.cjs resume`.
+5. Require the plugin validator to pass before distributing the directory or archive.
+
+The package contains no credentials, hooks, MCP configuration, or provider-specific gate logic.
+Both skills and both read-only agent profiles use one bundled shared core.
+
 The Claude Code source package exposes evidence-backed Project Intelligence as both a skill and a
 read-only specialized agent. It profiles the repository before implementation so Claude does not
 guess the framework, router, i18n system, styling stack, data layer, package manager, task names, or
@@ -11,13 +30,13 @@ reference-feature layout.
 |---|---|
 | Bundle version | `0.2.0` |
 | Shared core schema | `1.0.0` |
-| Runtime | Node.js 20+ with `tsx` |
+| Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
-| Distribution stage | Versioned source package |
+| Distribution stage | Deterministic directory + ZIP archive |
 
-This package is public-ready source, but it is not yet a self-contained install archive. `P17-008`
-will add the archive builder, content allowlist, clean-install smoke test, and release checksum.
-Local source validation does not install or enable the plugin.
+The release directory and ZIP are self-contained and covered by clean-copy runtime smoke tests. The
+source package in this repository intentionally omits generated runtime files; create them with
+`npm run build:providers`. Local validation does not install or enable the plugin.
 
 ## Package layout
 
@@ -27,6 +46,14 @@ skills/project-intelligence/SKILL.md
 agents/project-intelligence.md
 skills/workflow-orchestrator/SKILL.md
 agents/workflow-orchestrator.md
+runtime/project-intelligence.cjs
+runtime/workflow-orchestrator.cjs
+docs/schemas/*
+docs/roadmap/post-17-orchestrator-*.json
+bundle-manifest.json
+LICENSE
+THIRD_PARTY_NOTICES.md
+licenses/typescript-LICENSE.txt
 README.md
 ```
 
@@ -43,6 +70,7 @@ npm ci
 npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
 npm run test:provider-bundles
+npm run test:provider-distribution
 claude plugin validate providers/claude/agentic-feature-kit --strict
 ```
 
@@ -66,9 +94,9 @@ trusted computed gates. Its agent coordinates work but cannot approve its own ST
 ## Compatibility
 
 The layout follows Claude Code's `.claude-plugin/plugin.json`, `skills/`, and `agents/` contracts.
-The package passes `claude plugin validate --strict` locally. The canonical business logic remains
-in `packages/core`; this adapter contains only discovery metadata, tool limits, and invocation
-policy.
+The package passes `claude plugin validate --strict` locally. Canonical source remains in
+`packages/core`; release launchers are generated from that source, and the adapter contains only
+discovery metadata, tool limits, and invocation policy.
 
 See [`providers/README.md`](../../README.md) for the cross-provider version contract and the
 repository root `LICENSE` for Apache-2.0 terms.

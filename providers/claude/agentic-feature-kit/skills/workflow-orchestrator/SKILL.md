@@ -25,8 +25,8 @@ If an input is missing or contradictory, stop before running a phase.
 ## Run or resume
 
 1. Call the shared Orchestrator CLI through stdin, never by interpolating untrusted JSON into a
-   shell command:
-   `npx tsx packages/core/src/workflow-orchestrator-cli.ts resume`.
+   shell command. Prefer `node runtime/workflow-orchestrator.cjs resume` from an extracted bundle.
+   In a source checkout, use `npx tsx packages/core/src/workflow-orchestrator-cli.ts resume`.
 2. Trust only the single `@@ORCHESTRATOR_RESULT@@` envelope. A nonzero exit, malformed envelope,
    invalid hash, broken predecessor, missing artifact, extra artifact, or contract mismatch blocks.
 3. Resume at `resumeFromPhase`. Never replay a completed intake phase and never skip the first

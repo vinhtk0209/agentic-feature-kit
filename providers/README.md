@@ -14,9 +14,14 @@ invented plugin manifest: its supported distribution unit is the repository cust
 
 ## Development status
 
-Version `0.2.0` contains both Project Intelligence and the Workflow Orchestrator source adapters.
-Self-contained archive builds and clean-install smoke tests belong to `P17-008`.
-Until that task is complete, use these packages from an Agentic Feature Kit source checkout.
+Version `0.2.0` contains both Project Intelligence and the Workflow Orchestrator. Run
+`npm run build:providers` to create three self-contained directories, deterministic ZIP archives,
+per-bundle content manifests, and `SHA256SUMS` under `dist/provider-bundles/0.2.0/`.
+
+Each extracted bundle includes bundled Node 20+ launchers under `runtime/`; it does not need `tsx`,
+the monorepo, or repository `node_modules`. Validate `SHA256SUMS` before extraction, then follow the
+provider README. Building is local and offline after dependencies are installed; it never installs,
+publishes, syncs, pushes, or invokes an external provider.
 
 ## Security boundary
 
@@ -27,8 +32,9 @@ and push are not performed by repository validation.
 
 ## Validation
 
-Run the repository tests plus the provider-specific manifest/skill validators documented in the
-evidence for the current wave. Generated archives belong in ignored `dist/`; never edit generated
+Run `npm run test:provider-distribution` for deterministic archive, content-integrity, version-sync,
+and isolated runtime smoke coverage. Run the provider-specific manifest/skill validators documented
+in the evidence before release. Generated archives belong in ignored `dist/`; never edit generated
 artifacts as source.
 
 All packages are licensed under Apache-2.0; see the repository root `LICENSE`.

@@ -4,6 +4,18 @@
   "bundleVersion": "0.2.0",
   "sharedCoreVersion": "1.0.0",
   "sourceMode": "monorepo",
+  "distribution": {
+    "builder": "scripts/build-provider-bundles.ts",
+    "outputRoot": "dist/provider-bundles",
+    "archiveFormat": "zip",
+    "checksumFile": "SHA256SUMS",
+    "manifest": "bundle-manifest.json",
+    "nodeEngine": ">=20",
+    "runtime": {
+      "projectIntelligence": "runtime/project-intelligence.cjs",
+      "workflowOrchestrator": "runtime/workflow-orchestrator.cjs"
+    }
+  },
   "providers": [
     {
       "id": "codex",

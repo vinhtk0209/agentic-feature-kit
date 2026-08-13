@@ -19,6 +19,15 @@ interface ProviderRegistry {
   bundleVersion: string
   sharedCoreVersion: string
   sourceMode: string
+  distribution: {
+    builder: string
+    outputRoot: string
+    archiveFormat: string
+    checksumFile: string
+    manifest: string
+    nodeEngine: string
+    runtime: { projectIntelligence: string; workflowOrchestrator: string }
+  }
   providers: ProviderEntry[]
 }
 
@@ -58,6 +67,18 @@ assert.equal(registry.product, 'agentic-feature-kit')
 assert.equal(registry.bundleVersion, '0.2.0')
 assert.equal(registry.sharedCoreVersion, '1.0.0')
 assert.equal(registry.sourceMode, 'monorepo')
+assert.deepEqual(registry.distribution, {
+  builder: 'scripts/build-provider-bundles.ts',
+  outputRoot: 'dist/provider-bundles',
+  archiveFormat: 'zip',
+  checksumFile: 'SHA256SUMS',
+  manifest: 'bundle-manifest.json',
+  nodeEngine: '>=20',
+  runtime: {
+    projectIntelligence: 'runtime/project-intelligence.cjs',
+    workflowOrchestrator: 'runtime/workflow-orchestrator.cjs',
+  },
+})
 assert.deepEqual(registry.providers.map((entry) => entry.id), ['codex', 'claude', 'copilot'])
 
 const projectCore = read('packages/core/src/project-intelligence.ts')

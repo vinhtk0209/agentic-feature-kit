@@ -72,6 +72,23 @@ function emit(payload: unknown): void {
   process.stdout.write(`${ORCHESTRATOR_RESULT_SENTINEL}${JSON.stringify(payload)}\n`)
 }
 
+function resolveContractRoot(): string {
+  const candidates = [
+    process.env.AGENTIC_FEATURE_KIT_ROOT,
+    process.cwd(),
+    path.resolve(__dirname, '..'),
+    path.resolve(__dirname, '..', '..', '..'),
+  ].filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
+  for (const candidate of candidates) {
+    const root = path.resolve(candidate)
+    if (
+      fs.existsSync(path.join(root, 'docs', 'roadmap', 'post-17-orchestrator-boundaries.json'))
+      && fs.existsSync(path.join(root, 'docs', 'roadmap', 'post-17-orchestrator-golden.json'))
+    ) return root
+  }
+  throw new Error('packaged orchestrator contracts are unavailable')
+}
+
 export async function runWorkflowOrchestratorCli(args: string[] = process.argv.slice(2)): Promise<number> {
   const modes: Mode[] = ['create-envelope', 'validate-envelope', 'resume', 'compare-golden']
   if (args.length !== 1 || !modes.includes(args[0] as Mode)) {
@@ -86,8 +103,9 @@ export async function runWorkflowOrchestratorCli(args: string[] = process.argv.s
     } catch {
       throw new Error('stdin must contain exactly one valid JSON value')
     }
-    const boundary = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'docs', 'roadmap', 'post-17-orchestrator-boundaries.json'), 'utf8')) as unknown
-    const golden = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'docs', 'roadmap', 'post-17-orchestrator-golden.json'), 'utf8')) as unknown
+    const contractRoot = resolveContractRoot()
+    const boundary = JSON.parse(fs.readFileSync(path.join(contractRoot, 'docs', 'roadmap', 'post-17-orchestrator-boundaries.json'), 'utf8')) as unknown
+    const golden = JSON.parse(fs.readFileSync(path.join(contractRoot, 'docs', 'roadmap', 'post-17-orchestrator-golden.json'), 'utf8')) as unknown
     const result = executeOrchestratorRequest(args[0] as Mode, request, boundary, golden)
     emit({ schemaVersion: '1.0.0', ok: true, result })
     return 0
