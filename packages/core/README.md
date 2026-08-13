@@ -41,6 +41,20 @@ and never writes files. Supported modes are `create-envelope`, `validate-envelop
 and `compare-golden`. Provider skills remain thin and cannot redefine ordering, gates, evidence,
 or completion semantics.
 
+## Semantic Specification
+
+`src/semantic-spec.ts` converts source-backed acceptance criteria into schema `1.0.0` while keeping
+semantic identity separate from source provenance. Equivalent Confluence, Jira, or file fixtures
+can share a `semanticHash` while retaining different `provenanceHash` values and literal anchors.
+
+Every requested contract is explicit: one source-backed value is `known`, conflicting values are
+`conflict`, and missing values are `unknown`. For example, an unstated API contract produces
+`API_CONTRACT_UNSPECIFIED`; the core never invents an endpoint. JSON round trips are fail-closed,
+and semantic transforms must conserve requirement identities and provenance.
+
+The public JSON Schema is `docs/schemas/semantic-spec.schema.json`. Source transports remain adapter
+concerns and are deliberately outside this core contract.
+
 ## Stability
 
 - Schema version: `1.0.0`

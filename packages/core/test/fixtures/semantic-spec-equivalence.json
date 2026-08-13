@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0.0",
+  "cases": [
+    {
+      "name": "Confluence markdown table",
+      "input": {
+        "sourceKind": "confluence",
+        "sourceRef": "confluence:feature-101",
+        "sourceSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "title": "Export report",
+        "paragraphs": [
+          {
+            "anchor": "line:12",
+            "text": "| **AC1** | An instructor is on Progress & Reports | The instructor selects Export | A CSV report downloads | - |"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-1",
+            "text": "| **AC1** | An instructor is on Progress & Reports | The instructor selects Export | A CSV report downloads | - |",
+            "sourceAnchor": "line:12",
+            "sourceQuote": "| **AC1** | An instructor is on Progress & Reports | The instructor selects Export | A CSV report downloads | - |"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Jira prose",
+      "input": {
+        "sourceKind": "jira",
+        "sourceRef": "jira:FEATURE-101",
+        "sourceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "title": "Export report",
+        "paragraphs": [
+          {
+            "anchor": "description:ac-1",
+            "text": "AC1: Given an instructor is on Progress & Reports. When the instructor selects Export. Then a CSV report downloads."
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-1",
+            "text": "AC1: Given an instructor is on Progress & Reports. When the instructor selects Export. Then a CSV report downloads.",
+            "sourceAnchor": "description:ac-1",
+            "sourceQuote": "AC1: Given an instructor is on Progress & Reports. When the instructor selects Export. Then a CSV report downloads."
+          }
+        ]
+      }
+    }
+  ]
+}
