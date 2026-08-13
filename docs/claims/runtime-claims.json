@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "claims": [
+    {
+      "id": "roadmap-baseline-closed",
+      "severity": "critical",
+      "document": "docs/roadmap/post-17-roadmap.md",
+      "anchor": "honestly completed at **17/17**",
+      "probe": "roadmap-baseline"
+    },
+    {
+      "id": "release-version-consistent",
+      "severity": "critical",
+      "document": "README.md",
+      "anchor": "Kit version **v3.25**",
+      "probe": "release-version"
+    },
+    {
+      "id": "provider-capabilities-match",
+      "severity": "critical",
+      "document": "README.md",
+      "anchor": "dist/provider-bundles/0.3.0/",
+      "probe": "provider-capabilities"
+    },
+    {
+      "id": "copilot-generation-reproducible",
+      "severity": "high",
+      "document": "providers/README.md",
+      "anchor": "deterministic archive",
+      "probe": "copilot-reproducible"
+    },
+    {
+      "id": "distribution-is-local-only",
+      "severity": "critical",
+      "document": "README.md",
+      "anchor": "No installation, package publication, marketplace registration, provider execution,",
+      "probe": "distribution-local-only"
+    },
+    {
+      "id": "sync-is-fail-closed",
+      "severity": "critical",
+      "document": "README.md",
+      "anchor": "Real sync is fail-closed:",
+      "probe": "sync-fail-closed"
+    }
+  ]
+}

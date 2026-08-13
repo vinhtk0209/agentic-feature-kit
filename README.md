@@ -23,14 +23,15 @@ guesses before feature planning.
 
 | Provider | Supported source surface | Current status |
 |---|---|---|
-| Codex | `.codex-plugin/plugin.json` + Agent Skills | Self-contained directory + deterministic ZIP `0.2.0` |
-| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Self-contained directory + deterministic ZIP `0.2.0` |
-| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Self-contained repository bundle + deterministic ZIP `0.2.0` |
+| Codex | `.codex-plugin/plugin.json` + Agent Skills | Self-contained directory + deterministic ZIP `0.3.0` |
+| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Self-contained directory + deterministic ZIP `0.3.0` |
+| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Self-contained repository bundle + deterministic ZIP `0.3.0` |
 
 Run `npm run build:providers` to generate all three distributions under ignored
-`dist/provider-bundles/0.2.0/`. Every bundle carries the same bundled Node 20+ shared runtime,
+`dist/provider-bundles/0.3.0/`. Every bundle carries the same three Node 20+ shared runtimes
+(Project Intelligence, Conditional Quality Gates, and Workflow Orchestrator),
 schemas/contracts, Apache-2.0 license, content-addressed manifest, and release checksum. The clean
-distribution suite executes both capabilities from extracted archives without `tsx`, a source
+distribution suite executes all three capabilities from extracted archives without `tsx`, a source
 checkout, or repository `node_modules`. See `providers/README.md` for provider-specific use and
 verification. No installation, package publication, marketplace registration, provider execution,
 sync, or push is performed by the build/test flow.
@@ -59,13 +60,17 @@ npm test          # = npm run test:kit
 
 This kit is the **source of truth**. Use the sync script to push it into the repos that consume it (one-way, source always wins):
 
+Real sync is fail-closed: the current kit version must have a live `verified=true` record before any
+target write begins. The only explicit override is `--force-unverified "<reason>"`; dirty source
+also requires `--force-dirty`. Use `npm run sync:dry` for safe preview and guard verification.
+
 ```bash
 npm run sync          # copy allowlisted paths -> target repos, then report versions
 npm run sync:dry      # preview only (no files written, no Supabase write)
 ```
 
 - Targets + paths are declared in **`sync.config.json`** (`targets`, `syncPaths`). Only allowlisted paths (`commands/`, `integrations/`, `templates/`, `_content/`, `prompt-evolution.md`) are touched — anything else in a target (e.g. `.env`, `mcp-server/`) is left alone.
-- After copying, the script records each target's installed `PROMPT_VERSION` into Supabase (`installs` table) so the dashboard can show "installed vs running" per repo. This part is **best-effort** — a network failure only warns; the file sync still succeeds.
+- After an authorized, guard-approved copy, the script records each target's installed `PROMPT_VERSION` into Supabase (`installs` table) so the dashboard can show "installed vs running" per repo. Only this reporting step is **best-effort** — a reporting network failure warns after the guarded file sync; it does not bypass the pre-sync verification guard.
 - Supabase creds for the report come from the kit's own **`.env`** (`SUPABASE_URL`, `SUPABASE_ANON_KEY`; public anon key, RLS-protected). Missing creds → report skipped with a warning.
 
 ## Database migrations (Supabase)

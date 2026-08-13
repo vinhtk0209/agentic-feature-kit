@@ -86,9 +86,9 @@ export function renderCopilotInstructions(commands: CommandSummary[], version: s
 
 // ─── CLI ─────────────────────────────────────────────────────────────────────────
 
-function readVersion(): string {
+function readVersion(kitRoot = KIT_ROOT): string {
   try {
-    const f = path.join(KIT_ROOT, '.claude', 'commands', 'feature-from-confluence.md');
+    const f = path.join(kitRoot, '.claude', 'commands', 'feature-from-confluence.md');
     const m = fs.readFileSync(f, 'utf8').match(/PROMPT_VERSION:\s*v([\d.]+)/);
     return m ? m[1] : '0.0';
   } catch {
@@ -143,7 +143,7 @@ export function buildCopilotEdition(
     written.push(path.relative(outRoot, out));
   }
 
-  fs.writeFileSync(instrPath, renderCopilotInstructions(summaries, readVersion()), 'utf8');
+  fs.writeFileSync(instrPath, renderCopilotInstructions(summaries, readVersion(kitRoot)), 'utf8');
   return { instructions: path.relative(outRoot, instrPath), prompts: written, backedUp };
 }
 

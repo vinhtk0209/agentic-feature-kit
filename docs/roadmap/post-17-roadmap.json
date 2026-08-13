@@ -329,7 +329,7 @@
       "initiative": "P17-I3",
       "wave": 2,
       "priority": "P1",
-      "status": "backlog",
+      "status": "done",
       "dependencies": ["P17-000"],
       "backlogRefs": ["3", "feedback: version sync", "feedback: parity claims"],
       "problem": "Documentation, generated editions, and runtime behavior can drift while all files remain syntactically valid.",
