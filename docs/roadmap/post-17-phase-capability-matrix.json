@@ -1,0 +1,315 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "post-17-phase-capability-matrix",
+  "generatedOn": "2026-08-14",
+  "approvalBasis": "Operator-authorized post-17 durable goal; P17-002 orchestrator contract is done; P17-006 implementation remains readiness-gated until this artifact passes its attack suite.",
+  "sourceContracts": {
+    "phaseBoundary": {
+      "path": "docs/roadmap/post-17-orchestrator-boundaries.json",
+      "schemaVersion": "1.0.0",
+      "sha256": "56edbe192eac7ff7fcff39031e1cac923d3a18349027611beabe6389685e7c71"
+    },
+    "conservationGolden": {
+      "path": "docs/roadmap/post-17-orchestrator-golden.json",
+      "schemaVersion": "1.0.0",
+      "sha256": "5c8e446ad17874b68d221809540c9a4ca3436c73382b27a0f365c367431d34e2"
+    },
+    "kitModelInventory": {
+      "path": ".claude/integrations/model-config.ts",
+      "sha256": "b907dfbbcaf0748d893200f948105c46eae4cd8e5418efff8ee72f9902f9e68b",
+      "authority": "configured inventory only; it is not entitlement or phase-quality evidence"
+    },
+    "dashboardModelInventory": {
+      "workspaceRelativePath": "../kit-dashboard/server/runners/model-catalog.ts",
+      "sha256": "51b888f54e5c98ec11f49760a09a97e89093c7abc3bfe298ea945bc1fe5fc4b5",
+      "authority": "configured runner/model/effort allowlist only; it is not entitlement or phase-quality evidence"
+    }
+  },
+  "vocabulary": {
+    "decisionAuthorities": ["computed", "human"],
+    "modelUse": ["forbidden", "optional", "required", "conditional"],
+    "riskClasses": ["low", "standard", "high", "critical"],
+    "catalogEvidenceTiers": ["documented", "configured", "runtime-entitled", "phase-qualified"],
+    "modelCapabilities": [
+      "text-reasoning",
+      "code-reasoning",
+      "architecture-reasoning",
+      "vision-input",
+      "structured-output",
+      "agentic-tool-use",
+      "context-window-fit"
+    ],
+    "runtimeRequirements": [
+      "exact-source-binding",
+      "repository-read",
+      "repository-write",
+      "network-read",
+      "image-read",
+      "git-read",
+      "git-approved-write",
+      "package-approved-write",
+      "bounded-shell-read",
+      "bounded-shell-write",
+      "isolated-agent-context",
+      "independent-verifier-context",
+      "browser-read",
+      "human-decision-channel",
+      "trusted-evidence-writer"
+    ]
+  },
+  "catalogEvidencePolicy": {
+    "tierSemantics": [
+      {
+        "tier": "documented",
+        "meaning": "An official source documents an identifier or capability. It does not prove local configuration or access."
+      },
+      {
+        "tier": "configured",
+        "meaning": "The exact runner/model/effort tuple is allowlisted locally. It does not prove current account entitlement or successful execution."
+      },
+      {
+        "tier": "runtime-entitled",
+        "meaning": "A bounded, credential-safe runtime probe observed the exact tuple on this installation and account before its expiry. It does not prove phase quality."
+      },
+      {
+        "tier": "phase-qualified",
+        "meaning": "The exact tuple passed the versioned phase evaluation bound to the same phase-contract hash and capability hash before expiry."
+      }
+    ],
+    "routeMinimum": "phase-qualified",
+    "freshness": {
+      "officialCatalogMaxAgeDays": 7,
+      "runtimeEntitlementMaxAgeDays": 7,
+      "phaseQualificationMaxAgeDays": 30,
+      "expiredBehavior": "needs_input"
+    },
+    "unknownBehavior": "needs_input",
+    "rules": [
+      "Documentation, local configuration, runtime entitlement, and phase qualification are distinct evidence tiers and cannot be inferred from one another.",
+      "Every routable candidate must bind runner, provider, model, reasoning effort, adapter capability hash, phase id, and phase-contract hash.",
+      "A model alias is accepted only when the provider documents it as a pinned identity or the runtime probe records the resolved immutable model identity.",
+      "A catalog mismatch or expired source invalidates the candidate before provider execution.",
+      "No credential value, prompt body, private specification body, or provider response body belongs in catalog evidence."
+    ]
+  },
+  "selectionPolicy": {
+    "mode": "explicit-evidence-bound",
+    "modelMayDecideGate": false,
+    "steps": [
+      "Resolve the exact phase contract and decision authority.",
+      "Return no_model for model-forbidden phases and preserve their deterministic or human gate.",
+      "Filter candidates by unexpired catalog evidence, current runtime entitlement, exact phase qualification, required capability superset, context fit, supported effort, adapter capability hash, and runtime-permission compatibility.",
+      "Apply the operator-authored candidate order; performance may act only as a tie-breaker when its evidence policy is satisfied.",
+      "Persist the selected tuple, evidence identities, policy version, and explicit reason before execution.",
+      "If no candidate remains, return needs_input with zero provider execution."
+    ],
+    "forbidden": [
+      "silent provider substitution",
+      "provider or model names embedded in phase requirements",
+      "treating unknown cost, latency, quality, or entitlement as zero or pass",
+      "weakening human or computed gates",
+      "using transport smoke as phase qualification",
+      "ranking candidates from samples with different phase-contract or capability hashes"
+    ]
+  },
+  "fallbackPolicy": {
+    "allowedOnlyWhen": [
+      "the fallback is independently phase-qualified for the exact phase-contract hash",
+      "the fallback capability set is a superset of every required and active conditional capability",
+      "the same decision authority, gate, artifact classes, evidence requirements, and runtime permission ceiling are preserved",
+      "runtime entitlement and catalog evidence are unexpired",
+      "the substitution reason and both exact runner/model/effort identities are persisted before retry"
+    ],
+    "forbiddenWhen": [
+      "capability, context fit, entitlement, provenance, cost, latency, or phase qualification is unknown",
+      "the failed attempt may have crossed or mutated a human/computed gate without a replay-safe phase contract",
+      "the fallback requires broader runtime permissions than the approved phase envelope"
+    ],
+    "noEligibleFallback": "needs_input",
+    "silentFallback": false
+  },
+  "performanceEvidencePolicy": {
+    "optimizerEnabled": false,
+    "currentDecision": "disabled-insufficient-phase-specific-evidence",
+    "requiredObservationKey": [
+      "phaseId",
+      "phaseContractSha256",
+      "runnerId",
+      "providerId",
+      "modelId",
+      "reasoningEffort",
+      "adapterCapabilitySha256"
+    ],
+    "minimumComparableCompletedRunsPerCandidate": 5,
+    "maximumObservationAgeDays": 30,
+    "requiredMetrics": ["trustedPhaseVerdict", "durationMs", "inputTokens", "outputTokens", "pricingStatus"],
+    "rankingRules": [
+      "Only phase-qualified candidates with the same observation key except runner/provider/model/effort may be compared.",
+      "Quality and gate conservation are hard filters; cost and latency are tie-breakers, never substitutes for correctness.",
+      "Unpriced cost, missing tokens, missing duration, rejected usage, and partial runs remain unknown and are excluded from numeric ranking.",
+      "The first release uses operator-authored candidate order until every candidate meets the comparable-sample floor."
+    ],
+    "currentEvidenceGap": "Dashboard metrics aggregate by runner and kit version, and existing live canaries are transport/entitlement observations rather than same-phase semantic comparisons."
+  },
+  "catalogReconciliation": {
+    "snapshotOn": "2026-08-14",
+    "runners": [
+      {
+        "runnerId": "claude",
+        "providerId": "anthropic",
+        "configuredModels": ["(repo default)", "opus", "sonnet", "haiku"],
+        "highestObservedTier": "configured",
+        "routableNow": false,
+        "reason": "No fresh exact runtime entitlement and phase-qualification evidence is bound to this matrix."
+      },
+      {
+        "runnerId": "codex",
+        "providerId": "openai",
+        "configuredModels": ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"],
+        "highestObservedTier": "runtime-entitled",
+        "observedOn": "2026-08-11",
+        "evidenceExpiresOn": "2026-08-18",
+        "evidence": "../kit-dashboard/docs/evidence/i2-provider-runtime-2026-08-11.md",
+        "routableNow": false,
+        "reason": "Entitlement probes are not phase qualification."
+      },
+      {
+        "runnerId": "copilot",
+        "providerId": "github",
+        "configuredModels": ["gpt-5.3-codex", "gpt-5.4", "claude-sonnet-4.6", "claude-haiku-4.5", "gemini-3.1-pro-preview", "gemini-3.5-flash", "gemini-3.6-flash"],
+        "highestObservedTier": "runtime-entitled",
+        "observedOn": "2026-08-11",
+        "evidenceExpiresOn": "2026-08-18",
+        "evidence": "../kit-dashboard/docs/evidence/i2-provider-runtime-2026-08-11.md",
+        "routableNow": false,
+        "reason": "Entitlement probes are not phase qualification."
+      },
+      {
+        "runnerId": "gemini",
+        "providerId": "google",
+        "configuredModels": ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+        "highestObservedTier": "configured",
+        "routableNow": false,
+        "reason": "The prior live boundary had no configured credential or approved OAuth session, and no phase qualification exists."
+      }
+    ],
+    "unmergedInventory": [
+      {
+        "providerId": "xai",
+        "modelId": "grok-4.5",
+        "source": ".claude/integrations/model-config.ts",
+        "reason": "The kit has an adapter inventory entry but the dashboard has no registered runner; the router must not synthesize one."
+      }
+    ]
+  },
+  "externalSources": [
+    {
+      "providerId": "openai",
+      "url": "https://developers.openai.com/api/docs/guides/latest-model",
+      "claimScope": "Current GPT-5.6 family positioning and supported reasoning-effort controls.",
+      "fetchedOn": "2026-08-14",
+      "expiresOn": "2026-08-21",
+      "authority": "advisory catalog discovery only"
+    },
+    {
+      "providerId": "anthropic",
+      "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+      "claimScope": "Current Claude model inventory and documented text, image, reasoning, coding, context, and latency characteristics.",
+      "fetchedOn": "2026-08-14",
+      "expiresOn": "2026-08-21",
+      "authority": "advisory catalog discovery only"
+    },
+    {
+      "providerId": "anthropic",
+      "url": "https://docs.anthropic.com/en/docs/claude-code/cli-usage",
+      "claimScope": "Claude Code exact model-selection CLI boundary.",
+      "fetchedOn": "2026-08-14",
+      "expiresOn": "2026-08-21",
+      "authority": "advisory adapter discovery only"
+    },
+    {
+      "providerId": "github",
+      "url": "https://docs.github.com/en/copilot/reference/ai-models/supported-models",
+      "claimScope": "GitHub Copilot supported-model catalog and its plan, policy, and client availability caveats.",
+      "fetchedOn": "2026-08-14",
+      "expiresOn": "2026-08-21",
+      "authority": "advisory catalog discovery only"
+    },
+    {
+      "providerId": "github",
+      "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-programmatic-reference",
+      "claimScope": "GitHub Copilot CLI model and reasoning-effort selection boundary.",
+      "fetchedOn": "2026-08-14",
+      "expiresOn": "2026-08-21",
+      "authority": "advisory adapter discovery only"
+    },
+    {
+      "providerId": "google",
+      "url": "https://ai.google.dev/api/models",
+      "claimScope": "Programmatic model listing and supported-functionality metadata boundary.",
+      "fetchedOn": "2026-08-14",
+      "expiresOn": "2026-08-21",
+      "authority": "advisory catalog discovery only"
+    },
+    {
+      "providerId": "google",
+      "url": "https://google-gemini.github.io/gemini-cli/docs/get-started/configuration.html",
+      "claimScope": "Gemini CLI exact model-selection boundary.",
+      "fetchedOn": "2026-08-14",
+      "expiresOn": "2026-08-21",
+      "authority": "advisory adapter discovery only"
+    }
+  ],
+  "phaseGateBindings": {
+    "B0": "fail-closed-input",
+    "B0.5": "conditional-ownership-stop",
+    "B1": "collision-stop",
+    "B2": "image-fidelity-stop",
+    "B3": "none",
+    "B4": "human-stop",
+    "D-cross-2": "conditional-human-stop",
+    "B5": "self-evaluation",
+    "B6": "human-stop",
+    "B6.5": "human-stop",
+    "B7": "conditional-ambiguity-stop",
+    "B8": "human-stop",
+    "B8.5": "conflict-stop",
+    "B8.6": "none",
+    "B9": "literal-human-stop",
+    "B9.5": "merge-conflict-stop",
+    "B9.6": "dependency-conflict-stop",
+    "B10": "breaking-change-stop",
+    "B10.5": "human-stop",
+    "B11": "computed-verified-stop",
+    "B12": "verified-ratio-stop",
+    "B12.5": "none",
+    "B12.6": "explicit-change-approval",
+    "B12.8": "none"
+  },
+  "phases": [
+    {"id":"B0","decisionAuthority":"computed","modelUse":"required","riskClass":"high","requiredCapabilities":["text-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","network-read","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B0.5","decisionAuthority":"computed","modelUse":"forbidden","riskClass":"high","requiredCapabilities":[],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","git-read","bounded-shell-read","trusted-evidence-writer"],"minimumCatalogEvidence":"not-applicable"},
+    {"id":"B1","decisionAuthority":"computed","modelUse":"required","riskClass":"high","requiredCapabilities":["text-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B2","decisionAuthority":"computed","modelUse":"conditional","riskClass":"high","requiredCapabilities":[],"conditionalCapabilities":[{"when":"validated image references are present","capabilities":["vision-input","text-reasoning","structured-output","context-window-fit"]}],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","network-read","image-read","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B3","decisionAuthority":"computed","modelUse":"required","riskClass":"standard","requiredCapabilities":["text-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B4","decisionAuthority":"human","modelUse":"required","riskClass":"critical","requiredCapabilities":["text-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","human-decision-channel","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"D-cross-2","decisionAuthority":"human","modelUse":"required","riskClass":"critical","requiredCapabilities":["text-reasoning","code-reasoning","architecture-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","human-decision-channel","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B5","decisionAuthority":"computed","modelUse":"required","riskClass":"high","requiredCapabilities":["text-reasoning","code-reasoning","architecture-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B6","decisionAuthority":"human","modelUse":"forbidden","riskClass":"critical","requiredCapabilities":[],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","human-decision-channel","trusted-evidence-writer"],"minimumCatalogEvidence":"not-applicable"},
+    {"id":"B6.5","decisionAuthority":"human","modelUse":"required","riskClass":"critical","requiredCapabilities":["text-reasoning","code-reasoning","architecture-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[{"when":"design evidence contains images","capabilities":["vision-input"]}],"runtimeRequirements":["exact-source-binding","repository-read","human-decision-channel","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B7","decisionAuthority":"computed","modelUse":"required","riskClass":"high","requiredCapabilities":["text-reasoning","code-reasoning","architecture-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B8","decisionAuthority":"human","modelUse":"forbidden","riskClass":"critical","requiredCapabilities":[],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","human-decision-channel","trusted-evidence-writer"],"minimumCatalogEvidence":"not-applicable"},
+    {"id":"B8.5","decisionAuthority":"computed","modelUse":"forbidden","riskClass":"high","requiredCapabilities":[],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","git-read","bounded-shell-read","trusted-evidence-writer"],"minimumCatalogEvidence":"not-applicable"},
+    {"id":"B8.6","decisionAuthority":"computed","modelUse":"required","riskClass":"critical","requiredCapabilities":["text-reasoning","code-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","bounded-shell-read","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B9","decisionAuthority":"human","modelUse":"forbidden","riskClass":"critical","requiredCapabilities":[],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","human-decision-channel","trusted-evidence-writer"],"minimumCatalogEvidence":"not-applicable"},
+    {"id":"B9.5","decisionAuthority":"computed","modelUse":"forbidden","riskClass":"critical","requiredCapabilities":[],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","git-read","git-approved-write","bounded-shell-write","trusted-evidence-writer"],"minimumCatalogEvidence":"not-applicable"},
+    {"id":"B9.6","decisionAuthority":"computed","modelUse":"forbidden","riskClass":"critical","requiredCapabilities":[],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","package-approved-write","bounded-shell-write","trusted-evidence-writer"],"minimumCatalogEvidence":"not-applicable"},
+    {"id":"B10","decisionAuthority":"computed","modelUse":"required","riskClass":"critical","requiredCapabilities":["text-reasoning","code-reasoning","architecture-reasoning","structured-output","agentic-tool-use","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","bounded-shell-write","isolated-agent-context","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B10.5","decisionAuthority":"human","modelUse":"forbidden","riskClass":"critical","requiredCapabilities":[],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","human-decision-channel","trusted-evidence-writer"],"minimumCatalogEvidence":"not-applicable"},
+    {"id":"B11","decisionAuthority":"computed","modelUse":"required","riskClass":"critical","requiredCapabilities":["text-reasoning","code-reasoning","structured-output","agentic-tool-use","context-window-fit"],"conditionalCapabilities":[{"when":"browser verification is selected and visual states exist","capabilities":["vision-input"]}],"runtimeRequirements":["exact-source-binding","repository-read","bounded-shell-read","isolated-agent-context","independent-verifier-context","browser-read","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B12","decisionAuthority":"computed","modelUse":"optional","riskClass":"critical","requiredCapabilities":[],"conditionalCapabilities":[{"when":"a model produces the closeout narrative","capabilities":["text-reasoning","structured-output","context-window-fit"]}],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B12.5","decisionAuthority":"computed","modelUse":"optional","riskClass":"standard","requiredCapabilities":[],"conditionalCapabilities":[{"when":"a model proposes feedback clusters","capabilities":["text-reasoning","structured-output","context-window-fit"]}],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B12.6","decisionAuthority":"human","modelUse":"required","riskClass":"critical","requiredCapabilities":["text-reasoning","code-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","human-decision-channel","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"},
+    {"id":"B12.8","decisionAuthority":"computed","modelUse":"required","riskClass":"high","requiredCapabilities":["text-reasoning","code-reasoning","structured-output","context-window-fit"],"conditionalCapabilities":[],"runtimeRequirements":["exact-source-binding","repository-read","repository-write","trusted-evidence-writer"],"minimumCatalogEvidence":"phase-qualified"}
+  ]
+}

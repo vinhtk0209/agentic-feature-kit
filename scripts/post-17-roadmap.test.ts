@@ -87,6 +87,13 @@ for (const required of ['/roadmap/[taskId]', 'opaque operator-assigned machine U
   assert.ok(crossMachineProgressPlan.toLowerCase().includes(required.toLowerCase()), `P17-015 plan must retain ${required}`)
 }
 
+const phaseModelRouting = tasks.find((task) => task.id === 'P17-006')!
+assert.equal(phaseModelRouting.status, 'ready')
+assert.equal((phaseModelRouting.readiness as Record<string, unknown>).complete, true)
+assert.deepEqual((phaseModelRouting.readiness as Record<string, unknown>).missing, [])
+assert.ok(((phaseModelRouting.readiness as Record<string, unknown>).inputs as string[]).includes('docs/roadmap/post-17-phase-capability-matrix.json'))
+assert.ok(fs.existsSync(path.join(root, 'docs', 'roadmap', 'post-17-phase-capability-matrix.json')))
+
 const markdown = fs.readFileSync(markdownPath, 'utf8')
 assert.match(markdown, /No implementation task starts until its `readiness\.complete` value is `true`/)
 assert.match(markdown, /transport\/action smoke is\s+never reported as planning or implementation parity/)
