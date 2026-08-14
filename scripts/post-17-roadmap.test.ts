@@ -25,10 +25,11 @@ assert.ok(initiativeIds.has('P17-I2'))
 
 const allowedStatuses = new Set(roadmap.statusValues as string[])
 const tasks = roadmap.tasks as Array<Record<string, unknown>>
-assert.equal(tasks.length, 21, 'catalog must retain the reconciled Wave 0 plus twenty delivery tasks')
+assert.equal(tasks.length, 22, 'catalog must retain the reconciled Wave 0 plus twenty-one delivery tasks')
 
 const ids = tasks.map((task) => String(task.id))
 assert.equal(new Set(ids).size, ids.length, 'task IDs must be unique')
+assert.deepEqual(ids, Array.from({ length: 22 }, (_, index) => `P17-${String(index).padStart(3, '0')}`), 'P17-021 must append without renumbering existing tasks')
 const idSet = new Set(ids)
 
 for (const task of tasks) {
@@ -67,6 +68,15 @@ for (const task of tasks) {
     assert.notEqual(dependency, id, `${id} cannot depend on itself`)
   }
 }
+
+const controlPanel = tasks.find((task) => task.id === 'P17-021')!
+assert.deepEqual(controlPanel.dependencies, ['P17-014', 'P17-015', 'P17-016'])
+assert.equal((controlPanel.readiness as Record<string, unknown>).complete, false)
+assert.ok(((controlPanel.readiness as Record<string, unknown>).missing as string[]).includes('approved network-separated or two-node E2E topology'))
+assert.ok((controlPanel.acceptanceCriteria as string[]).some((criterion) => criterion.includes('without mock substitution')))
+assert.ok((controlPanel.tests as string[]).includes('Playwright exact-dashboard-server E2E with a real disposable worker'))
+const controlPanelPlan = fs.readFileSync(path.join(root, 'docs', 'roadmap', 'p17-021-distributed-control-panel-plan.md'), 'utf8')
+for (const required of ['/control-plane', 'Control Panel', 'Control Plane', 'remote worker', 'RBAC', 'Playwright', 'network-separated/two-node']) assert.match(controlPanelPlan, new RegExp(required.replace('/', '\\/'), 'i'))
 
 const markdown = fs.readFileSync(markdownPath, 'utf8')
 assert.match(markdown, /No implementation task starts until its `readiness\.complete` value is `true`/)

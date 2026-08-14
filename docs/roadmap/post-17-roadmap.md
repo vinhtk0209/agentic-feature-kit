@@ -78,6 +78,7 @@ When complete:
 | P17-018 | P2 | 4 | backlog | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
 | P17-019 | P2 | 4 | backlog | Credential lifecycle adapter | Handles token expiry only through an explicit project auth capability. |
 | P17-020 | P2 | 4 | backlog | Self-improvement drift, bias, and evolution tracking | Prevents one feature cluster from overfitting prompt evolution and adds golden rollback. |
+| P17-021 | P1 | 5 | backlog | Distributed Control Panel UI and Remote Operations Console | Proves authorized machine/task operations through a real Control Plane, remote worker, execution, evidence, and browser-visible terminal state. |
 
 ## Inputs still required before their implementation
 
@@ -90,6 +91,7 @@ When complete:
 - **P17-018:** intended audience and license decision.
 - **P17-019:** a project-specific refresh capability fixture and security approval.
 - **P17-020:** a representative multi-feature golden set and approved drift budget.
+- **P17-021:** completed P17-014/P17-015/P17-016 contracts, approved RBAC/UI topology, disposable remote worker, test identities, evidence adapter, network-separated E2E topology, and failure injection.
 
 These missing inputs are not all operator questions. Where the source workspace can produce a
 deterministic artifact safely, the roadmap should prepare and test it before requesting a decision.
@@ -102,7 +104,8 @@ deterministic artifact safely, the roadmap should prepare and test it before req
    worktree verification.
 4. **Wave 3:** model routing, installable bundles, privacy criteria.
 5. **Wave 4:** provider parity, tracking, release readiness, credentials, and drift control.
-6. **Wave 5:** opt-in distributed control plane and optional RAG after privacy/topology gates.
+6. **Wave 5:** opt-in distributed control plane, real Control Panel UI, and optional RAG after
+   privacy/topology/RBAC/E2E gates.
 
 Every completed task must replace its planned evidence path with a durable evidence artifact and a
 local commit reference. Sync and push remain separately authorized actions.

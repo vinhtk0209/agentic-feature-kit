@@ -475,6 +475,29 @@
       "evidence": "docs/evidence/post-17-self-improvement-drift.md",
       "examples": ["Five refund-processing runs cannot rewrite a rule used by unrelated feature classes.", "A regression against the golden set rolls back the proposed evolution."
       ]
+    },
+    {
+      "id": "P17-021",
+      "title": "Distributed Control Panel UI and Remote Operations Console",
+      "initiative": "P17-I4",
+      "wave": 5,
+      "priority": "P1",
+      "status": "backlog",
+      "dependencies": ["P17-014", "P17-015", "P17-016"],
+      "backlogRefs": ["operator-confirmed: distributed control panel UI"],
+      "problem": "The roadmap has control-plane and tracking contracts but no real operator UI that proves authorized remote work from browser intent through worker execution and evidence return.",
+      "scope": ["authenticated /control-plane route family", "machines/tasks/runs/progress/evidence views", "RBAC-governed approve/cancel/retry", "live events with polling fallback", "real disposable remote-worker flow", "accessible responsive operational states"],
+      "outOfScope": ["mock or static UI counted as completion", "arbitrary shell", "default remote execution", "client-side-only authorization", "raw secret or private specification display", "unmanaged production-machine enrollment"],
+      "readiness": {
+        "complete": false,
+        "missing": ["completed P17-014 topology and versioned Control Plane API/event contract", "completed P17-015 machine/task/run/evidence and retry-lineage model", "completed P17-016 privacy/tenant/redaction/retention policy", "operator-approved RBAC and separation-of-duties matrix", "approved Control Panel information architecture and accessibility acceptance", "disposable least-privilege remote worker and bounded execution fixture", "authenticated permitted/denied E2E identities", "content-addressed evidence adapter and quarantine behavior", "approved network-separated or two-node E2E topology", "offline/lease/replay/race/event-reconnect failure injection"],
+        "inputs": ["P17-014 control-plane contracts", "P17-015 cross-machine identity contracts", "P17-016 privacy criteria", "dashboard auth and admin allowlist model", "orchestrator phase envelopes", "exact-server browser harness", "operator-confirmed real Control Panel scope"]
+      },
+      "packaging": ["dashboard", "shared-core", "optional-agent-service", "remote-worker-adapter", "e2e"],
+      "acceptanceCriteria": ["the authenticated Control Panel renders authoritative machine/task/run/progress/evidence identity from the live Control Plane", "approve/cancel/retry are enforced server-side by RBAC and rejected actions have zero execution side effects plus an audit decision", "one E2E flow proves Control Panel to Control Plane to disposable remote worker to bounded execution to content-addressed evidence and back to the rendered terminal state without mock substitution", "leases, retries, cancellation races, duplicate delivery, stale versions, and late events remain idempotent and monotonic", "offline/degraded/unauthorized/quarantined-evidence states are explicit and never displayed as success", "sensitive and cross-tenant values are excluded while keyboard, screen-reader, responsive, and accessibility acceptance passes"],
+      "tests": ["domain state-machine and schema attacks", "API/RBAC/idempotency/lease/race/redaction contract suite", "route/component/accessibility state matrix", "multi-process Control Plane and worker integration", "Playwright exact-dashboard-server E2E with a real disposable worker", "authorized network-separated two-node release proof", "in-app browser route and semantic-state corroboration"],
+      "evidence": "docs/evidence/post-17-distributed-control-panel-ui.md",
+      "examples": ["An approver authorizes a queued task in /control-plane, one least-privilege worker executes the typed envelope, and the same run and evidence hash appear in the terminal Control Panel state.", "A viewer or stale approver cannot trigger work; duplicate retry or forged evidence is rejected, audited, and never shown as a successful run."]
     }
   ]
 }
