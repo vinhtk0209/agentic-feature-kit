@@ -29,7 +29,7 @@ const officialHosts: Record<string, Set<string>> = {
 }
 
 function validate(value: JsonRecord): void {
-  assert.equal(value.schemaVersion, '1.0.0')
+  assert.equal(value.schemaVersion, '1.1.0')
   assert.equal(value.artifactId, 'post-17-phase-capability-matrix')
   assert.equal(value.generatedOn, '2026-08-14')
   assert.ok(typeof value.approvalBasis === 'string' && value.approvalBasis.includes('readiness-gated'))
@@ -43,12 +43,13 @@ function validate(value: JsonRecord): void {
   assert.match(value.sourceContracts.dashboardModelInventory.authority, /not entitlement or phase-quality evidence/)
 
   const vocabulary = value.vocabulary
-  for (const field of ['decisionAuthorities', 'modelUse', 'riskClasses', 'catalogEvidenceTiers', 'modelCapabilities', 'runtimeRequirements']) {
+  for (const field of ['decisionAuthorities', 'modelUse', 'riskClasses', 'catalogEvidenceTiers', 'conditionIds', 'modelCapabilities', 'runtimeRequirements']) {
     assert.ok(uniqueStrings(vocabulary[field]), `vocabulary.${field} must be unique and non-empty`)
   }
   assert.deepEqual(vocabulary.decisionAuthorities, ['computed', 'human'])
   assert.deepEqual(vocabulary.modelUse, ['forbidden', 'optional', 'required', 'conditional'])
   assert.deepEqual(vocabulary.catalogEvidenceTiers, ['documented', 'configured', 'runtime-entitled', 'phase-qualified'])
+  assert.deepEqual(vocabulary.conditionIds, ['images-present', 'design-images-present', 'browser-visual-verification-selected', 'model-closeout-requested', 'model-feedback-clustering-requested'])
 
   assert.equal(value.selectionPolicy.mode, 'explicit-evidence-bound')
   assert.equal(value.selectionPolicy.modelMayDecideGate, false)
@@ -102,6 +103,7 @@ function validate(value: JsonRecord): void {
     assert.ok(phase.requiredCapabilities.every((item: string) => vocabulary.modelCapabilities.includes(item)), `${phase.id} has unknown model capability`)
     assert.ok(phase.runtimeRequirements.every((item: string) => vocabulary.runtimeRequirements.includes(item)), `${phase.id} has unknown runtime requirement`)
     for (const conditional of phase.conditionalCapabilities) {
+      assert.ok(vocabulary.conditionIds.includes(conditional.conditionId), `${phase.id} has unknown condition id`)
       assert.ok(typeof conditional.when === 'string' && conditional.when.trim())
       assert.ok(uniqueStrings(conditional.capabilities))
       assert.ok(conditional.capabilities.every((item: string) => vocabulary.modelCapabilities.includes(item)), `${phase.id} has unknown conditional capability`)
@@ -118,9 +120,12 @@ function validate(value: JsonRecord): void {
     if (phase.modelUse === 'required') assert.ok(phase.requiredCapabilities.length > 0)
     if (phase.modelUse === 'conditional' || phase.modelUse === 'optional') assert.ok(phase.conditionalCapabilities.length > 0)
   }
+  const boundConditionIds = value.phases.flatMap((phase: JsonRecord) => phase.conditionalCapabilities.map((entry: JsonRecord) => entry.conditionId))
+  assert.deepEqual([...boundConditionIds].sort(), [...vocabulary.conditionIds].sort(), 'every closed condition id must be bound exactly once')
 
   const b2 = value.phases.find((phase: JsonRecord) => phase.id === 'B2')
   assert.equal(b2.modelUse, 'conditional')
+  assert.equal(b2.conditionalCapabilities[0].conditionId, 'images-present')
   assert.ok(b2.conditionalCapabilities[0].capabilities.includes('vision-input'))
   const b10 = value.phases.find((phase: JsonRecord) => phase.id === 'B10')
   assert.ok(b10.requiredCapabilities.includes('agentic-tool-use'))
@@ -169,6 +174,8 @@ const attacks: Array<[string, (subject: JsonRecord) => void]> = [
   ['silent fallback', (subject) => { subject.fallbackPolicy.silentFallback = true }],
   ['missing verifier isolation', (subject) => { subject.phases.find((phase: JsonRecord) => phase.id === 'B11').runtimeRequirements = ['repository-read'] }],
   ['unqualified routable candidate', (subject) => { subject.catalogReconciliation.runners[0].routableNow = true }],
+  ['unknown condition id', (subject) => { subject.phases.find((phase: JsonRecord) => phase.id === 'B2').conditionalCapabilities[0].conditionId = 'images-maybe' }],
+  ['duplicate condition id', (subject) => { subject.phases.find((phase: JsonRecord) => phase.id === 'B6.5').conditionalCapabilities[0].conditionId = 'images-present' }],
 ]
 
 for (const [name, mutate] of attacks) {

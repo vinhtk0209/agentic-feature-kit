@@ -42,6 +42,9 @@ run, credential access, installation, publication, sync, or push.
    correctness and gate conservation remain hard filters.
 6. Official model documentation is volatile advisory input with a seven-day expiry. Runtime
    entitlement and exact resolved identity still require local, credential-safe probes.
+7. Matrix schema `1.1.0` assigns a closed `conditionId` to every conditional capability. Free-text
+   descriptions are labels only; runtime activation accepts only the five allowlisted IDs and each
+   is bound exactly once.
 
 ## Official source ledger
 
@@ -65,26 +68,35 @@ No documentation claim is promoted to local availability or phase quality.
 ```text
 npm run test:post-17-phase-capabilities
 post-17-phase-capability-matrix.test: PASS
-24 phases, 7 official sources, 13 negative controls
+24 phases, 7 official sources, 15 negative controls
 exit 0
 
 npm test
 full kit regression, including test:post-17-phase-capabilities
-exit 0 in 210.5 seconds
+exit 0 in 240.1 seconds after schema 1.1.0 correction
 
 git diff --check
 exit 0
 
 changed-file secret-pattern scan
-positive control: true; hits: 0
+positive control: true; 5 absolute paths existence-checked; kit hits: 0; dashboard hits: 0
 ```
 
-Final matrix SHA-256: `aaaac3906f94bb1903e13d8e10b8e4a25cded3be67f7a2da432eb7a9fa414971`.
+An earlier dashboard scan attempt is excluded from evidence because its relative paths resolved
+under the kit directory and PowerShell reported missing files. The authoritative rerun used
+terminating errors, absolute paths, explicit existence checks, and the passing positive control
+shown above.
+
+The first input checkpoint used matrix schema `1.0.0`. Design reconciliation then proved its
+human-readable conditional `when` fields were not machine-safe activation keys. Schema `1.1.0`
+supersedes it before router implementation. Final matrix SHA-256:
+`1f4a7de71e37383998e96989d7d263624ad02b40764fb3d79be2e25573360d34`.
 
 The negative controls reject a missing or duplicate phase, weakened B9 gate, provider-coupled phase
 requirements, unknown capability, model invocation in a deterministic phase, a lowered evidence
 tier, source hash drift, expired official input, prematurely enabled optimizer, silent fallback,
-missing B11 verifier isolation, and an unqualified candidate marked routable.
+missing B11 verifier isolation, an unqualified candidate marked routable, and unknown or duplicate
+condition IDs.
 
 ## Remaining boundary
 
