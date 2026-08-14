@@ -348,7 +348,7 @@
       "initiative": "P17-I4",
       "wave": 5,
       "priority": "P2",
-      "status": "backlog",
+      "status": "ready",
       "dependencies": ["P17-002", "P17-015"],
       "backlogRefs": ["6", "12"],
       "problem": "Multi-repository execution lacks a provider-neutral, least-privilege topology for remote coordination.",
@@ -367,7 +367,7 @@
       "initiative": "P17-I4",
       "wave": 4,
       "priority": "P2",
-      "status": "in_progress",
+      "status": "done",
       "dependencies": ["P17-002"],
       "backlogRefs": ["5"],
       "problem": "Current tracking does not fully bind task state, provider run, evidence, machine, and retry lineage.",
@@ -490,7 +490,7 @@
       "outOfScope": ["mock or static UI counted as completion", "arbitrary shell", "default remote execution", "client-side-only authorization", "raw secret or private specification display", "unmanaged production-machine enrollment"],
       "readiness": {
         "complete": false,
-        "missing": ["completed P17-014 topology and versioned Control Plane API/event contract", "completed P17-015 machine/task/run/evidence and retry-lineage model", "completed P17-016 privacy/tenant/redaction/retention policy", "operator-approved RBAC and separation-of-duties matrix", "approved Control Panel information architecture and accessibility acceptance", "disposable least-privilege remote worker and bounded execution fixture", "authenticated permitted/denied E2E identities", "content-addressed evidence adapter and quarantine behavior", "approved network-separated or two-node E2E topology", "offline/lease/replay/race/event-reconnect failure injection"],
+        "missing": ["completed P17-014 topology and versioned Control Plane API/event contract", "completed P17-016 privacy/tenant/redaction/retention policy", "operator-approved RBAC and separation-of-duties matrix", "approved Control Panel information architecture and accessibility acceptance", "disposable least-privilege remote worker and bounded execution fixture", "authenticated permitted/denied E2E identities", "content-addressed evidence adapter and quarantine behavior", "approved network-separated or two-node E2E topology", "offline/lease/replay/race/event-reconnect failure injection"],
         "inputs": ["P17-014 control-plane contracts", "P17-015 cross-machine identity contracts", "P17-016 privacy criteria", "dashboard auth and admin allowlist model", "orchestrator phase envelopes", "exact-server browser harness", "operator-confirmed real Control Panel scope"]
       },
       "packaging": ["dashboard", "shared-core", "optional-agent-service", "remote-worker-adapter", "e2e"],

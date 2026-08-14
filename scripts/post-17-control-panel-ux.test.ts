@@ -38,7 +38,8 @@ const panel = roadmap.tasks.find((entry) => entry.id === 'P17-021')
 assert.ok(panel)
 assert.equal(panel.status, 'backlog')
 assert.equal(panel.readiness.complete, false)
-assert.equal(panel.readiness.missing.length, 10)
+assert.equal(panel.readiness.missing.length, 9)
+assert.ok(!panel.readiness.missing.includes('completed P17-015 machine/task/run/evidence and retry-lineage model'))
 assert.ok(panel.readiness.missing.includes('approved Control Panel information architecture and accessibility acceptance'))
 
 for (const choice of ['`IA1`', '`N1`', '`P1`', '`A11Y1`', '`R1`', '`S1`', '`PERF1`', '`V1`']) {
@@ -97,4 +98,4 @@ assert.match(adr, /does not authorize UI implementation, package installation,\s
 assert.match(adr, /does not mark P17-021\s+ready or done/i)
 assert.doesNotMatch(adr, /implementation (is|was) complete/i)
 
-console.log('post-17-control-panel-ux.test: PASS (19 sections, IA1/N1/P1/A11Y1/R1/S1/PERF1/V1 proposed, P17-021 still has 10 gaps)')
+console.log('post-17-control-panel-ux.test: PASS (19 sections, IA1/N1/P1/A11Y1/R1/S1/PERF1/V1 proposed, P17-021 still has 9 gaps)')

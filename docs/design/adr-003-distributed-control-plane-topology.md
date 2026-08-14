@@ -1,6 +1,6 @@
 # ADR-003: Use an outbound-pull, typed-envelope distributed control plane
 
-**Status:** Accepted — topology/trust input locked; implementation dependency-blocked
+**Status:** Accepted — topology/trust input locked; task ready, implementation not started
 **Date:** 2026-08-14
 **Roadmap task:** P17-014
 **Deciders:** Workflow-kit operator and maintainers
@@ -79,9 +79,9 @@ remote execution, provider execution, two-node canaries, credential use, deploym
 | `E1` | Required E2E uses two network-separated nodes with no shared filesystem and a real deterministic non-shell operation/evidence flow. |
 | `S1` | Single-region bounded initial scale; Postgres leases/outbox first, broker/multi-region only after measured thresholds. |
 
-The operator accepted the exact choice set on 2026-08-14. P17-014 input readiness is complete, but
-the task remains `backlog` while P17-015 is in progress and the accepted P17-016 policy is not yet
-implemented. Acceptance does not authorize Control Plane/Control Panel implementation or an
+The operator accepted the exact choice set on 2026-08-14. P17-014 input readiness is complete and
+P17-015 is done, so the task is `ready`; the accepted P17-016 policy is not yet fully implemented.
+This readiness transition does not authorize Control Plane/Control Panel implementation or an
 external action.
 
 ## Acceptance record
@@ -420,7 +420,7 @@ measured load need. Deferred behind `S1` revisit thresholds.
 ## Rollout and rollback
 
 1. Accept the topology/trust choices and checkpoint readiness only; do not mark implementation done.
-2. Finish P17-015 live evidence and accept/implement P17-016 before persistence or remote execution.
+2. P17-015 live evidence is complete; finish P17-016 before persistence or remote execution.
 3. Implement pure contracts and disabled-by-default adapters, then migration/API, then worker, then
    P17-021 UI/actions.
 4. Enable only for one disposable tenant/machine/repo/operation canary. Expand by explicit tenant

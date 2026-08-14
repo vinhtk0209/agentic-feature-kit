@@ -79,7 +79,7 @@ const controlPanelPlan = fs.readFileSync(path.join(root, 'docs', 'roadmap', 'p17
 for (const required of ['/control-plane', 'Control Panel', 'Control Plane', 'remote worker', 'RBAC', 'Playwright', 'network-separated/two-node']) assert.match(controlPanelPlan, new RegExp(required.replace('/', '\\/'), 'i'))
 
 const crossMachineProgress = tasks.find((task) => task.id === 'P17-015')!
-assert.equal(crossMachineProgress.status, 'in_progress')
+assert.equal(crossMachineProgress.status, 'done')
 assert.equal((crossMachineProgress.readiness as Record<string, unknown>).complete, true)
 assert.deepEqual((crossMachineProgress.readiness as Record<string, unknown>).missing, [])
 const crossMachineProgressPlan = fs.readFileSync(path.join(root, 'docs', 'roadmap', 'p17-015-cross-machine-progress-plan.md'), 'utf8')

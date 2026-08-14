@@ -2,15 +2,16 @@
 
 Date: 2026-08-14
 Roadmap task: P17-015
-Result: IMPLEMENTATION CHECKPOINT — LOCAL TIERS 1–7 PASS; LIVE TIER 8 NOT RUN
+Result: PASS — ALL REQUIRED TIERS 1–8 COMPLETE
 
 ## Scope and result boundary
 
 The implementation follows `docs/roadmap/p17-015-cross-machine-progress-plan.md`. It provides a
 provider-neutral shared contract, an immutable/append-only Supabase persistence design, a strict
-writer and reader boundary, and an authenticated read-only dashboard drill-down. P17-015 remains
-`in_progress`: migration `kit-dashboard/migrations/0017_cross_machine_progress.sql` has not been
-applied to the external Supabase project, and no live binding/event/evidence row was written.
+writer and reader boundary, and an authenticated read-only dashboard drill-down. The local
+implementation passed tiers 1–7 before the separately authorized live tier. Migration 0017 is now
+applied to the named external project, the bounded tier-8 fixture passed, the same ledger was proven
+in the authenticated UI, and every temporary row was removed.
 
 This checkpoint does not claim remote worker enrollment or transport (P17-014), final tenant
 privacy/retention policy (P17-016), Control Panel mutations (P17-021), provider execution, target
@@ -93,13 +94,47 @@ sync, deployment, installation, publication, or push.
 | `packages/core/test/cross-machine-progress.test.ts` | `d743c7910765aaab97b95bc1b4cb4b4c188f82026987be3c855022f10f4a51b9` |
 | `docs/roadmap/p17-015-cross-machine-progress-plan.md` | `734f6d63d11722d79d0ec9737d13948ceda0be4c90d7926912d67ddeef39175e` |
 | Dashboard generated mirror | `79fed5797a3c223963ddbdcb8f10e0831747d1e86365f2da54ca4e246b8dbdb1` |
-| Dashboard migration `0017_cross_machine_progress.sql` | `12706ebfa99c4a91303955aad1440efeebf272c03559d2574a8746d5874b1e1a` |
+| Dashboard migration `0017_cross_machine_progress.sql` | `c309721fc292f67132b3e2ff67dda1baa33b6b1f9e01319b1b45e9d83c788859` |
+| Dashboard live canary | `2a80e4406e4a12d6ffc27add3a305ec83f5e42434cb2e92d6c989da0821285bd` |
+| Dashboard exact-ID cleanup | `67e83ee75b2680fc50eb46f80bd1b0c15dad8dd3282c820915d7216f5124daad` |
 
-## Required live completion gate
+## Tier-8 live completion proof
 
-P17-015 cannot be marked done until an operator explicitly authorizes migration/application and
-write access to the named Supabase project. Tier 8 must then prove exact schema/RPC readback, two
-logical configured-machine canaries, one successful linear retry, competing-child and wrong-machine
-zero-mutation attacks, exact task/run/attempt/evidence hashes in the authenticated UI, and cleanup or
-retention confirmation. Until that evidence exists, P17-014 and P17-021 remain dependency-locked.
+The operator authorized Supabase project `vkuojxgvkxndftenrdno` and the exact disposable payload:
+three deterministic `command_runs`, two progress bindings, six events, authenticated UI proof, and
+cleanup. The live gate produced the following bounded evidence:
 
+- applied schema/RPC readback retained the expected tables, service-role-only RPCs, RLS, locks,
+  linear retry uniqueness, event-tail CAS, evidence checks, and closed ACLs;
+- a live-only PL/pgSQL ambiguity was found when the retry lookup used the output variable name
+  `binding_id`; the reviewed function-only hotfix qualifies `progress_event.binding_id`, with live
+  `pg_get_functiondef` proving old marker false and qualified alias/source markers true;
+- a PostgREST `timestamptz` offset exposed a reader-boundary mismatch; a RED live-shape fixture
+  failed at canonical binding time, then passed after the adapter normalized only hash-bound
+  binding/event timestamps to canonical UTC before shared-core validation;
+- the final package-safe command exited 0 with winner retry B, loser retry C, 2 attempts, 6 events,
+  competing-child conflict, exact replay, and wrong-machine rejection all true;
+- terminal evidence SHA-256 was `d56f56ce0119644428a979f9becf42f39340ec0173cc30cc6d1c5c7161434e65`
+  for a 377-byte verified JSON manifest; the derived ledger SHA-256 was
+  `af58e41dd839f23973fb5ec7dcad06a15ec3978bbee022c7b1b06ec5de156ae7`;
+- an independent SQL read proved exactly 3 command rows, 2 bindings, 6 events, and 1 verified
+  terminal-evidence row;
+- authenticated `http://localhost:3000/roadmap/P17-015` rendered Passed, current attempt 2, both
+  exact command/machine/provider lineages, ordered 3+3 events, binding/event hashes, and the same
+  terminal evidence hash and byte count; and
+- the reviewed exact-ID cleanup returned 0 bindings / 0 events / 0 command rows, then a separate
+  read-only query independently reconfirmed 0/0/0.
+
+P17-015 therefore satisfies every tier in the approved evidence ladder and is `done`. P17-014 is
+dependency-unblocked to `ready`; this does not start Control Plane implementation. P17-021 remains
+blocked by its nine other named inputs. No provider run, target sync, target `.Codex` edit, release,
+merge, or direct-main push occurred.
+
+## Final closeout regression
+
+- Kit roadmap/topology/RBAC/UX focused gates pass with P17-015 `done`, P17-014 `ready`, and P17-021
+  still blocked by nine named inputs.
+- Full kit `npm run test:kit` exits 0 in 322.8 seconds.
+- Dashboard P17-015/reconciliation focused run passes 5 files / 25 tests.
+- Full dashboard Vitest passes 65 files / 457 tests in 12.68 seconds.
+- Dashboard `npx tsc --noEmit` exits 0.
