@@ -1,11 +1,12 @@
 # P17-009 — Cross-Platform Release Qualification Evidence
 
 Date: 2026-08-15
-Status: THIRD REMEDIATION FULL LOCAL GREEN — FOURTH REMOTE RUN PENDING
+Status: FOURTH REMOTE WINDOWS GREEN — P2 FIXTURE REMEDIATION FULL LOCAL GREEN
 Qualified locally: Windows, Node 24  
 First remote attempt: Linux and Windows both exposed the same clean-checkout dependency gap
 Second remote attempt: Linux and Windows exposed separate test-fixture/checkout portability gaps
 Third remote attempt: Linux and Windows exposed remaining fixture inventory and non-canonical source provenance
+Fourth remote attempt: Windows passed; Linux exposed one test-only Windows case-alias setup
 
 ## Outcome
 
@@ -186,13 +187,38 @@ key was removed without changing runtime `MATRIX_KEYS`; canonicalization remains
 boundary and validator implementations. Phase-router runtime/CLI, matrix, and cross-platform gates
 passed, then the CI-equivalent full `npm run test:kit` exited `0` in 219.3 seconds.
 
+## Fourth remote run and P2 case-alias fixture remediation
+
+Run `31825846506` executed commit `9388d15aeb464bbad91f66f05dd69991543e35cd`. Windows job
+`94849677071` completed successfully, proving the canonical provenance remediation through the full
+suite on `windows-latest`. Linux job `94849676886` passed all prior remediations and reached
+`test:p2-transport`, where six groups passed before the case-alias fixture threw during setup.
+Aggregate job `94850795218` failed closed because the Linux matrix leg was not successful.
+
+The fixture uppercased an approved POSIX base/path before its Windows-only assertion. On POSIX that
+creates a different path outside the approved base, so production `parseP2RoleTransportManifest`
+correctly rejected it before collision validation. The minimal test-only remediation now parses and
+rejects the case-folded alias through set validation on Windows, while POSIX explicitly expects the
+same input to fail containment parsing. Platform-neutral workspace-ID, path, run, plan, and task
+collision attacks remain unchanged. Local `npm run test:p2-transport` passes all 7 groups.
+
+A positive-controlled tracked-test inventory found only two remaining Windows path fixture classes:
+the Playwright runner uses `C:\\repo` as an opaque `cwd` while asserting shell-free argv construction,
+and the Confluence actor forwards a Chrome executable environment value byte-identically. Neither
+fixture reads or validates that path against the local filesystem, so neither reproduces the P2
+setup fault or requires production/test behavior changes.
+
+With the P2 test and this evidence update present, the CI-equivalent `npm run test:kit` command
+exits `0` after 218.6 seconds. This is local Windows evidence only; the next remote matrix run must
+still prove the corrected fixture on Linux and preserve the already-green Windows leg.
+
 ## Pending highest-valid evidence
 
 P17-009 remains `in_progress`. Its acceptance criterion requires the committed canonical-
-provenance remediation to pass on both `ubuntu-latest` and `windows-latest`, followed by the
-aggregate release gate. Stage and prove the exact diff, run the full local suite, push only the
-reviewed remediation commit to the existing PR branch, and capture the fourth run; do not close
-the task from local or failed-remote evidence.
+provenance plus P2 fixture remediation to pass on both `ubuntu-latest` and `windows-latest`, followed
+by the aggregate release gate. Run the full local suite and exact diff/secret review, commit only
+the reviewed P2 test and evidence update, push only to the existing draft-PR branch, and capture the
+next run; do not close the task from focused local or partially successful remote evidence.
 
 No sync, provider/model execution, publication, target `.Codex` edit, direct-main push, merge, or
 macOS qualification occurred. Git credential use was bounded to the authorized branch/PR API

@@ -120,10 +120,15 @@ test('a manifest wave cannot share a workspace id or location', () => {
   assert.throws(() => validateP2RoleTransportSet([first, { ...third, runId: 'other' }]), P2TransportManifestError);
   assert.throws(() => validateP2RoleTransportSet([first, { ...third, planHash: 'b'.repeat(64) }]), P2TransportManifestError);
   assert.throws(() => validateP2RoleTransportSet([first, { ...third, taskId: first.taskId }]), P2TransportManifestError);
-  const caseAlias = parse({ ...third, taskId: 'task-figma', role: 'figma', workspace: {
+  const caseAliasInput = { ...third, taskId: 'task-figma', role: 'figma', workspace: {
     ...third.workspace, workspaceId: 'RUN-1-DEV', basePath: third.workspace.basePath.toUpperCase(), path: third.workspace.path.toUpperCase(),
-  } });
-  if (process.platform === 'win32') assert.throws(() => validateP2RoleTransportSet([third, caseAlias]), P2TransportManifestError);
+  } };
+  if (process.platform === 'win32') {
+    const caseAlias = parse(caseAliasInput);
+    assert.throws(() => validateP2RoleTransportSet([third, caseAlias]), P2TransportManifestError);
+  } else {
+    assert.throws(() => parse(caseAliasInput), P2TransportManifestError);
+  }
 });
 
 console.log(`${passed} passed, ${failed} failed`);
