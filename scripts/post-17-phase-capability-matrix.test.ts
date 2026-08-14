@@ -13,7 +13,8 @@ const kitModelPath = path.join(root, '.claude', 'integrations', 'model-config.ts
 
 const parse = (file: string): JsonRecord => JSON.parse(fs.readFileSync(file, 'utf8'))
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
-const sha256File = (file: string): string => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')
+const canonicalText = (value: string): string => value.replace(/\r\n/g, '\n')
+const sha256File = (file: string): string => crypto.createHash('sha256').update(canonicalText(fs.readFileSync(file, 'utf8'))).digest('hex')
 const uniqueStrings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === 'string' && item.trim().length > 0) && new Set(value).size === value.length
 

@@ -1,10 +1,11 @@
 # P17-009 — Cross-Platform Release Qualification Evidence
 
 Date: 2026-08-15
-Status: SECOND REMEDIATION LOCAL GREEN — THIRD REMOTE RUN PENDING
+Status: THIRD REMEDIATION FULL LOCAL GREEN — FOURTH REMOTE RUN PENDING
 Qualified locally: Windows, Node 24  
 First remote attempt: Linux and Windows both exposed the same clean-checkout dependency gap
 Second remote attempt: Linux and Windows exposed separate test-fixture/checkout portability gaps
+Third remote attempt: Linux and Windows exposed remaining fixture inventory and non-canonical source provenance
 
 ## Outcome
 
@@ -45,15 +46,22 @@ The Windows artifact emitted through that exact boundary passed with content has
 | `scripts/cross-platform-smoke.ts` | `d5f1f7e1dd758f1e2d69a00d12eb8b37af8e0f796acba940eb07ef65b0696e1c` |
 | `scripts/release-matrix-gate.ts` | `0d59205671f491ccbf7bc4cee50aad43b76ef3dd36bfa1a55ee6ae0ca3025f10` |
 | `scripts/cross-platform-workflow-contract.ts` | `3eb5b97811a1927e7ffa9348a05eff56b0cf0cb3b9d954eacc8aa3b04cb4797d` |
-| `scripts/cross-platform-release.test.ts` | `34ff60b6ce3ff33be66de3bb79059316af78088754a0646049d93f348cb9e240` |
+| `scripts/cross-platform-release.test.ts` | `0fd2321f66962261c752f4e8fc6dab9ab1e879f393f5b6dab69ca4c38b9971da` |
 | `.github/workflows/workflow-kit-ci.yml` | `8c5ef008c0eb71a7239ee33641d66e87b49ad23b0151e6b37802f57d15d9fb9b` |
-| `.gitattributes` | `be622e5a79cc5441cb4836dda47ea6a71e02823391e71d78c6284c006092f742` |
+| `.gitattributes` | `907d78349ba2f018d07a7abc27d4775b3b39900813aff0c6a0c50b163592ca24` |
 | `.claude/integrations/gemini-cli-adapter.test.ts` | `e29e7330c62efd4f310bd46d1d11082421150b5688e24767289ec1480128369c` |
 | `scripts/i2-live-evidence-verify.test.ts` | `a6174ac0b7b9ed9318ad3451e5719f7819cbf8215ca9ea0dee73ebef16d9a112` |
+| `scripts/i2-provider-live-smoke.test.ts` | `c94be11140717f2d248d16019e1c56ab6f2e01c24e40df989a153bdc04e08d49` |
+| `docs/roadmap/post-17-orchestrator-boundaries.json` | `80a544bab7fcf7c56574d7ae2b5a9660221f7fc9272b75babf6f994dcb68e5ac` |
+| `scripts/post-17-wave-1-inputs.test.ts` | `f1f67cac55c0aedf6fcd9155f9a50cd05eee9069cc50358511c7e83354aeaf02` |
+| `docs/roadmap/post-17-phase-capability-matrix.json` | `b92758db45bece1641024601331b68861371e4f67f79c0464b42b62a0dd2a6ea` |
+| `scripts/post-17-phase-capability-matrix.test.ts` | `becdaab61d46f90922146467040a0e4c0d938b940335b743079b33b3f42c43ee` |
+| `scripts/refresh-post17-orchestrator-boundary.ts` | `888d8725d61799cb9212dd584f4e779cc71b6947a80c843ead8305b3edf38d38` |
+| `scripts/refresh-post17-orchestrator-boundary.test.ts` | `b463d11f9fa3416209ad32e221e5208c41671bbb9ed3ea3b4346eea5c0381085` |
 
 ## Verification
 
-- Focused suite: 9 grouped tests pass, 0 fail.
+- Cross-platform release suite: 11 grouped tests pass, 0 fail.
 - Attacks reject platform mismatch, forged hash, extra fields, reordered probes, duplicate evidence,
   contradictory summary, missing artifact, extra artifact, failed aggregate matrix, omitted Windows
   leg, enabled fail-fast, detached release gate, forged aggregate result, and skipped full suite.
@@ -133,12 +141,58 @@ occurred.
 The complete CI-equivalent local command, `npm run test:kit`, exits `0` after 275.7 seconds with
 both remediations in place.
 
+## Third remote run and canonical provenance remediation
+
+Run `31823362462` was the first run on commit `756f7557eb81a56f11524b3832be127a727619de`.
+The earlier fixes were load-bearing: both jobs passed root/nested installs and platform smoke;
+Linux passed the unit Gemini adapter fixture, and Windows passed the I2 evidence LF gate. The run
+then exposed two later instances of the same portability classes:
+
+- Linux job `94841626581` reached `test:i2-provider-smoke` and failed only its remaining
+  Windows-literal Gemini entrypoint (7/8 groups passed).
+- Windows job `94841626383` reached `post-17-wave-1-inputs.test.ts` and showed that the boundary's
+  stored SHA `216d29a2...d717` described a local mixed-EOL flagship rather than a clean checkout.
+  The Windows checkout produced `6783e35e...368c1`; a controlled LF checkout produced
+  `bb33e2a5...2f410`.
+- Aggregate release job `94842338055` failed closed because both platform legs were not successful.
+
+An exact fixed-string inventory found three remaining `C:\\gemini` source occurrences, all in
+`scripts/i2-provider-live-smoke.test.ts`. The first inventory implementation searched the runtime
+single-backslash form and was discarded as an invalid zero-hit. The corrected scanner constructs
+the source-escaped form, requires a positive control, failed on that single file, and now passes
+after the fixture moved to a platform-native absolute path. The cross-platform suite also requires
+Git `eol=lf` on the hash-bound flagship and passes 11/11.
+
+Repository text checkout is now canonical LF through `* text=auto eol=lf`; Git binary detection
+remains automatic. The boundary metadata and binding validators additionally enforce
+`crlf-to-lf` canonicalization so a source hash is independent of an already-existing mixed-EOL
+worktree. The flagship's canonical SHA
+is `bb33e2a5...2f410`, model-config's is `5e52d489...f575d`, and the updated boundary's downstream
+matrix SHA is `80a544ba...e5ac`. Boundary refresh tests prove LF and CRLF fixtures produce the same
+SHA and keep dirty/anchor/range failures closed. Focused results are provider smoke 8/8, I2 evidence
+7/7, boundary refresh 6/6, Wave-1 input PASS, phase matrix PASS, and cross-platform release 11/11.
+
+One attempted checkout proof read the old HEAD boundary blob because the remediation was still
+unstaged. Its flagship and model-config legs passed and its temporary directory was cleaned, but
+the boundary leg is not evidence. The exact changed set must be staged before repeating the clean
+checkout proof, followed by the full kit suite and fourth remote run.
+
+The exact 12-file set was then staged. A new `core.autocrlf=true` checkout from that staged index
+reproduced all four representative contracts exactly and cleaned its temporary directory: flagship
+`bb33...`/160,569 bytes, model config `5e52...`/7,765 bytes, boundary `80a5...`/14,470 bytes, and I2
+receipt `4144...`/1,311 bytes. The first full-suite attempt then correctly rejected an unnecessary
+new phase-matrix root key through the production exact-key validator after 146.7 seconds. That root
+key was removed without changing runtime `MATRIX_KEYS`; canonicalization remains explicit in the
+boundary and validator implementations. Phase-router runtime/CLI, matrix, and cross-platform gates
+passed, then the CI-equivalent full `npm run test:kit` exited `0` in 219.3 seconds.
+
 ## Pending highest-valid evidence
 
-P17-009 remains `in_progress`. Its acceptance criterion requires the committed second remediation
-to pass on both `ubuntu-latest` and `windows-latest`, followed by the aggregate release gate. Run
-the full local verification ladder, push only the reviewed remediation commit to the existing PR
-branch, and capture the third run; do not close the task from local or failed-remote evidence.
+P17-009 remains `in_progress`. Its acceptance criterion requires the committed canonical-
+provenance remediation to pass on both `ubuntu-latest` and `windows-latest`, followed by the
+aggregate release gate. Stage and prove the exact diff, run the full local suite, push only the
+reviewed remediation commit to the existing PR branch, and capture the fourth run; do not close
+the task from local or failed-remote evidence.
 
 No sync, provider/model execution, publication, target `.Codex` edit, direct-main push, merge, or
 macOS qualification occurred. Git credential use was bounded to the authorized branch/PR API

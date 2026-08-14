@@ -41,6 +41,8 @@ const codexJsonl = (output = I2_PROVIDER_LIVE_OK): string => [
   JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: output } }),
   JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 10, cached_input_tokens: 2, output_tokens: 5 } }),
 ].join('\n');
+const FIXTURE_ROOT = path.parse(path.resolve('.')).root;
+const GEMINI_ENTRYPOINT = path.join(FIXTURE_ROOT, 'gemini', 'bundle', 'gemini.js');
 
 class FakeProcessExecutor implements ProcessExecutor {
   readonly calls: Array<{ executable: string; args: readonly string[]; stdin: string; shell: false }> = [];
@@ -91,8 +93,8 @@ function cliArgs(root: string, provider: 'codex' | 'copilot', modelKey: string):
 function geminiArgs(root: string): string[] {
   return [
     ...common(root, 'gemini', 'gemini-2.5-pro'),
-    '--executable', 'node',
-    '--entrypoint', 'C:\\gemini\\bundle\\gemini.js',
+    '--executable', process.execPath,
+    '--entrypoint', GEMINI_ENTRYPOINT,
     '--expected-cli-version', '0.54.4',
   ];
 }
@@ -214,9 +216,9 @@ async function main() {
     assert.equal(result.runtimeVersion, '0.54.4');
     assert.equal(result.costStatus, 'unknown');
     assert.equal(result.strictValid, true);
-    assert.deepEqual(processExecutor.calls[0].args, ['C:\\gemini\\bundle\\gemini.js', '--version']);
+    assert.deepEqual(processExecutor.calls[0].args, [GEMINI_ENTRYPOINT, '--version']);
     assert.deepEqual(processExecutor.calls[1].args, [
-      'C:\\gemini\\bundle\\gemini.js', '-p', I2_PROVIDER_LIVE_PROMPT, '--output-format', 'json',
+      GEMINI_ENTRYPOINT, '-p', I2_PROVIDER_LIVE_PROMPT, '--output-format', 'json',
       '--model', 'gemini-2.5-pro', '--approval-mode', 'plan', '--skip-trust',
     ]);
     assert.equal(verifyBackendBoundBundle('i2-provider-live-smoke-gemini', 'B0', root).valid, true);

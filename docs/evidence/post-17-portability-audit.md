@@ -80,9 +80,12 @@ Commit `0387c41` records the complete contiguous B7 through B12.8 semantic range
 generator now also refuses a phase whose end is not exactly before the next phase, or whose final end
 does not match EOF. Its five focused tests cover clean refresh, dirty boundary refusal, dirty source
 refusal, anchor drift, and range/EOF drift. The sanctioned refresh then bound the 2,686-line flagship
-to commit `0387c41ad075bb839dcef838c8fc450028f1497f`, blob
-`be90b90f1b127320d9e5fd6b4e6560501a3dd09f`, and SHA-256
-`216d29a23bfb7baba8d61a620e248d0443598e05ffe99e25c3aeb21c3041d717`.
+to commit `0387c41ad075bb839dcef838c8fc450028f1497f` and blob
+`be90b90f1b127320d9e5fd6b4e6560501a3dd09f`. The original SHA-256
+`216d29a23bfb7baba8d61a620e248d0443598e05ffe99e25c3aeb21c3041d717` was later proven to describe
+only a mixed-EOL Windows worktree representation. The 2026-08-15 portability correction binds the
+same blob through explicit `crlf-to-lf` canonicalization as
+`bb33e2a58b178926ca81a95a9e1fa737bb6b5d805cab099b97d0f862aea2f410`.
 
 The Wave-1 conservation gate passed 23 mandatory phases, one conditional phase, three providers,
 and seven negative controls. Core orchestrator tests passed 24 boundaries and 26 attacks; the CLI
@@ -108,7 +111,7 @@ Playwright, version, index, prompt-budget, and lesson-sync gates. The flagship r
 | `scripts/build-provider-bundles.ts` | `087b28df294cbc5a2bba3d98ea42c29d6ca217bcf159e50b188c2ad26d7c763b` |
 | `providers/provider-bundles.json` | `96681b6852ed316778787e5a621fc8c795acc42dbc7adbfc8c7d3fbff689ccc6` |
 | `docs/roadmap/p17-012-convention-stack-portability-plan.md` | `3550a6b85a2544f9791c687a108913baef390bcb9f32803260839894141110d1` |
-| `docs/roadmap/post-17-orchestrator-boundaries.json` | `56edbe192eac7ff7fcff39031e1cac923d3a18349027611beabe6389685e7c71` |
+| `docs/roadmap/post-17-orchestrator-boundaries.json` | `80a544bab7fcf7c56574d7ae2b5a9660221f7fc9272b75babf6f994dcb68e5ac` |
 
 ## Result boundary
 

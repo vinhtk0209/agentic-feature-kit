@@ -7,7 +7,7 @@
     "phaseBoundary": {
       "path": "docs/roadmap/post-17-orchestrator-boundaries.json",
       "schemaVersion": "1.0.0",
-      "sha256": "56edbe192eac7ff7fcff39031e1cac923d3a18349027611beabe6389685e7c71"
+      "sha256": "80a544bab7fcf7c56574d7ae2b5a9660221f7fc9272b75babf6f994dcb68e5ac"
     },
     "conservationGolden": {
       "path": "docs/roadmap/post-17-orchestrator-golden.json",
@@ -16,7 +16,7 @@
     },
     "kitModelInventory": {
       "path": ".claude/integrations/model-config.ts",
-      "sha256": "b907dfbbcaf0748d893200f948105c46eae4cd8e5418efff8ee72f9902f9e68b",
+      "sha256": "5e52d489553397e2a736cc4188d2aa7a55a84a09d1bb320b46a357ee9c4f575d",
       "authority": "configured inventory only; it is not entitlement or phase-quality evidence"
     },
     "dashboardModelInventory": {

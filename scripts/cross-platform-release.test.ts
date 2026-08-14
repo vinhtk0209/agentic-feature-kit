@@ -70,6 +70,17 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function trackedTestSources(): string[] {
+  const listed = spawnSync('git', ['ls-files', '-z', '--', '.claude', 'scripts'], {
+    cwd: root,
+    encoding: 'utf8',
+    shell: false,
+    windowsHide: true,
+  });
+  assert.equal(listed.status, 0, listed.stderr);
+  return listed.stdout.split('\0').filter((file) => file.endsWith('.test.ts')).sort();
+}
+
 async function main(): Promise<void> {
 await test('real local smoke proves runtime, opaque argv, CRLF, and bounded child cleanup', async () => {
   const platform = qualifiedPlatform();
@@ -202,6 +213,26 @@ await test('workflow contract requires equal Linux/Windows legs and aggregate re
     workflow.replace('      - name: Install Confluence MCP dependencies\n        working-directory: .claude/mcp-server\n        run: npm ci --ignore-scripts\n', ''),
   ];
   for (const attacked of attacks) assert.equal(validateCrossPlatformWorkflow(attacked).passed, false);
+});
+
+await test('tracked TypeScript tests contain no Windows-only Gemini fixture root', () => {
+  const escapedSeparator = '\\'.repeat(2);
+  const forbidden = `${['C:', 'gemini'].join(escapedSeparator)}${escapedSeparator}`;
+  assert.equal(['C:', 'gemini', 'bundle'].join(escapedSeparator).includes(forbidden), true, 'inventory positive control must match');
+  const offenders = trackedTestSources().filter((file) => fs.readFileSync(path.join(root, file), 'utf8').includes(forbidden));
+  assert.deepEqual(offenders, []);
+});
+
+await test('hash-bound flagship source has checkout-stable LF attributes', () => {
+  const relative = '.claude/commands/feature-from-confluence.md';
+  const result = spawnSync('git', ['check-attr', 'eol', '--', relative], {
+    cwd: root,
+    encoding: 'utf8',
+    shell: false,
+    windowsHide: true,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout.trim(), /: eol: lf$/, `missing checkout-stable LF contract for ${relative}`);
 });
 
 console.log(`\ncross-platform-release.test: ${passed} passed, ${failed} failed`);

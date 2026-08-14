@@ -11,13 +11,13 @@ run, credential access, installation, publication, sync, or push.
 
 - `docs/roadmap/post-17-orchestrator-boundaries.json` supplies the exact 24 mandatory and
   conditional phase contracts, stage ownership, inputs, outputs, and gate types. Matrix binding:
-  SHA-256 `56edbe192eac7ff7fcff39031e1cac923d3a18349027611beabe6389685e7c71`.
+  canonical-LF SHA-256 `80a544bab7fcf7c56574d7ae2b5a9660221f7fc9272b75babf6f994dcb68e5ac`.
 - `docs/roadmap/post-17-orchestrator-golden.json` supplies the same-input conservation and trusted
   gate/evidence boundary. Matrix binding: SHA-256
   `5c8e446ad17874b68d221809540c9a4ca3436c73382b27a0f365c367431d34e2`.
 - `.claude/integrations/model-config.ts` and the dashboard runner catalog are treated only as local
   configured inventory. Their hashes are bound in the matrix; neither file proves entitlement or
-  phase quality.
+  phase quality. The binding validators explicitly canonicalize CRLF to LF before hashing text.
 - The 2026-08-11 Codex and GitHub Copilot canaries prove bounded transport and then-current exact
   entitlement for selected tuples. They are explicitly classified as `runtime-entitled`, not
   `phase-qualified`. Claude and Gemini remain configured-only in this snapshot.

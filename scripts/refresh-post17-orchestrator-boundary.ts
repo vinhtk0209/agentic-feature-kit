@@ -8,7 +8,7 @@ import { atomicWriteTextFile } from '../.claude/integrations/cli-reliability';
 type BoundaryPhase = { id: string; sourceLines: [number, number] };
 type BoundaryDocument = {
   generatedOn: string;
-  source: { path: string; gitCommit: string; gitBlob: string; sha256: string; lineCount: number };
+  source: { path: string; canonicalization: 'crlf-to-lf'; gitCommit: string; gitBlob: string; sha256: string; lineCount: number };
   phases: BoundaryPhase[];
 };
 
@@ -25,7 +25,7 @@ function gitRaw(root: string, args: string[]): string {
 }
 
 function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+  return createHash('sha256').update(value.replace(/\r\n/g, '\n'), 'utf8').digest('hex');
 }
 
 function withoutGeneratedMetadata(boundary: BoundaryDocument): unknown {
@@ -58,6 +58,7 @@ export function refreshBoundarySource(root: string, generatedOn: string): Bounda
   }
   const sourcePath = boundary.source.path;
   if (sourcePath !== '.claude/commands/feature-from-confluence.md') throw new Error('unexpected flagship source path');
+  if (boundary.source.canonicalization !== 'crlf-to-lf') throw new Error('unexpected flagship hash canonicalization');
   const source = fs.readFileSync(path.join(root, sourcePath), 'utf8');
   const commit = git(root, ['rev-parse', 'HEAD']);
   const headBlob = git(root, ['rev-parse', `HEAD:${sourcePath}`]);
@@ -76,6 +77,7 @@ export function refreshBoundarySource(root: string, generatedOn: string): Bounda
   }
   const nextSource = {
     path: sourcePath,
+    canonicalization: boundary.source.canonicalization,
     gitCommit: commit,
     gitBlob: headBlob,
     sha256: sha256(source),

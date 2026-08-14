@@ -17,7 +17,8 @@ const designPath = path.join(root, 'docs', 'design', 'post-17-wave-1-input-contr
 
 const parseJson = (file: string): JsonRecord => JSON.parse(fs.readFileSync(file, 'utf8'))
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
-const sha256 = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
+const canonicalText = (value: string): string => value.replace(/\r\n/g, '\n')
+const sha256 = (value: string): string => crypto.createHash('sha256').update(canonicalText(value)).digest('hex')
 const nonBlankStrings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === 'string' && item.trim().length > 0)
 
@@ -42,6 +43,7 @@ function validateBoundary(boundary: JsonRecord, flagship: string): void {
   assert.deepEqual(boundary.mandatoryPhaseOrder, expectedMandatory, 'boundary order must equal the runtime evidence registry')
   assert.deepEqual(boundary.conditionalPhases, expectedConditional, 'conditional phase registry must equal runtime')
   assert.equal(boundary.source.path, '.claude/commands/feature-from-confluence.md')
+  assert.equal(boundary.source.canonicalization, 'crlf-to-lf')
   assert.equal(boundary.source.sha256, sha256(flagship), 'boundary must be regenerated when the flagship changes')
   assert.equal(boundary.source.lineCount, flagship.split(/\r?\n/).length - (flagship.endsWith('\n') ? 1 : 0))
   assert.match(boundary.source.gitCommit, /^[0-9a-f]{40}$/)

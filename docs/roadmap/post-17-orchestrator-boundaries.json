@@ -5,9 +5,10 @@
   "approvalBasis": "operator-confirmed post-17 scope",
   "source": {
     "path": ".claude/commands/feature-from-confluence.md",
+    "canonicalization": "crlf-to-lf",
     "gitCommit": "0387c41ad075bb839dcef838c8fc450028f1497f",
     "gitBlob": "be90b90f1b127320d9e5fd6b4e6560501a3dd09f",
-    "sha256": "216d29a23bfb7baba8d61a620e248d0443598e05ffe99e25c3aeb21c3041d717",
+    "sha256": "bb33e2a58b178926ca81a95a9e1fa737bb6b5d805cab099b97d0f862aea2f410",
     "lineCount": 2686
   },
   "runtimeContracts": {
