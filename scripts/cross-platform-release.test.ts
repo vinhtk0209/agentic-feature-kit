@@ -191,6 +191,7 @@ await test('release gate CLI emits one fail-closed machine result when evidence 
 
 await test('workflow contract requires equal Linux/Windows legs and aggregate release gating', () => {
   const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'workflow-kit-ci.yml'), 'utf8').replace(/\r\n/g, '\n');
+  assert.ok(fs.existsSync(path.join(root, '.claude', 'mcp-server', 'package-lock.json')));
   assert.deepEqual(validateCrossPlatformWorkflow(workflow), { passed: true, reasons: [] });
   const attacks = [
     workflow.replace('          - platform: windows\n            os: windows-latest\n', ''),
@@ -198,6 +199,7 @@ await test('workflow contract requires equal Linux/Windows legs and aggregate re
     workflow.replace('    needs: [kit-verify]\n', ''),
     workflow.replace('      MATRIX_RESULT: ${{ needs.kit-verify.result }}', '      MATRIX_RESULT: success'),
     workflow.replace('run: npm run test:kit', 'run: npm run test:post-17-roadmap'),
+    workflow.replace('      - name: Install Confluence MCP dependencies\n        working-directory: .claude/mcp-server\n        run: npm ci --ignore-scripts\n', ''),
   ];
   for (const attacked of attacks) assert.equal(validateCrossPlatformWorkflow(attacked).passed, false);
 });

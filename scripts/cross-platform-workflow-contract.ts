@@ -18,6 +18,7 @@ export function validateCrossPlatformWorkflow(source: string): WorkflowContractR
   requireText('fail-fast: false', 'matrix fail-fast must be disabled');
   requireText('node-version: \'24\'', 'qualification must use Node 24');
   requireText('run: npm ci\n', 'matrix must install from the lockfile');
+  requireText('working-directory: .claude/mcp-server\n        run: npm ci --ignore-scripts', 'matrix must install Confluence MCP dependencies from the nested lockfile');
   requireText('QUALIFICATION_PLATFORM: ${{ matrix.platform }}', 'matrix must bind the expected platform without shell argv interpolation');
   requireText('QUALIFICATION_OUT: artifacts/cross-platform/${{ matrix.platform }}.json', 'matrix must bind the qualification artifact path');
   requireText('run: npm run test:cross-platform', 'matrix must run the platform smoke');
@@ -44,10 +45,11 @@ export function validateCrossPlatformWorkflow(source: string): WorkflowContractR
   }
 
   const installAt = source.indexOf('run: npm ci\n');
+  const nestedInstallAt = source.indexOf('working-directory: .claude/mcp-server\n        run: npm ci --ignore-scripts');
   const smokeAt = source.indexOf('run: npm run test:cross-platform');
   const fullAt = source.indexOf('run: npm run test:kit');
-  if (!(installAt >= 0 && installAt < smokeAt && smokeAt < fullAt)) {
-    reasons.push('matrix steps must run install, platform smoke, then full kit suite');
+  if (!(installAt >= 0 && installAt < nestedInstallAt && nestedInstallAt < smokeAt && smokeAt < fullAt)) {
+    reasons.push('matrix steps must run root install, nested MCP install, platform smoke, then full kit suite');
   }
 
   return { passed: reasons.length === 0, reasons: reasons.sort() };

@@ -1,9 +1,9 @@
 # P17-009 — Cross-Platform Release Qualification Evidence
 
-Date: 2026-08-13  
-Status: IMPLEMENTATION COMPLETE — REMOTE CI PENDING  
+Date: 2026-08-14
+Status: IMPLEMENTATION HARDENED — REMOTE CI RERUN PENDING
 Qualified locally: Windows, Node 24  
-Not yet qualified remotely: Linux and Windows GitHub-hosted runners
+First remote attempt: Linux and Windows both exposed the same clean-checkout dependency gap
 
 ## Outcome
 
@@ -43,9 +43,9 @@ The Windows artifact emitted through that exact boundary passed with content has
 |---|---|
 | `scripts/cross-platform-smoke.ts` | `d5f1f7e1dd758f1e2d69a00d12eb8b37af8e0f796acba940eb07ef65b0696e1c` |
 | `scripts/release-matrix-gate.ts` | `0d59205671f491ccbf7bc4cee50aad43b76ef3dd36bfa1a55ee6ae0ca3025f10` |
-| `scripts/cross-platform-workflow-contract.ts` | `90e2267879586065f1bb95dfaba10fdeeda2bdaab8a22591726d9ca3ada21a8e` |
-| `scripts/cross-platform-release.test.ts` | `05be5103a5cb8c256dbf16d2c568317d76743a69b0e3c949008da3a92a7128c9` |
-| `.github/workflows/workflow-kit-ci.yml` | `ee7adce26acf5f8b259b76fc6aa8b61b559cfeed21d8febc8cfc721b34533f31` |
+| `scripts/cross-platform-workflow-contract.ts` | `3eb5b97811a1927e7ffa9348a05eff56b0cf0cb3b9d954eacc8aa3b04cb4797d` |
+| `scripts/cross-platform-release.test.ts` | `34ff60b6ce3ff33be66de3bb79059316af78088754a0646049d93f348cb9e240` |
+| `.github/workflows/workflow-kit-ci.yml` | `8c5ef008c0eb71a7239ee33641d66e87b49ad23b0151e6b37802f57d15d9fb9b` |
 
 ## Verification
 
@@ -61,12 +61,48 @@ The Windows artifact emitted through that exact boundary passed with content has
 The Linux fixture used by the release-gate unit test is explicitly synthetic and tests only artifact
 validation. It is not runtime evidence for Linux.
 
+## First remote run and clean-checkout remediation
+
+The operator authorized pushing exact kit HEAD to new branch `p17-009-cross-platform-ci` and opening
+a draft PR into `main`. Draft PR #1 is
+`https://github.com/vinhtk0209/agentic-feature-kit/pull/1`; it remains draft and unmerged.
+
+GitHub Actions run `31820016737` provided the first real two-platform evidence:
+
+- Linux job `94830749920` and Windows job `94830749826` both passed checkout, Node 24 setup, root
+  `npm ci`, and the real cross-platform smoke;
+- both failed at the same full-suite step, `test:confluence-http`, because clean checkout could not
+  resolve `axios` imported by `.claude/mcp-server/confluence-http.ts`;
+- both platform qualification artifacts uploaded successfully despite the later suite failure;
+- the failure was not OS divergence: root installation omitted the committed nested
+  `.claude/mcp-server/package-lock.json`, while the development worktree already had nested
+  `node_modules` and therefore masked the gap.
+
+The narrow remediation adds one matrix step before smoke/full verification:
+
+```yaml
+- name: Install Confluence MCP dependencies
+  working-directory: .claude/mcp-server
+  run: npm ci --ignore-scripts
+```
+
+Axios was not duplicated into the root manifest, and release-gate behavior did not change. The
+workflow contract first failed with exactly two missing-step/order reasons, then passed 9/9 after
+the change. Its attack matrix now removes this exact nested install step and must fail closed.
+
+A detached clean-checkout worktree with no junction/reparse-point dependencies proved root `npm ci`,
+nested `npm ci --ignore-scripts`, `test:confluence-http`, `test:confluence-markdown`, and the real
+cross-platform smoke all pass. Both scratch `node_modules` directories were verified as ordinary
+directories before the scratch worktree was removed. Full local `npm run test:kit` then exited 0 in
+266.3 seconds.
+
 ## Pending highest-valid evidence
 
-P17-009 remains `in_progress`. Its acceptance criterion requires the committed workflow to pass on
-both `ubuntu-latest` and `windows-latest`. No push or PR was authorized, so no GitHub-hosted run
-exists for this implementation. Only an authorized remote run may close the task; local Windows
-proof and static workflow validation must never be relabeled as that run.
+P17-009 remains `in_progress`. Its acceptance criterion requires the committed remediation to pass
+on both `ubuntu-latest` and `windows-latest`, followed by the aggregate release gate. Push the
+reviewed fix only to the existing PR branch and capture the rerun; do not close the task from local
+or failed-remote evidence.
 
-No sync, push, provider/model execution, credential access, install/publication, target `.Codex`
-edit, or macOS qualification occurred.
+No sync, provider/model execution, publication, target `.Codex` edit, direct-main push, merge, or
+macOS qualification occurred. Git credential use was bounded to the authorized branch/PR API
+operations and was never printed or persisted.
