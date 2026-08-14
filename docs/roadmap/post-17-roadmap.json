@@ -430,7 +430,7 @@
       "problem": "A private internal repository lacks the documentation, governance, CI cadence, and adoption surface expected for wider distribution.",
       "scope": ["English README", "license review", "contribution guide", "security policy", "nightly CI", "release notes and examples"],
       "outOfScope": ["making the repository public", "publishing packages without approval"],
-      "readiness": {"complete": false, "missing": ["operator decision on intended audience and license"], "inputs": ["distribution bundles", "CI evidence", "current docs", "security boundary"]},
+      "readiness": {"complete": true, "missing": [], "inputs": ["distribution bundles", "CI evidence", "current docs", "security boundary", "operator-confirmed public-user objective", "LICENSE (Apache-2.0)", "docs/roadmap/post-17-provider-packaging.json", "docs/roadmap/p17-018-public-release-plan.md"]},
       "packaging": ["repository", "release"],
       "acceptanceCriteria": ["release boundary is explicit", "onboarding works from clean clone", "nightly failures are visible", "security reporting path exists"],
       "tests": ["clean-clone setup", "documentation link check", "nightly workflow validation", "package allowlist"],

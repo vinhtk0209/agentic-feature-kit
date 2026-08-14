@@ -94,6 +94,13 @@ assert.deepEqual((phaseModelRouting.readiness as Record<string, unknown>).missin
 assert.ok(((phaseModelRouting.readiness as Record<string, unknown>).inputs as string[]).includes('docs/roadmap/post-17-phase-capability-matrix.json'))
 assert.ok(fs.existsSync(path.join(root, 'docs', 'roadmap', 'post-17-phase-capability-matrix.json')))
 
+const publicRelease = tasks.find((task) => task.id === 'P17-018')!
+assert.equal(publicRelease.status, 'backlog', 'P17-018 stays dependency-blocked after its inputs are locked')
+assert.equal((publicRelease.readiness as Record<string, unknown>).complete, true)
+assert.deepEqual((publicRelease.readiness as Record<string, unknown>).missing, [])
+assert.ok(((publicRelease.readiness as Record<string, unknown>).inputs as string[]).includes('docs/roadmap/p17-018-public-release-plan.md'))
+assert.ok(fs.existsSync(path.join(root, 'docs', 'roadmap', 'p17-018-public-release-plan.md')))
+
 const markdown = fs.readFileSync(markdownPath, 'utf8')
 assert.match(markdown, /No implementation task starts until its `readiness\.complete` value is `true`/)
 assert.match(markdown, /transport\/action smoke is\s+never reported as planning or implementation parity/)

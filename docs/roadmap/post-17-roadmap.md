@@ -87,13 +87,19 @@ When complete:
 - **P17-014:** an approved distributed topology and trust boundary.
 - **P17-016:** retention and tenant-isolation policy.
 - **P17-017:** a measurable RAG benefit benchmark and approved indexing/privacy boundary.
-- **P17-018:** intended audience and license decision.
 - **P17-019:** a project-specific refresh capability fixture and security approval.
 - **P17-020:** a representative multi-feature golden set and approved drift budget.
 - **P17-021:** completed P17-014/P17-015/P17-016 contracts, approved RBAC/UI topology, disposable remote worker, test identities, evidence adapter, network-separated E2E topology, and failure injection.
 
 These missing inputs are not all operator questions. Where the source workspace can produce a
 deterministic artifact safely, the roadmap should prepare and test it before requesting a decision.
+
+## Locked input decisions
+
+- **P17-018 (`A1/L1`):** target external software-delivery engineers, evaluators, maintainers,
+  contributors, and security researchers; retain Apache-2.0 for repository source and provider
+  bundles. The repository remains private and the package remains `private: true` until separately
+  authorized. P17-018 stays backlog because P17-009 and implementation evidence are incomplete.
 
 ## Wave order
 
