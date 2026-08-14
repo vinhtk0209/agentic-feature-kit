@@ -1,5 +1,6 @@
 /** Offline attacks for the direct Gemini CLI adapter. No Gemini process or credential is used. */
 import * as assert from 'assert';
+import * as path from 'path';
 import { createGeminiCliAdapter } from './gemini-cli-adapter';
 import { backendKey, ProviderRegistry } from './multi-provider-backends';
 import { normalizeConfig } from './model-config';
@@ -25,6 +26,8 @@ const result = (stdout: string, override: Partial<ProcessExecution> = {}): Proce
   exitCode: 0, signal: null, stdout, stderr: '', timedOut: false, outputCapped: false, ...override,
 });
 const response = (output = 'I2_PROVIDER_LIVE_OK') => result(JSON.stringify({ response: output, stats: { models: {} } }));
+const FIXTURE_ROOT = path.parse(path.resolve('.')).root;
+const GEMINI_ENTRYPOINT = path.join(FIXTURE_ROOT, 'gemini', 'bundle', 'gemini.js');
 
 class FakeExecutor implements ProcessExecutor {
   calls: Array<{ executable: string; args: readonly string[]; stdin: string; shell: false }> = [];
@@ -37,8 +40,8 @@ class FakeExecutor implements ProcessExecutor {
   }
 }
 
-const create = (executor: FakeExecutor, modelKey = 'gemini-pro', entrypoint = 'C:\\gemini\\bundle\\gemini.js') => createGeminiCliAdapter({
-  executable: 'C:\\Program Files\\nodejs\\node.exe', entrypoint, modelConfig: CONFIG, modelKey,
+const create = (executor: FakeExecutor, modelKey = 'gemini-pro', entrypoint = GEMINI_ENTRYPOINT) => createGeminiCliAdapter({
+  executable: process.execPath, entrypoint, modelConfig: CONFIG, modelKey,
   adapterVersion: 'gemini-cli-v1', expectedCliVersion: '0.54.4', timeoutMs: 60_000,
   maxOutputBytes: 1_000_000, cwd: 'fixture',
 }, executor);
@@ -60,7 +63,12 @@ async function main() {
   });
 
   await test('entrypoint must be an absolute JavaScript path', async () => {
-    for (const entrypoint of ['gemini.js', 'C:\\gemini\\gemini.cmd', 'C:\\gemini\\bad\0.js']) {
+    assert.equal(path.isAbsolute(GEMINI_ENTRYPOINT), true);
+    for (const entrypoint of [
+      'gemini.js',
+      path.join(FIXTURE_ROOT, 'gemini', 'gemini.cmd'),
+      `${path.join(FIXTURE_ROOT, 'gemini', 'bad')}\0.js`,
+    ]) {
       const executor = new FakeExecutor([]);
       await mustReject(() => create(executor, 'gemini-pro', entrypoint), 'entrypoint');
       assert.equal(executor.calls.length, 0);
@@ -70,7 +78,7 @@ async function main() {
   await test('Gemini rejects unsupported reasoning effort before spawn and binds default into trust', async () => {
     const rejected = new FakeExecutor([]);
     assert.throws(() => createGeminiCliAdapter({
-      executable: 'node', entrypoint: 'C:\\gemini\\bundle\\gemini.js', modelConfig: CONFIG, modelKey: 'gemini-pro',
+      executable: process.execPath, entrypoint: GEMINI_ENTRYPOINT, modelConfig: CONFIG, modelKey: 'gemini-pro',
       adapterVersion: 'gemini-cli-v1', expectedCliVersion: '0.54.4', timeoutMs: 60_000,
       maxOutputBytes: 1_000_000, reasoningEffort: 'high',
     }, rejected), /not supported/);
@@ -83,7 +91,7 @@ async function main() {
   await test('strict CLI version probe binds provider, version, model, and headless JSON', async () => {
     const executor = new FakeExecutor([result('0.54.4\n')]);
     const probe = await create(executor).capabilityProbe();
-    assert.deepEqual(executor.calls[0].args, ['C:\\gemini\\bundle\\gemini.js', '--version']);
+    assert.deepEqual(executor.calls[0].args, [GEMINI_ENTRYPOINT, '--version']);
     assert.equal(probe.provider, 'gemini');
     assert.ok(probe.capabilities.includes('gemini-cli-version:0.54.4'));
     assert.ok(probe.capabilities.includes('model-selection:gemini-2.5-pro'));
@@ -105,7 +113,7 @@ async function main() {
     const execution = await adapter.executePhase(prompt);
     assert.equal(execution.output, 'I2_PROVIDER_LIVE_OK');
     assert.deepEqual(executor.calls[0].args, [
-      'C:\\gemini\\bundle\\gemini.js', '-p', prompt, '--output-format', 'json', '--model',
+      GEMINI_ENTRYPOINT, '-p', prompt, '--output-format', 'json', '--model',
       'gemini-2.5-pro', '--approval-mode', 'plan', '--skip-trust',
     ]);
     assert.equal(executor.calls[0].stdin, '');

@@ -1,9 +1,10 @@
 # P17-009 — Cross-Platform Release Qualification Evidence
 
-Date: 2026-08-14
-Status: IMPLEMENTATION HARDENED — REMOTE CI RERUN PENDING
+Date: 2026-08-15
+Status: SECOND REMEDIATION LOCAL GREEN — THIRD REMOTE RUN PENDING
 Qualified locally: Windows, Node 24  
 First remote attempt: Linux and Windows both exposed the same clean-checkout dependency gap
+Second remote attempt: Linux and Windows exposed separate test-fixture/checkout portability gaps
 
 ## Outcome
 
@@ -46,6 +47,9 @@ The Windows artifact emitted through that exact boundary passed with content has
 | `scripts/cross-platform-workflow-contract.ts` | `3eb5b97811a1927e7ffa9348a05eff56b0cf0cb3b9d954eacc8aa3b04cb4797d` |
 | `scripts/cross-platform-release.test.ts` | `34ff60b6ce3ff33be66de3bb79059316af78088754a0646049d93f348cb9e240` |
 | `.github/workflows/workflow-kit-ci.yml` | `8c5ef008c0eb71a7239ee33641d66e87b49ad23b0151e6b37802f57d15d9fb9b` |
+| `.gitattributes` | `be622e5a79cc5441cb4836dda47ea6a71e02823391e71d78c6284c006092f742` |
+| `.claude/integrations/gemini-cli-adapter.test.ts` | `e29e7330c62efd4f310bd46d1d11082421150b5688e24767289ec1480128369c` |
+| `scripts/i2-live-evidence-verify.test.ts` | `a6174ac0b7b9ed9318ad3451e5719f7819cbf8215ca9ea0dee73ebef16d9a112` |
 
 ## Verification
 
@@ -53,7 +57,12 @@ The Windows artifact emitted through that exact boundary passed with content has
 - Attacks reject platform mismatch, forged hash, extra fields, reordered probes, duplicate evidence,
   contradictory summary, missing artifact, extra artifact, failed aggregate matrix, omitted Windows
   leg, enabled fail-fast, detached release gate, forged aggregate result, and skipped full suite.
-- Isolated TypeScript 5.7.3 no-emit compilation: exit `0`.
+- The original P17-009 implementation's isolated TypeScript 5.7.3 no-emit compilation exited `0`.
+- A current standalone no-emit rerun is not a valid remediation result: the kit's declared
+  TypeScript 4.9.5 cannot parse transitive `@types/node` 26.1.0, while the already-installed
+  TypeScript 5.9.3 reaches the pre-existing `codex-cli-adapter.ts:232` `unknown < number` debt even
+  when only the I2 test is selected. This second remediation does not expand into that unrelated
+  adapter/toolchain scope.
 - Final full kit suite after the npm-boundary correction: exit `0` in 166.2 seconds.
 - Dashboard full suite with P17-009 active: 57 files / 420 tests pass in 6.32 seconds.
 - `git diff --check`: exit `0` before evidence-only closeout edits.
@@ -96,12 +105,40 @@ cross-platform smoke all pass. Both scratch `node_modules` directories were veri
 directories before the scratch worktree was removed. Full local `npm run test:kit` then exited 0 in
 266.3 seconds.
 
+## Second remote run and fixture/checkout remediation
+
+Replacement run `31821422424` proved the nested dependency boundary: both jobs passed root and
+nested installs plus their real platform smoke. The full suite then exposed two independent gaps:
+
+- Linux job `94835308465` failed in `gemini-cli-adapter.test.ts` because its test-only default
+  entrypoint was the Windows literal `C:\\gemini\\bundle\\gemini.js`. On POSIX that string is
+  relative, so the production adapter correctly rejected it before spawn. The fixture now builds an
+  absolute JavaScript path from the current platform root and asserts that invariant; production
+  `strictEntrypoint` is unchanged.
+- Windows job `94835308400` failed the valid I2 live-evidence group because Git checkout converted
+  hash-bound LF JSON to CRLF. The repository had an LF attribute only for hooks. A controlled
+  `git -c core.autocrlf=true checkout-index` reproduced the failure exactly: the receipt changed
+  from 1,311 to 1,351 bytes and each backend binding from 459 to 476 bytes. `.gitattributes` now
+  locks committed evidence JSON and evidence transcript text to LF. The I2 test discovers every
+  file referenced by both live manifests and fails unless Git reports `eol=lf` for each one.
+
+The checkout-stability regression first failed only on the missing LF attribute (6 prior groups
+passed, 1 new group failed), then passed 7/7 after the attribute change. Gemini tests pass 8/8 and
+the cross-platform release suite passes 9/9. A new `core.autocrlf=true` scratch checkout preserves
+the receipt at its exact SHA-256 `41448112...ca338` and 1,311 bytes, and both backend bindings at
+`f9cccb6c...3344c` and 459 bytes. The scratch directory was removed after proof. No verifier
+normalization, production adapter relaxation, sync, provider call, merge, or direct-main push
+occurred.
+
+The complete CI-equivalent local command, `npm run test:kit`, exits `0` after 275.7 seconds with
+both remediations in place.
+
 ## Pending highest-valid evidence
 
-P17-009 remains `in_progress`. Its acceptance criterion requires the committed remediation to pass
-on both `ubuntu-latest` and `windows-latest`, followed by the aggregate release gate. Push the
-reviewed fix only to the existing PR branch and capture the rerun; do not close the task from local
-or failed-remote evidence.
+P17-009 remains `in_progress`. Its acceptance criterion requires the committed second remediation
+to pass on both `ubuntu-latest` and `windows-latest`, followed by the aggregate release gate. Run
+the full local verification ladder, push only the reviewed remediation commit to the existing PR
+branch, and capture the third run; do not close the task from local or failed-remote evidence.
 
 No sync, provider/model execution, publication, target `.Codex` edit, direct-main push, merge, or
 macOS qualification occurred. Git credential use was bounded to the authorized branch/PR API

@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -18,6 +19,19 @@ const root = path.resolve(__dirname, '..');
 const evidence = JSON.parse(fs.readFileSync(path.join(root, ...I2_LIVE_EVIDENCE_PATH.split('/')), 'utf8'));
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+function hashBoundTextPaths(): string[] {
+  const manifests = [
+    'docs/specs/i2-codex-live-smoke/.evidence/B0/manifest.json',
+    'docs/specs/i2-codex-live-completion/.evidence/B0/manifest.json',
+  ];
+  return [...new Set(manifests.flatMap((relative) => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, ...relative.split('/')), 'utf8')) as {
+      files: Array<{ path: string }>;
+    };
+    return manifest.files.map((file) => file.path);
+  }))].sort();
+}
+
 function copyEvidenceRepo(): string {
   const target = fs.mkdtempSync(path.join(os.tmpdir(), 'i2-live-evidence-'));
   for (const relative of [
@@ -34,6 +48,20 @@ function copyEvidenceRepo(): string {
 }
 
 async function main(): Promise<void> {
+  await test('hash-bound text artifacts have checkout-stable LF attributes', () => {
+    for (const relative of hashBoundTextPaths()) {
+      assert.match(relative, /\.(?:json|txt)$/);
+      const result = spawnSync('git', ['check-attr', 'eol', '--', relative], {
+        cwd: root,
+        encoding: 'utf8',
+        shell: false,
+        windowsHide: true,
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout.trim(), /: eol: lf$/, `missing checkout-stable LF contract for ${relative}`);
+    }
+  });
+
   await test('live Codex bundle binds shared gate, immutable backend identity, tokens, and honest unpriced cost', async () => {
     const result = await verifyI2LiveEvidence(evidence, root);
     assert.equal(result.passed, true);
