@@ -1,12 +1,13 @@
 # P17-009 — Cross-Platform Release Qualification Evidence
 
 Date: 2026-08-15
-Status: FOURTH REMOTE WINDOWS GREEN — P2 FIXTURE REMEDIATION FULL LOCAL GREEN
+Status: FIFTH REMOTE WINDOWS GREEN — P2 CLI FIXTURE REMEDIATION FULL LOCAL GREEN
 Qualified locally: Windows, Node 24  
 First remote attempt: Linux and Windows both exposed the same clean-checkout dependency gap
 Second remote attempt: Linux and Windows exposed separate test-fixture/checkout portability gaps
 Third remote attempt: Linux and Windows exposed remaining fixture inventory and non-canonical source provenance
 Fourth remote attempt: Windows passed; Linux exposed one test-only Windows case-alias setup
+Fifth remote attempt: Windows passed; Linux exposed the adjacent CLI case-alias expectation
 
 ## Outcome
 
@@ -212,13 +213,30 @@ With the P2 test and this evidence update present, the CI-equivalent `npm run te
 exits `0` after 218.6 seconds. This is local Windows evidence only; the next remote matrix run must
 still prove the corrected fixture on Linux and preserve the already-green Windows leg.
 
+## Fifth remote run and P2 CLI case semantics
+
+Run `31827074608` executed commit `7f73290fb1778dd4709b27a15ea48ea9d2184878`. Linux job
+`94853607811` passed the corrected `test:p2-transport` 7/7, then failed only the adjacent
+`test:p2-transport-cli` manifest-set group (10 pass/1 fail). Windows job `94853607826` completed
+successfully; aggregate job `94854679464` failed closed because Linux was not successful.
+
+The CLI fixture contained two case-only ID/path mutations in its all-platform rejection array.
+Production comparison intentionally folds case only on Windows; POSIX treats those names as distinct
+filesystem identities. The remediation retains exact workspace-ID, workspace-path, and task-ID
+collision attacks on every platform, and gives the two case aliases an explicit platform contract:
+reject on Windows, accept on POSIX. No production code changed. Local Windows
+`npm run test:p2-transport-cli` passes 12/12.
+
+With the CLI fixture and this evidence update present, the CI-equivalent `npm run test:kit` command
+exits `0` after 233 seconds on local Windows.
+
 ## Pending highest-valid evidence
 
 P17-009 remains `in_progress`. Its acceptance criterion requires the committed canonical-
-provenance plus P2 fixture remediation to pass on both `ubuntu-latest` and `windows-latest`, followed
+provenance plus both P2 fixture remediations to pass on `ubuntu-latest` and `windows-latest`, followed
 by the aggregate release gate. Run the full local suite and exact diff/secret review, commit only
-the reviewed P2 test and evidence update, push only to the existing draft-PR branch, and capture the
-next run; do not close the task from focused local or partially successful remote evidence.
+the reviewed CLI test and evidence update, push only to the existing draft-PR branch, and capture
+the next run; do not close the task from focused local or partially successful remote evidence.
 
 No sync, provider/model execution, publication, target `.Codex` edit, direct-main push, merge, or
 macOS qualification occurred. Git credential use was bounded to the authorized branch/PR API

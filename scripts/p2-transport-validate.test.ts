@@ -146,11 +146,27 @@ async function main(): Promise<void> {
     const attacks = [
       mutate(value => { value.runId = 'run-2'; value.stopReceipt.runId = 'run-2'; }),
       mutate(value => { value.planHash = 'b'.repeat(64); }),
-      mutate(value => { value.workspace.workspaceId = 'RUN-1-UI'; value.workspace.path = path.join(base, 'other'); value.taskId = 'other'; }),
-      mutate(value => { value.workspace.workspaceId = 'other'; value.workspace.path = path.join(base, 'RUN-1-UI'); value.taskId = 'other'; }),
+      mutate(value => { value.workspace.path = path.join(base, 'other'); value.taskId = 'other'; }),
+      mutate(value => { value.workspace.workspaceId = 'other'; value.taskId = 'other'; }),
       mutate(value => { value.workspace.workspaceId = 'other'; value.workspace.path = path.join(base, 'other'); }),
     ];
     for (const raw of attacks) assert.equal(executeP2TransportValidation(setArgv, raw).ok, false);
+  });
+
+  await test('manifest-set mode applies filesystem-appropriate case-alias semantics', () => {
+    const setArgv = [...argv, '--mode', 'manifest-set'];
+    const mutate = (change: (value: P2RoleTransport) => void): string => {
+      const value = manifest();
+      change(value);
+      return JSON.stringify({ manifestEnvelopes: [envelope(), envelope(value)] });
+    };
+    const caseAliases = [
+      mutate(value => { value.workspace.workspaceId = 'RUN-1-UI'; value.workspace.path = path.join(base, 'other'); value.taskId = 'other'; }),
+      mutate(value => { value.workspace.workspaceId = 'other'; value.workspace.path = path.join(base, 'RUN-1-UI'); value.taskId = 'other'; }),
+    ];
+    for (const raw of caseAliases) {
+      assert.equal(executeP2TransportValidation(setArgv, raw).ok, process.platform !== 'win32');
+    }
   });
 
   await test('manifest-set request rejects empty, oversized, malformed, and extra-field input', () => {
