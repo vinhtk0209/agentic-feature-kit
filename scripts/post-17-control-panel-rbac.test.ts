@@ -47,8 +47,10 @@ assert.equal(panel.readiness.missing.length, 10, 'proposal must not silently clo
 assert.ok(panel.readiness.missing.includes('operator-approved RBAC and separation-of-duties matrix'))
 assert.deepEqual(panel.dependencies, ['P17-014', 'P17-015', 'P17-016'])
 assert.equal(topology.status, 'backlog')
+assert.equal(topology.readiness.complete, true)
 assert.equal(progress.status, 'in_progress')
-assert.equal(privacy.status, 'backlog')
+assert.equal(privacy.status, 'ready')
+assert.equal(privacy.readiness.complete, true)
 
 for (const choice of ['`I1`', '`A1`', '`S1`', '`M1`', '`D1`', '`B1`', '`U1`', '`E1`']) {
   assert.ok(adr.includes(choice), `missing RBAC choice ${choice}`)

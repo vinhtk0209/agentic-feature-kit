@@ -14,6 +14,7 @@ for (const heading of [
   '## Requirements',
   '## Constraints and existing contracts',
   '## Recommended decisions',
+  '## Acceptance record',
   '## High-level topology',
   '## Clean Architecture boundary',
   '## Machine identity and enrollment M1',
@@ -33,7 +34,7 @@ for (const heading of [
   '## Operator decision required',
 ]) assert.ok(adr.includes(heading), `missing topology section ${heading}`)
 
-assert.match(adr, /\*\*Status:\*\* Proposed — operator topology\/trust approval required/)
+assert.match(adr, /\*\*Status:\*\* Accepted — topology\/trust input locked; implementation dependency-blocked/)
 assert.match(adr, /\*\*Roadmap task:\*\* P17-014/)
 
 const controlPlane = roadmap.tasks.find((entry) => entry.id === 'P17-014')
@@ -42,11 +43,12 @@ const privacy = roadmap.tasks.find((entry) => entry.id === 'P17-016')
 const panel = roadmap.tasks.find((entry) => entry.id === 'P17-021')
 assert.ok(controlPlane && progress && privacy && panel)
 assert.equal(controlPlane.status, 'backlog')
-assert.equal(controlPlane.readiness.complete, false)
-assert.deepEqual(controlPlane.readiness.missing, ['operator-approved topology and trust boundaries'])
+assert.equal(controlPlane.readiness.complete, true)
+assert.deepEqual(controlPlane.readiness.missing, [])
 assert.deepEqual(controlPlane.dependencies, ['P17-002', 'P17-015'])
 assert.equal(progress.status, 'in_progress')
-assert.equal(privacy.readiness.complete, false)
+assert.equal(privacy.status, 'ready')
+assert.equal(privacy.readiness.complete, true)
 assert.equal(panel.readiness.complete, false)
 
 for (const choice of ['`T1`', '`M1`', '`X1`', '`R1`', '`E1`', '`S1`']) {
@@ -87,4 +89,4 @@ assert.match(adr, /does not authorize implementation, migration, enrollment,\s+r
 assert.match(normalized, /does not authorize[^.]+deployment, sync, or push\./i)
 assert.doesNotMatch(adr, /implementation (is|was) complete/i)
 
-console.log('post-17-control-plane-topology.test: PASS (21 sections, T1/M1/X1/R1/E1/S1 proposed, P17-014 still input-blocked)')
+console.log('post-17-control-plane-topology.test: PASS (22 sections, T1/M1/X1/R1/E1/S1 accepted, P17-014 dependency-blocked)')

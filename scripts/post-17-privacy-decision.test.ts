@@ -12,6 +12,7 @@ const roadmap = JSON.parse(fs.readFileSync(roadmapPath, 'utf8')) as { tasks: Arr
 for (const heading of [
   '## Context',
   '## Decision',
+  '## Acceptance record',
   '## Data classification',
   '## Central persistence allowlist',
   '## Tenant isolation',
@@ -28,14 +29,14 @@ for (const heading of [
   '## Action items after approval',
 ]) assert.ok(decision.includes(heading), `missing decision section ${heading}`)
 
-assert.match(decision, /\*\*Status:\*\* Proposed — operator approval required/)
+assert.match(decision, /\*\*Status:\*\* Accepted — policy input locked; implementation not started/)
 assert.match(decision, /\*\*Roadmap task:\*\* P17-016/)
 
 const task = roadmap.tasks.find((entry) => entry.id === 'P17-016')
 assert.ok(task)
-assert.equal(task.status, 'backlog', 'P17-016 must remain backlog before operator policy approval')
-assert.equal(task.readiness.complete, false, 'P17-016 readiness must remain false before approval')
-assert.deepEqual(task.readiness.missing, ['operator-approved retention and tenant policy'])
+assert.equal(task.status, 'ready', 'P17-016 must become ready after accepted input and completed dependency')
+assert.equal(task.readiness.complete, true, 'P17-016 readiness must reflect the accepted policy')
+assert.deepEqual(task.readiness.missing, [])
 
 for (const classification of [
   'D0_public_contract',
@@ -77,8 +78,8 @@ for (const optionalScope of [
   '`diagnostic_content` | Off.',
 ]) assert.ok(decision.includes(optionalScope), `optional processing scope is not fail-closed: ${optionalScope}`)
 
-assert.match(decision, /no schema\/runtime\/dashboard policy implementation may start/i)
+assert.match(decision, /no schema\/runtime\/dashboard policy\s+implementation, migration, or external write is implied by acceptance/i)
 assert.match(decision, /No sync, provider run, database migration, installation, publication, or push is authorized/i)
 assert.doesNotMatch(decision, /implementation (is|was) complete/i)
 
-console.log('post-17-privacy-decision.test: PASS (16 sections, 5 data classes, T1/R1/C1/L1/E1 proposed, P17-016 still input-blocked)')
+console.log('post-17-privacy-decision.test: PASS (17 sections, 5 data classes, T1/R1/C1/L1/E1 accepted, P17-016 ready)')

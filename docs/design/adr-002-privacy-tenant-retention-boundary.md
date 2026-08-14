@@ -1,6 +1,6 @@
 # ADR-002: Use a tenant-scoped, metadata-only central data boundary
 
-**Status:** Proposed — operator approval required
+**Status:** Accepted — policy input locked; implementation not started
 **Date:** 2026-08-14
 **Deciders:** Workflow-kit operator and maintainers
 **Roadmap task:** P17-016
@@ -34,9 +34,17 @@ Adopt **Option T1: opaque multi-tenant identity plus a strict metadata-only cent
 Installation or provider use does not grant permission to warehouse specification content.
 Unknown fields and unclassified data fail closed before persistence.
 
-The decision becomes accepted only when the operator approves all five policy choices in
-`Operator decision required`. Until then P17-016 remains `backlog`, its readiness remains false,
-and no schema/runtime/dashboard policy implementation may start.
+The operator accepted all five policy choices in `Operator decision required` on 2026-08-14.
+P17-016 input readiness is complete and the task is `ready`; no schema/runtime/dashboard policy
+implementation, migration, or external write is implied by acceptance.
+
+## Acceptance record
+
+- Accepted on: 2026-08-14.
+- Accepted choice set: `T1/R1/C1/L1/E1`.
+- Exact approval: `APPROVE P17-016 POLICY v1: tenant=T1, retention=R1, consent=C1, legacy=L1, evidence=E1.`
+- Effect: closes only `operator-approved retention and tenant policy`; implementation and every
+  external action retain their separate gates.
 
 ## Data classification
 

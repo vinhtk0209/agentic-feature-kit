@@ -1,6 +1,6 @@
 # ADR-003: Use an outbound-pull, typed-envelope distributed control plane
 
-**Status:** Proposed — operator topology/trust approval required
+**Status:** Accepted — topology/trust input locked; implementation dependency-blocked
 **Date:** 2026-08-14
 **Roadmap task:** P17-014
 **Deciders:** Workflow-kit operator and maintainers
@@ -61,7 +61,8 @@ remote execution, provider execution, two-node canaries, credential use, deploym
   read-only drill-down. P17-014 owns network delivery, worker availability, remote leases, and
   transport trust.
 - P17-016 owns tenant identity, privacy classification, retention, redaction, and deletion. Its ADR
-  is still Proposed, so no production P17-014 persistence may start.
+  is Accepted, but its runtime/schema policy is not implemented, so no production P17-014
+  persistence may start.
 - Current dashboard RBAC has `viewer`, `operator`, `admin`, and `super_admin`, but no tenant context
   or dedicated approver role. P17-021 owns the final action matrix and separation of duties.
 - The dashboard is a self-hosted Next/Node application backed by Supabase. A serverless-only or
@@ -78,9 +79,18 @@ remote execution, provider execution, two-node canaries, credential use, deploym
 | `E1` | Required E2E uses two network-separated nodes with no shared filesystem and a real deterministic non-shell operation/evidence flow. |
 | `S1` | Single-region bounded initial scale; Postgres leases/outbox first, broker/multi-region only after measured thresholds. |
 
-The decisions become accepted only after the operator approves the exact choice set or supplies
-explicit replacements. Until then P17-014 remains `backlog`, readiness remains false, and dependent
-Control Plane/Control Panel implementation remains blocked.
+The operator accepted the exact choice set on 2026-08-14. P17-014 input readiness is complete, but
+the task remains `backlog` while P17-015 is in progress and the accepted P17-016 policy is not yet
+implemented. Acceptance does not authorize Control Plane/Control Panel implementation or an
+external action.
+
+## Acceptance record
+
+- Accepted on: 2026-08-14.
+- Accepted choice set: `T1/M1/X1/R1/E1/S1`.
+- Exact approval: `APPROVE P17-014 TOPOLOGY v1: topology=T1, machine=M1, execution=X1, replay=R1, e2e=E1, scale=S1.`
+- Effect: closes only `operator-approved topology and trust boundaries`; dependency, implementation,
+  migration, enrollment, remote execution, deployment, sync, and push gates remain independent.
 
 ## High-level topology
 
