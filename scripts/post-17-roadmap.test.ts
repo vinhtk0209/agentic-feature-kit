@@ -78,6 +78,15 @@ assert.ok((controlPanel.tests as string[]).includes('Playwright exact-dashboard-
 const controlPanelPlan = fs.readFileSync(path.join(root, 'docs', 'roadmap', 'p17-021-distributed-control-panel-plan.md'), 'utf8')
 for (const required of ['/control-plane', 'Control Panel', 'Control Plane', 'remote worker', 'RBAC', 'Playwright', 'network-separated/two-node']) assert.match(controlPanelPlan, new RegExp(required.replace('/', '\\/'), 'i'))
 
+const crossMachineProgress = tasks.find((task) => task.id === 'P17-015')!
+assert.equal(crossMachineProgress.status, 'in_progress')
+assert.equal((crossMachineProgress.readiness as Record<string, unknown>).complete, true)
+assert.deepEqual((crossMachineProgress.readiness as Record<string, unknown>).missing, [])
+const crossMachineProgressPlan = fs.readFileSync(path.join(root, 'docs', 'roadmap', 'p17-015-cross-machine-progress-plan.md'), 'utf8')
+for (const required of ['/roadmap/[taskId]', 'opaque operator-assigned machine UUID', 'linear retry', 'hash-chained progress events', 'service-role-only', 'concurrent two-machine', 'P17-014', 'P17-016', 'P17-021']) {
+  assert.ok(crossMachineProgressPlan.toLowerCase().includes(required.toLowerCase()), `P17-015 plan must retain ${required}`)
+}
+
 const markdown = fs.readFileSync(markdownPath, 'utf8')
 assert.match(markdown, /No implementation task starts until its `readiness\.complete` value is `true`/)
 assert.match(markdown, /transport\/action smoke is\s+never reported as planning or implementation parity/)

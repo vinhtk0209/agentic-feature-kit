@@ -367,7 +367,7 @@
       "initiative": "P17-I4",
       "wave": 4,
       "priority": "P2",
-      "status": "backlog",
+      "status": "in_progress",
       "dependencies": ["P17-002"],
       "backlogRefs": ["5"],
       "problem": "Current tracking does not fully bind task state, provider run, evidence, machine, and retry lineage.",

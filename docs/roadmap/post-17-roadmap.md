@@ -72,7 +72,7 @@ When complete:
 | P17-012 | P1 | 2 | done | Convention and stack portability audit | Gates Open edX conventions instead of treating them as universal defaults. |
 | P17-013 | P1 | 2 | done | Documentation and runtime claim audit | Detects version, parity, generated-edition, and documentation drift. |
 | P17-014 | P2 | 5 | backlog | Opt-in distributed control plane | Coordinates typed remote work without default remote execution or arbitrary shell. |
-| P17-015 | P2 | 4 | backlog | Detailed cross-machine progress tracking | Links each task to the exact machine-safe run, retry lineage, and evidence hash. |
+| P17-015 | P2 | 4 | in_progress | Detailed cross-machine progress tracking | Links each task to the exact machine-safe run, retry lineage, and evidence hash. |
 | P17-016 | P1 | 3 | backlog | Privacy-safe specification and usage data criteria | Prevents private specs, secrets, or cross-tenant data from leaking into learning data. |
 | P17-017 | P2 | 5 | backlog | Provider-neutral build harness with optional RAG | Keeps repository facts authoritative while measuring any retrieval benefit safely. |
 | P17-018 | P2 | 4 | backlog | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
