@@ -3,7 +3,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-export const SYNCED_CORE_FILES = ['project-intelligence.ts', 'stack-portability.ts'] as const
+export const SYNCED_CORE_FILES = [
+  'privacy-policy.ts',
+  'privacy-writer.ts',
+  'project-intelligence.ts',
+  'stack-portability.ts',
+] as const
 
 export interface SyncedCoreCheck {
   ok: boolean

@@ -117,7 +117,7 @@ const payloads: Record<CentralFamily, Record<string, unknown>> = {
     taskId: 'P17-016',
     commandRunId: RUN,
     machineId: MACHINE,
-    providerExecutionId: 'provider_run',
+    providerExecutionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     attempt: 1,
     state: 'passed',
     phaseId: 'B11',
@@ -140,10 +140,9 @@ const payloads: Record<CentralFamily, Record<string, unknown>> = {
   },
   install_run: {
     repoLocalId: 'workflow-kit',
+    eventCode: 'installed',
     kitVersion: '3.25.0',
-    installedAt: NOW,
-    lastRunVersion: '3.25.0',
-    lastRunAt: NOW,
+    observedAt: NOW,
   },
   error_signal: {
     runId: RUN,
@@ -228,6 +227,35 @@ assertion('all eight central families construct deterministic tenant-scoped reco
     assert.match(first.recordHash, /^[0-9a-f]{64}$/)
     assert.deepEqual(validateCentralRecord(structuredClone(first)), first)
   }
+})
+
+assertion('current runtime semantics construct without fabricated identity, price, or install history', () => {
+  for (const commandCode of ['prompt', 'execute_roadmap_phase']) {
+    const record = build('command_run', { ...payloads.command_run, commandCode })
+    assert.equal(record.data.commandCode, commandCode)
+  }
+  const unavailable = build('token_usage', {
+    ...payloads.token_usage,
+    costMicros: null,
+    pricingVersion: null,
+    pricingStatus: 'unavailable',
+  })
+  assert.equal(unavailable.data.costMicros, null)
+  assert.equal(unavailable.data.pricingVersion, null)
+  assert.equal(unavailable.data.pricingStatus, 'unavailable')
+  assert.deepEqual(build('install_run').data, {
+    repoOpaqueId: build('install_run').data.repoOpaqueId,
+    opaqueKeyVersion: 'key_v1',
+    eventCode: 'installed',
+    kitVersion: '3.25.0',
+    observedAt: NOW,
+  })
+  const ran = build('install_run', { ...payloads.install_run, eventCode: 'ran' })
+  assert.equal(ran.data.eventCode, 'ran')
+  const tokenScoped = build('error_signal', { ...payloads.error_signal, runId: null })
+  assert.equal(tokenScoped.data.runId, null)
+  assert.equal(tokenScoped.data.tokenSubjectId, SUBJECT)
+  assert.equal(build('progress').data.providerExecutionId, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
 })
 
 assertion('repository identifiers leave the boundary only as tenant-keyed HMAC values', () => {
@@ -331,6 +359,23 @@ attack('unknown fields reject raw email, path, URL, prompt, log, stack, and evid
   ]) {
     const result = evaluateCentralRecord({ context, grant: grant(), family: 'command_run', payload: { ...payloads.command_run, ...extra }, clock, opaqueIdentifierPort })
     expectRejected(result, 'unknown_fields')
+  }
+})
+
+attack('runtime refinements fail closed on fabricated prices, unknown events, empty subjects, and unsafe provider IDs', () => {
+  for (const payload of [
+    { ...payloads.token_usage, pricingStatus: 'unavailable', pricingVersion: null, costMicros: 0 },
+    { ...payloads.token_usage, pricingStatus: 'current', pricingVersion: null, costMicros: null },
+    { ...payloads.token_usage, pricingStatus: 'stale', pricingVersion: '2026-08-01', costMicros: null },
+  ]) expectRejected(evaluateCentralRecord({ context, grant: grant(), family: 'token_usage', payload, clock, opaqueIdentifierPort }), 'invalid_field')
+
+  expectRejected(evaluateCentralRecord({ context, grant: grant(), family: 'install_run', payload: { ...payloads.install_run, eventCode: 'synced' }, clock, opaqueIdentifierPort }), 'invalid_field')
+  expectRejected(evaluateCentralRecord({ context, grant: grant(), family: 'error_signal', payload: { ...payloads.error_signal, runId: null, tokenSubjectId: null }, clock, opaqueIdentifierPort }), 'invalid_field')
+  expectRejected(evaluateCentralRecord({ context, grant: grant(), family: 'command_run', payload: { ...payloads.command_run, commandCode: 'arbitrary_shell' }, clock, opaqueIdentifierPort }), 'invalid_field')
+  for (const providerExecutionId of ['C:/private/repo', 'https://private.example/run', 'has whitespace', 'Bearer abcdefghijklmnop']) {
+    const result = evaluateCentralRecord({ context, grant: grant(), family: 'progress', payload: { ...payloads.progress, providerExecutionId }, clock, opaqueIdentifierPort })
+    assert.equal(result.allowed, false)
+    if (result.allowed === false) assert.ok(result.reasonCode === 'invalid_field' || result.reasonCode === 'suspected_secret')
   }
 })
 

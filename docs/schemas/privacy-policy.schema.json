@@ -17,6 +17,7 @@
     "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "opaqueId": { "type": "string", "pattern": "^hmac_[0-9a-f]{64}$" },
     "closedCode": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+    "providerExecutionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
     "safeVersion": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$" },
     "timestamp": { "type": "string", "format": "date-time" },
     "trustedTenantContext": {
@@ -86,7 +87,7 @@
         "runId": { "$ref": "#/$defs/uuid" },
         "repoOpaqueId": { "$ref": "#/$defs/opaqueId" },
         "opaqueKeyVersion": { "$ref": "#/$defs/closedCode" },
-        "commandCode": { "enum": ["feature_from_confluence", "new_feature", "drop_mock", "api_contract", "playwright_verify", "codex_review"] },
+        "commandCode": { "enum": ["feature_from_confluence", "new_feature", "drop_mock", "api_contract", "playwright_verify", "codex_review", "prompt", "execute_roadmap_phase"] },
         "runnerCode": { "enum": ["codex", "claude", "copilot", "gemini", "grok", "local"] },
         "modelCode": { "$ref": "#/$defs/safeVersion" },
         "statusCode": { "enum": ["queued", "running", "awaiting_input", "awaiting_approval", "passed", "failed", "cancelled", "tracking_failed"] },
@@ -108,12 +109,19 @@
         "completionTokens": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
         "cacheReadTokens": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
         "cacheWriteTokens": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
-        "costMicros": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
+        "costMicros": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 1000000000000 }, { "type": "null" }] },
         "modelCode": { "$ref": "#/$defs/safeVersion" },
-        "pricingVersion": { "$ref": "#/$defs/safeVersion" },
+        "pricingVersion": { "oneOf": [{ "$ref": "#/$defs/safeVersion" }, { "type": "null" }] },
         "pricingStatus": { "enum": ["current", "stale", "unavailable"] },
         "observedAt": { "$ref": "#/$defs/timestamp" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "pricingStatus": { "const": "unavailable" } } },
+          "then": { "properties": { "costMicros": { "type": "null" }, "pricingVersion": { "type": "null" } } },
+          "else": { "properties": { "costMicros": { "type": "integer", "minimum": 0, "maximum": 1000000000000 }, "pricingVersion": { "$ref": "#/$defs/safeVersion" } } }
+        }
+      ]
     },
     "progressData": {
       "type": "object",
@@ -123,7 +131,7 @@
         "taskId": { "type": "string", "pattern": "^P17-[0-9]{3}$" },
         "commandRunId": { "$ref": "#/$defs/uuid" },
         "machineId": { "$ref": "#/$defs/uuid" },
-        "providerExecutionId": { "oneOf": [{ "$ref": "#/$defs/closedCode" }, { "type": "null" }] },
+        "providerExecutionId": { "oneOf": [{ "$ref": "#/$defs/providerExecutionId" }, { "type": "null" }] },
         "attempt": { "type": "integer", "minimum": 1, "maximum": 50 },
         "state": { "enum": ["queued", "running", "awaiting_input", "awaiting_approval", "passed", "failed", "cancelled", "tracking_failed"] },
         "phaseId": { "oneOf": [{ "type": "string", "maxLength": 8 }, { "type": "null" }] },
@@ -155,14 +163,13 @@
     "installRunData": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repoOpaqueId", "opaqueKeyVersion", "kitVersion", "installedAt", "lastRunVersion", "lastRunAt"],
+      "required": ["repoOpaqueId", "opaqueKeyVersion", "eventCode", "kitVersion", "observedAt"],
       "properties": {
         "repoOpaqueId": { "$ref": "#/$defs/opaqueId" },
         "opaqueKeyVersion": { "$ref": "#/$defs/closedCode" },
+        "eventCode": { "enum": ["installed", "ran"] },
         "kitVersion": { "$ref": "#/$defs/safeVersion" },
-        "installedAt": { "$ref": "#/$defs/timestamp" },
-        "lastRunVersion": { "oneOf": [{ "$ref": "#/$defs/safeVersion" }, { "type": "null" }] },
-        "lastRunAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] }
+        "observedAt": { "$ref": "#/$defs/timestamp" }
       }
     },
     "errorSignalData": {
@@ -170,14 +177,18 @@
       "additionalProperties": false,
       "required": ["runId", "tokenSubjectId", "errorType", "phaseId", "reasonCode", "kitVersion", "occurredAt"],
       "properties": {
-        "runId": { "$ref": "#/$defs/uuid" },
+        "runId": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
         "tokenSubjectId": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
         "errorType": { "enum": ["validation", "provider", "verification", "transport", "persistence", "authorization", "privacy"] },
         "phaseId": { "oneOf": [{ "type": "string", "maxLength": 8 }, { "type": "null" }] },
         "reasonCode": { "$ref": "#/$defs/closedCode" },
         "kitVersion": { "$ref": "#/$defs/safeVersion" },
         "occurredAt": { "$ref": "#/$defs/timestamp" }
-      }
+      },
+      "anyOf": [
+        { "properties": { "runId": { "$ref": "#/$defs/uuid" } } },
+        { "properties": { "tokenSubjectId": { "$ref": "#/$defs/uuid" } } }
+      ]
     },
     "learningAggregateData": {
       "type": "object",
