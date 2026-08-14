@@ -69,7 +69,7 @@ When complete:
 | P17-009 | P1 | 2 | in_progress | Cross-platform release qualification | Proves Windows and Linux behavior in CI, including paths, quoting, setup, and process cleanup. |
 | P17-010 | P1 | 2 | done | CLI reliability and direct integration tests | Makes malformed input and I/O failures explicit for feedback/KPI/public CLI paths. |
 | P17-011 | P1 | 2 | done | Honest isolated-worktree browser verification | Stops `infra-blocked` from being confused with verified browser behavior. |
-| P17-012 | P1 | 2 | in_progress | Convention and stack portability audit | Gates Open edX conventions instead of treating them as universal defaults. |
+| P17-012 | P1 | 2 | done | Convention and stack portability audit | Gates Open edX conventions instead of treating them as universal defaults. |
 | P17-013 | P1 | 2 | done | Documentation and runtime claim audit | Detects version, parity, generated-edition, and documentation drift. |
 | P17-014 | P2 | 5 | backlog | Opt-in distributed control plane | Coordinates typed remote work without default remote execution or arbitrary shell. |
 | P17-015 | P2 | 4 | backlog | Detailed cross-machine progress tracking | Links each task to the exact machine-safe run, retry lineage, and evidence hash. |
