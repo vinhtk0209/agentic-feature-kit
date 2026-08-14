@@ -1,6 +1,6 @@
 # ADR-002: Use a tenant-scoped, metadata-only central data boundary
 
-**Status:** Accepted — policy input locked; implementation not started
+**Status:** Accepted — policy input locked; implementation in progress (Wave A)
 **Date:** 2026-08-14
 **Deciders:** Workflow-kit operator and maintainers
 **Roadmap task:** P17-016
@@ -35,8 +35,8 @@ Installation or provider use does not grant permission to warehouse specificatio
 Unknown fields and unclassified data fail closed before persistence.
 
 The operator accepted all five policy choices in `Operator decision required` on 2026-08-14.
-P17-016 input readiness is complete and the task is `ready`; no schema/runtime/dashboard policy
-implementation, migration, or external write is implied by acceptance.
+P17-016 input readiness is complete and the task is `in_progress` under the locked Wave A plan; no
+migration or external write is implied by acceptance or by the pure shared-core implementation.
 
 ## Acceptance record
 

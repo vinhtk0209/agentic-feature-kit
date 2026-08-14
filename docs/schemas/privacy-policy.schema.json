@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-feature-kit.local/schemas/privacy-policy.schema.json",
+  "title": "P17-016 privacy policy contracts",
+  "oneOf": [
+    { "$ref": "#/$defs/trustedTenantContext" },
+    { "$ref": "#/$defs/processingGrant" },
+    { "$ref": "#/$defs/centralRecord" },
+    { "$ref": "#/$defs/deletionReceipt" },
+    { "$ref": "#/$defs/legacyDisposition" }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "opaqueId": { "type": "string", "pattern": "^hmac_[0-9a-f]{64}$" },
+    "closedCode": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+    "safeVersion": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "trustedTenantContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "tenantId", "subjectId", "sourceKind", "credentialBindingId", "policyVersion"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "tenantId": { "$ref": "#/$defs/uuid" },
+        "subjectId": { "$ref": "#/$defs/uuid" },
+        "sourceKind": { "enum": ["server_session", "worker_credential"] },
+        "credentialBindingId": { "$ref": "#/$defs/uuid" },
+        "policyVersion": { "const": "p17-016-v1" }
+      }
+    },
+    "processingGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "tenantId", "subjectId", "scope", "policyVersion", "decision", "purposeCode", "issuedAt", "expiresAt", "revokedAt"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "tenantId": { "$ref": "#/$defs/uuid" },
+        "subjectId": { "$ref": "#/$defs/uuid" },
+        "scope": { "enum": ["essential_operations", "learning_metrics", "content_indexing", "cross_provider_evaluation", "diagnostic_content"] },
+        "policyVersion": { "const": "p17-016-v1" },
+        "decision": { "enum": ["granted", "denied"] },
+        "purposeCode": { "$ref": "#/$defs/closedCode" },
+        "issuedAt": { "$ref": "#/$defs/timestamp" },
+        "expiresAt": { "$ref": "#/$defs/timestamp" },
+        "revokedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] }
+      }
+    },
+    "recordEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "policyVersion", "tenantId", "family", "processingScope", "retentionProfile", "recordedAt", "expiresAt", "data", "recordHash"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-v1" },
+        "tenantId": { "$ref": "#/$defs/uuid" },
+        "family": { "enum": ["command_run", "token_usage", "progress", "verification", "install_run", "error_signal", "learning_aggregate", "release_dossier"] },
+        "processingScope": { "enum": ["essential_operations", "learning_metrics"] },
+        "retentionProfile": { "enum": ["short_lived", "standard", "learning_aggregate", "audit_release"] },
+        "recordedAt": { "$ref": "#/$defs/timestamp" },
+        "expiresAt": { "$ref": "#/$defs/timestamp" },
+        "data": { "type": "object" },
+        "recordHash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "centralRecord": {
+      "oneOf": [
+        { "allOf": [{ "$ref": "#/$defs/recordEnvelope" }, { "properties": { "family": { "const": "command_run" }, "processingScope": { "const": "essential_operations" }, "retentionProfile": { "const": "standard" }, "data": { "$ref": "#/$defs/commandRunData" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/recordEnvelope" }, { "properties": { "family": { "const": "token_usage" }, "processingScope": { "const": "essential_operations" }, "retentionProfile": { "const": "standard" }, "data": { "$ref": "#/$defs/tokenUsageData" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/recordEnvelope" }, { "properties": { "family": { "const": "progress" }, "processingScope": { "const": "essential_operations" }, "retentionProfile": { "enum": ["short_lived", "standard"] }, "data": { "$ref": "#/$defs/progressData" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/recordEnvelope" }, { "properties": { "family": { "const": "verification" }, "processingScope": { "const": "essential_operations" }, "retentionProfile": { "const": "standard" }, "data": { "$ref": "#/$defs/verificationData" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/recordEnvelope" }, { "properties": { "family": { "const": "install_run" }, "processingScope": { "const": "essential_operations" }, "retentionProfile": { "const": "standard" }, "data": { "$ref": "#/$defs/installRunData" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/recordEnvelope" }, { "properties": { "family": { "const": "error_signal" }, "processingScope": { "const": "essential_operations" }, "retentionProfile": { "const": "standard" }, "data": { "$ref": "#/$defs/errorSignalData" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/recordEnvelope" }, { "properties": { "family": { "const": "learning_aggregate" }, "processingScope": { "const": "learning_metrics" }, "retentionProfile": { "const": "learning_aggregate" }, "data": { "$ref": "#/$defs/learningAggregateData" } } }] },
+        { "allOf": [{ "$ref": "#/$defs/recordEnvelope" }, { "properties": { "family": { "const": "release_dossier" }, "processingScope": { "const": "essential_operations" }, "retentionProfile": { "const": "audit_release" }, "data": { "$ref": "#/$defs/releaseDossierData" } } }] }
+      ]
+    },
+    "commandRunData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runId", "repoOpaqueId", "opaqueKeyVersion", "commandCode", "runnerCode", "modelCode", "statusCode", "reasonCode", "kitVersion", "startedAt", "completedAt", "durationMs", "exitCode"],
+      "properties": {
+        "runId": { "$ref": "#/$defs/uuid" },
+        "repoOpaqueId": { "$ref": "#/$defs/opaqueId" },
+        "opaqueKeyVersion": { "$ref": "#/$defs/closedCode" },
+        "commandCode": { "enum": ["feature_from_confluence", "new_feature", "drop_mock", "api_contract", "playwright_verify", "codex_review"] },
+        "runnerCode": { "enum": ["codex", "claude", "copilot", "gemini", "grok", "local"] },
+        "modelCode": { "$ref": "#/$defs/safeVersion" },
+        "statusCode": { "enum": ["queued", "running", "awaiting_input", "awaiting_approval", "passed", "failed", "cancelled", "tracking_failed"] },
+        "reasonCode": { "$ref": "#/$defs/closedCode" },
+        "kitVersion": { "$ref": "#/$defs/safeVersion" },
+        "startedAt": { "$ref": "#/$defs/timestamp" },
+        "completedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
+        "durationMs": { "type": "integer", "minimum": 0, "maximum": 604800000 },
+        "exitCode": { "type": "integer", "minimum": -255, "maximum": 255 }
+      }
+    },
+    "tokenUsageData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runId", "promptTokens", "completionTokens", "cacheReadTokens", "cacheWriteTokens", "costMicros", "modelCode", "pricingVersion", "pricingStatus", "observedAt"],
+      "properties": {
+        "runId": { "$ref": "#/$defs/uuid" },
+        "promptTokens": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
+        "completionTokens": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
+        "cacheReadTokens": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
+        "cacheWriteTokens": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
+        "costMicros": { "type": "integer", "minimum": 0, "maximum": 1000000000000 },
+        "modelCode": { "$ref": "#/$defs/safeVersion" },
+        "pricingVersion": { "$ref": "#/$defs/safeVersion" },
+        "pricingStatus": { "enum": ["current", "stale", "unavailable"] },
+        "observedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "progressData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "commandRunId", "machineId", "providerExecutionId", "attempt", "state", "phaseId", "reasonCode", "eventHash", "evidenceHash", "evidenceMediaType", "evidenceBytes", "verificationStatus", "occurredAt", "retentionClass"],
+      "properties": {
+        "taskId": { "type": "string", "pattern": "^P17-[0-9]{3}$" },
+        "commandRunId": { "$ref": "#/$defs/uuid" },
+        "machineId": { "$ref": "#/$defs/uuid" },
+        "providerExecutionId": { "oneOf": [{ "$ref": "#/$defs/closedCode" }, { "type": "null" }] },
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "state": { "enum": ["queued", "running", "awaiting_input", "awaiting_approval", "passed", "failed", "cancelled", "tracking_failed"] },
+        "phaseId": { "oneOf": [{ "type": "string", "maxLength": 8 }, { "type": "null" }] },
+        "reasonCode": { "$ref": "#/$defs/closedCode" },
+        "eventHash": { "$ref": "#/$defs/hash" },
+        "evidenceHash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+        "evidenceMediaType": { "enum": ["application/json", "text/markdown", "image/png", "image/jpeg", "application/zip", null] },
+        "evidenceBytes": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 104857600 }, { "type": "null" }] },
+        "verificationStatus": { "enum": ["verified", "quarantined", "unavailable"] },
+        "occurredAt": { "$ref": "#/$defs/timestamp" },
+        "retentionClass": { "enum": ["short_lived", "standard"] }
+      }
+    },
+    "verificationData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runId", "repoOpaqueId", "opaqueKeyVersion", "contentHash", "kitVersion", "verified", "tierExitCodes", "observedAt"],
+      "properties": {
+        "runId": { "$ref": "#/$defs/uuid" },
+        "repoOpaqueId": { "$ref": "#/$defs/opaqueId" },
+        "opaqueKeyVersion": { "$ref": "#/$defs/closedCode" },
+        "contentHash": { "$ref": "#/$defs/hash" },
+        "kitVersion": { "$ref": "#/$defs/safeVersion" },
+        "verified": { "type": "boolean" },
+        "tierExitCodes": { "type": "array", "maxItems": 16, "items": { "type": "integer", "minimum": -255, "maximum": 255 } },
+        "observedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "installRunData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repoOpaqueId", "opaqueKeyVersion", "kitVersion", "installedAt", "lastRunVersion", "lastRunAt"],
+      "properties": {
+        "repoOpaqueId": { "$ref": "#/$defs/opaqueId" },
+        "opaqueKeyVersion": { "$ref": "#/$defs/closedCode" },
+        "kitVersion": { "$ref": "#/$defs/safeVersion" },
+        "installedAt": { "$ref": "#/$defs/timestamp" },
+        "lastRunVersion": { "oneOf": [{ "$ref": "#/$defs/safeVersion" }, { "type": "null" }] },
+        "lastRunAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] }
+      }
+    },
+    "errorSignalData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runId", "tokenSubjectId", "errorType", "phaseId", "reasonCode", "kitVersion", "occurredAt"],
+      "properties": {
+        "runId": { "$ref": "#/$defs/uuid" },
+        "tokenSubjectId": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
+        "errorType": { "enum": ["validation", "provider", "verification", "transport", "persistence", "authorization", "privacy"] },
+        "phaseId": { "oneOf": [{ "type": "string", "maxLength": 8 }, { "type": "null" }] },
+        "reasonCode": { "$ref": "#/$defs/closedCode" },
+        "kitVersion": { "$ref": "#/$defs/safeVersion" },
+        "occurredAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "learningAggregateData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lessonCode", "metricCode", "count", "ratePpm", "evidenceHash", "bucketStart"],
+      "properties": {
+        "lessonCode": { "$ref": "#/$defs/closedCode" },
+        "metricCode": { "$ref": "#/$defs/closedCode" },
+        "count": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "ratePpm": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "evidenceHash": { "$ref": "#/$defs/hash" },
+        "bucketStart": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "releaseDossierData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "inputHash", "verdictHash", "runCount", "passedCount", "recommendationCode", "canaryStatus", "lessonCodes", "createdAt"],
+      "properties": {
+        "version": { "$ref": "#/$defs/safeVersion" },
+        "inputHash": { "$ref": "#/$defs/hash" },
+        "verdictHash": { "$ref": "#/$defs/hash" },
+        "runCount": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "passedCount": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "recommendationCode": { "enum": ["release", "hold", "reject"] },
+        "canaryStatus": { "enum": ["not_run", "passed", "failed"] },
+        "lessonCodes": { "type": "array", "maxItems": 100, "uniqueItems": true, "items": { "$ref": "#/$defs/closedCode" } },
+        "createdAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "deletionStoreResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storeId", "affectedCount", "outcomeCode"],
+      "properties": {
+        "storeId": { "$ref": "#/$defs/closedCode" },
+        "affectedCount": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "outcomeCode": { "enum": ["deleted", "not_found", "failed_retryable", "failed_terminal"] }
+      }
+    },
+    "deletionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "policyVersion", "tenantId", "requestId", "requestedAt", "completedAt", "storeResults", "outcomeCode", "retry", "receiptHash"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-v1" },
+        "tenantId": { "$ref": "#/$defs/uuid" },
+        "requestId": { "$ref": "#/$defs/uuid" },
+        "requestedAt": { "$ref": "#/$defs/timestamp" },
+        "completedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
+        "storeResults": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/deletionStoreResult" } },
+        "outcomeCode": { "enum": ["completed", "partial_retryable", "failed_retryable", "failed_terminal"] },
+        "retry": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "receiptHash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "legacyDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "policyVersion", "legacyId", "tenantId", "state", "eligibleForMigration", "tenantVisible", "purgeBy", "observedAt"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-v1" },
+        "legacyId": { "$ref": "#/$defs/uuid" },
+        "tenantId": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] },
+        "state": { "enum": ["legacy_unclassified", "legacy_mapped", "legacy_rejected"] },
+        "eligibleForMigration": { "type": "boolean" },
+        "tenantVisible": { "const": false },
+        "purgeBy": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
+        "observedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    }
+  }
+}

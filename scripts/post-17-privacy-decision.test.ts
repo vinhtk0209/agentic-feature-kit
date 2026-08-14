@@ -29,12 +29,12 @@ for (const heading of [
   '## Action items after approval',
 ]) assert.ok(decision.includes(heading), `missing decision section ${heading}`)
 
-assert.match(decision, /\*\*Status:\*\* Accepted — policy input locked; implementation not started/)
+assert.match(decision, /\*\*Status:\*\* Accepted — policy input locked; implementation in progress \(Wave A\)/)
 assert.match(decision, /\*\*Roadmap task:\*\* P17-016/)
 
 const task = roadmap.tasks.find((entry) => entry.id === 'P17-016')
 assert.ok(task)
-assert.equal(task.status, 'ready', 'P17-016 must become ready after accepted input and completed dependency')
+assert.equal(task.status, 'in_progress', 'P17-016 must remain in progress until every implementation wave passes')
 assert.equal(task.readiness.complete, true, 'P17-016 readiness must reflect the accepted policy')
 assert.deepEqual(task.readiness.missing, [])
 
@@ -78,8 +78,8 @@ for (const optionalScope of [
   '`diagnostic_content` | Off.',
 ]) assert.ok(decision.includes(optionalScope), `optional processing scope is not fail-closed: ${optionalScope}`)
 
-assert.match(decision, /no schema\/runtime\/dashboard policy\s+implementation, migration, or external write is implied by acceptance/i)
+assert.match(decision, /no\s+migration or external write is implied by acceptance or by the pure shared-core implementation/i)
 assert.match(decision, /No sync, provider run, database migration, installation, publication, or push is authorized/i)
 assert.doesNotMatch(decision, /implementation (is|was) complete/i)
 
-console.log('post-17-privacy-decision.test: PASS (17 sections, 5 data classes, T1/R1/C1/L1/E1 accepted, P17-016 ready)')
+console.log('post-17-privacy-decision.test: PASS (17 sections, 5 data classes, T1/R1/C1/L1/E1 accepted, P17-016 in progress)')

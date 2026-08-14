@@ -73,7 +73,7 @@ When complete:
 | P17-013 | P1 | 2 | done | Documentation and runtime claim audit | Detects version, parity, generated-edition, and documentation drift. |
 | P17-014 | P2 | 5 | backlog | Opt-in distributed control plane | Coordinates typed remote work without default remote execution or arbitrary shell. |
 | P17-015 | P2 | 4 | in_progress | Detailed cross-machine progress tracking | Links each task to the exact machine-safe run, retry lineage, and evidence hash. |
-| P17-016 | P1 | 3 | ready | Privacy-safe specification and usage data criteria | Prevents private specs, secrets, or cross-tenant data from leaking into learning data. |
+| P17-016 | P1 | 3 | in_progress | Privacy-safe specification and usage data criteria | Prevents private specs, secrets, or cross-tenant data from leaking into learning data. |
 | P17-017 | P2 | 5 | backlog | Provider-neutral build harness with optional RAG | Keeps repository facts authoritative while measuring any retrieval benefit safely. |
 | P17-018 | P2 | 4 | backlog | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
 | P17-019 | P2 | 4 | backlog | Credential lifecycle adapter | Handles token expiry only through an explicit project auth capability. |
@@ -101,8 +101,9 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   action is authorized by this decision.
 - **P17-016 (`T1/R1/C1/L1/E1`):** opaque multi-tenant metadata-only central storage; exact finite
   retention profiles; optional learning/indexing/evaluation/diagnostic scopes off; quarantined
-  explicitly mapped legacy data; and metadata-only evidence with no default legal hold. P17-016 is
-  ready for implementation, but no migration or external write is authorized by this decision.
+  explicitly mapped legacy data; and metadata-only evidence with no default legal hold. P17-016
+  implementation is in progress under the locked six-wave plan; no migration or external write is
+  authorized by this decision.
 - **P17-018 (`A1/L1`):** target external software-delivery engineers, evaluators, maintainers,
   contributors, and security researchers; retain Apache-2.0 for repository source and provider
   bundles. The repository remains private and the package remains `private: true` until separately

@@ -47,7 +47,7 @@ assert.equal(controlPlane.readiness.complete, true)
 assert.deepEqual(controlPlane.readiness.missing, [])
 assert.deepEqual(controlPlane.dependencies, ['P17-002', 'P17-015'])
 assert.equal(progress.status, 'in_progress')
-assert.equal(privacy.status, 'ready')
+assert.equal(privacy.status, 'in_progress')
 assert.equal(privacy.readiness.complete, true)
 assert.equal(panel.readiness.complete, false)
 

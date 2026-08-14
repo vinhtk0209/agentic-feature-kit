@@ -386,7 +386,7 @@
       "initiative": "P17-I4",
       "wave": 3,
       "priority": "P1",
-      "status": "ready",
+      "status": "in_progress",
       "dependencies": ["P17-000"],
       "backlogRefs": ["7"],
       "problem": "Learning and evaluation data need explicit minimization, provenance, retention, and tenant boundaries.",
