@@ -15,7 +15,8 @@ add a self-contained Node 20+ runtime, schemas, contracts, license, and a conten
 4. Verify the runtime offline before asking Copilot to use the skills:
    `node runtime/project-intelligence.cjs <repository-root>`, then
    `node runtime/stack-portability.cjs <repository-root>`, and pipe a JSON request to
-   `node runtime/conditional-quality-gates.cjs` or `node runtime/workflow-orchestrator.cjs resume`.
+   `node runtime/conditional-quality-gates.cjs`, `node runtime/workflow-orchestrator.cjs resume`,
+   or `node runtime/phase-model-router.cjs route`.
 5. Commit repository customization only through that repository's normal review process.
 
 The bundle has no plugin manifest, credentials, provider calls, or forked business rules. Copilot
@@ -30,8 +31,8 @@ so Copilot does not guess target-specific helpers.
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.4.0` |
-| Shared core version | `1.2.0` |
+| Bundle version | `0.5.0` |
+| Shared core version | `1.3.0` |
 | Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
 | Distribution stage | Deterministic repository bundle + ZIP archive |
@@ -52,8 +53,10 @@ runtime/project-intelligence.cjs
 runtime/stack-portability.cjs
 runtime/conditional-quality-gates.cjs
 runtime/workflow-orchestrator.cjs
+runtime/phase-model-router.cjs
 docs/schemas/*
 docs/roadmap/post-17-orchestrator-*.json
+docs/roadmap/post-17-phase-capability-matrix.json
 bundle-manifest.json
 LICENSE
 THIRD_PARTY_NOTICES.md
@@ -75,6 +78,8 @@ npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
 npm run test:stack-portability
 npm run test:conditional-quality-gates
+npm run test:phase-model-router
+npm run test:phase-model-router-cli
 npm run test:provider-bundles
 npm run test:provider-distribution
 ```
@@ -91,6 +96,13 @@ The Workflow Orchestrator uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT
 create or validate phase envelopes, resume from verified evidence, and preserve literal human and
 trusted computed gates. Delegated agents cannot alter the canonical phase order or claim done.
 
+The Phase Model Router accepts one closed `{ matrix, request, candidates }` object and emits one
+`@@PHASE_MODEL_ROUTING@@` envelope. A B0 request without exact phase qualification exits `1` with
+`needs_input`; a model-forbidden B0.5 request exits `0` with `no_model`; only an independently
+qualified synthetic or future P17-007 candidate can return `selected`. Selection never executes a
+provider, grants a gate, or permits an automatic fallback. See the two phase-routing schemas for
+the exact request and decision shapes.
+
 The Conditional Quality Gates runtime consumes the validated profile and bounded changed-file
 evidence. It emits one `@@CONDITIONAL_GATES@@` envelope and activates i18n, router, or style checks
 only when the profile proves that system exists. Unknown/conflicting profiles cannot pass.
@@ -101,6 +113,7 @@ only when the profile proves that system exists. Unknown/conflicting profiles ca
 - Symlinks are not followed; build/dependency folders are excluded from bounded traversal.
 - Unknown framework signals and contradictory router/package-manager signals block planning.
 - Missing, duplicate, extra, malformed, or fingerprint-invalid envelopes are hard failures.
+- Unknown, expired, mismatched, or unqualified model evidence fails closed before provider use.
 - `execute` must not be used to install dependencies, edit files, call remote services, sync, or push.
 - Provider instructions cannot weaken shared gate or evidence semantics.
 

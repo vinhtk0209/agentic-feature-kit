@@ -145,12 +145,13 @@ interface ProviderBundleRegistry {
 
 function probeProviders(root: string): ClaimProbeResult {
   const registry = JSON.parse(read(root, 'providers/provider-bundles.json')) as ProviderBundleRegistry;
-  const requiredRuntime = ['projectIntelligence', 'stackPortability', 'conditionalQualityGates', 'workflowOrchestrator'];
+  const requiredRuntime = ['projectIntelligence', 'stackPortability', 'conditionalQualityGates', 'workflowOrchestrator', 'phaseModelRouting'];
   const providers = Array.isArray(registry.providers) ? registry.providers : [];
   const providerIds = providers.map((provider) => provider.id);
   const skillKinds = ['skill', 'orchestratorSkill'] as const;
   const hashes: Record<string, Set<string>> = { skill: new Set(), orchestratorSkill: new Set() };
-  let complete = registry.bundleVersion === '0.4.0' && providerIds.join(',') === 'codex,claude,copilot'
+  let complete = typeof registry.bundleVersion === 'string' && /^\d+\.\d+\.\d+$/.test(registry.bundleVersion)
+    && providerIds.join(',') === 'codex,claude,copilot'
     && requiredRuntime.every((key) => typeof registry.distribution?.runtime?.[key] === 'string');
   for (const provider of providers) {
     for (const kind of skillKinds) {
@@ -160,14 +161,15 @@ function probeProviders(root: string): ClaimProbeResult {
     }
     const providerReadme = read(root, path.join(provider.root, 'README.md'));
     if (!providerReadme.includes(`| Bundle version | \`${registry.bundleVersion}\` |`)
-      || !providerReadme.includes('Stack Portability') || !providerReadme.includes('Conditional Quality Gates') || !providerReadme.includes('Workflow Orchestrator')) complete = false;
+      || !providerReadme.includes('Stack Portability') || !providerReadme.includes('Conditional Quality Gates')
+      || !providerReadme.includes('Workflow Orchestrator') || !providerReadme.includes('phase-model-router.cjs')) complete = false;
     if (provider.manifest) {
       const manifest = JSON.parse(read(root, path.join(provider.root, provider.manifest)));
       if (manifest.version !== registry.bundleVersion) complete = false;
     }
   }
   if (hashes.skill.size !== 1 || hashes.orchestratorSkill.size !== 1) complete = false;
-  return { passed: complete, evidence: [complete ? `provider parity=${providerIds.join(',')}; bundle=${registry.bundleVersion}; runtimes=4` : 'provider capability or shared-skill parity drifted'] };
+  return { passed: complete, evidence: [complete ? `provider parity=${providerIds.join(',')}; bundle=${registry.bundleVersion}; runtimes=${requiredRuntime.length}` : 'provider capability or shared-skill parity drifted'] };
 }
 
 function probeCopilot(root: string): ClaimProbeResult {

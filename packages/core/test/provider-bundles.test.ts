@@ -26,7 +26,7 @@ interface ProviderRegistry {
     checksumFile: string
     manifest: string
     nodeEngine: string
-    runtime: { projectIntelligence: string; stackPortability: string; conditionalQualityGates: string; workflowOrchestrator: string }
+    runtime: { projectIntelligence: string; stackPortability: string; conditionalQualityGates: string; workflowOrchestrator: string; phaseModelRouting: string }
   }
   providers: ProviderEntry[]
 }
@@ -54,6 +54,9 @@ function assertSkill(relative: string, expectedHash: string | null, skillName: '
     assert.ok(!content.includes('react-dom'), `${relative} must not copy framework business rules`)
   } else {
     assert.match(content, /@@ORCHESTRATOR_RESULT@@/)
+    assert.match(content, /@@PHASE_MODEL_ROUTING@@/)
+    assert.match(content, /`selected` grants no execution authority/)
+    assert.match(content, /Do not reproduce selection, qualification, fallback, or performance-ranking rules/)
     assert.match(content, /Provider adapters never auto-approve a gate/)
     assert.match(content, /B11 requires the trusted verifier's computed pass/)
     assert.ok(!content.includes('sourceLines'), `${relative} must not copy phase-boundary business rules`)
@@ -66,8 +69,8 @@ function assertSkill(relative: string, expectedHash: string | null, skillName: '
 const registry = parseJson<ProviderRegistry>('providers/provider-bundles.json')
 assert.equal(registry.schemaVersion, '1.0.0')
 assert.equal(registry.product, 'agentic-feature-kit')
-assert.equal(registry.bundleVersion, '0.4.0')
-assert.equal(registry.sharedCoreVersion, '1.2.0')
+assert.equal(registry.bundleVersion, '0.5.0')
+assert.equal(registry.sharedCoreVersion, '1.3.0')
 assert.equal(registry.sourceMode, 'monorepo')
 assert.deepEqual(registry.distribution, {
   builder: 'scripts/build-provider-bundles.ts',
@@ -81,6 +84,7 @@ assert.deepEqual(registry.distribution, {
     stackPortability: 'runtime/stack-portability.cjs',
     conditionalQualityGates: 'runtime/conditional-quality-gates.cjs',
     workflowOrchestrator: 'runtime/workflow-orchestrator.cjs',
+    phaseModelRouting: 'runtime/phase-model-router.cjs',
   },
 })
 assert.deepEqual(registry.providers.map((entry) => entry.id), ['codex', 'claude', 'copilot'])
@@ -114,6 +118,18 @@ assert.match(conditionalGatesCore, /export function evaluateConditionalQualityGa
 assert.match(conditionalGatesCore, /export function validateConditionalGateResult/)
 assert.doesNotMatch(conditionalGatesCore, /\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink/)
 
+const phaseModelRouterCore = read('packages/core/src/phase-model-router.ts')
+assert.match(phaseModelRouterCore, /PHASE_MODEL_ROUTING_SCHEMA_VERSION = '1\.0\.0'/)
+assert.match(phaseModelRouterCore, /export function routePhaseModel/)
+assert.match(phaseModelRouterCore, /export function validatePhaseModelRoutingDecision/)
+assert.match(phaseModelRouterCore, /export function verifyPhaseModelRoutingDecision/)
+assert.doesNotMatch(phaseModelRouterCore, /process\.env|\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink|spawn|exec\(/)
+
+const phaseModelRouterCli = read('packages/core/src/phase-model-router-cli.ts')
+assert.match(phaseModelRouterCli, /PHASE_MODEL_ROUTING_SENTINEL = '@@PHASE_MODEL_ROUTING@@'/)
+assert.match(phaseModelRouterCli, /PHASE_MODEL_ROUTING_STDIN_MAX_BYTES = 512 \* 1024/)
+assert.doesNotMatch(phaseModelRouterCli, /process\.env|readFile|writeFile|spawn|exec\(/)
+
 const profileSchema = parseJson<Record<string, unknown>>('docs/schemas/project-profile.schema.json')
 assert.equal(profileSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
 assert.equal((profileSchema.properties as Record<string, { const?: string }>).schemaVersion.const, '1.0.0')
@@ -126,6 +142,12 @@ assert.equal((conditionalGatesSchema.properties as Record<string, { const?: stri
 const orchestratorSchema = parseJson<Record<string, unknown>>('docs/schemas/orchestrator-phase-envelope.schema.json')
 assert.equal(orchestratorSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
 assert.equal((orchestratorSchema.properties as Record<string, { const?: string }>).contractVersion.const, '1.0.0')
+const phaseRoutingRequestSchema = parseJson<Record<string, unknown>>('docs/schemas/phase-model-routing-request.schema.json')
+assert.equal(phaseRoutingRequestSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
+assert.equal((phaseRoutingRequestSchema.properties as Record<string, { const?: string }>).schemaVersion.const, '1.0.0')
+const phaseRoutingDecisionSchema = parseJson<Record<string, unknown>>('docs/schemas/phase-model-routing-decision.schema.json')
+assert.equal(phaseRoutingDecisionSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
+assert.equal((phaseRoutingDecisionSchema.properties as Record<string, { const?: string }>).schemaVersion.const, '1.0.0')
 
 let projectSkillHash: string | null = null
 let orchestratorSkillHash: string | null = null
@@ -134,9 +156,11 @@ for (const provider of registry.providers) {
   const readme = read(`${provider.root}/README.md`)
   assertNoPlaceholders(`${provider.root}/README.md`, readme)
   assert.match(readme, /Apache-2\.0/)
-  assert.match(readme, /0\.4\.0/)
+  assert.match(readme, /0\.5\.0/)
   assert.match(readme, /stack-portability\.cjs/)
   assert.match(readme, /conditional-quality-gates\.cjs/)
+  assert.match(readme, /phase-model-router\.cjs/)
+  assert.match(readme, /Selection never executes a\s+provider/)
   assert.ok(readme.split(/\s+/).length >= 120, `${provider.id} README is too thin for a public source package`)
 
   projectSkillHash = assertSkill(`${provider.root}/${provider.skill}`, projectSkillHash, 'project-intelligence')
@@ -153,6 +177,8 @@ for (const provider of registry.providers) {
     assertNoPlaceholders(`${provider.root}/${provider.orchestratorAgent}`, agent)
     assert.match(agent, /^---\nname: workflow-orchestrator\ndescription: .+\n/)
     assert.match(agent, /Never\s+auto-approve/)
+    assert.match(agent, /phase-model-router/)
+    assert.match(agent, /selected decision never\s+grants provider execution/)
   }
 
   if (provider.manifest) {
@@ -169,6 +195,8 @@ const codexManifest = parseJson<Record<string, unknown>>(`${codex.root}/${codex.
 assert.equal(codexManifest.skills, './skills/')
 assert.equal(codex.agent, null, 'Codex bundle must not invent a standalone agent manifest')
 assert.equal(codex.orchestratorAgent, null, 'Codex bundle must not invent a standalone orchestrator agent manifest')
+assert.match(read(`${codex.root}/skills/workflow-orchestrator/agents/openai.yaml`), /Route model-eligible phases only from qualified evidence/)
+assert.ok((codexManifest.interface as { capabilities: string[] }).capabilities.includes('Phase-aware model routing'))
 
 const claude = registry.providers.find((entry) => entry.id === 'claude')!
 const claudeManifest = parseJson<Record<string, unknown>>(`${claude.root}/${claude.manifest}`)
@@ -193,4 +221,4 @@ for (const entry of fs.readdirSync(path.join(root, 'providers'), { recursive: tr
   assert.ok(!/^\.env(?:\.|$)/.test(entry.name), `provider package contains forbidden environment file ${entry.name}`)
 }
 
-console.log('provider-bundles.test: PASS (3 providers, 2 byte-identical skills, 4 shared runtimes, version/schema/manifest/agent/security contracts)')
+console.log('provider-bundles.test: PASS (3 providers, 2 byte-identical skills, 5 shared runtimes, version/schema/manifest/agent/security contracts)')

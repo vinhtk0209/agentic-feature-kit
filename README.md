@@ -19,19 +19,22 @@
 The versioned provider source packages live under `providers/`, while all shared business rules
 live once under `packages/core/`. **Project Intelligence** profiles repository facts; the
 fingerprint-bound **Stack Portability** contract then resolves framework layout, HTTP transport,
-mapping helpers, and target-specific assumptions without provider heuristics.
+mapping helpers, and target-specific assumptions without provider heuristics. The additive
+**Phase Model Router** then makes content-addressed `selected`, `no_model`, or `needs_input`
+decisions from explicit qualification evidence without executing a provider.
 
 | Provider | Supported source surface | Current status |
 |---|---|---|
-| Codex | `.codex-plugin/plugin.json` + Agent Skills | Self-contained directory + deterministic ZIP `0.4.0` |
-| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Self-contained directory + deterministic ZIP `0.4.0` |
-| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Self-contained repository bundle + deterministic ZIP `0.4.0` |
+| Codex | `.codex-plugin/plugin.json` + Agent Skills | Self-contained directory + deterministic ZIP `0.5.0` |
+| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Self-contained directory + deterministic ZIP `0.5.0` |
+| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Self-contained repository bundle + deterministic ZIP `0.5.0` |
 
 Run `npm run build:providers` to generate all three distributions under ignored
-`dist/provider-bundles/0.4.0/`. Every bundle carries the same four Node 20+ shared runtimes
-(Project Intelligence, Stack Portability, Conditional Quality Gates, and Workflow Orchestrator),
+`dist/provider-bundles/0.5.0/`. Every bundle carries the same five Node 20+ shared runtimes
+(Project Intelligence, Stack Portability, Conditional Quality Gates, Workflow Orchestrator, and
+Phase Model Routing),
 schemas/contracts, Apache-2.0 license, content-addressed manifest, and release checksum. The clean
-distribution suite executes all four capabilities from extracted archives without `tsx`, a source
+distribution suite executes all five capabilities from extracted archives without `tsx`, a source
 checkout, or repository `node_modules`. See `providers/README.md` for provider-specific use and
 verification. No installation, package publication, marketplace registration, provider execution,
 sync, or push is performed by the build/test flow.

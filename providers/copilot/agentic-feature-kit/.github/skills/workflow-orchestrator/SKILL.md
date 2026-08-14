@@ -1,6 +1,6 @@
 ---
 name: workflow-orchestrator
-description: Run or resume the Agentic Feature Kit workflow through bounded, content-addressed phase envelopes without weakening human or computed gates. Use for spec-driven feature delivery that must preserve B0-B12.8 ordering, evidence, resume semantics, and provider-neutral parity across Codex, Claude Code, or GitHub Copilot.
+description: Run or resume the Agentic Feature Kit through bounded phase envelopes and fail-closed phase-aware model decisions. Use for spec-driven delivery that must preserve B0-B12.8 ordering, evidence, gate authority, resume semantics, and provider-neutral parity across Codex, Claude Code, or GitHub Copilot.
 license: Apache-2.0
 ---
 
@@ -21,6 +21,22 @@ Before execution, require all of the following:
   that the current task actually needs.
 
 If an input is missing or contradictory, stop before running a phase.
+
+## Route a model-eligible phase
+
+1. Build a closed request and candidate-evidence list from operator-approved configuration,
+   unexpired runtime entitlement, and exact same-input phase qualification. Do not include prompts,
+   private specification bodies, credentials, paths, logs, or provider responses.
+2. Pipe the matrix, request, and candidates to `node runtime/phase-model-router.cjs route`. In a
+   source checkout, use `npx tsx packages/core/src/phase-model-router-cli.ts route`.
+3. Trust only one `@@PHASE_MODEL_ROUTING@@` envelope. `selected` grants no execution authority;
+   `no_model` forbids provider use for that phase; `needs_input` stops before provider execution.
+4. Never substitute a provider automatically. An execution-time retry requires a new request with
+   the prior decision hash, failed candidate, closed failure reason, unchanged phase contract and
+   permission ceiling, plus caller-proven replay safety.
+
+Do not reproduce selection, qualification, fallback, or performance-ranking rules in this skill.
+The shared runtime and packaged schemas are the only decision authority.
 
 ## Run or resume
 

@@ -14,6 +14,19 @@ function sha256(file: string): string {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')
 }
 
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
+  if (typeof value === 'object' && value !== null) {
+    const record = value as Record<string, unknown>
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+function sha256Value(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex')
+}
+
 function extractGeneratedZip(archive: string, destination: string): string {
   const zip = fs.readFileSync(archive)
   let offset = 0
@@ -126,6 +139,39 @@ function runCleanSmoke(bundleRoot: string, fixture: string): void {
   assert.equal(result.ok, true)
   assert.equal(result.result.resumeFromPhase, 'B0')
   assert.equal(result.result.blockedAt.reason, 'missing')
+
+  const routingMatrix = JSON.parse(fs.readFileSync(path.join(bundleRoot, 'docs', 'roadmap', 'post-17-phase-capability-matrix.json'), 'utf8'))
+  const routingPhase = routingMatrix.phases.find((entry: { id: string }) => entry.id === 'B0')
+  assert.ok(routingPhase)
+  const routing = spawnSync(process.execPath, [path.join(bundleRoot, 'runtime', 'phase-model-router.cjs'), 'route'], {
+    cwd: fixture,
+    encoding: 'utf8',
+    input: JSON.stringify({
+      matrix: routingMatrix,
+      request: {
+        schemaVersion: '1.0.0',
+        requestId: 'clean-bundle-routing-smoke',
+        phaseId: 'B0',
+        phaseContractHash: sha256Value(stableJson({ matrixSchemaVersion: routingMatrix.schemaVersion, gate: routingMatrix.phaseGateBindings.B0, phase: routingPhase })),
+        matrixHash: sha256Value(stableJson(routingMatrix)),
+        activeConditionIds: [],
+        estimatedInputTokens: 1_000,
+        candidateIds: ['unqualified-clean-bundle-candidate'],
+        requestedEffort: null,
+        fallback: null,
+      },
+      candidates: [],
+    }),
+    env: { PATH: process.env.PATH ?? '' },
+  })
+  assert.equal(routing.status, 1, `${routing.stderr}\n${routing.stdout}`)
+  const routingLines = routing.stdout.trim().split(/\r?\n/)
+  assert.equal(routingLines.length, 1)
+  assert.match(routingLines[0], /^@@PHASE_MODEL_ROUTING@@/)
+  const routingResult = JSON.parse(routingLines[0].slice('@@PHASE_MODEL_ROUTING@@'.length))
+  assert.equal(routingResult.ok, true)
+  assert.equal(routingResult.result.status, 'needs_input')
+  assert.deepEqual(routingResult.result.reasonCodes, ['candidate_unknown'])
 }
 
 async function main(): Promise<void> {
@@ -138,13 +184,16 @@ async function main(): Promise<void> {
     const runtimeHashes = new Map<string, Set<string>>()
     const fixture = createFixture(scratch)
     for (const entry of first) {
-      const manifest = validateBuiltBundle(entry.bundleRoot, { provider: entry.provider, bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' })
+      const manifest = validateBuiltBundle(entry.bundleRoot, { provider: entry.provider, bundleVersion: '0.5.0', sharedCoreVersion: '1.3.0' })
       assert.equal(manifest.manifestHash, entry.manifestHash)
       assert.equal(manifest.files.some((file) => /(^|\/)(\.env|node_modules)(\/|$)/i.test(file.path)), false)
       assert.ok(manifest.files.some((file) => file.path === 'THIRD_PARTY_NOTICES.md'))
       assert.ok(manifest.files.some((file) => file.path === 'licenses/typescript-LICENSE.txt'))
       assert.match(fs.readFileSync(path.join(entry.bundleRoot, 'licenses', 'typescript-LICENSE.txt'), 'utf8'), /Apache License/)
-      for (const runtime of ['runtime/project-intelligence.cjs', 'runtime/stack-portability.cjs', 'runtime/conditional-quality-gates.cjs', 'runtime/workflow-orchestrator.cjs']) {
+      assert.ok(manifest.files.some((file) => file.path === 'docs/schemas/phase-model-routing-request.schema.json'))
+      assert.ok(manifest.files.some((file) => file.path === 'docs/schemas/phase-model-routing-decision.schema.json'))
+      assert.ok(manifest.files.some((file) => file.path === 'docs/roadmap/post-17-phase-capability-matrix.json'))
+      for (const runtime of ['runtime/project-intelligence.cjs', 'runtime/stack-portability.cjs', 'runtime/conditional-quality-gates.cjs', 'runtime/workflow-orchestrator.cjs', 'runtime/phase-model-router.cjs']) {
         const hash = manifest.files.find((file) => file.path === runtime)?.sha256
         assert.ok(hash)
         const values = runtimeHashes.get(runtime) ?? new Set<string>()
@@ -160,24 +209,24 @@ async function main(): Promise<void> {
       assert.equal(fs.readFileSync(entry.archivePath).readUInt32LE(0), 0x04034b50)
       assert.equal(sha256(entry.archivePath), entry.archiveSha256)
       const cleanRoot = extractGeneratedZip(entry.archivePath, path.join(scratch, 'clean', entry.provider))
-      validateBuiltBundle(cleanRoot, { provider: entry.provider, bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' })
+      validateBuiltBundle(cleanRoot, { provider: entry.provider, bundleVersion: '0.5.0', sharedCoreVersion: '1.3.0' })
       runCleanSmoke(cleanRoot, fixture)
     }
     for (const hashes of runtimeHashes.values()) assert.equal(hashes.size, 1)
 
-    const sums = fs.readFileSync(path.join(scratch, 'first', '0.4.0', 'SHA256SUMS'), 'utf8').trim().split(/\r?\n/)
+    const sums = fs.readFileSync(path.join(scratch, 'first', '0.5.0', 'SHA256SUMS'), 'utf8').trim().split(/\r?\n/)
     assert.equal(sums.length, 3)
     for (const entry of first) assert.ok(sums.includes(`${entry.archiveSha256}  ${path.basename(entry.archivePath)}`))
 
     const tampered = path.join(scratch, 'tampered')
     fs.cpSync(first[0].bundleRoot, tampered, { recursive: true })
     fs.appendFileSync(path.join(tampered, 'runtime', 'project-intelligence.cjs'), '\n// tamper\n')
-    assert.throws(() => validateBuiltBundle(tampered, { provider: 'codex', bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' }), /file hash mismatch/)
+    assert.throws(() => validateBuiltBundle(tampered, { provider: 'codex', bundleVersion: '0.5.0', sharedCoreVersion: '1.3.0' }), /file hash mismatch/)
 
     const noisy = path.join(scratch, 'noisy')
     fs.cpSync(first[1].bundleRoot, noisy, { recursive: true })
     fs.writeFileSync(path.join(noisy, 'undeclared.txt'), 'noise')
-    assert.throws(() => validateBuiltBundle(noisy, { provider: 'claude', bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' }), /undeclared or missing files/)
+    assert.throws(() => validateBuiltBundle(noisy, { provider: 'claude', bundleVersion: '0.5.0', sharedCoreVersion: '1.3.0' }), /undeclared or missing files/)
 
     const drifted = path.join(scratch, 'drifted')
     fs.cpSync(first[2].bundleRoot, drifted, { recursive: true })
@@ -185,9 +234,9 @@ async function main(): Promise<void> {
     const driftedManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
     driftedManifest.sharedCoreVersion = '9.9.9'
     fs.writeFileSync(manifestPath, JSON.stringify(driftedManifest))
-    assert.throws(() => validateBuiltBundle(drifted, { provider: 'copilot', bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' }), /version mismatch/)
+    assert.throws(() => validateBuiltBundle(drifted, { provider: 'copilot', bundleVersion: '0.5.0', sharedCoreVersion: '1.3.0' }), /version mismatch/)
 
-    console.log('build-provider-bundles.test: PASS (3 deterministic archives, 12 clean runtime smokes, shared-core/version/content integrity, 3 attacks)')
+    console.log('build-provider-bundles.test: PASS (3 deterministic archives, 15 clean runtime smokes, shared-core/version/content integrity, 3 attacks)')
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true })
   }

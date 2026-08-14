@@ -68,7 +68,13 @@ test('release-version probe fails a package authority mismatch', () => {
   assert(!executeClaimProbe('release-version', root).passed, 'version mismatch passed');
 });
 
-test('provider probe fails an omitted capability and shared-skill drift', () => {
+test('provider probe fails an omitted runtime or capability and shared-skill drift', () => {
+  const runtimeRoot = fixture();
+  const registryPath = path.join(runtimeRoot, 'providers', 'provider-bundles.json');
+  const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+  delete registry.distribution.runtime.phaseModelRouting;
+  fs.writeFileSync(registryPath, JSON.stringify(registry), 'utf8');
+  assert(!executeClaimProbe('provider-capabilities', runtimeRoot).passed, 'omitted phase routing runtime passed');
   const root = fixture();
   fs.rmSync(path.join(root, 'providers', 'copilot', 'agentic-feature-kit', '.github', 'skills', 'workflow-orchestrator', 'SKILL.md'));
   assert(!executeClaimProbe('provider-capabilities', root).passed, 'omitted capability passed');

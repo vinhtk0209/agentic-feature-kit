@@ -1,6 +1,6 @@
 interface:
   display_name: "Workflow Orchestrator"
-  short_description: "Run verified, resumable feature-delivery phases"
-  default_prompt: "Run or resume this feature workflow through the provider-neutral phase contract. Preserve every human and computed gate."
+  short_description: "Route and resume verified feature-delivery phases"
+  default_prompt: "Run or resume this feature workflow through the provider-neutral phase contract. Route model-eligible phases only from qualified evidence and preserve every gate."
 policy:
   allow_implicit_invocation: true

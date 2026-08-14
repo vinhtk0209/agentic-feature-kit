@@ -14,10 +14,11 @@ invented plugin manifest: its supported distribution unit is the repository cust
 
 ## Development status
 
-Version `0.4.0` contains Project Intelligence, fingerprint-bound Stack Portability,
-Project-Derived Conditional Quality Gates, and the Workflow Orchestrator over shared core `1.2.0`. Run
+Version `0.5.0` contains Project Intelligence, fingerprint-bound Stack Portability,
+Project-Derived Conditional Quality Gates, the Workflow Orchestrator, and fail-closed Phase Model
+Routing over shared core `1.3.0`. Run
 `npm run build:providers` to create three self-contained directories, deterministic ZIP archives,
-per-bundle content manifests, and `SHA256SUMS` under `dist/provider-bundles/0.4.0/`.
+per-bundle content manifests, and `SHA256SUMS` under `dist/provider-bundles/0.5.0/`.
 
 Each extracted bundle includes bundled Node 20+ launchers under `runtime/`; it does not need `tsx`,
 the monorepo, or repository `node_modules`. Validate `SHA256SUMS` before extraction, then follow the
@@ -31,7 +32,9 @@ and stops on unknown or contradictory required signals. Provider adapters cannot
 rules. Stack Portability uses only explicit declarations or observed imports/calls, binds its result
 to the profile fingerprint, and never activates Open edX helpers from package presence alone.
 Conditional gates inspect bounded caller-supplied change evidence, cite every decision, and
-never infer a missing stack. Installation, marketplace registration, publication, external provider execution, sync,
+never infer a missing stack. Phase Model Routing accepts only closed, bounded evidence, requires
+exact unexpired entitlement and phase qualification, and never executes or silently substitutes a
+provider. Installation, marketplace registration, publication, external provider execution, sync,
 and push are not performed by repository validation.
 
 ## Validation

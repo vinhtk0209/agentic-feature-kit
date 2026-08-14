@@ -88,7 +88,7 @@ for (const required of ['/roadmap/[taskId]', 'opaque operator-assigned machine U
 }
 
 const phaseModelRouting = tasks.find((task) => task.id === 'P17-006')!
-assert.equal(phaseModelRouting.status, 'in_progress')
+assert.equal(phaseModelRouting.status, 'done')
 assert.equal((phaseModelRouting.readiness as Record<string, unknown>).complete, true)
 assert.deepEqual((phaseModelRouting.readiness as Record<string, unknown>).missing, [])
 assert.ok(((phaseModelRouting.readiness as Record<string, unknown>).inputs as string[]).includes('docs/roadmap/post-17-phase-capability-matrix.json'))

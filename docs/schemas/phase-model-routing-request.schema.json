@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-feature-kit.dev/schemas/phase-model-routing-request.schema.json",
+  "title": "Phase Model Routing Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "requestId",
+    "phaseId",
+    "phaseContractHash",
+    "matrixHash",
+    "activeConditionIds",
+    "estimatedInputTokens",
+    "candidateIds",
+    "requestedEffort",
+    "fallback"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "requestId": { "$ref": "#/$defs/safeId" },
+    "phaseId": { "$ref": "#/$defs/safeId" },
+    "phaseContractHash": { "$ref": "#/$defs/sha256" },
+    "matrixHash": { "$ref": "#/$defs/sha256" },
+    "activeConditionIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/safeId" }
+    },
+    "estimatedInputTokens": {
+      "oneOf": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "null" }
+      ]
+    },
+    "candidateIds": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/safeId" }
+    },
+    "requestedEffort": {
+      "oneOf": [
+        { "$ref": "#/$defs/effort" },
+        { "type": "null" }
+      ]
+    },
+    "fallback": {
+      "oneOf": [
+        { "$ref": "#/$defs/fallback" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "effort": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "fallbackFailureReason": {
+      "enum": [
+        "provider_unavailable",
+        "provider_timeout",
+        "provider_rate_limited",
+        "provider_rejected",
+        "provider_execution_failed",
+        "evidence_rejected"
+      ]
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "priorDecisionHash",
+        "failedCandidateId",
+        "failureReason",
+        "originalPhaseContractHash",
+        "originalRuntimePermissions",
+        "replaySafe"
+      ],
+      "properties": {
+        "priorDecisionHash": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "failedCandidateId": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeId" },
+            { "type": "null" }
+          ]
+        },
+        "failureReason": {
+          "oneOf": [
+            { "$ref": "#/$defs/fallbackFailureReason" },
+            { "type": "null" }
+          ]
+        },
+        "originalPhaseContractHash": { "$ref": "#/$defs/sha256" },
+        "originalRuntimePermissions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "replaySafe": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "agentic-feature-kit",
   "displayName": "Agentic Feature Kit",
-  "version": "0.4.0",
-  "description": "Evidence-backed project intelligence, stack portability, conditional quality gates, and a resumable provider-neutral feature workflow for Claude Code.",
+  "version": "0.5.0",
+  "description": "Evidence-backed project intelligence, phase-aware model routing, and a resumable provider-neutral feature workflow for Claude Code.",
   "author": {
     "name": "Agentic Feature Kit contributors",
     "url": "https://github.com/vinhtk0209"

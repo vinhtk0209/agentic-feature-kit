@@ -31,7 +31,7 @@ for (const heading of [
 
 const task = roadmap.tasks.find((entry) => entry.id === 'P17-006')
 assert.ok(task)
-assert.equal(task.status, 'in_progress', 'P17-006 starts only after the design gate is locked')
+assert.equal(task.status, 'done', 'P17-006 closes only after the locked implementation and evidence gates pass')
 assert.equal(task.readiness.complete, true)
 assert.deepEqual(task.readiness.missing, [])
 assert.equal(matrix.schemaVersion, '1.1.0')

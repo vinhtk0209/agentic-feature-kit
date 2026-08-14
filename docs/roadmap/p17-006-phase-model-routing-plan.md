@@ -1,6 +1,6 @@
 # P17-006 Phase-aware Model Selection and Routing Plan
 
-Status: design locked; implementation has not started  
+Status: complete
 Date: 2026-08-14  
 Decision authority: operator-approved post-17 goal plus the P17-006 input-readiness gate  
 Dependencies: P17-002 complete; P17-007 owns real same-input phase qualification
@@ -129,10 +129,10 @@ smoke or successful login cannot populate phase qualification.
 
 Schema `1.0.0` contains:
 
-- request, matrix, phase, and phase-contract identities;
+- request hash, matrix, phase, and phase-contract identities;
 - evaluated-at timestamp from the injected clock;
 - required capabilities/runtime permissions and active conditions;
-- all candidates in request order with `eligible` and closed reason codes;
+- all candidates in request order with nullable candidate-evidence hash, `eligible`, and closed reason codes;
 - `selectedCandidateId` or null, status, top-level reason codes, explicit skipped/fallback lineage,
   optimizer disposition, and decision hash.
 

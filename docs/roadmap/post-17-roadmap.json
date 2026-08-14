@@ -196,7 +196,7 @@
       "initiative": "P17-I2",
       "wave": 3,
       "priority": "P1",
-      "status": "in_progress",
+      "status": "done",
       "dependencies": ["P17-002"],
       "backlogRefs": ["1"],
       "problem": "One model setting for every phase hides quality, cost, and latency trade-offs.",

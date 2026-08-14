@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0.0",
   "product": "agentic-feature-kit",
-  "bundleVersion": "0.4.0",
-  "sharedCoreVersion": "1.2.0",
+  "bundleVersion": "0.5.0",
+  "sharedCoreVersion": "1.3.0",
   "sourceMode": "monorepo",
   "distribution": {
     "builder": "scripts/build-provider-bundles.ts",
@@ -15,7 +15,8 @@
       "projectIntelligence": "runtime/project-intelligence.cjs",
       "stackPortability": "runtime/stack-portability.cjs",
       "conditionalQualityGates": "runtime/conditional-quality-gates.cjs",
-      "workflowOrchestrator": "runtime/workflow-orchestrator.cjs"
+      "workflowOrchestrator": "runtime/workflow-orchestrator.cjs",
+      "phaseModelRouting": "runtime/phase-model-router.cjs"
     }
   },
   "providers": [
