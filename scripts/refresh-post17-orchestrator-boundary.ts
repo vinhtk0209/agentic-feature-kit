@@ -64,18 +64,22 @@ export function refreshBoundarySource(root: string, generatedOn: string): Bounda
   const worktreeBlob = git(root, ['hash-object', sourcePath]);
   if (headBlob !== worktreeBlob) throw new Error('flagship source is dirty; commit it before refreshing the boundary');
   const lines = source.split(/\r?\n/);
-  for (const phase of boundary.phases) {
+  const sourceLineCount = lines.length - (source.endsWith('\n') ? 1 : 0);
+  for (const [index, phase] of boundary.phases.entries()) {
     const [start, end] = phase.sourceLines;
     if (!Number.isInteger(start) || !Number.isInteger(end) || start <= 0 || end < start) throw new Error(`invalid sourceLines for ${phase.id}`);
     const escaped = phase.id.replace('.', '\\.');
     if (!new RegExp(`^## ${escaped}(?:\\s|$)`).test(lines[start - 1] ?? '')) throw new Error(`phase anchor drifted: ${phase.id}`);
+    const nextStart = boundary.phases[index + 1]?.sourceLines[0];
+    const expectedEnd = nextStart === undefined ? sourceLineCount : nextStart - 1;
+    if (end !== expectedEnd) throw new Error(`phase range drifted: ${phase.id}`);
   }
   const nextSource = {
     path: sourcePath,
     gitCommit: commit,
     gitBlob: headBlob,
     sha256: sha256(source),
-    lineCount: lines.length - (source.endsWith('\n') ? 1 : 0),
+    lineCount: sourceLineCount,
   };
   let refreshed = committedBoundaryRaw;
   refreshed = replaceUniqueProperty(refreshed, 'generatedOn', committedBoundary.generatedOn, generatedOn);

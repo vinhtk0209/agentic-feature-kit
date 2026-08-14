@@ -82,5 +82,11 @@ test('phase anchor drift refuses refresh instead of blessing a moved boundary', 
   finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('phase range drift refuses refresh instead of blessing gaps or trailing overlap', () => {
+  const root = fixture('## B0 Test\nbody\nextra\n');
+  try { assert.throws(() => refreshBoundarySource(root, '2026-08-14'), /phase range drifted: B0/); }
+  finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 console.log(`\nrefresh-post17-orchestrator-boundary.test: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
