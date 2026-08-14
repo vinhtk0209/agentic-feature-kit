@@ -1,13 +1,14 @@
 # P17-009 — Cross-Platform Release Qualification Evidence
 
 Date: 2026-08-15
-Status: FIFTH REMOTE WINDOWS GREEN — P2 CLI FIXTURE REMEDIATION FULL LOCAL GREEN
+Status: PASS — REMOTE LINUX/WINDOWS MATRIX AND AGGREGATE GATE GREEN
 Qualified locally: Windows, Node 24  
 First remote attempt: Linux and Windows both exposed the same clean-checkout dependency gap
 Second remote attempt: Linux and Windows exposed separate test-fixture/checkout portability gaps
 Third remote attempt: Linux and Windows exposed remaining fixture inventory and non-canonical source provenance
 Fourth remote attempt: Windows passed; Linux exposed one test-only Windows case-alias setup
 Fifth remote attempt: Windows passed; Linux exposed the adjacent CLI case-alias expectation
+Sixth remote attempt: Linux, Windows, aggregate gate, and downloaded-artifact replay passed
 
 ## Outcome
 
@@ -230,13 +231,39 @@ reject on Windows, accept on POSIX. No production code changed. Local Windows
 With the CLI fixture and this evidence update present, the CI-equivalent `npm run test:kit` command
 exits `0` after 233 seconds on local Windows.
 
-## Pending highest-valid evidence
+## Sixth remote run and accepted qualification
 
-P17-009 remains `in_progress`. Its acceptance criterion requires the committed canonical-
-provenance plus both P2 fixture remediations to pass on `ubuntu-latest` and `windows-latest`, followed
-by the aggregate release gate. Run the full local suite and exact diff/secret review, commit only
-the reviewed CLI test and evidence update, push only to the existing draft-PR branch, and capture
-the next run; do not close the task from focused local or partially successful remote evidence.
+Run [`31827980057`](https://github.com/vinhtk0209/agentic-feature-kit/actions/runs/31827980057)
+executed exact commit `7c6ae92191b13f52b210c3eb3b9cf2dabbf22b2b` and completed `success`:
+
+- Linux job `94856599652`: success;
+- Windows job `94856599680`: success; and
+- aggregate release qualification job `94857704917`: success.
+
+The two downloaded archives matched the SHA-256 digests returned by GitHub before extraction:
+
+- `qualification-linux` artifact `9229601100`: archive
+  `9ce82c00ae5ebea9456dc14c49d1044f5109898c5db0916f36f9be8cece0ab07`; extracted
+  `linux.json` `7d240984580b264a74ee5c456755ab0a568461509f9c74316a7f7cd083fe91aa`;
+- `qualification-windows` artifact `9229664479`: archive
+  `4ab9c68150476979fb2e34a6094e5778dcb5a7b0d87cd928f765023f00f03e96`; extracted
+  `windows.json` `4d076e76847ec17cb41997dd7dba3726ffbbbf100525e831f30de07fe224557c`.
+
+Both extracted results reported `pass`. Replaying the production command with
+`MATRIX_RESULT=success` returned
+`@@RELEASE_MATRIX@@{"status":"pass","matrixResult":"success","platforms":["linux","windows"],"reasons":[]}`.
+The validated temporary download directory was removed. PR #1 remains open, ready-for-review by an
+intentional user action, and unmerged; no direct-main push occurred.
+
+P17-009 satisfies all three acceptance criteria and can close locally. The closeout status/evidence
+commit is not pushed under the completed CI authorization; the remote PR head remains the exact
+green implementation commit above.
+
+Local closeout verification is also green: canonical roadmap and public-release plan focused gates
+pass; the full kit suite exits `0` in 237.2 seconds; dashboard roadmap parser/page tests pass 2
+files/6 tests; dashboard full regression passes 65 files/457 tests in 8.75 seconds; and dashboard
+TypeScript no-emit exits `0`. The reconciled catalog has 22 tasks, 13 done, 1 in progress, 2 ready,
+6 backlog, and 16 input-complete tasks. P17-018 is ready but not done.
 
 No sync, provider/model execution, publication, target `.Codex` edit, direct-main push, merge, or
 macOS qualification occurred. Git credential use was bounded to the authorized branch/PR API

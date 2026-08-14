@@ -66,7 +66,7 @@ When complete:
 | P17-006 | P1 | 3 | done | Phase-aware model selection and routing | Allows explicit quality/cost/latency routing without silent provider substitution. |
 | P17-007 | P1 | 4 | backlog | Normalized same-input provider parity | Separates action smoke from real planning/implementation parity. |
 | P17-008 | P0 | 3 | done | Installable distribution bundles | Produces validated Codex, Claude, and Copilot bundles over one shared core. |
-| P17-009 | P1 | 2 | in_progress | Cross-platform release qualification | Proves Windows and Linux behavior in CI, including paths, quoting, setup, and process cleanup. |
+| P17-009 | P1 | 2 | done | Cross-platform release qualification | Proves Windows and Linux behavior in CI, including paths, quoting, setup, and process cleanup. |
 | P17-010 | P1 | 2 | done | CLI reliability and direct integration tests | Makes malformed input and I/O failures explicit for feedback/KPI/public CLI paths. |
 | P17-011 | P1 | 2 | done | Honest isolated-worktree browser verification | Stops `infra-blocked` from being confused with verified browser behavior. |
 | P17-012 | P1 | 2 | done | Convention and stack portability audit | Gates Open edX conventions instead of treating them as universal defaults. |
@@ -75,7 +75,7 @@ When complete:
 | P17-015 | P2 | 4 | done | Detailed cross-machine progress tracking | Links each task to the exact machine-safe run, retry lineage, and evidence hash. |
 | P17-016 | P1 | 3 | in_progress | Privacy-safe specification and usage data criteria | Prevents private specs, secrets, or cross-tenant data from leaking into learning data. |
 | P17-017 | P2 | 5 | backlog | Provider-neutral build harness with optional RAG | Keeps repository facts authoritative while measuring any retrieval benefit safely. |
-| P17-018 | P2 | 4 | backlog | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
+| P17-018 | P2 | 4 | ready | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
 | P17-019 | P2 | 4 | backlog | Credential lifecycle adapter | Handles token expiry only through an explicit project auth capability. |
 | P17-020 | P2 | 4 | backlog | Self-improvement drift, bias, and evolution tracking | Prevents one feature cluster from overfitting prompt evolution and adds golden rollback. |
 | P17-021 | P1 | 5 | backlog | Distributed Control Panel UI and Remote Operations Console | Proves authorized machine/task operations through a real Control Plane, remote worker, execution, evidence, and browser-visible terminal state. |
@@ -107,7 +107,8 @@ deterministic artifact safely, the roadmap should prepare and test it before req
 - **P17-018 (`A1/L1`):** target external software-delivery engineers, evaluators, maintainers,
   contributors, and security researchers; retain Apache-2.0 for repository source and provider
   bundles. The repository remains private and the package remains `private: true` until separately
-  authorized. P17-018 stays backlog because P17-009 and implementation evidence are incomplete.
+  authorized. P17-018 is ready because P17-009 now has accepted Linux/Windows/aggregate evidence;
+  P17-018 implementation and release evidence remain incomplete.
 
 ## Wave order
 

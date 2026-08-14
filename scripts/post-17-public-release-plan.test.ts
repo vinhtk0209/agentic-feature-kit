@@ -37,7 +37,7 @@ for (const heading of [
 
 const task = roadmap.tasks.find((entry) => entry.id === 'P17-018')
 assert.ok(task)
-assert.equal(task.status, 'backlog', 'P17-018 must remain backlog until dependencies and implementation evidence pass')
+assert.equal(task.status, 'ready', 'P17-018 is ready after dependencies pass but cannot be done before implementation evidence')
 assert.equal(task.readiness.complete, true, 'A1/L1 must close the only named P17-018 input gap')
 assert.deepEqual(task.readiness.missing, [])
 assert.deepEqual(task.dependencies, ['P17-008', 'P17-009', 'P17-013'])
@@ -59,7 +59,7 @@ for (const phrase of [
   'GitHub Private Vulnerability Reporting/Security Advisories',
   'GitHub Actions must be pinned to reviewed immutable commit SHAs',
   'Generate an SPDX or CycloneDX SBOM',
-  'P17-009 must first prove the current Windows/Linux workflow from a real remote run.',
+  'P17-009 has proven the current Windows/Linux workflow through real remote run `31827980057`.',
   'No public artifact is required or authorized to prove readiness.',
 ]) assert.ok(normalizedPlan.includes(phrase), `missing release policy contract: ${phrase}`)
 
@@ -78,4 +78,4 @@ assert.match(plan, /archive traversal, symlink\/reparse entries, duplicate\/case
 assert.match(plan, /No sync, push, tag, release, visibility change, npm publish, marketplace submission/i)
 assert.doesNotMatch(plan, /implementation (is|was) complete/i)
 
-console.log('post-17-public-release-plan.test: PASS (18 sections, A1/L1 locked, P17-018 input-complete and dependency-blocked)')
+console.log('post-17-public-release-plan.test: PASS (18 sections, A1/L1 locked, P17-018 input-complete and ready)')
