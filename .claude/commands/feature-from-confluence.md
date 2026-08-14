@@ -115,28 +115,28 @@ On any D0/D0.5 reason code, STOP fail-closed. On success hand forward only the p
 
 ---
 
-## BUILT-IN FALLBACK CONTEXT (React/TypeScript)
+## EVIDENCE-BOUND PROJECT CONTEXT
 
-> These values are ONLY used when SESSION BOOTSTRAP cannot find the key in CLAUDE.md.
-> If CLAUDE.md exists and contains the key, PROJECT_CTX takes priority over every value here.
-> All later steps that reference "PROJECT CONTEXT" now read from PROJECT_CTX (resolved in SESSION BOOTSTRAP Step 0.B).
+> This section contains conditional patterns, not repository defaults.
+> Activate a pattern only when `PROJECT_PROFILE` and `STACK_PORTABILITY` cite positive evidence for it.
+> Missing or conflicting framework/helper evidence is never replaced with a built-in stack.
 
-- **Stack**: React 18 + TypeScript, TanStack Query v5 (`@tanstack/react-query`), YourUILib (e.g. `@your-org/ui-lib`)
-- **HTTP**: `yourHttpClient()` from your project's HTTP client module — never use `fetch` or `axios` directly unless that is your project's convention
-- **Response**: `transformResponse(data)` required on every API response (mirrors your project's camel-casing or normalization helper)
-- **Request bodies**: `transformRequest(payload)` from your project's HTTP client module — import alongside `transformResponse`; never write plain snake_case object literals
-- **Forms**: `react-hook-form` + `zodResolver` (`@hookform/resolvers/zod`) + `zod` (import from `'zod'`). Save button pattern: `disabled={!isDirty || !isValid || isSubmitting}` — ALWAYS destructure `isValid` from `formState`; omitting it causes Save to enable on invalid input
-- **i18n**: `defineMessages` + `useIntl().formatMessage()` in each feature's own `messages.ts`. **DO NOT edit `src/i18n/index.ts`**
-- **Pagination**: reuse `src/generic/SharedList.tsx` + `useFilter` hook — do NOT create new pagination/toolbar components
-- **Mutations**: `invalidateQueries` in `onSettled`, NEVER in `onSuccess`
-- **Import alias**: `@src/...` — no deep cross-feature imports
-- **Branch**: `develop` | **Commit format**: `[JIRA-ID][TYPE] description`
-- **Feature file structure per convention** (React default — overridden by FILE_STRUCTURE in SESSION BOOTSTRAP):
+- **Stack**: use `STACK_PORTABILITY.framework.adapter`; unsupported or conflicting frameworks STOP.
+- **HTTP**: use `STACK_PORTABILITY.conventions.http.symbol` only when its state is `declared` or `observed`; unknown HTTP evidence STOPs before an HTTP feature is planned.
+- **Response**: always use the `named-feature-mapper` policy; call a project transform helper only when `STACK_PORTABILITY.conventions.responseTransform` proves one.
+- **Request bodies**: use a request helper only when `STACK_PORTABILITY.conventions.requestTransform` proves one; otherwise STOP before a mutation body is implemented.
+- **Forms**: activate a form-library pattern only when Project Profile package evidence proves that library; never install or assume React form packages for another stack.
+- **i18n**: create framework-appropriate message files only when `PROJECT_PROFILE.gates.i18n=true`; an absent system stays inactive.
+- **Shared UI**: prefer cited `PROJECT_PROFILE.referenceFeatures`; never assume `src/generic/` or a fixed component library.
+- **Data layer**: activate query/mutation patterns only for implementations listed in `PROJECT_PROFILE.dataLayer`.
+- **Import alias**: select from `PROJECT_PROFILE.conventions.importAliases`; no alias fallback is invented.
+- **Branch/commit format**: read only explicit repository instructions or current Git policy; ask when absent.
+- **Feature file structure example** (active only for confirmed `react-web`; otherwise use the resolved framework adapter):
   ```
   <feature-folder>/
     data/
       types.ts        ← interfaces, no `any`
-      api.ts          ← USE_MOCK=true initially, yourHttpClient(), returns mapXxx(transformResponse(data)) — NO `as Type`
+      api.ts          ← USE_MOCK=true initially, proven HTTP adapter, returns mapXxx(raw) — NO `as Type`
       transform.ts    ← explicit mapXxx(raw): Xxx per response type (anti-corruption layer)
       apiHooks.ts     ← useQuery (staleTime) + useMutation (onSettled)
     utils/            ← pure fns for business/display rules + co-located .test.ts (required if any BR row)
@@ -168,16 +168,16 @@ These apply everywhere selectors are written: `ux-states.json`, `checklist.md` l
 
 ## PORTABILITY — Repo-Specific Knobs *(v3.16)*
 
-> Most of this workflow is repo-agnostic — it reads `PROJECT_CTX` from `CLAUDE.md`. A few HARD RULES have
-> **project-specific default values**. The portable kit ships **generic-safe fallbacks** for them; project
-> values live ONLY in that project's `CLAUDE.md` → `### Workflow Overrides`.
+> Most of this workflow is repo-agnostic. It consumes the validated `PROJECT_PROFILE` and
+> fingerprint-bound `STACK_PORTABILITY` result. A few HARD RULES may use explicit repo instructions,
+> but only when validated evidence cites them.
 >
 > ⚠️ **`CLAUDE.md` is per-repo (generated by `/init`) and does NOT travel with the kit.** A repo that copies
-> `.claude/` does NOT inherit these values — it gets the **generic-safe fallback** below unless its own
-> `CLAUDE.md` defines the key. **Never hardcode project-specific values as fallbacks in this command** —
-> fallbacks must be safe for any repo.
+> `.claude/` does NOT inherit these values. Its own instructions and observed source/manifests are
+> re-profiled; missing or conflicting required evidence becomes `needs_input`. **Never hardcode
+> project-specific values as fallbacks in this command.**
 
-| Rule | `CLAUDE.md` override key | Fallback when key ABSENT (portable, generic-safe) | Example project value (in its `CLAUDE.md`) |
+| Rule | Optional instruction key | Evidence path when key is absent | Example explicit project value |
 |------|--------------------------|---------------------------------------------------|--------------------------------------|
 | HR20 | `api_url_convention` | grep `/api/v[0-9]+/...` from `src/**/api.ts` | resource-scoped param `{resource_id}` |
 | HR23 | `endpoint_base_override` | **rule INACTIVE** — use HR20 grep only, assume no domain-scoped base | `/api/v1/resources/{resource_id}/items/{item_id}/` |
@@ -186,8 +186,8 @@ These apply everywhere selectors are written: `ux-states.json`, `checklist.md` l
 | B1 fallback | `ui_library` | detect lib from deps; treat the selector table as an example | `@your-org/ui-lib` |
 
 **Adopting in a NEW repo:**
-1. Run `/init` to generate `CLAUDE.md` (gives the agnostic keys: `query_library`, `http_client`, `response_transform`, `import_alias`, `branch`, `commit_format`).
-2. **Do nothing else and you get the generic-safe fallbacks** (column 3). To pin a value, add a `### Workflow Overrides` block to `CLAUDE.md` — **`/init` does NOT generate this block; add it manually** only if you need an override.
+1. Optionally run `/init` to create repo instructions; the workflow does not treat generated defaults as evidence.
+2. Run the Project Profile + Stack Portability bootstrap. Add a `### Workflow Overrides` value only when the repository truly requires it; unresolved required evidence stops for input instead of guessing.
 3. Configure `.claude/mcp-server/.env` (Confluence) + `.env.playwright` (`DEV_SERVER_URL`, `PUBLIC_PATH`).
 
 Rules **not** repo-coupled (portable as-is): HR1–19, 24–28, 30–35, all B-step phases, gates, self-recover/decompose, integration scripts.
@@ -450,8 +450,8 @@ Applies at: **B1** (parse fail), **B2** (image download fail), **B3** (SpecKit f
 18. **(v3.7 — Change J.3 determinism)** B2.5 design token extraction MUST produce: lowercase 6-char hex (no shorthand, no alpha), spacing values in `px` sorted ascending, 5 typography roles (H1/H2/Body/Caption/Label minimum). This minimises run-to-run divergence from LLM sampling.
 19. **(v3.8 — Change L.4 palette relaxation)** Palette in `visual-properties.md` accepts **3–7 colors** reflecting the actual design, not a forced 5. If the spec shows fewer than 5 distinct colors, list `count=<n>` in the section header and emit only the real colors (do NOT pad by duplicating primary). If more than 7, choose 7 dominant + append a comment line `<!-- omitted: #aaa,#bbb -->` listing the dropped hexes.
 20. **(v3.9 — Change M.1 URL convention lock)** API endpoint paths in `<FeatureName>.full.http` MUST adopt the prefix and resource hierarchy of the **existing API family** in the host repo. Before writing endpoints at B8.6: (a) run `grep -roE "/api/v[0-9]+/[a-z][a-z-]+" src/**/api.ts src/**/data/api.ts 2>/dev/null | sort -u | head` to discover canonical prefixes; (b) choose the prefix matching the feature's scope noun — NEVER invent a new family like `/api/admin/` if a versioned `/api/v1/` family already exists in the repo; (c) use the id-param name consistent with the existing API family (e.g. `{resource_id}`) — derive from grep output, do NOT assume a specific name; (d) nest sub-resources under the parent scope (e.g. `/api/v1/resources/{resource_id}/items/{item_id}`), do NOT flatten to top-level (e.g. `/api/admin/items/{id}`). Log adopted prefix to `recovery.log`: `[B8.6-url-convention] prefix=<chosen> source=<grep-evidence>`. **(v3.16 portability)** Prefix + id-param names come from grep by default; a repo may pin them via CLAUDE.md `api_url_convention` — see "## PORTABILITY".
-21. **(v3.9 — Change M.2 REQ literalness)** `checklist.md` Requirements section MUST mirror the spec's Section 2.1 Objective (or Requirements) table 1-to-1. Each REQ row corresponds to exactly one Objective entry — same count, same order, same wording (light paraphrasing allowed, NO decomposition). Do NOT create REQ rows for: tab navigation, save buttons, format/display rules, validation rules, or other UI controls — those belong in **UI Verification** or **ACT** sections. Log: `[B5-checklist] req_rows=N (spec_objective_count=N)` and ASSERT `req_rows == spec_objective_count`. If unequal, STOP at B6 and present the mismatch to user before continuing. **(v3.16 portability)** "Section 2.1" is the the spec template location; if the spec uses different numbering, resolve the Objectives section by heading semantics (a heading containing "Objective" / "Requirements" / "Mục tiêu") via `PROJECT_CTX.spec_section_map`. The 1-to-1 rule applies to whatever section holds the objective list — see "## PORTABILITY".
-22. **(v3.9 — Change M.3 UI/ACT row granularity; v3.11 — ACT floor; v3.12 — Keep Going component)** `checklist.md` UI Verification MUST emit exactly **one row per top-level spec component** (entries from Section 2.3.3 Component description — header, tab bar, each named card type, each named section, each popup). Sub-elements (badges, icons, sub-fields) roll into the parent component's row, do NOT get separate rows. ACT — Acceptance Test Cases MUST emit **one row per spec AC item** (Section 2.3.4 table) — same count, same order. Display/format rules with explicit examples in the spec get an additional unit-test row in ACT. **(v3.11 floor)** After initial count, if `act_rows < 13`: re-scan the spec for implicit user actions (tab switches, expand/collapse, navigate between views, copy-to-clipboard, pagination controls) and add each as an additional ACT row (prefix the row note with `<!-- implicit: <source> -->`) until `act_rows >= 13`. Log: `[B5-checklist] ui_rows=N (spec_components=N) act_rows=M (spec_ac_items=M_ac + display_rules=K + implicit=J)`. **(v3.12 — Keep Going component)** A "Keep going" / "Continue" / "Navigate to uncompleted" card or button described as a named UI element in the spec MUST be its own separate UI row — do NOT fold it into the Required Assessments row or any other row. This component is frequently the last item in the component list and is commonly missed.  **(v3.13 — ui_rows floor)** After counting ui_rows: if ui_rows < 12, re-scan Section 2.3.3 for component names that were merged into parent rows and add each as a SEPARATE row. Two common merge mistakes that MUST be corrected: (a) A named "section" container AND its named "card" or "item" type within it are TWO separate rows, not one — e.g. "Score statistics section" gets one row AND "Component score card" (the repeating card type it contains) gets a second row; (b) A tab that contains multiple NAMED sub-sections (e.g. "Final Assessment tab" containing "Overall Progress card", "Average Score card", "Lessons card", "Required assessments section") — each named sub-section gets its own row, NOT one row for the whole tab. After re-scan, update the log: `[B5-checklist] ui_rows=N (post-floor-check)`. If ui_rows still < 12 after re-scan: log `[B5-checklist] ui_rows-floor-warning=true ui_rows=N` and continue. **(v3.14 — ui_rows ceiling/anti-sub-element)** After the floor re-scan, check that ui_rows has not exceeded 22 due to sub-element over-decomposition. Do NOT create separate rows for: (a) section heading labels — these are part of their parent section, not a standalone component; (b) individual form fields (input, textarea, button) WITHIN a popup or card — they roll into the popup/card row; (c) icon-only elements (eye icon, copy icon, info badge) — they roll into the component they belong to. A UI row represents a named, standalone screen COMPONENT, not a UI element within a component. After writing all UI rows, scan: any row whose Screen/Component description starts with "eye icon", "input field", "button within", or "heading for" MUST be merged into its parent row. Target range: ui_rows ∈ [12, 22]. If ui_rows > 22 after merging: log `[B5-checklist] ui_rows-ceiling-warning=true ui_rows=N merged=K`. **(v3.16 portability)** "Section 2.3.3 / 2.3.4" are the spec template locations; if absent, resolve the Component section by headings containing "Component" / "UI" / "Screen" and the AC section by "Acceptance" / "AC" / "Test case" via `PROJECT_CTX.spec_section_map` — see "## PORTABILITY".
+21. **(v3.9 — Change M.2 REQ literalness)** `checklist.md` Requirements section MUST mirror the spec's Section 2.1 Objective (or Requirements) table 1-to-1. Each REQ row corresponds to exactly one Objective entry — same count, same order, same wording (light paraphrasing allowed, NO decomposition). Do NOT create REQ rows for: tab navigation, save buttons, format/display rules, validation rules, or other UI controls — those belong in **UI Verification** or **ACT** sections. Log: `[B5-checklist] req_rows=N (spec_objective_count=N)` and ASSERT `req_rows == spec_objective_count`. If unequal, STOP at B6 and present the mismatch to user before continuing. **(v3.16 portability)** "Section 2.1" is only a template location; resolve the Objectives section from source-backed heading semantics (a heading containing "Objective" / "Requirements" / "Mục tiêu") in the validated spec, never from a repository-stack default. The 1-to-1 rule applies to whatever section holds the objective list — see "## PORTABILITY".
+22. **(v3.9 — Change M.3 UI/ACT row granularity; v3.11 — ACT floor; v3.12 — Keep Going component)** `checklist.md` UI Verification MUST emit exactly **one row per top-level spec component** (entries from Section 2.3.3 Component description — header, tab bar, each named card type, each named section, each popup). Sub-elements (badges, icons, sub-fields) roll into the parent component's row, do NOT get separate rows. ACT — Acceptance Test Cases MUST emit **one row per spec AC item** (Section 2.3.4 table) — same count, same order. Display/format rules with explicit examples in the spec get an additional unit-test row in ACT. **(v3.11 floor)** After initial count, if `act_rows < 13`: re-scan the spec for implicit user actions (tab switches, expand/collapse, navigate between views, copy-to-clipboard, pagination controls) and add each as an additional ACT row (prefix the row note with `<!-- implicit: <source> -->`) until `act_rows >= 13`. Log: `[B5-checklist] ui_rows=N (spec_components=N) act_rows=M (spec_ac_items=M_ac + display_rules=K + implicit=J)`. **(v3.12 — Keep Going component)** A "Keep going" / "Continue" / "Navigate to uncompleted" card or button described as a named UI element in the spec MUST be its own separate UI row — do NOT fold it into the Required Assessments row or any other row. This component is frequently the last item in the component list and is commonly missed.  **(v3.13 — ui_rows floor)** After counting ui_rows: if ui_rows < 12, re-scan Section 2.3.3 for component names that were merged into parent rows and add each as a SEPARATE row. Two common merge mistakes that MUST be corrected: (a) A named "section" container AND its named "card" or "item" type within it are TWO separate rows, not one — e.g. "Score statistics section" gets one row AND "Component score card" (the repeating card type it contains) gets a second row; (b) A tab that contains multiple NAMED sub-sections (e.g. "Final Assessment tab" containing "Overall Progress card", "Average Score card", "Lessons card", "Required assessments section") — each named sub-section gets its own row, NOT one row for the whole tab. After re-scan, update the log: `[B5-checklist] ui_rows=N (post-floor-check)`. If ui_rows still < 12 after re-scan: log `[B5-checklist] ui_rows-floor-warning=true ui_rows=N` and continue. **(v3.14 — ui_rows ceiling/anti-sub-element)** After the floor re-scan, check that ui_rows has not exceeded 22 due to sub-element over-decomposition. Do NOT create separate rows for: (a) section heading labels — these are part of their parent section, not a standalone component; (b) individual form fields (input, textarea, button) WITHIN a popup or card — they roll into the popup/card row; (c) icon-only elements (eye icon, copy icon, info badge) — they roll into the component they belong to. A UI row represents a named, standalone screen COMPONENT, not a UI element within a component. After writing all UI rows, scan: any row whose Screen/Component description starts with "eye icon", "input field", "button within", or "heading for" MUST be merged into its parent row. Target range: ui_rows ∈ [12, 22]. If ui_rows > 22 after merging: log `[B5-checklist] ui_rows-ceiling-warning=true ui_rows=N merged=K`. **(v3.16 portability)** "Section 2.3.3 / 2.3.4" are only template locations; if absent, resolve Component and AC sections from source-backed headings in the validated spec ("Component" / "UI" / "Screen", then "Acceptance" / "AC" / "Test case"). Do not import a repository-stack section map into semantic spec interpretation.
 23. **(v3.10 — Change N.1 URL family priority; v3.11 — domain-scoped override)** When the grep at B8.6 (HARD RULE 20 step a) returns BOTH a `/api/v1/` family AND a `/api/admin/` family, **always use `/api/v1/`** — the admin prefix never wins over a versioned public family. The only acceptable exception: if `/api/v1/` has zero entries and only `/api/admin/v1/` exists, use the admin family and log `[B8.6-url-convention] exception=no-v1-family admin-only`. NEVER use bare `/api/admin/` without a version segment. This rule reinforces HARD RULE 20 step (b) against codebase-override. **(v3.11 domain-scoped override)** When `CLAUDE.md` defines `endpoint_base_override`, the canonical endpoint base for features in the specified domain MUST be the value from that key — regardless of what grep returns. If grep returns zero matching entries, these are NEW endpoints: adopt the override base and derive the sub-resource path from the spec's REST resource hierarchy. **(v3.16 portability)** This entire rule is **project-specific and INACTIVE by default** — it applies ONLY when `CLAUDE.md` defines `endpoint_base_override`. In a repo without that key, **ignore HR23** and fall back to HR20's grep-discovered prefix. The override base must NEVER be hardcoded in the kit as a portable fallback. See "## PORTABILITY".
 24. **(v3.10 — Change N.2 checklist header lock; v3.11 — ACT prefix fix)** `checklist.md` section headers MUST be exactly (case as shown): `## Requirements Coverage`, `## UI Verification`, `## ACT — Acceptance Test Cases`. Do NOT use bare `## Acceptance Test Cases` for the third section — the `lint-feature` checklist parser matches `/##\s*ACT/i` and requires the header to START with `## ACT`. Do NOT use decorated forms like `## REQ — Requirements (…)` or `## UI — Verification (…)` for the first two sections. To log counts, add a comment on the line immediately below each header: `<!-- req_rows=N spec_objective_count=N -->`.
 25. **(v3.10 — Change N.3 ACCESS_GUIDE.md required; v3.12 — section name enforcement)** B8.6 MUST generate `docs/components/<FeatureName>/ACCESS_GUIDE.md`. Required H2 sections in this exact order: `## URL Pattern`, `## Sub-routes`, `## Mock Data Summary`, `## Feature Checklist (browser-level)`, `## Switching to Real API`, `## Related Files`. Section 4 MUST be written as exactly `## Feature Checklist (browser-level)` — the parenthetical suffix `(browser-level)` is REQUIRED. Do NOT write `## Feature Checklist — What to Verify`, `## Feature Checklist — Checklist Items`, `## Feature Checklist (Browser Checks)`, or ANY other variation. These section names must be written exactly as shown — any deviation breaks downstream tooling that matches them by exact string. Log: `[B8.6-access-guide] created ACCESS_GUIDE.md with 6 sections`.
@@ -466,7 +466,7 @@ Applies at: **B1** (parse fail), **B2** (image download fail), **B3** (SpecKit f
     - **PROVISIONAL** — a contract is coming later. Generate the inferred contract as today, BUT stamp the top of `data/types.ts` and every `data/api.ts` function with `// CONTRACT: PROVISIONAL — verify against backend contract` and emit `docs/components/<FeatureName>/RECONCILE.md` listing each inferred endpoint + shape. Log `[B4-contract] status=PROVISIONAL`.
     - **FE_ONLY** — no backend. Proceed as today. Log `[B4-contract] status=FE_ONLY`.
     NEVER silently treat an inferred contract as final.
-33. **(v3.16 — Change S.2 Mapping layer — no blind casts)** B10 MUST NOT blind-cast a raw HTTP response to a typed value (e.g. `transformResponse(data) as <Type>`). Every response MUST pass through an explicit mapper in `src/<feature-folder>/data/transform.ts` — one `mapXxx(raw): Xxx` per response type — or a zod `.parse()`. `api.ts` calls the mapper and returns its result; it never casts a raw response. Rationale: when the real contract differs from the mock, ONLY `transform.ts` changes — `types.ts`, `apiHooks.ts`, and every component stay untouched. B10 self-eval grep gate: grep for `<PROJECT_CTX.response_transform>\([^)]*\)\s+as ` in `src/<feature-folder>/` — MUST return 0 matches. **Framework-agnostic**: substitute the host repo's transform fn (e.g. `transformResponse`, `toCamelCase`, `keysToCamelCase`, or none) in both the rule and the grep. The invariant is the principle, not the function name: *no raw HTTP response is cast straight to a type; it always passes through an explicit mapper*. Repos without a response-transform helper still write `mapXxx(raw)`; repos that use zod project-wide may use schema `.parse()` instead. **(v3.16 — #4 conditional)** The mapper MAY be a thin pass-through when the wire shape already equals the domain shape (e.g. `export const mapX = (raw: RawX): X => raw;` after normalization) — the requirement is a single named seam to edit later, not forced field-by-field remapping. The cast ban still holds: even a pass-through routes through `mapX`, never `... as X`.
+33. **(v3.16 — Change S.2 Mapping layer — no blind casts)** B10 MUST NOT blind-cast a raw HTTP response to a typed value (e.g. `transformResponse(data) as <Type>`). Every response MUST pass through an explicit mapper in the resolved mapping file — one `mapXxx(raw): Xxx` per response type — or a zod `.parse()` when Project Profile evidence proves that convention. The API capability file calls the mapper and returns its result; it never casts raw data. Rationale: when the real contract differs from the mock, ONLY the mapping seam changes — types, queries, and components stay untouched. B10 self-eval MUST run `lint-feature.ts --code-only`; when `STACK_PORTABILITY.conventions.responseTransform.symbol` is non-null, pass that exact symbol through `--response-transform`, otherwise omit the flag. **Framework-agnostic**: the Stack Portability contract selects the helper or explicitly returns none; the workflow never guesses a name. The invariant is the principle, not a function name: *no raw HTTP response is cast straight to a type; it always passes through an explicit mapper*. Repos without a response-transform helper still write `mapXxx(raw)`; repos with a proven project-wide schema parser may use `.parse()` instead. **(v3.16 — #4 conditional)** The mapper MAY be a thin pass-through when the wire shape already equals the domain shape (e.g. `export const mapX = (raw: RawX): X => raw;` after normalization) — the requirement is a single named seam to edit later, not forced field-by-field remapping. The cast ban still holds: even a pass-through routes through `mapX`, never `... as X`.
 34. **(v3.16 — Change S.3 Business rules are code+test, not prose)** Every Business-Rule / display-format row in `checklist.md` (rounding, K/M formatting, last-attempt-only, rank immutability under filter, "N/A" fallback, section-absence hiding, grading-state gating) MUST map to EITHER (a) a pure function in `src/<feature-folder>/utils/` WITH a co-located `<name>.test.ts` AND an entry in `ux-states.json` `unit_tests[]`; OR (b) an explicit `<!-- enforced-by: BE -->` marker on that checklist row. Step 6.5 (utils/) is REQUIRED, not optional, whenever ≥1 BR/display row exists. B11 MUST run `unit_tests[]` (`npm test --testPathPattern=src/<feature-folder>/`) and report pass/fail per rule. Log `[B5-rules] br_rows=N mapped_util=N enforced_by_be=N`.
 35. **(v3.16 — Change S.4 Done = verified)** B12 MUST NOT print "✅ Implementation Complete" while more than **40%** of (UI + ACT) checklist rows remain `⬜` unverified, unless the user explicitly acknowledges the gap. The completion box MUST show the TRUE per-section verified ratio (verified/total), never a rounded-up "done". If Playwright was opted out at B10.5, the box MUST include `⚠️ browser-unverified: N rows`. HARD RULE 30 (b11_a 5/5 basic) still defines the Playwright PASS bar; this rule only governs the honesty of the B12 summary.
 36. **(v3.16 — Change S.10 Full AC + description test coverage)** Every Acceptance-Criteria item AND every distinct described behavior in the spec MUST be covered by ≥1 automated test before B12 prints done. **Unit tests** (Jest) cover logic / business / display rules (`utils/`, pure fns); **E2E tests** (Playwright via `ux-states.json` `ac_assertions[]` / `states[]`) cover UI, interactions, and visible-state ACs. Each ACT row in `checklist.md` MUST map to ≥1 of: a `ux-states.json` `ac_assertions[].ac_id`, a `unit_tests[].ac_id`, or a `*.test.ts` referencing the ACT id. **B5 generates these test cases up front** (stubs derived from the ACT/UI rows — not retrofitted at the end); B10 implements them; B11 runs the AC-coverage gate (below) + the Jest suite + Playwright. For ACs the FE cannot exercise (system / backend-only), mark the checklist row `<!-- enforced-by: BE -->` to exclude it from the FE coverage denominator. Target: **100% of FE-testable ACT rows covered**. Enforced by `lint-feature.ts --gate` at B11; B12 reports `AC <covered>/<total>`. Log `[B11-coverage] ac_covered=N/M unit=K e2e=J`. **Anti-fake-test**: `lint-feature.ts` does NOT credit hollow tests — a `*.test.ts` with no `expect(`, an `ac_assertions[]` entry with no `expected`, or a `unit_tests[]` entry with no `grep`/`test_file` is rejected and does not count toward coverage.
@@ -658,94 +658,94 @@ A phase is not complete merely because its prose work or terminal command looked
 > Infra failures (network down, Supabase unreachable) exit `0` with a `⚠️` warning and **must not block the workflow**.
 > If `KIT_TOKEN` is not set: add `KIT_TOKEN=<your-token>` to `.env` (see `.env.example` at the project root).
 
-### Step 0 — Read CLAUDE.md (project conventions)
+### Step 0 — Resolve Project Profile and Stack Portability
 
-1. Read `CLAUDE.md` at the project root.
+1. Run the two synced, provider-neutral launchers from the repository root.
 
-2. **If CLAUDE.md exists** → extract the following into working memory as `PROJECT_CTX`:
+2. **Accept only validated machine envelopes** and bind both results into working memory:
 
-   - `http_client` → `yourHttpClient` / `axios` / `fetch`
-   - `response_transform` → `transformResponse` / `toCamelCase` / `keysToCamelCase`
-   - `query_library` → `react-query` / `@tanstack` / `swr` / `apollo`
-   - `branch` → `Branch:` or `branch:` line
-   - `commit_format` → `Commit` section or `[JIRA-ID]` pattern
-   - `shared_components_path` → `src/generic/` / `src/shared/` / `src/common/`
-   - `i18n_pattern` → `defineMessages` / `useIntl` / `i18next`
-   - `import_alias` → `@src/` / `@app/` / `~`
+   - Run `npx tsx .claude/integrations/project-intelligence.ts .`.
+   - Run `npx tsx .claude/integrations/stack-portability.ts .` only after the first result validates.
+   - Accept exactly one `@@PROJECT_PROFILE@@` line and one `@@STACK_PORTABILITY@@` line.
+   - Parse the envelopes as `PROJECT_PROFILE` and `STACK_PORTABILITY`; no prose parsing is authority.
+   - Require `STACK_PORTABILITY.profileFingerprint === PROJECT_PROFILE.repository.fingerprint`.
+   - If `PROJECT_PROFILE.status === "needs_input"`, list its evidence-backed issues and **STOP**.
+   - If `STACK_PORTABILITY.status === "needs_input"`, list `blockingFindings` with evidence and **STOP** before planning.
+   - Store both validated envelopes unchanged for B0, B5, B7, B8.6, B10, and B11.
 
-   **Optional portability keys** (v3.16 — read from CLAUDE.md if present; see "## PORTABILITY — Repo-Specific Knobs"). When absent, each uses a **generic-safe fallback** (project-specific values live only in that project's CLAUDE.md):
-   - `reference_feature` → folder to mirror naming from (HR29) — fallback: dominant convention in `src/`
-   - `endpoint_base_override` → REST base for class/member-detail features (HR23) — fallback: **HR23 inactive**
-   - `api_url_convention` → canonical API prefix + id-param names (HR20) — fallback: grep `/api/v[0-9]+/...`
-   - `spec_section_map` → which spec sections hold Objectives / Components / AC (HR21/HR22) — fallback: semantic heading detection
-   - `ui_library` → component lib for selector pitfalls — fallback: detect from deps (Paragon table is an example)
+   **Resolved convention fields** (never substitute a value that the envelopes did not prove):
+   - framework/layout → `STACK_PORTABILITY.framework`.
+   - HTTP client → `STACK_PORTABILITY.conventions.http`; unknown is allowed only until an HTTP feature is required.
+   - response mapping → `named-feature-mapper` plus an optional proven `responseTransform.symbol`.
+   - request mapping → optional proven `requestTransform.symbol`; unknown STOPs before mutation implementation.
+   - aliases/reference features → `PROJECT_PROFILE.conventions.importAliases` and `referenceFeatures`.
 
-   Use `PROJECT_CTX` values throughout all later steps instead of the hardcoded `## PROJECT CONTEXT` defaults. If a key is not found in CLAUDE.md, fall back to the hardcoded default for that key.
+   Provider prompts and workers consume these fields; they MUST NOT recreate detection rules or use built-in stack/helper defaults.
 
-3. **If CLAUDE.md does NOT exist**:
+3. **Treat repository instruction files as bounded evidence, not as a required framework oracle**:
 
    ```
-   ⚠️  CLAUDE.md not found at project root.
+   Project and Stack Portability runtimes inspect allowlisted instruction files.
 
-   This command uses CLAUDE.md to understand your project's conventions
-   (HTTP client, response transforms, branch name, import aliases, etc.).
+   They may accept identifier-shaped helper declarations with file provenance,
+   but dependency-only availability never proves that a helper is the convention.
 
-   Without it, code will be generated using built-in defaults
-   which may not match this project.
+   If no instruction file exists, repository package/import/reference evidence remains authoritative.
+   Continue only when both validated envelopes permit it.
 
-   Options:
-     [1] Run /init to generate CLAUDE.md from your codebase (recommended)
-     [2] Continue with built-in defaults (only safe if your project matches React/TypeScript defaults)
+   Rules:
+     [1] Do not run `/init` merely to manufacture a framework or helper answer.
+     [2] Do not continue with React, Open edX, alias, HTTP, or transform defaults.
    ```
 
-   **STOP — wait for user choice.**
-   - `[1]` → run `/init`, then **automatically re-run SESSION BOOTSTRAP Step 0** to extract PROJECT_CTX from the newly generated CLAUDE.md. Log: `"CLAUDE.md generated by /init — re-reading PROJECT_CTX"`
-   - `[2]` → log `"CLAUDE.md missing — using React/TypeScript built-in defaults"` to `docs/specs/<FeatureName>/recovery.log`, continue with BUILT-IN FALLBACK CONTEXT values
+   **STOP only on a structured `needs_input` or a later feature-specific unknown requirement.**
+   - Operational branch/commit policy may be read separately from explicit instructions or Git; ask if absent.
+   - Instruction values may refine a convention only when the portability result cites that exact declaration.
 
-### Step 0.B — Tech Stack Resolution
+### Step 0.B — Consume the Validated Portability Result
 
-Run immediately after Step 0 (whether CLAUDE.md existed or was just generated by /init).
+Run immediately after Step 0; do not inspect `query_library` or choose a framework by analogy.
 
 **Resolve STACK_DESCRIPTION:**
 
 ```
-Derive framework from PROJECT_CTX.query_library:
-  • contains "react-query" or "@tanstack"  → framework = "React 18 + TypeScript"
-  • contains "pinia" or "vuex"             → framework = "Vue 3 + TypeScript"
-  • contains "ngrx" or "rxjs"             → framework = "Angular + TypeScript"
-  • anything else                          → framework = PROJECT_CTX.query_library value
+framework          := STACK_PORTABILITY.framework.adapter
+http_client        := STACK_PORTABILITY.conventions.http.symbol | "unknown"
+response_transform := STACK_PORTABILITY.conventions.responseTransform.symbol | "none"
+request_transform  := STACK_PORTABILITY.conventions.requestTransform.symbol | "unknown"
+STACK_DESCRIPTION  := framework + proven convention decisions
 
-Assemble STACK_DESCRIPTION:
-  "[framework], [PROJECT_CTX.http_client], [PROJECT_CTX.response_transform]"
-  Fallbacks: yourHttpClient() | transformResponse(data) | @src/...
+If framework is unresolved, STOP using the structured blocking findings.
+If an HTTP feature needs an unknown HTTP/request helper, STOP and request that exact convention.
+No missing value may become React, Open edX, an import alias, or an executable helper placeholder.
 ```
 
 **Resolve FILE_STRUCTURE** (used by B5 steps generation and B10 agent prompt):
 
 ```
 Priority order:
-  1. PROJECT_CTX.feature_file_structure key in CLAUDE.md → use verbatim
-  2. React detected  → data/types.ts, data/api.ts, data/transform.ts, data/apiHooks.ts,
-                        utils/ (if BR rows), <Feature>.tsx, messages.ts, <Feature>.scss
-  3. Vue detected    → data/types.ts, api/<feature>.ts, data/transform.ts, composables/use<Feature>.ts,
-                        <Feature>.vue, i18n/en.json
-  4. Angular         → data/types.ts, services/<feature>.service.ts, data/transform.ts,
-                        <feature>.component.ts, <feature>.component.html
-  5. Unknown         → data/types.ts, api/<feature>.ts, data/transform.ts, <Feature>.[ext], i18n strings file
+  1. If strategy=reference-first, inspect only the cited PROJECT_PROFILE.referenceFeatures.
+  2. Otherwise start from STACK_PORTABILITY.framework.fallbackFiles for the confirmed adapter.
+  3. Append only STACK_PORTABILITY.framework.capabilityFiles backed by active profile capabilities.
+     - i18n files stay absent when PROJECT_PROFILE.gates.i18n=false.
+     - styling files stay absent when PROJECT_PROFILE.gates.styling=false.
+     - query hooks stay absent unless PROJECT_PROFILE.dataLayer proves the matching library.
+  4. Never substitute React files, messages.ts, SCSS, or apiHooks.ts for another framework.
+  5. An unresolved adapter or contradictory reference evidence is a STOP, not a generic file tree.
 
   (HARD RULE 33 applies to EVERY framework: raw API responses route through the transform.ts mappers.
    Angular may map inside the *.service.ts instead of a separate transform.ts, but the blind-cast ban
-   still holds. Substitute PROJECT_CTX.response_transform for the response transform fn in the grep gate.)
+   still holds. Use a transform helper in the grep gate only when portability evidence proves it.)
 ```
 
-**Detect PKG_MANAGER** from lockfile (check in priority order):
+**Resolve PKG_MANAGER** from the validated Project Profile:
 
 ```
-1. bun.lockb or bun.lock   → PKG_MANAGER = "bun"
-2. pnpm-lock.yaml          → PKG_MANAGER = "pnpm"
-3. yarn.lock               → PKG_MANAGER = "yarn"
-4. package-lock.json       → PKG_MANAGER = "npm"
-5. No lockfile found       → PKG_MANAGER = "npm"  ← default, log warning
+PKG_MANAGER := PROJECT_PROFILE.packageManager.value
+Evidence    := PROJECT_PROFILE.packageManager.evidence
+If value is null or confidence is not confirmed, STOP with the profile issue.
+Never infer the package manager from the current machine or an unrelated lockfile.
+No lockfile means `needs_input`; it does not silently mean npm.
 ```
 
 **Check tsx availability** (do NOT block flow on failure):
@@ -782,14 +782,14 @@ If any folder was restored: print the warning above and continue normally. This 
 
 ```
 ✅ SESSION BOOTSTRAP complete
-   Tech stack   : [framework — e.g. React 18 + TypeScript | Vue 3 + TypeScript]
-   HTTP client  : [PROJECT_CTX.http_client or "(fallback: yourHttpClient())"]
-   Import alias : [PROJECT_CTX.import_alias or "(fallback: @src/...)"]
-   File layout  : [react-standard | vue-standard | angular-standard | custom-from-CLAUDE.md]
-   Pkg manager  : [npm | yarn | pnpm | bun]
+   Tech stack   : [STACK_PORTABILITY.framework.adapter + PROJECT_PROFILE.language]
+   HTTP client  : [STACK_PORTABILITY.conventions.http.symbol or "unknown — STOP before an HTTP feature"]
+   Import alias : [PROJECT_PROFILE.conventions.importAlias or "(none — use proven relative imports or ask)"]
+   File layout  : [STACK_PORTABILITY.framework.layoutStrategy + resolved fallback/capability files]
+   Pkg manager  : [PROJECT_PROFILE.packageManager]
 ```
 
-Store `STACK_DESCRIPTION`, `FILE_STRUCTURE`, and `PKG_MANAGER` in working memory — they are referenced by B5, B7, B9.6, B10, and B11.
+Store the validated `PROJECT_PROFILE`, `STACK_PORTABILITY`, `STACK_DESCRIPTION`, `FILE_STRUCTURE`, and `PKG_MANAGER` in working memory — B5, B7, B9.6, B10, and B11 must consume these exact decisions.
 
 ### Step 0.C — Amendment advisory *(improve-trigger — ≤1 per run)*
 
@@ -1496,10 +1496,10 @@ Output: list of questions grouped by area (scope / data / interactions / UX / te
 
 **Lens 3 — Superpower**
 ```
-Given this project's stack (STACK_DESCRIPTION, PROJECT_CTX.shared_components_path utilities)
+Given the validated stack plus `PROJECT_PROFILE.referenceFeatures` and capability files
 and the feature spec, determine:
 - Best component decomposition strategy
-- Which shared components (from PROJECT_CTX.shared_components_path) to reuse
+- Which evidenced reference/shared components to reuse; if none are cited, do not invent one
 - State management approach (local vs. server state)
 - Optimal query key design for cache invalidation
 - Any performance considerations (pagination, memoization, lazy load)
@@ -1717,7 +1717,7 @@ Do these files match the scope correctly?
 > DIAGRAM_FLOW entries → verify State Shape covers all described transitions.
 > Reference annotation filenames inline so user can cross-check.
 
-**Finding reuse candidates** (for the `src/generic/ Reuse` section below): prefer the **CodeGraph MCP** tool when available — `codegraph_explore "<feature concept>"` (relevant symbols + source + call paths in one call) or `codegraph query "Table|List|Toolbar|..."` — instead of crawling files. It indexes every symbol (higher recall than name-grep) and shows callers so you can judge fit, directly reducing wrong-component picks. **Fallback** when CodeGraph MCP is not present: grep `PROJECT_CTX.shared_components_path` (e.g. `src/generic/`) as before — same behavior as without this tool.
+**Finding reuse candidates** (for the reuse section below): prefer the **CodeGraph MCP** tool when available — `codegraph_explore "<feature concept>"` (relevant symbols + source + call paths in one call) or `codegraph query "Table|List|Toolbar|..."` — instead of crawling files. It indexes every symbol (higher recall than name-grep) and shows callers so you can judge fit, directly reducing wrong-component picks. **Fallback** when CodeGraph MCP is not present: inspect only `PROJECT_PROFILE.referenceFeatures[].path` and the validated source roots; if neither cites a reusable component, record "none proven".
 
 > **Offload large surveys.** If finding reuse candidates would mean reading more than ~8 files or ~400 lines (broad shared-component sweep, wide symbol search), **delegate it to a read-only discovery subagent** instead of crawling in the main context. Read `.claude/_content/discovery-agent.md` for the protocol + Agent template; substitute `{{CONCEPT}}`, `{{SHARED_PATH}}`, `{{HAS_CODEGRAPH}}` and spawn. The agent returns a compact ranked reuse report (≤ 40 lines, no file dumps) that fills the `src/generic/ Reuse` section below. For a quick one-or-two-file lookup, stay inline — spawning costs more than it saves.
 
@@ -1801,20 +1801,12 @@ For each required capability (charts, date picker, file upload, rich text, maps,
 - Search `dependencies` + `devDependencies` by capability keyword
 - If found → use that package. Record: `"Reusing existing: <package>@<version>"`
 
-**Step 2** — If not present → check whether CLAUDE.md declares a preferred package
+**Step 2** — If not present → check validated repository instructions for an explicit preferred package
 - Example: `"charts: recharts"`, `"date: date-fns"`, `"rich-text: tiptap"`
 
-**Step 3** — If there is no preference → recommend per framework default:
-
-| Capability    | React default    | Vue default              | Angular default    |
-|---------------|------------------|--------------------------|--------------------|
-| Charts        | recharts         | vue-chartjs              | ng2-charts         |
-| Date picker   | react-day-picker | vue-datepicker           | @angular/material  |
-| Rich text     | tiptap           | tiptap (vue adapter)     | ngx-quill          |
-| File upload   | react-dropzone   | vue-upload-component     | ng2-file-upload    |
-| Maps          | react-leaflet    | vue-leaflet              | angular-leaflet    |
-| Data table    | @tanstack/table  | vue-good-table           | ag-grid-angular    |
-| Drag & drop   | dnd-kit          | vue-draggable            | angular-cdk        |
+**Step 3** — If there is no proven preference → STOP and prepare 2–3 compatible candidates using
+the validated framework/toolchain plus current package metadata. Do not install or select a
+"framework default" automatically.
 
 **Step 4** — If ambiguous (several equivalent choices) → STOP, ask the user:
 ```
@@ -2041,19 +2033,19 @@ Run immediately after B9 is confirmed. **Do NOT start B10 until this succeeds.**
 
 Use the first available source in priority order:
 
-1. `PROJECT_CTX.branch` extracted from CLAUDE.md in SESSION BOOTSTRAP (GAP-01)
-2. Auto-detect from git remote HEAD:
+1. The current branch's configured upstream (`git rev-parse --abbrev-ref --symbolic-full-name '@{u}'`), when present.
+2. Otherwise auto-detect from git remote HEAD:
 
    ```bash
    git symbolic-ref refs/remotes/origin/HEAD --short
    # returns e.g. "origin/develop" → strip "origin/" prefix
    ```
 
-3. If neither available, ask user:
+3. If neither is available or they conflict with the requested delivery target, ask the user:
 
    ```text
    ⚠️  Cannot determine target branch automatically.
-   Confirm branch to pull from: [develop] or enter branch name:
+   Confirm the exact branch to pull from:
    ```
 
 ### Step 2 — Pull
@@ -2182,7 +2174,7 @@ Log to `docs/specs/<FeatureName>/recovery.log`:
 > Read `.claude/_content/agent-build.md` now.
 > It contains the complete `Agent()` invocation template for the B10 implementation agent.
 > Before spawning: substitute all `<FeatureName>`, `<feature-folder>`, `<BASELINE_FOLDER>`,
-> `{{STACK_DESCRIPTION}}`, `{{PROJECT_CTX.*}}`, and similar placeholders with the values
+> `{{STACK_DESCRIPTION}}`, `{{PROJECT_PROFILE.*}}`, `{{STACK_PORTABILITY.*}}`, and similar placeholders with the validated values
 > assembled in Step 1 above. Then execute the Agent call exactly as templated.
 
 **Wait for the agent to return before proceeding to B11.**
@@ -2300,9 +2292,10 @@ Run the machine-enforced compliance + AC-coverage check (turns HR33/34/35/36 fro
 npx tsx .claude/integrations/lint-feature.ts src/<feature-folder> \
   --checklist docs/specs/<FeatureName>/checklist.md \
   --ux-states docs/specs/<FeatureName>/ux-states.json \
-  --response-transform <PROJECT_CTX.response_transform> \
   --min-verified 0.6 --gate
 ```
+
+If `STACK_PORTABILITY.conventions.responseTransform.symbol` is non-null, append `--response-transform <that-exact-symbol>`; otherwise omit the flag. Never invent a transform helper.
 
 It enforces: **HR33** (no `<transform>(data) as Type` blind cast), **HR34** (business/display rows → `utils/` + `*.test.ts`), **HR35** (verified-ratio read from the checklist `## Summary`), **HR36** (every ACT row has a unit or E2E test), plus quality (no `any` / `console.log`). Exit 1 = a gate failed.
 
@@ -2341,9 +2334,11 @@ Log `[B11-coverage] ac_covered=N/M unit=K e2e=J errors=E` → `recovery.log`. Do
    npx tsx .claude/integrations/record-verify.ts capture \
      --feature-path src/<feature-folder> \
      --spec-name <FeatureName> \
-     --tierA-cmd "npx tsx .claude/integrations/lint-feature.ts src/<feature-folder> --checklist docs/specs/<FeatureName>/checklist.md --ux-states docs/specs/<FeatureName>/ux-states.json --response-transform <PROJECT_CTX.response_transform> --min-verified 0.6 --gate" \
+     --tierA-cmd "npx tsx .claude/integrations/lint-feature.ts src/<feature-folder> --checklist docs/specs/<FeatureName>/checklist.md --ux-states docs/specs/<FeatureName>/ux-states.json <optional-proven-response-transform-flag> --min-verified 0.6 --gate" \
      --tierB-cmd "npx tsx .claude/integrations/b11-runner.ts <FeatureName> --feature-path src/<feature-folder>"
-   ```
+    ```
+
+    Replace `<optional-proven-response-transform-flag>` with `--response-transform <STACK_PORTABILITY.conventions.responseTransform.symbol>` only when that symbol is non-null; otherwise remove the placeholder entirely.
 
    `--feature-path` must be the LEAF feature dir (its own `data/` is the frozen contract); a module/container dir is refused (`assertLeafFeatureDir`, §7.4).
 

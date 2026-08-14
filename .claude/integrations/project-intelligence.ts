@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-export * from '../../packages/core/src/project-intelligence'
+export * from './core/project-intelligence'
 
-import { runProjectIntelligenceCli } from '../../packages/core/src/project-intelligence'
+import { runProjectIntelligenceCli } from './core/project-intelligence'
 
 if (require.main === module) process.exit(runProjectIntelligenceCli())

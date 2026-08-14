@@ -19,14 +19,14 @@ Agent({
     ║  NEVER your responsibility. List them as "Pre-existing".    ║
     ╚══════════════════════════════════════════════════════════════╝
 
-    STACK: {{STACK_DESCRIPTION}}
-    HTTP: {{PROJECT_CTX.http_client}} — use only the project's standard HTTP client, never raw fetch/axios
-    RESPONSES: {{PROJECT_CTX.response_transform}} on every API response
-    REQUESTS: use `PROJECT_CTX.request_transform` (if defined) for all POST/PUT/PATCH bodies — import it from your project's HTTP client module; do NOT write plain snake_case object literals; import request transform alongside response transform at the top of api.ts
-    IMPORTS: {{PROJECT_CTX.import_alias}} alias — no deep cross-feature imports
-    COMMIT FORMAT: {{PROJECT_CTX.commit_format}}
+    STACK: {{STACK_DESCRIPTION}} — exactly `STACK_PORTABILITY.framework`; do not re-detect it
+    HTTP: {{STACK_PORTABILITY.conventions.http}} — use only the resolved adapter and symbol; if unresolved, STOP before writing HTTP code
+    RESPONSES: {{STACK_PORTABILITY.conventions.responseTransform}} + {{STACK_PORTABILITY.conventions.mappingPolicy}} — always return a named domain mapper; use a target helper only when its symbol is non-null
+    REQUESTS: use `STACK_PORTABILITY.conventions.requestTransform.symbol` for POST/PUT/PATCH bodies only when non-null; otherwise follow the named mapping policy without inventing a helper
+    IMPORTS: {{PROJECT_PROFILE.conventions.importAlias}} when non-null; otherwise use a proven relative-import pattern — no deep cross-feature imports
+    COMMIT FORMAT: {{PROJECT_PROFILE.conventions.commitFormat}}
 
-    FILE STRUCTURE (resolved from CLAUDE.md or framework default — use this, do NOT invent your own):
+    FILE STRUCTURE (resolved from `STACK_PORTABILITY.framework` evidence — use this, do NOT invent your own):
     {{FILE_STRUCTURE}}
 
     FEATURE: <FeatureName>
@@ -93,14 +93,14 @@ Agent({
 
     CHECKLIST PER FILE — apply to every file you write:
     - data/types.ts: no `any`, all spec fields, exported interfaces; when the API contract shows a literal numeric or string value for a field (e.g. `maxAttempts: 2`), preserve it as a TypeScript literal type — do NOT widen to `number` or `string`
-    - data/api.ts: USE_MOCK = true, delay(), PROJECT_CTX.http_client, mock data covers all spec fields; every response returned via a mapXxx() from data/transform.ts — NEVER blind-cast a raw response to a type; import request transform alongside response transform; use request transform for all POST/PUT/PATCH bodies — never plain snake_case object literals. If contractStatus=PROVISIONAL, stamp the PROVISIONAL comment (HARD RULE 32) at the top of the file.
+    - data/api.ts (or the resolved capability file): USE_MOCK = true, delay(), the exact `STACK_PORTABILITY.conventions.http.symbol`, and mock data covering all spec fields; every response returns through a named mapper from the resolved mapping file — NEVER blind-cast raw data; use proven transform symbols only when non-null. If the HTTP adapter is unresolved, STOP. If contractStatus=PROVISIONAL, stamp the PROVISIONAL comment (HARD RULE 32) at the top of the file.
     - data/transform.ts: one mapXxx(raw): Xxx per response type (anti-corruption layer, HARD RULE 33). api.ts imports and calls these; the `as Type` cast on a raw HTTP response is banned.
     - utils/: every Business-Rule / display-format row in checklist.md → a pure function + co-located <name>.test.ts wired into ux-states.json unit_tests[] (HARD RULE 34), unless the row is marked enforced-by BE
     - data/apiHooks.ts: useQuery with staleTime, useMutation with invalidateQueries in onSettled (NOT onSuccess)
     - <Feature>.tsx: loading / error / empty / success states, reuse src/generic/ components, no hardcoded strings
     - messages.ts: defineMessages, all user-visible strings extracted from JSX
     - <Feature>.scss: ONLY write styles in src/<feature-folder>/. Do NOT edit SCSS of other features, src/generic/*.scss, or global stylesheets
-    - All imports: @src/... alias, no deep cross-feature imports
+    - All imports: use the validated Project Profile alias when non-null, otherwise a proven relative-import pattern; no deep cross-feature imports
 
     STOP CONDITIONS — do NOT implement; report back to coordinator instead:
     - Deleting any existing file

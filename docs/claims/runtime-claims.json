@@ -19,7 +19,7 @@
       "id": "provider-capabilities-match",
       "severity": "critical",
       "document": "README.md",
-      "anchor": "dist/provider-bundles/0.3.0/",
+      "anchor": "dist/provider-bundles/0.4.0/",
       "probe": "provider-capabilities"
     },
     {

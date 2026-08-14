@@ -42,9 +42,9 @@ Base on: `.claude/templates/steps.template.md`
 Apply SELF-EVALUATE before writing.
 
 > **Use FILE_STRUCTURE** (resolved in SESSION BOOTSTRAP Step 0.B) as the canonical file layout.
-> Do NOT assume React file structure if CLAUDE.md describes a different framework.
-> Replace `data/apiHooks.ts` with the equivalent from FILE_STRUCTURE if Vue/Angular detected
-> (e.g. `composables/useFeature.ts` for Vue, `services/feature.service.ts` for Angular).
+> Do NOT assume React file structure. Use the validated `STACK_PORTABILITY.framework` decision.
+> Replace example paths with the resolved `fallbackFiles` / `capabilityFiles` for the selected adapter
+> (for example, a Vue composable or Angular service only when the portability result names it).
 
 ```markdown
 # Implementation Steps: [FeatureName]
@@ -62,7 +62,7 @@ Apply SELF-EVALUATE before writing.
 ### Step 2: data/api.ts
 - **Action**: API functions with `USE_MOCK = true`, mock arrays matching spec fields
 - **Files affected**: `src/<feature-path>/data/api.ts`
-- **Verify**: `PROJECT_CTX.http_client` used; every response returned via `mapXxx(...)` from transform.ts — NO blind cast of raw response to a type
+- **Verify**: exact `STACK_PORTABILITY.conventions.http.symbol` used; `STACK_PORTABILITY.conventions.mappingPolicy` enforced; every response returns via a named mapper — NO blind cast and no invented target helper
 
 ### Step 2.5: data/transform.ts *(anti-corruption layer — HARD RULE 33)*
 - **Action**: One pure `mapXxx(raw): Xxx` per response type; centralises raw→domain field mapping

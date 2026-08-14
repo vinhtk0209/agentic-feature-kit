@@ -13,7 +13,8 @@ add a self-contained Node 20+ runtime, schemas, contracts, license, and a conten
    use them. Keep `runtime/` and `docs/` together in a stable project-owned tool directory, then
    update local invocation paths if that directory is not the extracted bundle root.
 4. Verify the runtime offline before asking Copilot to use the skills:
-   `node runtime/project-intelligence.cjs <repository-root>` and pipe a JSON request to
+   `node runtime/project-intelligence.cjs <repository-root>`, then
+   `node runtime/stack-portability.cjs <repository-root>`, and pipe a JSON request to
    `node runtime/conditional-quality-gates.cjs` or `node runtime/workflow-orchestrator.cjs resume`.
 5. Commit repository customization only through that repository's normal review process.
 
@@ -21,16 +22,16 @@ The bundle has no plugin manifest, credentials, provider calls, or forked busine
 skills and agent profiles rely on the same shared runtime and contract versions as Codex and Claude.
 
 The GitHub Copilot source bundle exposes evidence-backed Project Intelligence through the supported
-repository skill and custom-agent surfaces. It profiles the repository before implementation so
-Copilot does not guess the framework, router, i18n system, styling stack, data layer, package
-manager, task names, or reference-feature layout.
+repository skill and custom-agent surfaces. It profiles the repository, then resolves framework
+layout and transport/mapping conventions through the fingerprint-bound Stack Portability contract
+so Copilot does not guess target-specific helpers.
 
 ## Release status
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.3.0` |
-| Shared core version | `1.1.0` |
+| Bundle version | `0.4.0` |
+| Shared core version | `1.2.0` |
 | Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
 | Distribution stage | Deterministic repository bundle + ZIP archive |
@@ -48,6 +49,7 @@ customization unit is repository `.github` content.
 .github/skills/workflow-orchestrator/SKILL.md
 .github/agents/workflow-orchestrator.agent.md
 runtime/project-intelligence.cjs
+runtime/stack-portability.cjs
 runtime/conditional-quality-gates.cjs
 runtime/workflow-orchestrator.cjs
 docs/schemas/*
@@ -71,6 +73,7 @@ From the Agentic Feature Kit repository root:
 npm ci
 npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
+npm run test:stack-portability
 npm run test:conditional-quality-gates
 npm run test:provider-bundles
 npm run test:provider-distribution
@@ -79,6 +82,10 @@ npm run test:provider-distribution
 The profiler emits one `@@PROJECT_PROFILE@@` JSON envelope. Exit `0` means the profile is ready;
 exit `1` means the profile is valid but needs input (or inspection failed safely); exit `2` means
 the CLI arguments are invalid. The agent must stop on any invalid transport or `needs_input` status.
+
+Stack Portability then emits one `@@STACK_PORTABILITY@@` schema `1.0.0` envelope bound to the
+profile fingerprint. It selects only declared or observed framework/HTTP/mapping adapters, reports
+target-specific assumptions, and returns `needs_input` rather than inventing an unavailable helper.
 
 The Workflow Orchestrator uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT@@` response to
 create or validate phase envelopes, resume from verified evidence, and preserve literal human and

@@ -17,21 +17,21 @@
 ## Provider packages (post-17)
 
 The versioned provider source packages live under `providers/`, while all shared business rules
-live once under `packages/core/`. The first available contract is **Project Intelligence**: a
-read-only repository profiler that prevents framework, router, i18n, styling, and task-convention
-guesses before feature planning.
+live once under `packages/core/`. **Project Intelligence** profiles repository facts; the
+fingerprint-bound **Stack Portability** contract then resolves framework layout, HTTP transport,
+mapping helpers, and target-specific assumptions without provider heuristics.
 
 | Provider | Supported source surface | Current status |
 |---|---|---|
-| Codex | `.codex-plugin/plugin.json` + Agent Skills | Self-contained directory + deterministic ZIP `0.3.0` |
-| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Self-contained directory + deterministic ZIP `0.3.0` |
-| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Self-contained repository bundle + deterministic ZIP `0.3.0` |
+| Codex | `.codex-plugin/plugin.json` + Agent Skills | Self-contained directory + deterministic ZIP `0.4.0` |
+| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Self-contained directory + deterministic ZIP `0.4.0` |
+| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Self-contained repository bundle + deterministic ZIP `0.4.0` |
 
 Run `npm run build:providers` to generate all three distributions under ignored
-`dist/provider-bundles/0.3.0/`. Every bundle carries the same three Node 20+ shared runtimes
-(Project Intelligence, Conditional Quality Gates, and Workflow Orchestrator),
+`dist/provider-bundles/0.4.0/`. Every bundle carries the same four Node 20+ shared runtimes
+(Project Intelligence, Stack Portability, Conditional Quality Gates, and Workflow Orchestrator),
 schemas/contracts, Apache-2.0 license, content-addressed manifest, and release checksum. The clean
-distribution suite executes all three capabilities from extracted archives without `tsx`, a source
+distribution suite executes all four capabilities from extracted archives without `tsx`, a source
 checkout, or repository `node_modules`. See `providers/README.md` for provider-specific use and
 verification. No installation, package publication, marketplace registration, provider execution,
 sync, or push is performed by the build/test flow.
@@ -45,7 +45,7 @@ npm install                         # root: installs tsx, typescript, playwright
 ( cd .claude/mcp-workflow && npm install )   # workflow MCP (optional)
 ```
 
-1. **Add a `CLAUDE.md` to your project root.** The workflow reads it for conventions (HTTP client, response transform, query library, branch, import alias, …). Copy `CLAUDE.md.template` → your project's `CLAUDE.md` and fill it in. Without it, the kit falls back to React/TypeScript defaults and warns.
+1. **Optionally add a `CLAUDE.md` to your project root.** The workflow combines explicit instructions with observed manifests/imports. Missing or conflicting required evidence returns `needs_input`; it does not manufacture React, HTTP-client, transform, or alias defaults.
 2. **(Optional) Confluence:** copy `.claude/mcp-server/.env.example` → `.claude/mcp-server/.env` and fill credentials. **Never commit `.env`** (it's gitignored).
 
 ## Verify the kit

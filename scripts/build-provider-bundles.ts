@@ -4,7 +4,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
-import { build } from 'esbuild'
+import { build, type Plugin } from 'esbuild'
 
 export const PROVIDER_BUNDLE_RESULT_SENTINEL = '@@PROVIDER_BUNDLE_RESULT@@' as const
 
@@ -33,7 +33,7 @@ interface ProviderRegistry {
     checksumFile: 'SHA256SUMS'
     manifest: 'bundle-manifest.json'
     nodeEngine: '>=20'
-    runtime: { projectIntelligence: 'runtime/project-intelligence.cjs'; conditionalQualityGates: 'runtime/conditional-quality-gates.cjs'; workflowOrchestrator: 'runtime/workflow-orchestrator.cjs' }
+    runtime: { projectIntelligence: 'runtime/project-intelligence.cjs'; stackPortability: 'runtime/stack-portability.cjs'; conditionalQualityGates: 'runtime/conditional-quality-gates.cjs'; workflowOrchestrator: 'runtime/workflow-orchestrator.cjs' }
   }
   providers: ProviderRegistryEntry[]
 }
@@ -51,7 +51,7 @@ export interface DistributionManifest {
   bundleVersion: string
   sharedCoreVersion: string
   nodeEngine: '>=20'
-  capabilities: ['project-intelligence', 'conditional-quality-gates', 'workflow-orchestrator']
+  capabilities: ['project-intelligence', 'stack-portability', 'conditional-quality-gates', 'workflow-orchestrator']
   files: BundleFileEntry[]
   manifestHash: string
 }
@@ -79,6 +79,7 @@ const COMMON_FILES = [
   'LICENSE',
   'THIRD_PARTY_NOTICES.md',
   'docs/schemas/project-profile.schema.json',
+  'docs/schemas/stack-portability.schema.json',
   'docs/schemas/conditional-quality-gates.schema.json',
   'docs/schemas/orchestrator-phase-envelope.schema.json',
   'docs/roadmap/post-17-orchestrator-boundaries.json',
@@ -140,9 +141,10 @@ function validateRegistry(value: unknown, repositoryRoot: string): ProviderRegis
     || value.distribution.nodeEngine !== '>=20'
   ) throw new Error('unsupported provider distribution contract')
   if (!isRecord(value.distribution.runtime)) throw new Error('provider distribution runtime contract must be an object')
-  exactKeys(value.distribution.runtime, ['projectIntelligence', 'conditionalQualityGates', 'workflowOrchestrator'], 'provider distribution runtime contract')
+  exactKeys(value.distribution.runtime, ['projectIntelligence', 'stackPortability', 'conditionalQualityGates', 'workflowOrchestrator'], 'provider distribution runtime contract')
   if (
     value.distribution.runtime.projectIntelligence !== 'runtime/project-intelligence.cjs'
+    || value.distribution.runtime.stackPortability !== 'runtime/stack-portability.cjs'
     || value.distribution.runtime.conditionalQualityGates !== 'runtime/conditional-quality-gates.cjs'
     || value.distribution.runtime.workflowOrchestrator !== 'runtime/workflow-orchestrator.cjs'
   ) throw new Error('unsupported provider runtime contract')
@@ -225,16 +227,23 @@ async function buildRuntime(repositoryRoot: string, runtimeRoot: string): Promis
     sourcemap: false,
   }
   await build({ ...shared, entryPoints: [path.join(repositoryRoot, 'packages/core/src/project-intelligence.ts')], outfile: path.join(runtimeRoot, 'project-intelligence.cjs') })
+  const externalProjectIntelligence: Plugin = {
+    name: 'shared-project-intelligence-runtime',
+    setup(context) {
+      context.onResolve({ filter: /^\.\/project-intelligence$/ }, () => ({ path: './project-intelligence.cjs', external: true }))
+    },
+  }
+  await build({
+    ...shared,
+    entryPoints: [path.join(repositoryRoot, 'packages/core/src/stack-portability.ts')],
+    outfile: path.join(runtimeRoot, 'stack-portability.cjs'),
+    plugins: [externalProjectIntelligence],
+  })
   await build({
     ...shared,
     entryPoints: [path.join(repositoryRoot, 'packages/core/src/conditional-quality-gates.ts')],
     outfile: path.join(runtimeRoot, 'conditional-quality-gates.cjs'),
-    plugins: [{
-      name: 'shared-project-intelligence-runtime',
-      setup(context) {
-        context.onResolve({ filter: /^\.\/project-intelligence$/ }, () => ({ path: './project-intelligence.cjs', external: true }))
-      },
-    }],
+    plugins: [externalProjectIntelligence],
   })
   await build({ ...shared, entryPoints: [path.join(repositoryRoot, 'packages/core/src/workflow-orchestrator-cli.ts')], outfile: path.join(runtimeRoot, 'workflow-orchestrator.cjs') })
 }
@@ -255,7 +264,7 @@ function writeDistributionManifest(bundleRoot: string, provider: ProviderId, reg
     bundleVersion: registry.bundleVersion,
     sharedCoreVersion: registry.sharedCoreVersion,
     nodeEngine: '>=20',
-    capabilities: ['project-intelligence', 'conditional-quality-gates', 'workflow-orchestrator'],
+    capabilities: ['project-intelligence', 'stack-portability', 'conditional-quality-gates', 'workflow-orchestrator'],
     files,
   }
   const manifest = { ...withoutHash, manifestHash: sha256(manifestPayload(withoutHash)) }
@@ -270,7 +279,7 @@ export function validateBuiltBundle(bundleRoot: string, expected: { provider: Pr
   exactKeys(value, ['schemaVersion', 'product', 'provider', 'bundleVersion', 'sharedCoreVersion', 'nodeEngine', 'capabilities', 'files', 'manifestHash'], 'distribution manifest')
   if (value.schemaVersion !== 1 || value.product !== 'agentic-feature-kit' || value.provider !== expected.provider) throw new Error('distribution manifest identity mismatch')
   if (value.bundleVersion !== expected.bundleVersion || value.sharedCoreVersion !== expected.sharedCoreVersion) throw new Error('distribution manifest version mismatch')
-  if (value.nodeEngine !== '>=20' || JSON.stringify(value.capabilities) !== JSON.stringify(['project-intelligence', 'conditional-quality-gates', 'workflow-orchestrator'])) throw new Error('distribution manifest capability contract mismatch')
+  if (value.nodeEngine !== '>=20' || JSON.stringify(value.capabilities) !== JSON.stringify(['project-intelligence', 'stack-portability', 'conditional-quality-gates', 'workflow-orchestrator'])) throw new Error('distribution manifest capability contract mismatch')
   if (!Array.isArray(value.files) || value.files.length === 0) throw new Error('distribution manifest files must be non-empty')
   const files = value.files as unknown[]
   const paths = new Set<string>()

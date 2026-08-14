@@ -26,7 +26,7 @@ interface ProviderRegistry {
     checksumFile: string
     manifest: string
     nodeEngine: string
-    runtime: { projectIntelligence: string; conditionalQualityGates: string; workflowOrchestrator: string }
+    runtime: { projectIntelligence: string; stackPortability: string; conditionalQualityGates: string; workflowOrchestrator: string }
   }
   providers: ProviderEntry[]
 }
@@ -47,6 +47,7 @@ function assertSkill(relative: string, expectedHash: string | null, skillName: '
   assert.match(content, new RegExp(`^---\\nname: ${skillName}\\ndescription: .+\\nlicense: Apache-2\\.0\\n---\\n`))
   if (skillName === 'project-intelligence') {
     assert.match(content, /@@PROJECT_PROFILE@@/)
+    assert.match(content, /@@STACK_PORTABILITY@@/)
     assert.match(content, /@@CONDITIONAL_GATES@@/)
     assert.match(content, /status` is `needs_input`/)
     assert.match(content, /Do not reproduce its detection rules/)
@@ -65,8 +66,8 @@ function assertSkill(relative: string, expectedHash: string | null, skillName: '
 const registry = parseJson<ProviderRegistry>('providers/provider-bundles.json')
 assert.equal(registry.schemaVersion, '1.0.0')
 assert.equal(registry.product, 'agentic-feature-kit')
-assert.equal(registry.bundleVersion, '0.3.0')
-assert.equal(registry.sharedCoreVersion, '1.1.0')
+assert.equal(registry.bundleVersion, '0.4.0')
+assert.equal(registry.sharedCoreVersion, '1.2.0')
 assert.equal(registry.sourceMode, 'monorepo')
 assert.deepEqual(registry.distribution, {
   builder: 'scripts/build-provider-bundles.ts',
@@ -77,6 +78,7 @@ assert.deepEqual(registry.distribution, {
   nodeEngine: '>=20',
   runtime: {
     projectIntelligence: 'runtime/project-intelligence.cjs',
+    stackPortability: 'runtime/stack-portability.cjs',
     conditionalQualityGates: 'runtime/conditional-quality-gates.cjs',
     workflowOrchestrator: 'runtime/workflow-orchestrator.cjs',
   },
@@ -90,6 +92,13 @@ assert.match(projectCore, /export function validateProjectProfile/)
 assert.match(projectCore, /export function parseProjectProfileEnvelope/)
 assert.match(projectCore, /project-intelligence\\\.\(\?:ts\|js\|cjs\|mjs\)/)
 assert.doesNotMatch(projectCore, /\.writeFile|\.appendFile|\.mkdir|\.rmSync|\.unlink/)
+
+const stackPortabilityCore = read('packages/core/src/stack-portability.ts')
+assert.match(stackPortabilityCore, /STACK_PORTABILITY_SCHEMA_VERSION = '1\.0\.0'/)
+assert.match(stackPortabilityCore, /STACK_PORTABILITY_SENTINEL = '@@STACK_PORTABILITY@@'/)
+assert.match(stackPortabilityCore, /export function inspectStackPortability/)
+assert.match(stackPortabilityCore, /export function validateStackPortabilityResult/)
+assert.doesNotMatch(stackPortabilityCore, /(?:import|require)\s*(?:\(|[^'"\n]*from\s*)['"]@(?:edx|openedx)\//)
 
 const orchestratorCore = read('packages/core/src/workflow-orchestrator.ts')
 assert.match(orchestratorCore, /ORCHESTRATOR_CONTRACT_VERSION = '1\.0\.0'/)
@@ -108,6 +117,9 @@ assert.doesNotMatch(conditionalGatesCore, /\.writeFile|\.appendFile|\.mkdir|\.rm
 const profileSchema = parseJson<Record<string, unknown>>('docs/schemas/project-profile.schema.json')
 assert.equal(profileSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
 assert.equal((profileSchema.properties as Record<string, { const?: string }>).schemaVersion.const, '1.0.0')
+const stackPortabilitySchema = parseJson<Record<string, unknown>>('docs/schemas/stack-portability.schema.json')
+assert.equal(stackPortabilitySchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
+assert.equal((stackPortabilitySchema.properties as Record<string, { const?: string }>).schemaVersion.const, '1.0.0')
 const conditionalGatesSchema = parseJson<Record<string, unknown>>('docs/schemas/conditional-quality-gates.schema.json')
 assert.equal(conditionalGatesSchema.$schema, 'https://json-schema.org/draft/2020-12/schema')
 assert.equal((conditionalGatesSchema.properties as Record<string, { const?: string }>).schemaVersion.const, '1.0.0')
@@ -122,7 +134,8 @@ for (const provider of registry.providers) {
   const readme = read(`${provider.root}/README.md`)
   assertNoPlaceholders(`${provider.root}/README.md`, readme)
   assert.match(readme, /Apache-2\.0/)
-  assert.match(readme, /0\.3\.0/)
+  assert.match(readme, /0\.4\.0/)
+  assert.match(readme, /stack-portability\.cjs/)
   assert.match(readme, /conditional-quality-gates\.cjs/)
   assert.ok(readme.split(/\s+/).length >= 120, `${provider.id} README is too thin for a public source package`)
 
@@ -133,6 +146,7 @@ for (const provider of registry.providers) {
     assertNoPlaceholders(`${provider.root}/${provider.agent}`, agent)
     assert.match(agent, /^---\nname: project-intelligence\ndescription: .+\n/)
     assert.match(agent, /Do not edit files/)
+    assert.match(agent, /Stack\s+Portability/)
   }
   if (provider.orchestratorAgent) {
     const agent = read(`${provider.root}/${provider.orchestratorAgent}`)
@@ -179,4 +193,4 @@ for (const entry of fs.readdirSync(path.join(root, 'providers'), { recursive: tr
   assert.ok(!/^\.env(?:\.|$)/.test(entry.name), `provider package contains forbidden environment file ${entry.name}`)
 }
 
-console.log('provider-bundles.test: PASS (3 providers, 2 byte-identical skills, 3 shared runtimes, version/schema/manifest/agent/security contracts)')
+console.log('provider-bundles.test: PASS (3 providers, 2 byte-identical skills, 4 shared runtimes, version/schema/manifest/agent/security contracts)')

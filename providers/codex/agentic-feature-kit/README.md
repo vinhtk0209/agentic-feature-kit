@@ -13,7 +13,8 @@ plugin discovery layout.
    marketplace's `plugins/agentic-feature-kit` source path. Use Codex's supported plugin UI/CLI for
    that marketplace; do not copy only the `skills/` directory.
 4. Verify local runtime availability without provider execution:
-   `node runtime/project-intelligence.cjs <repository-root>` and pipe a JSON request to
+   `node runtime/project-intelligence.cjs <repository-root>`, then
+   `node runtime/stack-portability.cjs <repository-root>`, and pipe a JSON request to
    `node runtime/conditional-quality-gates.cjs` or `node runtime/workflow-orchestrator.cjs resume`.
 5. Restart or open a new Codex task after installation so discovery is refreshed.
 
@@ -21,15 +22,15 @@ The package does not modify marketplace configuration automatically and contains
 hooks, MCP servers, or standalone-agent manifest. Both skills call one bundled shared core.
 
 The Codex source package exposes evidence-backed Project Intelligence as an Agent Skill. It profiles
-the repository before implementation so Codex does not guess the framework, router, i18n system,
-styling stack, data layer, package manager, task names, or reference-feature layout.
+the repository, then resolves framework layout and transport/mapping conventions through the
+fingerprint-bound Stack Portability contract so Codex does not guess target-specific helpers.
 
 ## Release status
 
 | Contract | Value |
 |---|---|
-| Bundle version | `0.3.0` |
-| Shared core version | `1.1.0` |
+| Bundle version | `0.4.0` |
+| Shared core version | `1.2.0` |
 | Runtime | Self-contained Node.js 20+ CommonJS launchers |
 | License | Apache-2.0 |
 | Distribution stage | Deterministic directory + ZIP archive |
@@ -47,6 +48,7 @@ skills/project-intelligence/agents/openai.yaml
 skills/workflow-orchestrator/SKILL.md
 skills/workflow-orchestrator/agents/openai.yaml
 runtime/project-intelligence.cjs
+runtime/stack-portability.cjs
 runtime/conditional-quality-gates.cjs
 runtime/workflow-orchestrator.cjs
 docs/schemas/*
@@ -69,6 +71,7 @@ From the Agentic Feature Kit repository root:
 npm ci
 npx tsx packages/core/src/project-intelligence.ts <repository-root>
 npm run test:project-intelligence
+npm run test:stack-portability
 npm run test:conditional-quality-gates
 npm run test:provider-bundles
 npm run test:provider-distribution
@@ -78,6 +81,10 @@ The profiler emits one `@@PROJECT_PROFILE@@` JSON envelope. Exit `0` means the p
 exit `1` means the profile is valid but needs input (or inspection failed safely); exit `2` means
 the CLI arguments are invalid. Provider instructions must not parse ad-hoc text or bypass the
 runtime validator.
+
+Stack Portability then emits one `@@STACK_PORTABILITY@@` schema `1.0.0` envelope bound to the
+profile fingerprint. It selects only declared or observed framework/HTTP/mapping adapters, reports
+target-specific assumptions, and returns `needs_input` rather than inventing an unavailable helper.
 
 The Workflow Orchestrator then uses bounded stdin JSON and one `@@ORCHESTRATOR_RESULT@@` response to
 create or validate phase envelopes, resume from a verified prefix, and compare semantic conservation

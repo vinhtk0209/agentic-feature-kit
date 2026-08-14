@@ -19,6 +19,23 @@ The JSON Schema lives at `docs/schemas/project-profile.schema.json`. Consumers m
 the envelope fingerprint, gate/capability consistency, and ready/issues consistency with the
 runtime validator exported from `src/project-intelligence.ts`.
 
+## Stack Portability
+
+`src/stack-portability.ts` consumes a validated Project Profile and a bounded scan of source and
+instruction evidence. It resolves a framework adapter, capability-file layout, HTTP transport,
+optional request/response transforms, and target-specific assumptions without changing Project
+Profile schema `1.0.0`.
+
+```bash
+npx tsx packages/core/src/stack-portability.ts <repository-root>
+```
+
+The read-only command emits exactly one `@@STACK_PORTABILITY@@` schema `1.0.0` envelope. Its
+`profileFingerprint` must equal the Project Profile repository fingerprint. Explicit declarations
+and observed imports/calls are evidence; package presence alone never activates Open edX helpers.
+Unknown or conflicting framework/transport decisions produce structured `needs_input` findings.
+The public schema is `docs/schemas/stack-portability.schema.json`.
+
 ## Runtime choice
 
 The implementation remains TypeScript because it inspects Node package manifests, runs inside the
@@ -74,6 +91,6 @@ through an SCSS-only rule. The result schema is `docs/schemas/conditional-qualit
 ## Stability
 
 - Schema version: `1.0.0`
-- Sentinel: `@@PROJECT_PROFILE@@`
-- Traversal: depth two, ignored build/dependency segments, never follow symlinks
+- Sentinels: `@@PROJECT_PROFILE@@`, `@@STACK_PORTABILITY@@`
+- Traversal: bounded per contract, ignored build/dependency segments at every depth, never follow symlinks
 - License: Apache-2.0 (repository root `LICENSE`)

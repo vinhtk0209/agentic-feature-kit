@@ -73,6 +73,21 @@ function runCleanSmoke(bundleRoot: string, fixture: string): void {
   assert.equal(profile.status, 'ready')
   assert.equal(profile.framework.value, 'react-web')
 
+  const portability = spawnSync(process.execPath, [path.join(bundleRoot, 'runtime', 'stack-portability.cjs'), fixture], {
+    cwd: fixture,
+    encoding: 'utf8',
+    env: { PATH: process.env.PATH ?? '' },
+  })
+  assert.equal(portability.status, 0, `${portability.stderr}\n${portability.stdout}`)
+  const portabilityLines = portability.stdout.trim().split(/\r?\n/)
+  assert.equal(portabilityLines.length, 1)
+  assert.match(portabilityLines[0], /^@@STACK_PORTABILITY@@/)
+  const portabilityResult = JSON.parse(portabilityLines[0].slice('@@STACK_PORTABILITY@@'.length))
+  assert.equal(portabilityResult.status, 'ready')
+  assert.equal(portabilityResult.profileFingerprint, profile.repository.fingerprint)
+  assert.equal(portabilityResult.framework.adapter, 'react-web')
+  assert.equal(portabilityResult.conventions.http.state, 'unknown')
+
   const gates = spawnSync(process.execPath, [path.join(bundleRoot, 'runtime', 'conditional-quality-gates.cjs')], {
     cwd: fixture,
     encoding: 'utf8',
@@ -123,13 +138,13 @@ async function main(): Promise<void> {
     const runtimeHashes = new Map<string, Set<string>>()
     const fixture = createFixture(scratch)
     for (const entry of first) {
-      const manifest = validateBuiltBundle(entry.bundleRoot, { provider: entry.provider, bundleVersion: '0.3.0', sharedCoreVersion: '1.1.0' })
+      const manifest = validateBuiltBundle(entry.bundleRoot, { provider: entry.provider, bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' })
       assert.equal(manifest.manifestHash, entry.manifestHash)
       assert.equal(manifest.files.some((file) => /(^|\/)(\.env|node_modules)(\/|$)/i.test(file.path)), false)
       assert.ok(manifest.files.some((file) => file.path === 'THIRD_PARTY_NOTICES.md'))
       assert.ok(manifest.files.some((file) => file.path === 'licenses/typescript-LICENSE.txt'))
       assert.match(fs.readFileSync(path.join(entry.bundleRoot, 'licenses', 'typescript-LICENSE.txt'), 'utf8'), /Apache License/)
-      for (const runtime of ['runtime/project-intelligence.cjs', 'runtime/conditional-quality-gates.cjs', 'runtime/workflow-orchestrator.cjs']) {
+      for (const runtime of ['runtime/project-intelligence.cjs', 'runtime/stack-portability.cjs', 'runtime/conditional-quality-gates.cjs', 'runtime/workflow-orchestrator.cjs']) {
         const hash = manifest.files.find((file) => file.path === runtime)?.sha256
         assert.ok(hash)
         const values = runtimeHashes.get(runtime) ?? new Set<string>()
@@ -139,27 +154,30 @@ async function main(): Promise<void> {
       const conditionalRuntime = manifest.files.find((file) => file.path === 'runtime/conditional-quality-gates.cjs')
       assert.ok(conditionalRuntime && conditionalRuntime.bytes < 200_000, 'conditional gate runtime must reuse the adjacent profiler instead of duplicating TypeScript')
       assert.match(fs.readFileSync(path.join(entry.bundleRoot, 'runtime', 'conditional-quality-gates.cjs'), 'utf8'), /project-intelligence\.cjs/)
+      const portabilityRuntime = manifest.files.find((file) => file.path === 'runtime/stack-portability.cjs')
+      assert.ok(portabilityRuntime && portabilityRuntime.bytes < 200_000, 'stack portability runtime must reuse the adjacent profiler instead of duplicating TypeScript')
+      assert.match(fs.readFileSync(path.join(entry.bundleRoot, 'runtime', 'stack-portability.cjs'), 'utf8'), /project-intelligence\.cjs/)
       assert.equal(fs.readFileSync(entry.archivePath).readUInt32LE(0), 0x04034b50)
       assert.equal(sha256(entry.archivePath), entry.archiveSha256)
       const cleanRoot = extractGeneratedZip(entry.archivePath, path.join(scratch, 'clean', entry.provider))
-      validateBuiltBundle(cleanRoot, { provider: entry.provider, bundleVersion: '0.3.0', sharedCoreVersion: '1.1.0' })
+      validateBuiltBundle(cleanRoot, { provider: entry.provider, bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' })
       runCleanSmoke(cleanRoot, fixture)
     }
     for (const hashes of runtimeHashes.values()) assert.equal(hashes.size, 1)
 
-    const sums = fs.readFileSync(path.join(scratch, 'first', '0.3.0', 'SHA256SUMS'), 'utf8').trim().split(/\r?\n/)
+    const sums = fs.readFileSync(path.join(scratch, 'first', '0.4.0', 'SHA256SUMS'), 'utf8').trim().split(/\r?\n/)
     assert.equal(sums.length, 3)
     for (const entry of first) assert.ok(sums.includes(`${entry.archiveSha256}  ${path.basename(entry.archivePath)}`))
 
     const tampered = path.join(scratch, 'tampered')
     fs.cpSync(first[0].bundleRoot, tampered, { recursive: true })
     fs.appendFileSync(path.join(tampered, 'runtime', 'project-intelligence.cjs'), '\n// tamper\n')
-    assert.throws(() => validateBuiltBundle(tampered, { provider: 'codex', bundleVersion: '0.3.0', sharedCoreVersion: '1.1.0' }), /file hash mismatch/)
+    assert.throws(() => validateBuiltBundle(tampered, { provider: 'codex', bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' }), /file hash mismatch/)
 
     const noisy = path.join(scratch, 'noisy')
     fs.cpSync(first[1].bundleRoot, noisy, { recursive: true })
     fs.writeFileSync(path.join(noisy, 'undeclared.txt'), 'noise')
-    assert.throws(() => validateBuiltBundle(noisy, { provider: 'claude', bundleVersion: '0.3.0', sharedCoreVersion: '1.1.0' }), /undeclared or missing files/)
+    assert.throws(() => validateBuiltBundle(noisy, { provider: 'claude', bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' }), /undeclared or missing files/)
 
     const drifted = path.join(scratch, 'drifted')
     fs.cpSync(first[2].bundleRoot, drifted, { recursive: true })
@@ -167,9 +185,9 @@ async function main(): Promise<void> {
     const driftedManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
     driftedManifest.sharedCoreVersion = '9.9.9'
     fs.writeFileSync(manifestPath, JSON.stringify(driftedManifest))
-    assert.throws(() => validateBuiltBundle(drifted, { provider: 'copilot', bundleVersion: '0.3.0', sharedCoreVersion: '1.1.0' }), /version mismatch/)
+    assert.throws(() => validateBuiltBundle(drifted, { provider: 'copilot', bundleVersion: '0.4.0', sharedCoreVersion: '1.2.0' }), /version mismatch/)
 
-    console.log('build-provider-bundles.test: PASS (3 deterministic archives, 9 clean runtime smokes, shared-core/version/content integrity, 3 attacks)')
+    console.log('build-provider-bundles.test: PASS (3 deterministic archives, 12 clean runtime smokes, shared-core/version/content integrity, 3 attacks)')
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true })
   }
