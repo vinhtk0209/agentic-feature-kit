@@ -38,7 +38,7 @@
         "sourcePath": { "type": "string", "minLength": 3, "maxLength": 180 },
         "sourceAnchor": { "type": "string", "minLength": 8, "maxLength": 180 },
         "transport": {
-          "enum": ["external_http", "in_process", "local_http", "supabase_admin", "supabase_client", "supabase_rest", "supabase_rpc"]
+          "enum": ["external_http", "identity_control", "in_process", "local_http", "supabase_admin", "supabase_client", "supabase_rest", "supabase_rpc"]
         },
         "dataFamilies": {
           "type": "array",
@@ -82,7 +82,7 @@
             ]
           }
         },
-        "targetWave": { "enum": ["B2", "B3", "B4", "none"] },
+        "targetWave": { "enum": ["B2", "B3", "B4", "C3", "none"] },
         "disposition": {
           "enum": [
             "adapter_planned",

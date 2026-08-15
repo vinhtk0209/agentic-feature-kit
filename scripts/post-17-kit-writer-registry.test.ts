@@ -10,7 +10,7 @@ const ENTRY_KEYS = [
   'currentPrivacyState', 'dataFamilies', 'disposition', 'id', 'prohibitedFieldObservations',
   'rationaleCode', 'sourceAnchor', 'sourcePath', 'targetWave', 'transport',
 ]
-const TRANSPORTS = ['external_http', 'in_process', 'local_http', 'supabase_admin', 'supabase_client', 'supabase_rest', 'supabase_rpc']
+const TRANSPORTS = ['external_http', 'identity_control', 'in_process', 'local_http', 'supabase_admin', 'supabase_client', 'supabase_rest', 'supabase_rpc']
 const FAMILIES = [
   'command_run', 'error_signal', 'external_notification', 'identity_control', 'install_run',
   'legacy_feature_event', 'legacy_orchestrator_state', 'operator_execution', 'progress',
@@ -21,7 +21,7 @@ const PROHIBITED = [
   'arbitrary_content', 'auth_secret', 'raw_email', 'raw_feature_name', 'raw_log', 'raw_message',
   'raw_path', 'raw_prompt', 'raw_repository', 'raw_url',
 ]
-const WAVES = ['B2', 'B3', 'B4', 'none']
+const WAVES = ['B2', 'B3', 'B4', 'C3', 'none']
 const DISPOSITIONS = [
   'adapter_planned', 'deferred_identity', 'external_transport', 'fail_closed', 'local_only_required',
   'local_store_required', 'migration_blocked', 'test_only',
