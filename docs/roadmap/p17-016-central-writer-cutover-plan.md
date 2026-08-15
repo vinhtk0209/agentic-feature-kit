@@ -231,8 +231,11 @@ storage is claimed until later cutover/migration waves pass.
 
 ## Next slices
 
-- B2: cut over best-effort kit telemetry/verification/install writers after their runtime context
-  and external token-RPC boundary are explicit.
+- B2A input contract is locked by `p17-016-wave-b2a-input-lock.md` as Accepted
+  `T1/R1/X1/C1/S1/L1/E1`; it adds no writer behavior or persistence.
+- B2 production cutover remains a separately scoped implementation. It may move only the three
+  `adapter_planned` kit writers behind the privacy boundary after trusted runtime context and the
+  external token-RPC quarantine are explicit; central sink capability remains blocked until Wave C.
 - B3: add local-only compatibility state and cut over dashboard run/orchestrator evidence producers.
 - B4: complete every registry entry as converted or fail-closed before Wave C migration.
 - Wave C and later retain their own authorization, migration, rollback, and evidence gates.
