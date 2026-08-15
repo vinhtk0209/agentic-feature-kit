@@ -79,15 +79,15 @@
     },
     {
       "id": "kit.verification.record",
-      "sourcePath": ".claude/integrations/record-verify.ts",
-      "sourceAnchor": "export async function pushVerifyRecord(note: VerifyNote): Promise<void> {",
-      "transport": "supabase_rest",
+      "sourcePath": ".claude/integrations/verification-writer-adapter.ts",
+      "sourceAnchor": "export function createBlockedVerificationReceipt(input: unknown): BlockedVerificationReceipt {",
+      "transport": "in_process",
       "dataFamilies": ["verification"],
-      "currentPrivacyState": "legacy_raw",
-      "prohibitedFieldObservations": ["raw_feature_name", "raw_path", "raw_repository"],
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
       "targetWave": "B2",
-      "disposition": "adapter_planned",
-      "rationaleCode": "verification_writer_needs_uuid_run_and_opaque_identifiers"
+      "disposition": "fail_closed",
+      "rationaleCode": "tenant_attestation_and_sink_unavailable"
     }
   ]
 }

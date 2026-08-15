@@ -10,7 +10,7 @@ const ENTRY_KEYS = [
   'currentPrivacyState', 'dataFamilies', 'disposition', 'id', 'prohibitedFieldObservations',
   'rationaleCode', 'sourceAnchor', 'sourcePath', 'targetWave', 'transport',
 ]
-const TRANSPORTS = ['external_http', 'local_http', 'supabase_admin', 'supabase_client', 'supabase_rest', 'supabase_rpc']
+const TRANSPORTS = ['external_http', 'in_process', 'local_http', 'supabase_admin', 'supabase_client', 'supabase_rest', 'supabase_rpc']
 const FAMILIES = [
   'command_run', 'error_signal', 'external_notification', 'identity_control', 'install_run',
   'legacy_feature_event', 'legacy_orchestrator_state', 'operator_execution', 'progress',
@@ -23,7 +23,7 @@ const PROHIBITED = [
 ]
 const WAVES = ['B2', 'B3', 'B4', 'none']
 const DISPOSITIONS = [
-  'adapter_planned', 'deferred_identity', 'external_transport', 'local_only_required',
+  'adapter_planned', 'deferred_identity', 'external_transport', 'fail_closed', 'local_only_required',
   'local_store_required', 'migration_blocked', 'test_only',
 ]
 
@@ -105,7 +105,9 @@ function discover(files: Map<string, string>): string[] {
       && (source.includes('method: "POST"') || source.includes("method: 'POST'") || source.includes('method,'))
       && source.includes('body: JSON.stringify')
     const localOperatorMutation = source.includes("http://127.0.0.1:4001/p2/execute")
-    return centralRestMutation || localOperatorMutation
+    const failClosedVerificationAdapter = source.includes("export const VERIFICATION_WRITER_ID = 'kit.verification.record'")
+      && source.includes('export function createBlockedVerificationReceipt')
+    return centralRestMutation || localOperatorMutation || failClosedVerificationAdapter
   }).map(([file]) => file).sort()
 }
 
@@ -140,6 +142,7 @@ function main(): void {
   injected.set('scripts/unregistered-central-writer.ts', "fetch('https://example.invalid/rest/v1/new_rows', { method: 'POST', body: JSON.stringify(row) })")
   assert.notDeepEqual(discover(injected), registered)
   assert.ok((registry.entries as JsonObject[]).some((entry) => entry.disposition === 'external_transport'))
+  assert.ok((registry.entries as JsonObject[]).some((entry) => entry.disposition === 'fail_closed'))
   assert.ok((registry.entries as JsonObject[]).some((entry) => entry.disposition === 'migration_blocked'))
   process.stdout.write(`post-17-kit-writer-registry.test: PASS (${(registry.entries as JsonObject[]).length} entries, ${discovered.length} source files, 8 attacks)\n`)
 }

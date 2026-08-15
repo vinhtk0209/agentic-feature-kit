@@ -1,6 +1,6 @@
 # P17-016 Wave B1 v2: Central writer boundary and coverage plan
 
-**Status:** Approved — implementation in progress
+**Status:** Approved — B1/B2A complete; B2B verification adapter implemented, broader cutover pending
 **Date:** 2026-08-14
 **Roadmap task:** P17-016
 **Policy:** ADR-002 `T1/R1/C1/L1/E1`
@@ -233,9 +233,12 @@ storage is claimed until later cutover/migration waves pass.
 
 - B2A input contract is locked by `p17-016-wave-b2a-input-lock.md` as Accepted
   `T1/R1/X1/C1/S1/L1/E1`; it adds no writer behavior or persistence.
-- B2 production cutover remains a separately scoped implementation. It may move only the three
-  `adapter_planned` kit writers behind the privacy boundary after trusted runtime context and the
-  external token-RPC quarantine are explicit; central sink capability remains blocked until Wave C.
+- B2B implements only `kit.verification.record`: one command-boundary UUID is passed unchanged,
+  local git-note proof remains, the raw central REST mutation is removed, and missing v2 tenant
+  attestation/Wave C sink returns one closed in-process receipt. No central row is claimed.
+- The remaining `kit.sync.install-report` and `kit.telemetry.central-upsert` entries stay
+  `adapter_planned` and require separately confirmed scopes. Central sink capability remains
+  blocked until Wave C.
 - B3: add local-only compatibility state and cut over dashboard run/orchestrator evidence producers.
 - B4: complete every registry entry as converted or fail-closed before Wave C migration.
 - Wave C and later retain their own authorization, migration, rollback, and evidence gates.
