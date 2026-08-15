@@ -32,7 +32,7 @@ const officialHosts: Record<string, Set<string>> = {
 function validate(value: JsonRecord): void {
   assert.equal(value.schemaVersion, '1.1.0')
   assert.equal(value.artifactId, 'post-17-phase-capability-matrix')
-  assert.equal(value.generatedOn, '2026-08-14')
+  assert.equal(value.generatedOn, '2026-08-15')
   assert.ok(typeof value.approvalBasis === 'string' && value.approvalBasis.includes('readiness-gated'))
 
   assert.equal(value.sourceContracts.phaseBoundary.path, 'docs/roadmap/post-17-orchestrator-boundaries.json')

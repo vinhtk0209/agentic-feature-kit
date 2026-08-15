@@ -1,7 +1,7 @@
 # P17-016 Wave B2B verification adapter evidence
 
 **Date:** 2026-08-15
-**Status:** Implementation complete; final verification in progress
+**Status:** Complete
 **Roadmap task:** P17-016
 **Approved scope:** `APPROVE P17-016 WAVE B2B VERIFY-ADAPTER v1: writer=V1, note=N1, context=A1, run=R1, receipt=L1, sink=S1, evidence=E1`
 
@@ -75,9 +75,13 @@ prompt, log, token, or secret field.
 | `npm run test:post-17-roadmap` | PASS: 22 tasks, 4 initiatives |
 | `npm run test:synced-core` | PASS: 4 attack assertions |
 | `npm run check:synced-core` | PASS: 4 byte-identical files |
+| Third full `npm run test:kit` | PASS: exit 0 in 281.1 seconds |
 | First source-commit cached review | PASS: exact 14-file manifest; production/test/docs diff reviewed |
 | First source-commit `git diff --cached --check` | PASS after correcting three evidence-only trailing-space findings |
 | First source-commit credential scan | PASS: 5/5 synthetic controls, 673 added lines, 0 hits |
+| Closeout cached review | PASS: exact four-file generated-metadata/evidence manifest |
+| Closeout `git diff --cached --check` | PASS |
+| Closeout credential scan | PASS: 5/5 synthetic controls, 45 added lines, 0 hits |
 
 The first full `npm run test:kit` attempt reached `test:post-17-wave-1-inputs` after all earlier
 suites passed, then failed closed on generated flagship-boundary drift: recorded source SHA
@@ -89,6 +93,34 @@ non-circular protocol is therefore two local commits: the first contains the app
 set; the second contains regenerated boundary metadata and finalized evidence. The boundary keeps
 the source commit identity while later metadata may have a newer commit identity.
 
+The source commit is `7643eea39c5fc79cfefd75c0ad9d4f0cb8b3a57e`. The canonical generator
+then changed only `docs/roadmap/post-17-orchestrator-boundaries.json`, binding source blob
+`6123ddf81f4ba344048601099090e7b4a401e786`, canonical SHA-256
+`60d9a1946c4b9cd4fa0c8a40ce0e7b55fe35c76c3b1815a759f6136cad9a4053`, date 2026-08-15, and
+unchanged 2686-line count. `test:post17-boundary-refresh` passes 6/6 attacks;
+`test:post-17-wave-1-inputs` passes 23 mandatory phases, one conditional phase, three providers,
+and seven negative controls. The registered record aggregate remains 8/8 + 6/6 + 28/28.
+
+The second full regression passed the refreshed Wave-1 boundary in-chain, then failed closed at
+`test:post-17-phase-capabilities`: the capability matrix pinned prior boundary hash
+`80a544ba...5ac` instead of current `5c688a72...182`. Scope was minimally expanded to reconcile
+the downstream generated-hash chain and refresh only canonical dependent metadata, without
+changing semantic capabilities or routing.
+
+Live SHA reconciliation confirmed current boundary hash `5c688a72987311ba7d88bd98bf9de1434175dac5fc57c266508eb8a460a03182`.
+Only the matrix generation date, pinned boundary hash, and validator's exact date assertion changed;
+semantic capability and routing content did not. The refreshed matrix passes 24 phases, seven
+official sources, and 15 negative controls. Its downstream routing plan passes 16 sections, 24
+phases, and five conditions; provider bundles pass three providers, two skills, and five runtimes;
+provider distribution passes three archives, 15 clean runtime smokes, and three attacks. Historical
+cross-platform evidence remains unchanged because its pinned matrix hash identifies that earlier
+CI artifact.
+
+The third full `npm run test:kit` passed in 281.1 seconds. The full chain includes the registered
+B2B 8/8 + 6/6 + 28/28 suites, all post-17 boundary/capability/routing/privacy gates,
+provider/distribution, mock-only sync guard, cross-platform release, Playwright, version/index,
+prompt budget (`163,206/176,128` bytes), and 60/60 lesson synchronization.
+
 The first isolated type invocation intentionally used `--module commonjs` and failed only with
 existing `TS1343` in imported `scripts/sync-to-targets.ts`, whose `import.meta` requires an ES
 module-compatible compiler mode. Re-running the identical file set with repository-compatible
@@ -99,10 +131,11 @@ no prohibited-field observations and disposition
 `fail_closed/tenant_attestation_and_sink_unavailable`. The other two B2 candidates remain
 `adapter_planned` and separately scoped.
 
-## Pending final gates
+## Closeout result
 
-- full `npm run test:kit`;
-- exact diff, whitespace, and positive-control credential scan;
-- local commit content/readback verification.
+The exact four-file closeout candidate passed full diff review, whitespace validation, and the
+positive-control credential scan. Commit content and repository cleanliness are verified by the
+post-commit readback recorded in the workspace handoff; this evidence intentionally does not embed
+its own commit identity.
 
 No sync or push is authorized by this evidence.
