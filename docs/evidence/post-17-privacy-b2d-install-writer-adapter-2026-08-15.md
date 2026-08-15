@@ -1,7 +1,7 @@
 # P17-016 Wave B2D install writer adapter evidence
 
 **Date:** 2026-08-15
-**Status:** Implementation complete; local closeout pending
+**Status:** Complete
 **Roadmap task:** P17-016
 **Locked scope:** `writer=I1, core=C1, command=R1, batch=B1, context=T1, receipt=L1, sink=S1, dry=D1, compatibility=F1, evidence=E1`
 **Authority:** The durable roadmap goal authorizes in-scope local work and external proof except push.
@@ -137,11 +137,24 @@ The local source candidate is limited to:
 The flagship command, privacy family/writer contracts, verification and telemetry production,
 dashboard, migrations, provider bundles, targets, and external state are unchanged.
 
-## Pending closeout gates
+## Local source closeout
 
-- review every changed and untracked file and prove legacy endpoint absence with positive controls;
-- stage the exact manifest and run cached whitespace checks;
-- run five positive-control credential detectors over staged added lines;
-- create the local source commit with normal hooks and read back exact content;
-- finalize this evidence in an evidence-only commit; and
-- verify both worktrees clean without sync or push.
+- Source commit: `6ed03b09e950e81be9e3df4151e943860f748bf0` (`feat: add fail-closed
+  install writer adapter`).
+- Exact source manifest: 16 files, 812 insertions, 85 deletions, zero unstaged files, and zero
+  untracked files at the commit boundary.
+- Cached and parent-commit whitespace checks passed. Exact SHA, parent, stat, and 16-path readback
+  passed; the normal `spec-integrity` hook passed.
+- Fixed-string `rg` and PowerShell `Select-String` used the reporter test as a positive control and
+  found zero `/rest/v1/installs` hits in production. The strengthened reporter test also proves its
+  function body has no fetch, process environment, Supabase, or REST dependency.
+- Five credential detectors first matched all five synthetic positive controls, then scanned all
+  812 staged added lines: GitHub token 0, Supabase service key 0, bearer token 0, JWT 0, private
+  key 0.
+- Exact review corrected one adjacent stale README credential claim and strengthened command-order,
+  one-call-site, environment-spoof, reporter-source, and runtime fetch-tripwire assertions before
+  the source commit.
+- The evidence-only closeout commit changes no runtime source. Final worktree/dashboard readback is
+  recorded in the workspace handoffs because a commit cannot self-record its own SHA.
+- No real sync, push, migration, dashboard/browser mutation, target edit, or live external I/O
+  occurred.
