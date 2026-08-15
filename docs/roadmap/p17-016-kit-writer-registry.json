@@ -55,15 +55,15 @@
     },
     {
       "id": "kit.telemetry.central-upsert",
-      "sourcePath": ".claude/integrations/telemetry.ts",
-      "sourceAnchor": "async function upsert(table: string, row: Record<string, unknown>): Promise<void> {",
-      "transport": "supabase_rest",
+      "sourcePath": ".claude/integrations/run-version-writer-adapter.ts",
+      "sourceAnchor": "export function createBlockedRunVersionReceipt(input: unknown): BlockedRunVersionReceipt {",
+      "transport": "in_process",
       "dataFamilies": ["install_run"],
-      "currentPrivacyState": "legacy_raw",
-      "prohibitedFieldObservations": ["raw_repository"],
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
       "targetWave": "B2",
-      "disposition": "adapter_planned",
-      "rationaleCode": "run_version_writer_needs_tenant_context_and_event_split"
+      "disposition": "fail_closed",
+      "rationaleCode": "tenant_attestation_and_sink_unavailable"
     },
     {
       "id": "kit.telemetry.token-rpc",

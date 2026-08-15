@@ -75,15 +75,32 @@ function runMocked(args: string[], env: Env = {}): SpawnSyncReturns<string> {
   });
 }
 
+function mockFetchKinds(output: string): string[] {
+  return output.split(/\r?\n/)
+    .filter((line) => line.startsWith('@@MOCK_FETCH@@ '))
+    .map((line) => (JSON.parse(line.slice('@@MOCK_FETCH@@ '.length)) as { kind: string }).kind)
+}
+
+function privacyReceipts(output: string): Record<string, unknown>[] {
+  return output.split(/\r?\n/)
+    .filter((line) => line.startsWith('@@PRIVACY_RECEIPT@@ '))
+    .map((line) => JSON.parse(line.slice('@@PRIVACY_RECEIPT@@ '.length)) as Record<string, unknown>)
+}
+
 /** Run an isolated copy with a broken installed PROMPT_VERSION; no fetch mock is needed because startup must fail first. */
 function runBrokenVersionAuthority(promptSource: string): SpawnSyncReturns<string> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-tel-version-'));
   const integrationDir = path.join(root, '.claude', 'integrations');
+  const coreDir = path.join(integrationDir, 'core');
   const commandDir = path.join(root, '.claude', 'commands');
-  fs.mkdirSync(integrationDir, { recursive: true });
+  fs.mkdirSync(coreDir, { recursive: true });
   fs.mkdirSync(commandDir, { recursive: true });
   fs.copyFileSync(TELEMETRY, path.join(integrationDir, 'telemetry.ts'));
   fs.copyFileSync(path.resolve(__dirname, 'kit-version.ts'), path.join(integrationDir, 'kit-version.ts'));
+  fs.copyFileSync(path.resolve(__dirname, 'run-version-writer-adapter.ts'), path.join(integrationDir, 'run-version-writer-adapter.ts'));
+  for (const file of ['blocked-central-writer.ts', 'privacy-policy.ts', 'privacy-writer.ts']) {
+    fs.copyFileSync(path.resolve(__dirname, 'core', file), path.join(coreDir, file));
+  }
   fs.writeFileSync(path.join(commandDir, 'feature-from-confluence.md'), promptSource, 'utf8');
   try {
     return spawnSync(`npx tsx "${path.join(integrationDir, 'telemetry.ts')}" verify`, {
@@ -143,6 +160,42 @@ test('verify binds dashboard-injected runner identity and run nonce into the met
   const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'valid', KIT_RUNNER_ID: 'codex', KIT_EVENT_NONCE: nonce });
   assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
   assert(r.stdout.includes(`"runner":"codex","runNonce":"${nonce}"`), `marker did not bind runner/nonce: ${r.stdout}`);
+});
+
+test('B2C valid auth preserves the meta marker but emits one closed receipt and no repo_runs write', () => {
+  const nonce = 'e'.repeat(64);
+  const r = runMocked(['verify'], {
+    MOCK_VERIFY_RESULT: 'valid',
+    KIT_RUNNER_ID: 'codex',
+    KIT_EVENT_NONCE: nonce,
+    KIT_RUN_ID: 'spoofed-environment-run-id',
+  });
+  assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
+  assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"meta","kitVersion":"3.25.0","runner":"codex","runNonce":"${nonce}"}`), 'meta marker drifted');
+  const kinds = mockFetchKinds(r.stdout);
+  assert(kinds.filter((kind) => kind === 'verify_rpc').length === 1, `expected one auth RPC, got ${kinds}`);
+  assert(!kinds.includes('repo_runs_write'), `repo_runs write must be removed, got ${kinds}`);
+  const receipts = privacyReceipts(r.stdout);
+  assert(receipts.length === 1, `expected one privacy receipt, got ${receipts.length}`);
+  assert(JSON.stringify(receipts[0]) === JSON.stringify({
+    schemaVersion: 1,
+    policyVersion: 'p17-016-v1',
+    writerId: 'kit.telemetry.central-upsert',
+    runId: receipts[0].runId,
+    tenantContextStatus: 'unavailable',
+    outcome: 'blocked',
+    reasonCode: 'tenant_attestation_unavailable',
+    createdAt: receipts[0].createdAt,
+  }), `receipt shape drifted: ${JSON.stringify(receipts[0])}`);
+  assert(
+    typeof receipts[0].runId === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receipts[0].runId),
+    'receipt must carry a canonical UUID',
+  );
+  assert(receipts[0].runId !== 'spoofed-environment-run-id', 'KIT_RUN_ID must not be input authority');
+  for (const forbidden of ['repository', 'owner', 'token', 'kitVersion', 'tenantId', 'subjectId']) {
+    assert(!(forbidden in receipts[0]), `receipt leaked ${forbidden}`);
+  }
 });
 
 test('verify rejects malformed dashboard runner identity before network use', () => {

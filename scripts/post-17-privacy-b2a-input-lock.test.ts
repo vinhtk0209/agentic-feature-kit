@@ -91,7 +91,7 @@ assert.doesNotMatch(normalized, /production writers? (is|are|was|were) converted
 
 const expectedRegistry = new Map([
   ['kit.sync.install-report', ['B2', 'adapter_planned', 'install_writer_needs_tenant_context_and_opaque_repo']],
-  ['kit.telemetry.central-upsert', ['B2', 'adapter_planned', 'run_version_writer_needs_tenant_context_and_event_split']],
+  ['kit.telemetry.central-upsert', ['B2', 'fail_closed', 'tenant_attestation_and_sink_unavailable']],
   ['kit.verification.record', ['B2', 'fail_closed', 'tenant_attestation_and_sink_unavailable']],
   ['kit.bin.platform-rpc', ['B2', 'migration_blocked', 'generic_rpc_mixes_reads_and_verify_side_effects']],
   ['kit.telemetry.central-insert', ['B2', 'migration_blocked', 'legacy_usage_shape_has_no_exact_policy_family']],
@@ -110,7 +110,8 @@ for (const [id, expected] of expectedRegistry) {
 
 assert.match(normalizedPlan, /B2A input contract is locked by `p17-016-wave-b2a-input-lock\.md`/)
 assert.match(normalizedPlan, /B2B implements only `kit\.verification\.record`/)
-assert.match(normalizedPlan, /remaining `kit\.sync\.install-report` and `kit\.telemetry\.central-upsert` entries stay `adapter_planned` and require separately confirmed scopes/)
+assert.match(normalizedPlan, /B2C implements only `kit\.telemetry\.central-upsert`/)
+assert.match(normalizedPlan, /remaining `kit\.sync\.install-report` entry stays `adapter_planned` and requires a separately confirmed scope/)
 assert.match(normalizedPlan, /Central sink capability remains blocked until Wave C/)
 
 const task = roadmap.tasks.find((entry) => entry.id === 'P17-016')

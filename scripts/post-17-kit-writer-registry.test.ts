@@ -107,7 +107,9 @@ function discover(files: Map<string, string>): string[] {
     const localOperatorMutation = source.includes("http://127.0.0.1:4001/p2/execute")
     const failClosedVerificationAdapter = source.includes("export const VERIFICATION_WRITER_ID = 'kit.verification.record'")
       && source.includes('export function createBlockedVerificationReceipt')
-    return centralRestMutation || localOperatorMutation || failClosedVerificationAdapter
+    const failClosedRunVersionAdapter = source.includes("export const RUN_VERSION_WRITER_ID = 'kit.telemetry.central-upsert'")
+      && source.includes('export function createBlockedRunVersionReceipt')
+    return centralRestMutation || localOperatorMutation || failClosedVerificationAdapter || failClosedRunVersionAdapter
   }).map(([file]) => file).sort()
 }
 

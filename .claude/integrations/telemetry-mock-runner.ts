@@ -19,9 +19,16 @@ const FAIL = process.env.MOCK_FETCH_FAIL === '1';
 
 // Replace native fetch with a deterministic mock — Supabase is never contacted.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).fetch = async (url: string): Promise<any> => {
-  if (FAIL) throw new Error('mock network error');
+(globalThis as any).fetch = async (url: string, init?: { method?: string }): Promise<any> => {
   const u = String(url);
+  const kind = u.includes('verify_kit_token') ? 'verify_rpc'
+    : u.includes('token_id_for') ? 'token_id_rpc'
+    : u.includes('/rest/v1/repo_runs') ? 'repo_runs_write'
+    : u.includes('/rest/v1/') ? 'legacy_insert'
+    : 'other';
+  // Safe test-only observation: never output URL, headers, body, token, owner, or credentials.
+  console.log(`@@MOCK_FETCH@@ ${JSON.stringify({ kind, method: init?.method ?? 'GET' })}`);
+  if (FAIL) throw new Error('mock network error');
 
   if (u.includes('verify_kit_token')) {
     const body =

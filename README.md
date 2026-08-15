@@ -83,9 +83,11 @@ SQL in **`migrations/`** is run **manually** in the Supabase SQL editor (the scr
 | File | Purpose |
 |---|---|
 | `0001_installs.sql` | `installs` table — version synced onto each repo (written by `npm run sync`) |
-| `0002_repo_runs.sql` | `repo_runs` table — version each repo last ran (upserted by `telemetry.ts` on a successful verify) |
+| `0002_repo_runs.sql` | `repo_runs` table — historical per-repo run-version rows; new upserts are paused by P17-016 B2C until a tenant-attested Wave C sink exists |
 
-Both use anon + RLS (insert/update/select policies). The dashboard joins them per-repo on `/versions`.
+Both schemas retain anon + RLS policies. The dashboard joins stored rows per-repo on `/versions`,
+but `repo_runs` must be treated as historical/stale while tenant-safe central reporting is paused.
+Successful `telemetry verify` now emits a closed local privacy receipt instead of writing that table.
 
 ## Commands (Claude Code slash commands)
 

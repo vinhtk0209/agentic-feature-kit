@@ -413,9 +413,9 @@ interface InstallReport {
  * actually synced there. Returns null if the file/marker is missing.
  *
  * FORMAT MUST MATCH telemetry.ts `resolveKitVersion()` exactly: `major.minor` + ".0"
- * (e.g. "3.17.0"). The dashboard compares installs.kit_version (written here) with
- * repo_runs.last_run_version (written by telemetry); if these two diverge in format,
- * "installed vs running" will mismatch falsely. Keep both in lockstep.
+ * (e.g. "3.17.0"). Historical repo_runs rows and any future tenant-safe run-version writer use
+ * that format when compared with installs.kit_version. P17-016 B2C pauses new repo_runs writes
+ * until a tenant-attested Wave C sink exists; keep the shared format stable during that pause.
  */
 export function resolveSourceVersionFromPromptContent(content: string): string | null {
   return parseCanonicalPromptVersion(content);

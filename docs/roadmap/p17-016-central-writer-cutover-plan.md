@@ -236,9 +236,12 @@ storage is claimed until later cutover/migration waves pass.
 - B2B implements only `kit.verification.record`: one command-boundary UUID is passed unchanged,
   local git-note proof remains, the raw central REST mutation is removed, and missing v2 tenant
   attestation/Wave C sink returns one closed in-process receipt. No central row is claimed.
-- The remaining `kit.sync.install-report` and `kit.telemetry.central-upsert` entries stay
-  `adapter_planned` and require separately confirmed scopes. Central sink capability remains
-  blocked until Wave C.
+- B2C implements only `kit.telemetry.central-upsert`: shared pure UUID/receipt validation backs a
+  thin run-version adapter, the successful legacy-auth path emits one closed in-process receipt,
+  and the raw `repo_runs` REST mutation is removed without treating auth as tenant proof. No central
+  row is claimed and the legacy insert/RPC paths remain migration-blocked.
+- The remaining `kit.sync.install-report` entry stays `adapter_planned` and requires a separately
+  confirmed scope. Central sink capability remains blocked until Wave C.
 - B3: add local-only compatibility state and cut over dashboard run/orchestrator evidence producers.
 - B4: complete every registry entry as converted or fail-closed before Wave C migration.
 - Wave C and later retain their own authorization, migration, rollback, and evidence gates.

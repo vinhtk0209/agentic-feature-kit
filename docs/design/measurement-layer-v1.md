@@ -385,12 +385,18 @@ jobs**. The doc states plainly: **these are not the same gate and neither preten
 Because the kit repo cannot read a target repo's local git note, the kit-side sync guard has **no
 local source for the target verdict.** The backstop therefore consults Supabase:
 
-- **New table `verify_records`** (Supabase), keyed by `runner_run_id` (and carrying `repo` +
-  `head_sha`), **upserted by the same best-effort REST path `telemetry.ts` already uses** for
-  `repo_runs` (anon key, `Prefer: resolution=merge-duplicates`). Columns (shape, not DDL):
+- **Historical A1.3 design:** table `verify_records` (Supabase), keyed by `runner_run_id` (and
+  carrying `repo` + `head_sha`), was designed for the same best-effort anonymous REST pattern then
+  used by telemetry's `repo_runs` upsert. Columns (shape, not DDL):
   `{ runner_run_id (pk), repo, head_sha, feature, verified, tierA_exit, tierB_exit, content_hash,
   kit_version, created_at }`. Written target-side by the B11 wrapper right after it writes the local
   note — closest to where the exit codes are real.
+- **P17-016 B2B/B2C supersession (2026-08-15):** neither verification nor successful-token
+  run-version reporting performs that raw central REST mutation now. Each path retains local proof
+  and emits a closed in-process privacy receipt while trusted v2 tenant attestation and a Wave C
+  sink are unavailable. The sync guard's `verify_records` read remains fail-closed; therefore sync
+  does not become eligible merely because the legacy write was removed. This amendment changes
+  current runtime truth, not the historical A1.3 schema rationale below.
 - **Sync guard validates by querying `verify_records` for the kit version being shipped** —
   `kit_version = <PROMPT_VERSION>` AND `verified === true`, with **no repo and no head_sha filter
   (GLOBAL count)**. Rationale: `npm run sync` ships the kit **infrastructure** (`commands/`,
