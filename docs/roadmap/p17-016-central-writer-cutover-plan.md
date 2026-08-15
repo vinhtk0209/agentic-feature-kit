@@ -1,6 +1,6 @@
 # P17-016 Wave B1 v2: Central writer boundary and coverage plan
 
-**Status:** Approved — B1/B2A complete; B2B verification adapter implemented, broader cutover pending
+**Status:** Approved — B1/B2A complete; B2B/B2C/B2D kit adapters implemented, broader migration pending
 **Date:** 2026-08-14
 **Roadmap task:** P17-016
 **Policy:** ADR-002 `T1/R1/C1/L1/E1`
@@ -240,8 +240,12 @@ storage is claimed until later cutover/migration waves pass.
   thin run-version adapter, the successful legacy-auth path emits one closed in-process receipt,
   and the raw `repo_runs` REST mutation is removed without treating auth as tenant proof. No central
   row is claimed and the legacy insert/RPC paths remain migration-blocked.
-- The remaining `kit.sync.install-report` entry stays `adapter_planned` and requires a separately
-  confirmed scope. Central sink capability remains blocked until Wave C.
+- B2D implements only `kit.sync.install-report`: normal sync owns one command UUID before
+  admission/write, the post-copy batch emits at most one closed receipt, and the raw `installs`
+  REST loop is removed without exposing target cardinality, repository, or version. No central row
+  is claimed; dry-run, guards, snapshots, copy, and rollback behavior remain independently tested.
+- No `adapter_planned` kit writer remains after B2D. The three legacy RPC/insert entries stay
+  `migration_blocked`, and central sink capability remains blocked until Wave C.
 - B3: add local-only compatibility state and cut over dashboard run/orchestrator evidence producers.
 - B4: complete every registry entry as converted or fail-closed before Wave C migration.
 - Wave C and later retain their own authorization, migration, rollback, and evidence gates.

@@ -109,7 +109,13 @@ function discover(files: Map<string, string>): string[] {
       && source.includes('export function createBlockedVerificationReceipt')
     const failClosedRunVersionAdapter = source.includes("export const RUN_VERSION_WRITER_ID = 'kit.telemetry.central-upsert'")
       && source.includes('export function createBlockedRunVersionReceipt')
-    return centralRestMutation || localOperatorMutation || failClosedVerificationAdapter || failClosedRunVersionAdapter
+    const failClosedInstallAdapter = source.includes("export const INSTALL_WRITER_ID = 'kit.sync.install-report'")
+      && source.includes('export function createBlockedInstallReceipt')
+    return centralRestMutation
+      || localOperatorMutation
+      || failClosedVerificationAdapter
+      || failClosedRunVersionAdapter
+      || failClosedInstallAdapter
   }).map(([file]) => file).sort()
 }
 

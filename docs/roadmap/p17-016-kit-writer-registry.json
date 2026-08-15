@@ -31,15 +31,15 @@
     },
     {
       "id": "kit.sync.install-report",
-      "sourcePath": "scripts/sync-to-targets.ts",
-      "sourceAnchor": "async function reportInstalls(",
-      "transport": "supabase_rest",
+      "sourcePath": ".claude/integrations/install-writer-adapter.ts",
+      "sourceAnchor": "export function createBlockedInstallReceipt(input: unknown): BlockedInstallReceipt {",
+      "transport": "in_process",
       "dataFamilies": ["install_run"],
-      "currentPrivacyState": "legacy_raw",
-      "prohibitedFieldObservations": ["raw_repository"],
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
       "targetWave": "B2",
-      "disposition": "adapter_planned",
-      "rationaleCode": "install_writer_needs_tenant_context_and_opaque_repo"
+      "disposition": "fail_closed",
+      "rationaleCode": "tenant_attestation_and_sink_unavailable"
     },
     {
       "id": "kit.telemetry.central-insert",

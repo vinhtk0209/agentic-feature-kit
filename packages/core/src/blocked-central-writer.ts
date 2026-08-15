@@ -25,6 +25,7 @@ export interface WriterBoundReceiptInput {
 }
 
 export const BLOCKED_CENTRAL_WRITER_IDS = [
+  'kit.sync.install-report',
   'kit.telemetry.central-upsert',
   'kit.verification.record',
 ] as const

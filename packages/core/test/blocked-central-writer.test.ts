@@ -11,6 +11,7 @@ import {
 
 const WRITER_A = 'kit.verification.record'
 const WRITER_B = 'kit.telemetry.central-upsert'
+const WRITER_C = 'kit.sync.install-report'
 const UUID_A = '123e4567-e89b-42d3-a456-426614174000'
 const UUID_B = '123e4567-e89b-42d3-b456-426614174001'
 const NOW = '2026-08-15T12:34:56.000Z'
@@ -67,7 +68,7 @@ async function main(): Promise<void> {
   })
 
   await test('A1/L1 creates an exact frozen receipt for either allowlisted writer', () => {
-    for (const writerId of [WRITER_A, WRITER_B]) {
+    for (const writerId of [WRITER_A, WRITER_B, WRITER_C]) {
       const receipt = createUnavailableTenantReceipt({ writerId, runId: UUID_A, createdAt: NOW })
       assert.deepEqual(Object.keys(receipt).sort(), [
         'createdAt',

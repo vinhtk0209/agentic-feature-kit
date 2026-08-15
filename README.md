@@ -73,8 +73,13 @@ npm run sync:dry      # preview only (no files written, no Supabase write)
 ```
 
 - Targets + paths are declared in **`sync.config.json`** (`targets`, `syncPaths`). Only allowlisted paths (`commands/`, `integrations/`, `templates/`, `_content/`, `prompt-evolution.md`) are touched — anything else in a target (e.g. `.env`, `mcp-server/`) is left alone.
-- After an authorized, guard-approved copy, the script records each target's installed `PROMPT_VERSION` into Supabase (`installs` table) so the dashboard can show "installed vs running" per repo. Only this reporting step is **best-effort** — a reporting network failure warns after the guarded file sync; it does not bypass the pre-sync verification guard.
-- Supabase creds for the report come from the kit's own **`.env`** (`SUPABASE_URL`, `SUPABASE_ANON_KEY`; public anon key, RLS-protected). Missing creds → report skipped with a warning.
+- After an authorized, guard-approved copy, the script observes each target's installed
+  `PROMPT_VERSION` locally. P17-016 B2D pauses central `installs` writes until trusted tenant
+  attestation and a Wave C sink exist; a non-dry batch emits one closed local privacy receipt
+  instead. This post-copy diagnostic remains best-effort and cannot bypass the pre-sync guard.
+- The kit's own **`.env`** may override `SUPABASE_URL` / `SUPABASE_ANON_KEY` for the fail-closed
+  verified-run admission query; otherwise that query uses its public RLS-protected fallback. The
+  install compatibility reporter reads no credential and performs no network request.
 
 ## Database migrations (Supabase)
 
@@ -82,12 +87,13 @@ SQL in **`migrations/`** is run **manually** in the Supabase SQL editor (the scr
 
 | File | Purpose |
 |---|---|
-| `0001_installs.sql` | `installs` table — version synced onto each repo (written by `npm run sync`) |
+| `0001_installs.sql` | `installs` table — historical per-repo install rows; new sync reporting is paused by P17-016 B2D until a tenant-attested Wave C sink exists |
 | `0002_repo_runs.sql` | `repo_runs` table — historical per-repo run-version rows; new upserts are paused by P17-016 B2C until a tenant-attested Wave C sink exists |
 
 Both schemas retain anon + RLS policies. The dashboard joins stored rows per-repo on `/versions`,
-but `repo_runs` must be treated as historical/stale while tenant-safe central reporting is paused.
-Successful `telemetry verify` now emits a closed local privacy receipt instead of writing that table.
+but both `installs` and `repo_runs` must be treated as historical/stale while tenant-safe central
+reporting is paused. Guard-approved sync and successful `telemetry verify` now emit separate closed
+local privacy receipts instead of writing those tables.
 
 ## Commands (Claude Code slash commands)
 
