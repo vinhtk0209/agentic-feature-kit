@@ -1,7 +1,7 @@
 # P17-016 Wave B2C run-version adapter evidence
 
 **Date:** 2026-08-15
-**Status:** Implementation complete; local closeout pending
+**Status:** Complete
 **Roadmap task:** P17-016
 **Locked scope:** `writer=U1, core=C1, auth=X1, marker=M1, context=A1, run=R1, receipt=L1, sink=S1, docs=D1, evidence=E1`
 **Authority:** The user-provided durable goal grants every required permission except push.
@@ -145,10 +145,20 @@ The local commit candidate is limited to:
 The flagship command and generated orchestrator boundary are unchanged. Dashboard, migration,
 provider, target, and external state are unchanged.
 
-## Pending closeout gates
+## Local source closeout
 
-- review every tracked and untracked candidate file;
-- run final whitespace and exact staged-manifest validation;
-- run five positive-control credential detectors over staged added lines;
-- commit locally with normal hooks and read back exact content; and
-- verify both kit and dashboard worktrees are clean without push.
+- Source commit: `7a604222f656b43dc076752a1282e2b9d597b255` (`feat: add fail-closed
+  run-version adapter`).
+- Exact source manifest: 21 files, 1,264 insertions, 170 deletions, zero unstaged files, and zero
+  untracked files at the commit boundary.
+- Cached and parent-commit whitespace checks passed. Commit readback contains the same 21 paths and
+  the normal `spec-integrity` hook passed.
+- The old `/rest/v1/repo_runs` path and generic `upsert` helper are absent from production telemetry
+  under both fixed-string `rg` and `Select-String`; the mock harness and parent source supplied
+  positive controls. Runtime mock proof independently observes one auth RPC and zero repo-run write.
+- Five credential detectors first matched all five synthetic positive controls, then scanned all
+  1,264 staged added lines: GitHub token 0, Supabase service key 0, bearer token 0, JWT 0, private
+  key 0.
+- The evidence-only closeout commit changes no runtime source. Final worktree and dashboard-state
+  readback is recorded in the workspace handoffs because a commit cannot self-record its own SHA.
+- No sync, push, migration, dashboard mutation, target edit, or live external I/O occurred.
