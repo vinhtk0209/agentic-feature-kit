@@ -659,10 +659,11 @@ function validateOutputFamilyData(
   if ((data.passedCount as number) > (data.runCount as number)) reject('invalid_field', 'record.release.passed_count')
   assertEnum(data.recommendationCode, RECOMMENDATIONS, 'record.release.recommendation_code')
   assertEnum(data.canaryStatus, CANARY_STATUSES, 'record.release.canary_status')
-  if (!Array.isArray(data.lessonCodes) || data.lessonCodes.length > 100) reject('invalid_field', 'record.release.lesson_codes')
-  data.lessonCodes.forEach((value) => assertClosedCode(value, 'record.release.lesson_code'))
-  const sorted = [...data.lessonCodes].sort()
-  if (new Set(data.lessonCodes).size !== data.lessonCodes.length || sorted.some((value, index) => value !== data.lessonCodes[index])) reject('invalid_field', 'record.release.lesson_codes_canonical')
+  const lessonCodes = data.lessonCodes
+  if (!Array.isArray(lessonCodes) || lessonCodes.length > 100) reject('invalid_field', 'record.release.lesson_codes')
+  lessonCodes.forEach((value) => assertClosedCode(value, 'record.release.lesson_code'))
+  const sorted = [...lessonCodes].sort()
+  if (new Set(lessonCodes).size !== lessonCodes.length || sorted.some((value, index) => value !== lessonCodes[index])) reject('invalid_field', 'record.release.lesson_codes_canonical')
   assertTimestamp(data.createdAt, 'record.release.created_at')
 }
 

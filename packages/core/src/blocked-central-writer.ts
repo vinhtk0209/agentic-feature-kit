@@ -25,6 +25,10 @@ export interface WriterBoundReceiptInput {
 }
 
 export const BLOCKED_CENTRAL_WRITER_IDS = [
+  'dashboard.identity.deploy-record',
+  'dashboard.operator.lessons',
+  'dashboard.operator.version-analysis',
+  'dashboard.progress.rpc',
   'kit.sync.install-report',
   'kit.telemetry.central-upsert',
   'kit.verification.record',
