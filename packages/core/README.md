@@ -58,6 +58,19 @@ and never writes files. Supported modes are `create-envelope`, `validate-envelop
 and `compare-golden`. Provider skills remain thin and cannot redefine ordering, gates, evidence,
 or completion semantics.
 
+## Control Plane pure contracts (P17-014 A2A)
+
+`src/control-plane.ts` defines the closed four-operation registry, opaque bounded operation inputs,
+hard resource-budget profiles, and explicit worker capability manifest used by later P17-014 slices.
+The domain takes an injected `ControlPlaneHashPort`; it imports no runtime, filesystem, environment,
+network, dashboard, or provider module.
+
+The registry contains protocol vocabulary only. A capability manifest advertises an explicit sorted
+subset and binds each operation to its contract hash and fixed adapter identifier/version. Neither
+artifact proves an adapter is installed or a worker exists. Execution envelopes, machine/task/lease
+identity, state/replay, signing, persistence, APIs, worker processes, and provider distribution are
+not implemented in A2A and remain disabled.
+
 ## Semantic Specification
 
 `src/semantic-spec.ts` converts source-backed acceptance criteria into schema `1.0.0` while keeping
