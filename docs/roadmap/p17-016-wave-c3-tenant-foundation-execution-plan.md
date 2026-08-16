@@ -195,10 +195,19 @@ the following structural attacks without real project rows or credentials:
 - retry, object collision, partial DDL, rollback count drift, non-empty rollback refusal, and
   unsafe verifier restoration.
 
-The current workstation has the Docker CLI but reports **Docker daemon unavailable**; it has no
-local PostgreSQL server/client and no Supabase CLI. C3D therefore stays an explicit environment
-gate until a disposable engine exists. This does not weaken C3A–C3C static/offline gates and cannot
-be substituted with mocks or the live project.
+The C3D environment gate was resolved on 2026-08-16 with the existing Docker Desktop installation
+and official `postgres:17-alpine` image pinned at
+`sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73`. The disposable
+runtime reports PostgreSQL 17.11. A rejected PostgreSQL 16.14 attempt is retained in evidence: that
+engine cannot represent the locked `MAINTAIN` table privilege and therefore cannot be described as
+Supabase-compatible for this proof.
+
+The source-controlled dashboard runner requires the byte-exact H1 function fixture from workspace
+`_tmp`, validates its digest and byte length without persisting decoded definitions, applies the
+unmodified migration and rollback to synthetic databases, and removes only its label-verified
+container. Ten scenario groups cover the two-tenant, denial, retry, collision, partial-DDL,
+non-empty rollback, rollback-drift, and safe-verifier boundaries above. This is disposable database
+proof only; mocks and the live project are not substitutes.
 
 ## Verification and evidence ladder
 
@@ -239,7 +248,7 @@ run, target command, or target `.Codex` edit.
 There is no sync or push.
 
 C3 does not claim tenant safety is proven, attestation is live, consent is granted, a central sink
-is available, live migration is applied, two-tenant isolation is proven, Wave C is complete, or
+is available, live migration is applied, live two-tenant isolation is proven, Wave C is complete, or
 P17-016 is complete. Live migration, live rollback rehearsal, and live two-tenant proof belong to
 C5; functional tenant-safe reads/actions/UI belong to Wave E; retention/deletion belongs to Wave D;
 legacy mapping/purge/non-null completion belongs to Wave F.
