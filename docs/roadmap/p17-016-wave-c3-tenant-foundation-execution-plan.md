@@ -11,9 +11,11 @@ capabilities without pretending that a tenant, consent grant, central sink, or l
 already exists. The existing production central writers remain blocked. Existing local encrypted
 compatibility stores remain authoritative for the writer families cut over in Wave B.
 
-The current dashboard has one exported global service-role client and 30 invocations across 27
-consumer files. Those calls have no tenant argument and cannot be repaired by adding a nullable
-column or an application-side filter. C3 removes that direct capability before any live migration.
+The reconciled pre-C3C dashboard baseline had one exported global service-role client and 31
+invocations across 28 consumer files. The inherited 27/30 count omitted the version-metrics route;
+the executable manifest binds the corrected 28/31 truth. Those calls had no tenant argument and
+could not be repaired by adding a nullable column or an application-side filter. C3 removes that
+direct capability before any live migration.
 Wave E owns functional tenant-safe reads, actions, and dashboard restoration. Between C3C and Wave
 E, legacy application surfaces fail closed and state why data or an action is unavailable.
 
