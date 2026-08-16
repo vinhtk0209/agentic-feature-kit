@@ -33,6 +33,11 @@ import {
   validateCommandRunId,
   type BlockedVerificationReceipt,
 } from './verification-writer-adapter';
+import {
+  executeVerificationWrite,
+  type VerificationWriterCapabilityDependencies,
+} from './verification-writer-capability';
+import type { CentralWriterResult } from './core/privacy-writer';
 
 export const VERIFY_NOTES_REF = 'refs/notes/verify';
 
@@ -379,6 +384,35 @@ export function createVerificationWriterReceipt(
   createdAt: string = new Date().toISOString(),
 ): BlockedVerificationReceipt {
   return createBlockedVerificationReceipt({ runId: note.runner_run_id, createdAt });
+}
+
+/**
+ * C4C explicit capability path. It projects only the verification allowlist from the retained
+ * local note and requires every tenant/policy/storage dependency from its server-side caller.
+ * The CLI never calls this path implicitly; both default command branches remain B2B-blocked.
+ */
+export function persistVerificationWithCapability(
+  note: VerifyNote,
+  dependencies: VerificationWriterCapabilityDependencies,
+): Promise<CentralWriterResult> {
+  try {
+    return executeVerificationWrite({
+      runId: note.runner_run_id,
+      repoLocalId: dependencies.repoLocalId,
+      contentHash: note.content_hash,
+      kitVersion: note.kit_version,
+      verified: note.verified,
+      tierExitCodes: [note.tierA_exit, ...(note.tierB_exit === null ? [] : [note.tierB_exit])],
+      observedAt: note.at,
+      context: dependencies.context,
+      grant: dependencies.grant,
+      clock: dependencies.clock,
+      opaqueIdentifierPort: dependencies.opaqueIdentifierPort,
+      sinkCapability: dependencies.sinkCapability,
+    });
+  } catch {
+    return executeVerificationWrite(null);
+  }
 }
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
