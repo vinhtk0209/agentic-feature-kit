@@ -21,7 +21,7 @@ const PROHIBITED = [
   'arbitrary_content', 'auth_secret', 'raw_email', 'raw_feature_name', 'raw_log', 'raw_message',
   'raw_path', 'raw_prompt', 'raw_repository', 'raw_url',
 ]
-const WAVES = ['B2', 'B3', 'B4', 'C3', 'none']
+const WAVES = ['B2', 'B3', 'B4', 'C3', 'C4', 'none']
 const DISPOSITIONS = [
   'adapter_planned', 'deferred_identity', 'external_transport', 'fail_closed', 'local_only_required',
   'local_store_required', 'migration_blocked', 'test_only',

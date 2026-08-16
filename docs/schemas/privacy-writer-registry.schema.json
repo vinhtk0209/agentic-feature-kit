@@ -82,7 +82,7 @@
             ]
           }
         },
-        "targetWave": { "enum": ["B2", "B3", "B4", "C3", "none"] },
+        "targetWave": { "enum": ["B2", "B3", "B4", "C3", "C4", "none"] },
         "disposition": {
           "enum": [
             "adapter_planned",
