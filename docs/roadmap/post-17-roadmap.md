@@ -71,7 +71,7 @@ When complete:
 | P17-011 | P1 | 2 | done | Honest isolated-worktree browser verification | Stops `infra-blocked` from being confused with verified browser behavior. |
 | P17-012 | P1 | 2 | done | Convention and stack portability audit | Gates Open edX conventions instead of treating them as universal defaults. |
 | P17-013 | P1 | 2 | done | Documentation and runtime claim audit | Detects version, parity, generated-edition, and documentation drift. |
-| P17-014 | P2 | 5 | ready | Opt-in distributed control plane | Coordinates typed remote work without default remote execution or arbitrary shell. |
+| P17-014 | P2 | 5 | in_progress | Opt-in distributed control plane | Coordinates typed remote work without default remote execution or arbitrary shell. |
 | P17-015 | P2 | 4 | done | Detailed cross-machine progress tracking | Links each task to the exact machine-safe run, retry lineage, and evidence hash. |
 | P17-016 | P1 | 3 | in_progress | Privacy-safe specification and usage data criteria | Prevents private specs, secrets, or cross-tenant data from leaking into learning data. |
 | P17-017 | P2 | 5 | backlog | Provider-neutral build harness with optional RAG | Keeps repository facts authoritative while measuring any retrieval benefit safely. |
@@ -97,8 +97,8 @@ deterministic artifact safely, the roadmap should prepare and test it before req
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness
-  is complete and P17-015 is now done, so P17-014 is ready. No implementation or external action is
-  authorized by this status transition.
+  is complete and P17-015 is now done. P17-014 is now `in_progress` under its implementation plan;
+  no runtime or external action is authorized by this status transition.
 - **P17-016 (`T1/R1/C1/L1/E1`):** opaque multi-tenant metadata-only central storage; exact finite
   retention profiles; optional learning/indexing/evaluation/diagnostic scopes off; quarantined
   explicitly mapped legacy data; and metadata-only evidence with no default legal hold. P17-016

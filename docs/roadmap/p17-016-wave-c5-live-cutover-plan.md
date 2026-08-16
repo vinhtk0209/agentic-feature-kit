@@ -17,7 +17,7 @@ same as enabling a writer, and enabling a writer is not the same as safely chang
 C5A changes planning, validation, package registration, evidence, and handoff only. It creates no
 live runner, route, migration wrapper, tenant, membership, credential, grant, key, central row,
 legacy mapping, provider resource, or dashboard state. P17-016 remains `in_progress` through C5A.
-P17-014 remains `ready`; P17-019 remains input-blocked.
+P17-014 is now `in_progress` under its implementation plan; P17-019 remains input-blocked.
 
 ## Reconciled starting state
 

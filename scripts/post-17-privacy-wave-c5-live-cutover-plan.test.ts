@@ -116,7 +116,7 @@ for (const phrase of [
   'never restore anonymous legacy writes',
   'no real sync is used as a guard test',
   'P17-016 remains in_progress through C5A',
-  'P17-014 remains ready',
+  'P17-014 is now in_progress under its implementation plan',
   'P17-019 remains input-blocked',
   'separate named-project authorization',
   'no live SQL',
@@ -159,7 +159,7 @@ assert.deepEqual(
 )
 assert.deepEqual(
   [byId.get('P17-014')?.status, byId.get('P17-014')?.readiness.complete],
-  ['ready', true],
+  ['in_progress', true],
 )
 assert.deepEqual(
   [byId.get('P17-019')?.status, byId.get('P17-019')?.readiness.complete],

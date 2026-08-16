@@ -348,7 +348,7 @@
       "initiative": "P17-I4",
       "wave": 5,
       "priority": "P2",
-      "status": "ready",
+      "status": "in_progress",
       "dependencies": ["P17-002", "P17-015"],
       "backlogRefs": ["6", "12"],
       "problem": "Multi-repository execution lacks a provider-neutral, least-privilege topology for remote coordination.",

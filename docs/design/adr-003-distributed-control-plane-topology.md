@@ -1,6 +1,6 @@
 # ADR-003: Use an outbound-pull, typed-envelope distributed control plane
 
-**Status:** Accepted — topology/trust input locked; task ready, implementation not started
+**Status:** Accepted — topology/trust locked; implementation planning started
 **Date:** 2026-08-14
 **Roadmap task:** P17-014
 **Deciders:** Workflow-kit operator and maintainers

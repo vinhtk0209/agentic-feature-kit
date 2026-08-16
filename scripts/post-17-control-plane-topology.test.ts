@@ -34,7 +34,7 @@ for (const heading of [
   '## Operator decision required',
 ]) assert.ok(adr.includes(heading), `missing topology section ${heading}`)
 
-assert.match(adr, /\*\*Status:\*\* Accepted — topology\/trust input locked; task ready, implementation not started/)
+assert.match(adr, /\*\*Status:\*\* Accepted — topology\/trust locked; implementation planning started/)
 assert.match(adr, /\*\*Roadmap task:\*\* P17-014/)
 
 const controlPlane = roadmap.tasks.find((entry) => entry.id === 'P17-014')
@@ -42,7 +42,7 @@ const progress = roadmap.tasks.find((entry) => entry.id === 'P17-015')
 const privacy = roadmap.tasks.find((entry) => entry.id === 'P17-016')
 const panel = roadmap.tasks.find((entry) => entry.id === 'P17-021')
 assert.ok(controlPlane && progress && privacy && panel)
-assert.equal(controlPlane.status, 'ready')
+assert.equal(controlPlane.status, 'in_progress')
 assert.equal(controlPlane.readiness.complete, true)
 assert.deepEqual(controlPlane.readiness.missing, [])
 assert.deepEqual(controlPlane.dependencies, ['P17-002', 'P17-015'])
@@ -89,4 +89,4 @@ assert.match(adr, /does not authorize implementation, migration, enrollment,\s+r
 assert.match(normalized, /does not authorize[^.]+deployment, sync, or push\./i)
 assert.doesNotMatch(adr, /implementation (is|was) complete/i)
 
-console.log('post-17-control-plane-topology.test: PASS (22 sections, T1/M1/X1/R1/E1/S1 accepted, P17-014 ready)')
+console.log('post-17-control-plane-topology.test: PASS (22 sections, T1/M1/X1/R1/E1/S1 accepted, P17-014 in_progress)')
