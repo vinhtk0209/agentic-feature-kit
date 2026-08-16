@@ -6,6 +6,10 @@ export const CONTROL_PLANE_MAX_WALL_TIME_MS = 30 * 60 * 1000
 export const CONTROL_PLANE_MAX_RESULT_BYTES = 256 * 1024
 export const CONTROL_PLANE_MAX_EVIDENCE_REFS = 16
 export const CONTROL_PLANE_MAX_PROGRESS_EVENTS = 200
+export const CONTROL_PLANE_MAX_ATTEMPTS = 50
+export const CONTROL_PLANE_MAX_LEASE_INTERVAL_MS = 60 * 1000
+export const CONTROL_PLANE_MAX_DEADLINE_INTERVAL_MS = CONTROL_PLANE_MAX_WALL_TIME_MS
+export const CONTROL_PLANE_MAX_ENVELOPE_BYTES = 256 * 1024
 
 export const CONTROL_PLANE_OPERATION_CODES = [
   'evidence.verify',
@@ -143,6 +147,56 @@ export interface WorkerCapabilityManifestInput {
   readonly capabilityIds: readonly CapabilityId[]
 }
 
+export interface ControlPlaneExecutionIdentity {
+  readonly schemaVersion: typeof CONTROL_PLANE_SCHEMA_VERSION
+  readonly tenantId: string
+  readonly taskId: string
+  readonly commandRunId: string
+  readonly rootRunId: string
+  readonly parentRunId: string | null
+  readonly attempt: number
+  readonly deliveryId: string
+  readonly leaseId: string
+  readonly machineId: string
+  readonly repositoryId: string
+  readonly progressBindingHash: string
+}
+
+export interface ControlPlaneExecutionOperation {
+  readonly descriptor: OperationDescriptor
+  readonly input: ControlPlaneOperationInput
+}
+
+export interface ControlPlaneExecutionTiming {
+  readonly issuedAt: string
+  readonly leaseExpiresAt: string
+  readonly deadlineAt: string
+}
+
+export interface ControlPlaneEvidencePolicy {
+  readonly mode: 'metadata_only'
+  readonly sink: 'p17_015_progress'
+  readonly retentionClass: 'short_lived' | 'standard'
+}
+
+export interface ControlPlaneExecutionEnvelope {
+  readonly schemaVersion: typeof CONTROL_PLANE_SCHEMA_VERSION
+  readonly contractVersion: typeof CONTROL_PLANE_CONTRACT_VERSION
+  readonly identity: ControlPlaneExecutionIdentity
+  readonly operation: ControlPlaneExecutionOperation
+  readonly timing: ControlPlaneExecutionTiming
+  readonly evidencePolicy: ControlPlaneEvidencePolicy
+  readonly envelopeHash: string
+}
+
+export interface ControlPlaneExecutionEnvelopeInput {
+  readonly identity: ControlPlaneExecutionIdentity
+  readonly operationCode: OperationCode
+  readonly operationInput: ControlPlaneOperationInput
+  readonly timing: ControlPlaneExecutionTiming
+  readonly evidencePolicy: ControlPlaneEvidencePolicy
+}
+
 export class ControlPlaneContractError extends Error {
   readonly code: ControlPlaneErrorCode
 
@@ -156,9 +210,11 @@ export class ControlPlaneContractError extends Error {
 interface OperationDescriptorSeed extends Omit<OperationDescriptor, 'contractHash'> {}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const LOWER_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const LOWER_SHA256 = /^[0-9a-f]{64}$/
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/
 const PHASE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+const PROGRESS_TASK_ID = /^P17-\d{3}$/
 const OPERATION_SET = new Set<string>(CONTROL_PLANE_OPERATION_CODES)
 const CAPABILITY_SET = new Set<string>(CONTROL_PLANE_CAPABILITY_IDS)
 const ADAPTER_ID_SET = new Set<OperationDescriptor['adapterId']>([
@@ -199,6 +255,39 @@ const CONTENT_REFERENCE_KEYS = ['schemaVersion', 'referenceId', 'purpose', 'sha2
 const MANIFEST_KEYS = ['schemaVersion', 'contractVersion', 'workerVersion', 'operations', 'capabilityIds', 'manifestHash'] as const
 const MANIFEST_INPUT_KEYS = ['workerVersion', 'operationCodes', 'capabilityIds'] as const
 const MANIFEST_OPERATION_KEYS = ['code', 'contractHash', 'adapterId', 'adapterVersion'] as const
+const EXECUTION_IDENTITY_KEYS = [
+  'schemaVersion',
+  'tenantId',
+  'taskId',
+  'commandRunId',
+  'rootRunId',
+  'parentRunId',
+  'attempt',
+  'deliveryId',
+  'leaseId',
+  'machineId',
+  'repositoryId',
+  'progressBindingHash',
+] as const
+const EXECUTION_OPERATION_KEYS = ['descriptor', 'input'] as const
+const EXECUTION_TIMING_KEYS = ['issuedAt', 'leaseExpiresAt', 'deadlineAt'] as const
+const EVIDENCE_POLICY_KEYS = ['mode', 'sink', 'retentionClass'] as const
+const EXECUTION_ENVELOPE_KEYS = [
+  'schemaVersion',
+  'contractVersion',
+  'identity',
+  'operation',
+  'timing',
+  'evidencePolicy',
+  'envelopeHash',
+] as const
+const EXECUTION_ENVELOPE_INPUT_KEYS = [
+  'identity',
+  'operationCode',
+  'operationInput',
+  'timing',
+  'evidencePolicy',
+] as const
 
 const INPUT_CONTRACTS: Record<OperationInputKind, { readonly fields: readonly string[]; readonly referencePurpose: ContentReferencePurpose | null }> = {
   project_inspection: { fields: ['schemaVersion', 'repositoryId'], referencePurpose: null },
@@ -689,4 +778,305 @@ export function validateWorkerCapabilityManifest(
   const computed = hashCanonical(port, canonicalWorkerManifest(withoutHash))
   if (computed !== value.manifestHash) contractError('MANIFEST_HASH_MISMATCH', 'worker manifest')
   return deepFreeze({ ...withoutHash, manifestHash: value.manifestHash })
+}
+
+function assertLowerUuid(value: unknown, category: string): asserts value is string {
+  if (typeof value !== 'string' || !LOWER_UUID.test(value)) contractError('INVALID_SHAPE', category)
+}
+
+function assertCanonicalTimestamp(value: unknown, category: string): asserts value is string {
+  if (typeof value !== 'string') contractError('INVALID_SHAPE', category)
+  const milliseconds = Date.parse(value)
+  if (!Number.isFinite(milliseconds)) contractError('INVALID_SHAPE', category)
+  try {
+    if (new Date(milliseconds).toISOString() !== value) contractError('INVALID_SHAPE', category)
+  } catch (error) {
+    if (error instanceof ControlPlaneContractError) throw error
+    contractError('INVALID_SHAPE', category)
+  }
+}
+
+function validateExecutionIdentity(value: unknown): ControlPlaneExecutionIdentity {
+  assertPlainDataRecord(value, 'execution identity')
+  exactKeys(value, EXECUTION_IDENTITY_KEYS, 'execution identity')
+  if (value.schemaVersion !== CONTROL_PLANE_SCHEMA_VERSION) contractError('UNSUPPORTED_VERSION', 'execution identity')
+  assertLowerUuid(value.tenantId, 'execution identity')
+  if (typeof value.taskId !== 'string' || !PROGRESS_TASK_ID.test(value.taskId)) contractError('INVALID_SHAPE', 'execution identity')
+  assertLowerUuid(value.commandRunId, 'execution identity')
+  assertLowerUuid(value.rootRunId, 'execution identity')
+  if (value.parentRunId !== null) assertLowerUuid(value.parentRunId, 'execution identity')
+  if (typeof value.attempt !== 'number' || !Number.isSafeInteger(value.attempt) || value.attempt < 1) {
+    contractError('INVALID_SHAPE', 'execution identity')
+  }
+  if (value.attempt > CONTROL_PLANE_MAX_ATTEMPTS) contractError('LIMIT_EXCEEDED', 'execution identity')
+  assertLowerUuid(value.deliveryId, 'execution identity')
+  assertLowerUuid(value.leaseId, 'execution identity')
+  assertLowerUuid(value.machineId, 'execution identity')
+  assertLowerUuid(value.repositoryId, 'execution identity')
+  assertLowerHash(value.progressBindingHash, 'execution identity')
+  if (value.deliveryId === value.leaseId) contractError('INVALID_SHAPE', 'execution identity')
+
+  if (value.attempt === 1) {
+    if (value.rootRunId !== value.commandRunId || value.parentRunId !== null) {
+      contractError('INVALID_SHAPE', 'execution identity')
+    }
+  } else if (
+    value.parentRunId === null
+    || value.commandRunId === value.rootRunId
+    || value.commandRunId === value.parentRunId
+  ) {
+    contractError('INVALID_SHAPE', 'execution identity')
+  }
+
+  return deepFreeze({
+    schemaVersion: CONTROL_PLANE_SCHEMA_VERSION,
+    tenantId: value.tenantId,
+    taskId: value.taskId,
+    commandRunId: value.commandRunId,
+    rootRunId: value.rootRunId,
+    parentRunId: value.parentRunId,
+    attempt: value.attempt,
+    deliveryId: value.deliveryId,
+    leaseId: value.leaseId,
+    machineId: value.machineId,
+    repositoryId: value.repositoryId,
+    progressBindingHash: value.progressBindingHash,
+  })
+}
+
+function validateExecutionTiming(value: unknown): ControlPlaneExecutionTiming {
+  assertPlainDataRecord(value, 'execution timing')
+  exactKeys(value, EXECUTION_TIMING_KEYS, 'execution timing')
+  assertCanonicalTimestamp(value.issuedAt, 'execution timing')
+  assertCanonicalTimestamp(value.leaseExpiresAt, 'execution timing')
+  assertCanonicalTimestamp(value.deadlineAt, 'execution timing')
+  const issuedAt = Date.parse(value.issuedAt)
+  const leaseExpiresAt = Date.parse(value.leaseExpiresAt)
+  const deadlineAt = Date.parse(value.deadlineAt)
+  if (issuedAt >= leaseExpiresAt || leaseExpiresAt > deadlineAt) contractError('INVALID_SHAPE', 'execution timing')
+  if (leaseExpiresAt - issuedAt > CONTROL_PLANE_MAX_LEASE_INTERVAL_MS) contractError('LIMIT_EXCEEDED', 'execution timing')
+  if (deadlineAt - issuedAt > CONTROL_PLANE_MAX_DEADLINE_INTERVAL_MS) contractError('LIMIT_EXCEEDED', 'execution timing')
+  return deepFreeze({ issuedAt: value.issuedAt, leaseExpiresAt: value.leaseExpiresAt, deadlineAt: value.deadlineAt })
+}
+
+function validateEvidencePolicy(value: unknown): ControlPlaneEvidencePolicy {
+  assertPlainDataRecord(value, 'evidence policy')
+  exactKeys(value, EVIDENCE_POLICY_KEYS, 'evidence policy')
+  if (value.mode !== 'metadata_only' || value.sink !== 'p17_015_progress') contractError('INVALID_SHAPE', 'evidence policy')
+  if (value.retentionClass !== 'short_lived' && value.retentionClass !== 'standard') {
+    contractError('INVALID_SHAPE', 'evidence policy')
+  }
+  return deepFreeze({ mode: value.mode, sink: value.sink, retentionClass: value.retentionClass })
+}
+
+function canonicalContentReference(value: ControlPlaneContentReference): Record<string, unknown> {
+  return {
+    schemaVersion: value.schemaVersion,
+    referenceId: value.referenceId,
+    purpose: value.purpose,
+    sha256: value.sha256,
+    mediaType: value.mediaType,
+    bytes: value.bytes,
+  }
+}
+
+function canonicalOperationInput(code: OperationCode, value: ControlPlaneOperationInput): Record<string, unknown> {
+  switch (code) {
+    case 'project_intelligence.inspect': {
+      const input = value as ProjectInspectionInput
+      return { schemaVersion: input.schemaVersion, repositoryId: input.repositoryId }
+    }
+    case 'workflow_phase.execute': {
+      const input = value as WorkflowPhaseInput
+      return {
+        schemaVersion: input.schemaVersion,
+        repositoryId: input.repositoryId,
+        phaseId: input.phaseId,
+        phaseEnvelope: canonicalContentReference(input.phaseEnvelope),
+      }
+    }
+    case 'workflow_verify.execute': {
+      const input = value as WorkflowVerificationInput
+      return {
+        schemaVersion: input.schemaVersion,
+        repositoryId: input.repositoryId,
+        verificationRequest: canonicalContentReference(input.verificationRequest),
+      }
+    }
+    case 'evidence.verify': {
+      const input = value as EvidenceVerificationInput
+      return { schemaVersion: input.schemaVersion, evidence: canonicalContentReference(input.evidence) }
+    }
+  }
+}
+
+function canonicalDescriptor(value: OperationDescriptor): Record<string, unknown> {
+  return {
+    schemaVersion: value.schemaVersion,
+    contractVersion: value.contractVersion,
+    code: value.code,
+    adapterId: value.adapterId,
+    adapterVersion: value.adapterVersion,
+    inputKind: value.inputKind,
+    requiredCapabilities: [...value.requiredCapabilities],
+    replayClass: value.replayClass,
+    resourceBudget: canonicalResourceBudget(value.resourceBudget),
+    contractHash: value.contractHash,
+  }
+}
+
+function canonicalIdentity(value: ControlPlaneExecutionIdentity): Record<string, unknown> {
+  return {
+    schemaVersion: value.schemaVersion,
+    tenantId: value.tenantId,
+    taskId: value.taskId,
+    commandRunId: value.commandRunId,
+    rootRunId: value.rootRunId,
+    parentRunId: value.parentRunId,
+    attempt: value.attempt,
+    deliveryId: value.deliveryId,
+    leaseId: value.leaseId,
+    machineId: value.machineId,
+    repositoryId: value.repositoryId,
+    progressBindingHash: value.progressBindingHash,
+  }
+}
+
+function canonicalTiming(value: ControlPlaneExecutionTiming): Record<string, unknown> {
+  return { issuedAt: value.issuedAt, leaseExpiresAt: value.leaseExpiresAt, deadlineAt: value.deadlineAt }
+}
+
+function canonicalEvidencePolicy(value: ControlPlaneEvidencePolicy): Record<string, unknown> {
+  return { mode: value.mode, sink: value.sink, retentionClass: value.retentionClass }
+}
+
+function canonicalEnvelopePayload(value: Omit<ControlPlaneExecutionEnvelope, 'envelopeHash'>): string {
+  return JSON.stringify({
+    schemaVersion: value.schemaVersion,
+    contractVersion: value.contractVersion,
+    identity: canonicalIdentity(value.identity),
+    operation: {
+      descriptor: canonicalDescriptor(value.operation.descriptor),
+      input: canonicalOperationInput(value.operation.descriptor.code, value.operation.input),
+    },
+    timing: canonicalTiming(value.timing),
+    evidencePolicy: canonicalEvidencePolicy(value.evidencePolicy),
+  })
+}
+
+function canonicalEnvelope(value: ControlPlaneExecutionEnvelope): string {
+  return JSON.stringify({
+    schemaVersion: value.schemaVersion,
+    contractVersion: value.contractVersion,
+    identity: canonicalIdentity(value.identity),
+    operation: {
+      descriptor: canonicalDescriptor(value.operation.descriptor),
+      input: canonicalOperationInput(value.operation.descriptor.code, value.operation.input),
+    },
+    timing: canonicalTiming(value.timing),
+    evidencePolicy: canonicalEvidencePolicy(value.evidencePolicy),
+    envelopeHash: value.envelopeHash,
+  })
+}
+
+function assertRepositoryBinding(
+  identity: ControlPlaneExecutionIdentity,
+  code: OperationCode,
+  input: ControlPlaneOperationInput,
+): void {
+  if (code === 'evidence.verify') return
+  const repositoryInput = input as ProjectInspectionInput | WorkflowPhaseInput | WorkflowVerificationInput
+  if (repositoryInput.repositoryId !== identity.repositoryId) contractError('INVALID_SHAPE', 'execution repository binding')
+}
+
+function assertEnvelopeSize(value: ControlPlaneExecutionEnvelope): void {
+  if (utf8ByteLength(canonicalEnvelope(value)) > CONTROL_PLANE_MAX_ENVELOPE_BYTES) {
+    contractError('LIMIT_EXCEEDED', 'execution envelope')
+  }
+}
+
+function canonicalRegistryDescriptor(
+  code: OperationCode,
+  registry: readonly OperationDescriptor[],
+): OperationDescriptor {
+  const descriptor = registry.find((entry) => entry.code === code)
+  if (!descriptor) contractError('UNKNOWN_OPERATION', 'execution operation')
+  return descriptor
+}
+
+export function createControlPlaneExecutionEnvelope(
+  value: ControlPlaneExecutionEnvelopeInput,
+  registryInput: unknown,
+  port: ControlPlaneHashPort,
+): ControlPlaneExecutionEnvelope {
+  assertPlainDataRecord(value, 'execution envelope input')
+  exactKeys(value, EXECUTION_ENVELOPE_INPUT_KEYS, 'execution envelope input')
+  const identity = validateExecutionIdentity(value.identity)
+  if (typeof value.operationCode !== 'string' || !OPERATION_SET.has(value.operationCode)) {
+    contractError('UNKNOWN_OPERATION', 'execution operation')
+  }
+  const timing = validateExecutionTiming(value.timing)
+  const evidencePolicy = validateEvidencePolicy(value.evidencePolicy)
+  const registry = validateControlPlaneOperationRegistry(registryInput, port)
+  const descriptor = canonicalRegistryDescriptor(value.operationCode, registry)
+  const input = validateControlPlaneOperationInput(descriptor.code, value.operationInput)
+  assertRepositoryBinding(identity, descriptor.code, input)
+  const withoutHash: Omit<ControlPlaneExecutionEnvelope, 'envelopeHash'> = {
+    schemaVersion: CONTROL_PLANE_SCHEMA_VERSION,
+    contractVersion: CONTROL_PLANE_CONTRACT_VERSION,
+    identity,
+    operation: { descriptor, input },
+    timing,
+    evidencePolicy,
+  }
+  const envelope = deepFreeze({ ...withoutHash, envelopeHash: hashCanonical(port, canonicalEnvelopePayload(withoutHash)) })
+  assertEnvelopeSize(envelope)
+  return envelope
+}
+
+export function validateControlPlaneExecutionEnvelope(
+  value: unknown,
+  registryInput: unknown,
+  port: ControlPlaneHashPort,
+): ControlPlaneExecutionEnvelope {
+  assertPlainDataRecord(value, 'execution envelope')
+  exactKeys(value, EXECUTION_ENVELOPE_KEYS, 'execution envelope')
+  if (value.schemaVersion !== CONTROL_PLANE_SCHEMA_VERSION || value.contractVersion !== CONTROL_PLANE_CONTRACT_VERSION) {
+    contractError('UNSUPPORTED_VERSION', 'execution envelope')
+  }
+  const identity = validateExecutionIdentity(value.identity)
+  assertPlainDataRecord(value.operation, 'execution operation')
+  exactKeys(value.operation, EXECUTION_OPERATION_KEYS, 'execution operation')
+  const candidateDescriptor = validateDescriptorShape(value.operation.descriptor)
+  const registry = validateControlPlaneOperationRegistry(registryInput, port)
+  const descriptor = canonicalRegistryDescriptor(candidateDescriptor.code, registry)
+  if (JSON.stringify(canonicalDescriptor(candidateDescriptor)) !== JSON.stringify(canonicalDescriptor(descriptor))) {
+    contractError('CONTRACT_HASH_MISMATCH', 'execution operation')
+  }
+  const input = validateControlPlaneOperationInput(descriptor.code, value.operation.input)
+  assertRepositoryBinding(identity, descriptor.code, input)
+  const timing = validateExecutionTiming(value.timing)
+  const evidencePolicy = validateEvidencePolicy(value.evidencePolicy)
+  assertLowerHash(value.envelopeHash, 'execution envelope')
+  const withoutHash: Omit<ControlPlaneExecutionEnvelope, 'envelopeHash'> = {
+    schemaVersion: CONTROL_PLANE_SCHEMA_VERSION,
+    contractVersion: CONTROL_PLANE_CONTRACT_VERSION,
+    identity,
+    operation: { descriptor, input },
+    timing,
+    evidencePolicy,
+  }
+  const computed = hashCanonical(port, canonicalEnvelopePayload(withoutHash))
+  if (computed !== value.envelopeHash) contractError('CONTRACT_HASH_MISMATCH', 'execution envelope')
+  const envelope = deepFreeze({ ...withoutHash, envelopeHash: value.envelopeHash })
+  assertEnvelopeSize(envelope)
+  return envelope
+}
+
+export function serializeControlPlaneExecutionEnvelope(
+  value: unknown,
+  registryInput: unknown,
+  port: ControlPlaneHashPort,
+): string {
+  return canonicalEnvelope(validateControlPlaneExecutionEnvelope(value, registryInput, port))
 }

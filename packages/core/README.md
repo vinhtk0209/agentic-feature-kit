@@ -71,6 +71,19 @@ artifact proves an adapter is installed or a worker exists. Execution envelopes,
 identity, state/replay, signing, persistence, APIs, worker processes, and provider distribution are
 not implemented in A2A and remain disabled.
 
+### Unsigned execution envelope (P17-014 A2B)
+
+The same module now creates and validates one exact, content-addressed execution envelope. It binds
+tenant and P17-015-compatible identity references to one canonical A2A descriptor/input, canonical
+lease/deadline timestamps, and a metadata-only P17-015 evidence policy. Identity UUIDs are lowercase,
+attempt lineage is self-consistent, repository identity cannot diverge from an operation input, and
+the fully serialized envelope is bounded to 256 KiB.
+
+`serializeControlPlaneExecutionEnvelope` is the sole canonical full-envelope serializer for the
+future A3 signing boundary. A2B does not contain a signature, key, nonce, clock read, state machine,
+lease operation, P17-015 lookup/write, persistence, network, runtime adapter, or availability claim.
+The validated value grants no execution authority by itself.
+
 ## Semantic Specification
 
 `src/semantic-spec.ts` converts source-backed acceptance criteria into schema `1.0.0` while keeping
