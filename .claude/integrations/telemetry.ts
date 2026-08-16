@@ -120,7 +120,7 @@ async function rpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {
 }
 
 type VerifyResult =
-  | { valid: true; owner: string; runs_used: number; max_runs: number | null }
+  | { valid: true; runs_used: number; max_runs: number | null }
   | { valid: false; reason: string };
 
 // Returns the intended exit code instead of calling process.exit() directly.
@@ -149,7 +149,7 @@ async function verify(runId: string): Promise<number> {
   if (result.valid === true) {
     const quota =
       result.max_runs === null ? "unlimited" : `${result.runs_used}/${result.max_runs}`;
-    console.log(`✅ Token valid — ${result.owner} (runs: ${quota})`);
+    console.log(`✅ Token valid (runs: ${quota})`);
     // Announce the version that is actually running to the sidecar (step0). This is the single
     // version source (resolveKitVersion → PROMPT_VERSION). It preserves the value a future
     // tenant-safe run-version writer will use and flags to the sidecar that this run emits markers

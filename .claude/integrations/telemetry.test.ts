@@ -152,6 +152,7 @@ test('verify — valid token → exits 0', () => {
   const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'valid' });
   assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
   assert(r.stdout.includes('✅'), 'stdout should show valid checkmark');
+  assert(!r.stdout.toLowerCase().includes('owner'), 'valid verifier response is bounded and must not expose owner identity');
   assert(r.stdout.includes('"kitVersion":"3.25.0"'), 'the telemetry marker must expose canonical PROMPT_VERSION N.N.0');
 });
 

@@ -34,7 +34,7 @@ const FAIL = process.env.MOCK_FETCH_FAIL === '1';
     const body =
       MOCK_VERIFY === 'invalid' ? { valid: false, reason: 'invalid_token' }
       : MOCK_VERIFY === 'quota'  ? { valid: false, reason: 'quota_exceeded' }
-      : { valid: true, owner: 'tester', runs_used: 1, max_runs: 5 };
+      : { valid: true, runs_used: 1, max_runs: 5 };
     return { ok: true, json: async () => body, text: async () => JSON.stringify(body) };
   }
 

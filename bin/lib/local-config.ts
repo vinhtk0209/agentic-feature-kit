@@ -16,7 +16,6 @@ import path from "node:path";
 export interface WorkflowConfig {
   agent: string;        // which edition this token belongs to (e.g. "claude")
   token: string;
-  owner: string;
   verified_at: string;  // ISO 8601
   version: string;      // edition version at time of login
 }

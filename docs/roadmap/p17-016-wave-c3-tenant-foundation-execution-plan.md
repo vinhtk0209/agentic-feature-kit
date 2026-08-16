@@ -113,6 +113,13 @@ foundation preflight:
   is authentication-only and cannot create `TrustedTenantContext`, membership, consent, grant,
   credential binding, nonce, sink capability, or receipt.
 
+The same C3B source checkpoint removes the legacy owner dependency from `bin/workflow.ts`,
+`bin/lib/local-config.ts`, and `.claude/integrations/telemetry.ts`, updates the hermetic telemetry
+mock/test, and registers a fail-closed kit consumer validator. New verification results, logs, and
+saved configs contain no raw owner field. Historical pre-C3 local config files may still contain an
+unused extra owner property until a later retention/deletion workflow rewrites or removes them;
+C3B neither reads nor displays that property and does not claim historical local-data purge.
+
 The migration then creates the five reviewed closed tables: tenants, memberships, processing
 grants, credential bindings, and attestation nonces. All enable and force RLS and grant no direct
 table access to application roles. It adds the seven nullable quarantine fields and exact shape
