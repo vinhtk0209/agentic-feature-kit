@@ -99,6 +99,21 @@ outcomes. A2C does not create that retry or prove P17-015 references; A2D owns b
 Signing and durable journal behavior remain A3, and persistence, authorization, APIs, workers, UI,
 and remote execution remain later privacy-gated slices.
 
+### P17-015 progress composition (P17-014 A2D)
+
+`src/control-plane-progress.ts` closes the pure A2 layer without importing the Node-backed P17-015
+runtime. It accepts a type-only ledger-view port; tests and later application adapters compose that
+port with the real `buildProgressTaskView` validator. This preserves P17-015 as the sole binding,
+event-chain, evidence, and retry-lineage authority while keeping emitted Control Plane code free of
+platform imports.
+
+A tenant-bound content-addressed mapping explicitly joins the A2B repository UUID to the configured
+P17-015 repo slug. Binding proofs match all shared identity, retention, current-attempt, state, and
+event-tail fields. Receipt proofs require the exact terminal tail and evidence hash set. Retry proofs
+call the A2C recovery decision, preserve the entire validated ledger prefix, and bind exactly one
+queued `retry_started` successor plus its new A2B envelope. Outputs contain hashes and bounded IDs
+only; they do not append progress, persist tenant ownership, sign content, or dispatch work.
+
 ## Semantic Specification
 
 `src/semantic-spec.ts` converts source-backed acceptance criteria into schema `1.0.0` while keeping
