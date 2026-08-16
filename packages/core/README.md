@@ -58,7 +58,7 @@ and never writes files. Supported modes are `create-envelope`, `validate-envelop
 and `compare-golden`. Provider skills remain thin and cannot redefine ordering, gates, evidence,
 or completion semantics.
 
-## Control Plane pure contracts (P17-014 A2A)
+## Control Plane pure contracts (P17-014 A2A–A2C)
 
 `src/control-plane.ts` defines the closed four-operation registry, opaque bounded operation inputs,
 hard resource-budget profiles, and explicit worker capability manifest used by later P17-014 slices.
@@ -83,6 +83,21 @@ the fully serialized envelope is bounded to 256 KiB.
 future A3 signing boundary. A2B does not contain a signature, key, nonce, clock read, state machine,
 lease operation, P17-015 lookup/write, persistence, network, runtime adapter, or availability claim.
 The validated value grants no execution authority by itself.
+
+### Task state, lease, cancellation, receipt, and recovery (P17-014 A2C)
+
+`src/control-plane-state.ts` is a separate pure domain module around the immutable A2B envelope. It
+discriminates definition approval from runtime approval, enforces expected-resource-version CAS,
+records at most one active envelope lease, bounds heartbeat renewal to 15 seconds and the envelope
+deadline, and models cooperative cancellation without treating disconnect as cancellation.
+
+Receipts contain only canonical identity and hashes. Exact replay is idempotent; conflicting, late,
+or cancel-losing success receipts cannot mutate state and are returned as closed conflict/quarantine
+decisions. Expiry recovery can reclaim an unstarted lease, route a stored receipt, recommend a new
+P17-015 attempt for started read-only work, or require manual recovery for unknown/side-effecting
+outcomes. A2C does not create that retry or prove P17-015 references; A2D owns binding and lineage.
+Signing and durable journal behavior remain A3, and persistence, authorization, APIs, workers, UI,
+and remote execution remain later privacy-gated slices.
 
 ## Semantic Specification
 
