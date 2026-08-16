@@ -195,6 +195,8 @@ flowchart TB
 | Registry/envelope domain | `claude-workflow-kit/packages/core/src/control-plane.ts` | exact operation types, hashes, registry, capability manifests, and unsigned execution envelope |
 | State/replay domain | `claude-workflow-kit/packages/core/src/control-plane-state.ts` | pure task state, CAS, lease, heartbeat, cancel, receipt, replay, quarantine, and recovery decisions |
 | Progress composition domain | `claude-workflow-kit/packages/core/src/control-plane-progress.ts` | tenant-bound repository mapping plus P17-015 binding, projection, receipt-tail/evidence, and linear-retry proofs through an injected port |
+| Detached-signing domain | `claude-workflow-kit/packages/core/src/control-plane-signing.ts` | domain-separated A2B envelope and A2C receipt signature metadata, canonical bytes, and pure signer/verifier composition |
+| Node Ed25519 adapter | `claude-workflow-kit/packages/core/src/control-plane-signing-node.ts` | explicit real Ed25519 generation/sign/verify mechanics with a closure-local private key and public SPKI output |
 | Existing operation domains | `packages/core/src/project-intelligence.ts`, `workflow-orchestrator.ts` | real provider-neutral operation behavior and phase contracts |
 | Progress domain | `packages/core/src/cross-machine-progress.ts` | run/attempt/event/evidence identity and transitions |
 | Application ports | future kit shared-core modules | clock, signer/verifier, nonce, repository, journal, progress, executor interfaces |

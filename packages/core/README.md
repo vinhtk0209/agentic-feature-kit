@@ -114,6 +114,24 @@ call the A2C recovery decision, preserve the entire validated ledger prefix, and
 queued `retry_started` successor plus its new A2B envelope. Outputs contain hashes and bounded IDs
 only; they do not append progress, persist tenant ownership, sign content, or dispatch work.
 
+### Detached envelope and receipt signing (P17-014 A3A)
+
+`src/control-plane-signing.ts` adds a pure detached-signature boundary over the A2-owned canonical
+serializers. Envelope signatures use only `serializeControlPlaneExecutionEnvelope`; receipt
+signatures use the A2C-owned `serializeControlPlaneExecutionReceipt`. Fixed-key signing bytes carry
+distinct envelope/receipt domains plus exact tenant, signer, key version, signing time, and payload
+hash metadata. They never embed or rewrite the payload.
+
+The pure module accepts injected signer, verifier, and hash ports. It rejects structural, metadata,
+encoding, payload, cross-protocol, and port failures with closed errors. Receipt signer identity must
+equal the immutable envelope machine. A valid signature proves only possession over exact bytes; it
+does not authorize a key, tenant, operation, or execution.
+
+`src/control-plane-signing-node.ts` is the isolated real Ed25519 adapter. It exposes a public SPKI
+key and a signer closure, never a private-key property. Request freshness, authorized key sets, and
+durable execution state remain later A3 slices; persistence, API, worker, UI, and distribution remain
+disabled.
+
 ## Semantic Specification
 
 `src/semantic-spec.ts` converts source-backed acceptance criteria into schema `1.0.0` while keeping
