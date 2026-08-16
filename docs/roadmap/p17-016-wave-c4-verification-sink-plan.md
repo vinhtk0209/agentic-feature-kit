@@ -244,6 +244,27 @@ C4A exits only after its validator is RED then GREEN, predecessor C1/C2/C3 and B
 the full kit suite passes, the exact source/evidence manifests and hooks pass, and the local commits
 read back clean. C4B may start only after that closeout.
 
+## C4D disposable execution status — 2026-08-16
+
+C4D is proven in source on the digest-pinned PostgreSQL 17.11 engine. The isolated runner applied
+exact `0018` then `0019`, composed the real C4C bridge with the C4B tenant crypto, foundation
+repository, and verification sink, and passed all 17 locked scenarios across two synthetic tenants.
+The proof covered write, replay, conflicting replay, both concurrency modes, cross-tenant same-run
+isolation, stale-credential refusal in both application and database layers, exact 30-day retention,
+direct table/RPC privilege denial, non-empty rollback refusal, empty rollback, forward-again, and
+rollback privilege-drift refusal.
+
+The source registries therefore label only `kit.verification.record` and
+`dashboard.privacy.verification-sink-rpc` as `capability_ready`. This means disposable source
+composition is verified; it does not mean live availability. The default kit CLI still takes the
+two B2B blocked receipt paths, the live migrations are not applied, no tenant/key/grant bootstrap
+exists in production, and the legacy `verify_records` reader and sync guard remain unchanged.
+
+The runner used a named and labelled network-none tmpfs container, reported
+`liveProjectTouched=false` and `functionBodiesPersisted=false`, and removed the environment after
+the run. The only H1 function-definition input is a transient workspace `_tmp` fixture; it is never
+stored in either repository or evidence and must be deleted after the exact-SHA C4D proof.
+
 ## Non-claims
 
 C4A does not claim a central sink exists, the verification writer is capability-ready, migration

@@ -23,7 +23,7 @@ const PROHIBITED = [
 ]
 const WAVES = ['B2', 'B3', 'B4', 'C3', 'C4', 'none']
 const DISPOSITIONS = [
-  'adapter_planned', 'deferred_identity', 'external_transport', 'fail_closed', 'local_only_required',
+  'adapter_planned', 'capability_ready', 'deferred_identity', 'external_transport', 'fail_closed', 'local_only_required',
   'local_store_required', 'migration_blocked', 'test_only',
 ]
 
@@ -100,12 +100,18 @@ function walk(root: string, relative: string, files: Map<string, string>): void 
 }
 
 function discover(files: Map<string, string>): string[] {
+  const hasVerificationCapability = [...files.values()].some((source) =>
+    source.includes('import { VERIFICATION_WRITER_ID }')
+      && source.includes('export async function executeVerificationWrite'))
   return [...files.entries()].filter(([, source]) => {
     const centralRestMutation = source.includes('/rest/v1/')
       && (source.includes('method: "POST"') || source.includes("method: 'POST'") || source.includes('method,'))
       && source.includes('body: JSON.stringify')
     const localOperatorMutation = source.includes("http://127.0.0.1:4001/p2/execute")
-    const failClosedVerificationAdapter = source.includes("export const VERIFICATION_WRITER_ID = 'kit.verification.record'")
+    const verificationCapability = source.includes('import { VERIFICATION_WRITER_ID }')
+      && source.includes('export async function executeVerificationWrite')
+    const failClosedVerificationAdapter = !hasVerificationCapability
+      && source.includes("export const VERIFICATION_WRITER_ID = 'kit.verification.record'")
       && source.includes('export function createBlockedVerificationReceipt')
     const failClosedRunVersionAdapter = source.includes("export const RUN_VERSION_WRITER_ID = 'kit.telemetry.central-upsert'")
       && source.includes('export function createBlockedRunVersionReceipt')
@@ -113,6 +119,7 @@ function discover(files: Map<string, string>): string[] {
       && source.includes('export function createBlockedInstallReceipt')
     return centralRestMutation
       || localOperatorMutation
+      || verificationCapability
       || failClosedVerificationAdapter
       || failClosedRunVersionAdapter
       || failClosedInstallAdapter
@@ -127,6 +134,22 @@ function main(): void {
   assert.equal(schema.additionalProperties, false)
   assert.equal((schema.$defs as JsonObject).entry && ((schema.$defs as JsonObject).entry as JsonObject).additionalProperties, false)
   assert.deepEqual(validateRegistry(registry, root), [])
+  const verification = (registry.entries as JsonObject[]).find((entry) => entry.id === 'kit.verification.record')
+  assert.deepEqual(verification && {
+    sourcePath: verification.sourcePath,
+    sourceAnchor: verification.sourceAnchor,
+    currentPrivacyState: verification.currentPrivacyState,
+    targetWave: verification.targetWave,
+    disposition: verification.disposition,
+    rationaleCode: verification.rationaleCode,
+  }, {
+    sourcePath: '.claude/integrations/verification-writer-capability.ts',
+    sourceAnchor: 'export async function executeVerificationWrite(input: unknown): Promise<CentralWriterResult> {',
+    currentPrivacyState: 'contract_validated',
+    targetWave: 'C4',
+    disposition: 'capability_ready',
+    rationaleCode: 'disposable_verified_default_runtime_blocked',
+  })
 
   const files = new Map<string, string>()
   for (const relative of ['.claude/integrations', 'scripts', 'bin']) walk(root, relative, files)

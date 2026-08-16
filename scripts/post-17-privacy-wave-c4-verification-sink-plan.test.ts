@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const kitRoot = path.resolve(__dirname, '..')
+const kitRoot = process.cwd()
 const workspaceRoot = path.resolve(kitRoot, '..')
 const dashboardRoot = path.join(workspaceRoot, 'kit-dashboard')
 const planPath = path.join(

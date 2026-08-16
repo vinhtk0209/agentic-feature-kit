@@ -86,6 +86,7 @@
         "disposition": {
           "enum": [
             "adapter_planned",
+            "capability_ready",
             "deferred_identity",
             "external_transport",
             "fail_closed",

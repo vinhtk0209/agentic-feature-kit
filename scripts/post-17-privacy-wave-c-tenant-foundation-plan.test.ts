@@ -83,7 +83,7 @@ assert.deepEqual(task.readiness.missing, [])
 for (const [id, state, disposition, rationale] of [
   ['kit.sync.install-report', 'contract_validated', 'fail_closed', 'tenant_attestation_and_sink_unavailable'],
   ['kit.telemetry.central-upsert', 'contract_validated', 'fail_closed', 'tenant_attestation_and_sink_unavailable'],
-  ['kit.verification.record', 'contract_validated', 'fail_closed', 'tenant_attestation_and_sink_unavailable'],
+  ['kit.verification.record', 'contract_validated', 'capability_ready', 'disposable_verified_default_runtime_blocked'],
   ['kit.bin.platform-rpc', 'legacy_raw', 'migration_blocked', 'generic_rpc_mixes_reads_and_verify_side_effects'],
   ['kit.telemetry.central-insert', 'legacy_raw', 'migration_blocked', 'legacy_usage_shape_has_no_exact_policy_family'],
   ['kit.telemetry.token-rpc', 'legacy_raw', 'migration_blocked', 'external_rpc_contract_and_tenant_resolution_are_missing'],
@@ -93,9 +93,19 @@ for (const [id, state, disposition, rationale] of [
   assert.deepEqual(
     [entry.currentPrivacyState, entry.disposition, entry.rationaleCode],
     [state, disposition, rationale],
-    `unexpected pre-C1 registry truth for ${id}`,
+    `unexpected C1-origin registry transition for ${id}`,
   )
 }
+
+const verificationRecordSource = fs.readFileSync(
+  path.join(root, '.claude', 'integrations', 'record-verify.ts'),
+  'utf8',
+)
+assert.equal(
+  (verificationRecordSource.match(/const receipt = createVerificationWriterReceipt\(note\);/g) ?? []).length,
+  2,
+  'C4 capability transition must preserve both default B2B-blocked CLI paths',
+)
 
 for (const evidence of [
   'post-17-privacy-b2a-input-lock-2026-08-15.md',

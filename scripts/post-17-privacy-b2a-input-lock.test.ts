@@ -92,7 +92,7 @@ assert.doesNotMatch(normalized, /production writers? (is|are|was|were) converted
 const expectedRegistry = new Map([
   ['kit.sync.install-report', ['B2', 'fail_closed', 'tenant_attestation_and_sink_unavailable']],
   ['kit.telemetry.central-upsert', ['B2', 'fail_closed', 'tenant_attestation_and_sink_unavailable']],
-  ['kit.verification.record', ['B2', 'fail_closed', 'tenant_attestation_and_sink_unavailable']],
+  ['kit.verification.record', ['C4', 'capability_ready', 'disposable_verified_default_runtime_blocked']],
   ['kit.bin.platform-rpc', ['B2', 'migration_blocked', 'generic_rpc_mixes_reads_and_verify_side_effects']],
   ['kit.telemetry.central-insert', ['B2', 'migration_blocked', 'legacy_usage_shape_has_no_exact_policy_family']],
   ['kit.telemetry.token-rpc', ['B2', 'migration_blocked', 'external_rpc_contract_and_tenant_resolution_are_missing']],
@@ -104,9 +104,19 @@ for (const [id, expected] of expectedRegistry) {
   assert.deepEqual(
     [entry.targetWave, entry.disposition, entry.rationaleCode],
     expected,
-    `B2 registry contract drifted for ${id}`,
+    `B2-origin registry transition drifted for ${id}`,
   )
 }
+
+const verificationRecordSource = fs.readFileSync(
+  path.join(root, '.claude', 'integrations', 'record-verify.ts'),
+  'utf8',
+)
+assert.equal(
+  (verificationRecordSource.match(/const receipt = createVerificationWriterReceipt\(note\);/g) ?? []).length,
+  2,
+  'C4 capability transition must preserve both default B2B-blocked CLI paths',
+)
 
 assert.match(normalizedPlan, /B2A input contract is locked by `p17-016-wave-b2a-input-lock\.md`/)
 assert.match(normalizedPlan, /B2B implements only `kit\.verification\.record`/)
