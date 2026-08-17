@@ -1,11 +1,112 @@
 # Changelog
 
-All notable changes to **feature-from-confluence-kit** are documented here.
+All notable changes to **Agentic Feature Kit** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Version numbers track `PROMPT_VERSION` in `.claude/commands/feature-from-confluence.md`
 (the source of truth). `npm run version:check` asserts consistency across all stamps.
 
+Source version authority, Git tags, and GitHub Releases are separate facts.
+Numeric Git tags exist for v3.17 and v3.18 only. No GitHub Releases exist as of 2026-08-17.
+Entries from 3.19.0 through 3.25.0 document source milestones; they do not claim that an artifact
+was published.
+
 ---
+
+## [Unreleased]
+
+Changes after the v3.25 source milestone are collected here until a later release decision.
+
+### Added
+
+- Provider-neutral shared capabilities and deterministic bundles for Codex, Claude Code, and
+  GitHub Copilot, with explicit bundle and shared-core version authorities.
+- Typed multi-provider routing, orchestration, transport, evidence, control-plane, privacy, tenant,
+  and writer-adapter contracts with fail-closed tests.
+- A public-entry and governance surface covering provider selection, contribution, support,
+  security reporting, community conduct, issue forms, and pull request evidence.
+- A Git-index-bound public-release manifest and no-plaintext internal-marker disposition registry.
+
+### Changed
+
+- Cross-platform Linux and Windows qualification now emits digest-bound artifacts and a fail-closed
+  aggregate verdict for qualified pull request heads.
+- Post-17 roadmap decisions, inputs, implementation slices, and evidence are tracked as distinct
+  authorities rather than being inferred from version strings.
+
+### Security
+
+- Public-release eligibility remains blocked by 31 unresolved marker dispositions plus deferred
+  supply-chain, nightly, and clean-clone gates. This section is not a release-readiness claim.
+
+## [3.25.0] — 2026-07-16
+
+**Status:** Untagged version milestone; no GitHub Release.
+**Source commit:** `a6d118d1b95962ff41c6db035d76f49136649d77`
+
+### Changed
+
+- Reduced the AA.4 Playwright token warning threshold from 24 hours to 6 hours and locked the
+  measurement-layer environment design, stamps, and regression lesson to the same authority.
+
+## [3.24.0] — 2026-07-13
+
+**Status:** Untagged version milestone; no GitHub Release.
+**Source commit:** `a52260be905dd72089b9ee7e9b707e6c44b29f67`
+
+### Added
+
+- Added Tier B measurement-layer token preflight, data-reached evidence, and bounded wait behavior
+  so environment readiness fails closed instead of relying on elapsed time alone.
+
+## [3.23.0] — 2026-07-12
+
+**Status:** Untagged version milestone; no GitHub Release.
+**Source commit:** `c324caf5feb8e4137c2493b319ef5e6bf37abb5f`
+
+### Fixed
+
+- Made the B11 runner exit gate include the Playwright verdict, preventing a downstream record from
+  reporting success when browser verification failed.
+
+## [3.22.0] — 2026-07-12
+
+**Status:** Untagged version milestone; no GitHub Release.
+**Source commit:** `e853b41c8ae754e1e6d29948061143ebdd2e1527`
+
+### Fixed
+
+- Split content-hash inputs into code-path and specification-name authorities so verification binds
+  the intended source without conflating two identities.
+
+## [3.21.0] — 2026-07-12
+
+**Status:** Untagged version milestone; no GitHub Release.
+**Source commit:** `9a72054f4388590ffcbb27fd7721f4fc51087b42`
+
+### Added
+
+- Wired `record-verify` capture into B11 and added the concrete pre-commit verification command so a
+  successful workflow can produce an auditable verification record.
+
+## [3.20.0] — 2026-07-12
+
+**Status:** Untagged version milestone; no GitHub Release.
+**Source commit:** `3e55521ced24e1b72a2d49484929366a67a2084c`
+
+### Changed
+
+- Consolidated D-cross-2 U.1, the forbidden B11 verify-key correction, Figma V.1/V.4 integration,
+  HR40 context finalization, and the package-version correction from 3.18.0 to 3.20.0.
+
+## [3.19.0] — 2026-07-11
+
+**Status:** Untagged version milestone; no GitHub Release.
+**Source commit:** `f5fb28187b1d4249c3afbb06b7319a6c35fcc53c`
+
+### Changed
+
+- Completed the D-cross-2 ENHANCE reconciliation and HR39 coverage, with all 19 reconciliation
+  checks passing at the source milestone.
 
 ## [3.18.0] — 2026-06-30
 

@@ -4,6 +4,7 @@
  */
 import {
   parseCommit, validateCommitMessage, groupCommits, suggestBump, bumpVersion, renderSection,
+  commitSubjects, insertSection, parseArgs, resolveSectionVersion,
 } from './changelog';
 
 let passed = 0; let failed = 0;
@@ -11,6 +12,15 @@ function test(name: string, fn: () => void) {
   try { fn(); passed += 1; console.log(`✅ ${name}`); } catch (e) { failed += 1; console.log(`❌ ${name}\n     ${(e as Error).message}`); }
 }
 function assert(c: boolean, m: string) { if (!c) throw new Error(m); }
+function expectThrows(fn: () => void, expected: RegExp, message: string) {
+  try {
+    fn()
+  } catch (error) {
+    assert(expected.test((error as Error).message), `${message}: ${(error as Error).message}`)
+    return
+  }
+  throw new Error(`${message}: did not throw`)
+}
 
 test('parseCommit parses type/scope/breaking/description', () => {
   const c = parseCommit('feat(runner): add queue support')!;
@@ -63,6 +73,61 @@ test('renderSection emits Keep-a-Changelog markdown in section order', () => {
   assert(md.startsWith('## [3.18.0] — 2026-06-27'), 'header')
   assert(md.indexOf('### Added') < md.indexOf('### Fixed'), 'Added before Fixed')
   assert(md.includes('- a') && md.includes('- b'), 'items present')
+})
+
+test('Unreleased is the default section and never receives a date', () => {
+  assert(resolveSectionVersion(undefined) === 'Unreleased', 'default target')
+  const md = renderSection('Unreleased', '2026-08-17', groupCommits(['feat: candidate']))
+  assert(md.startsWith('## [Unreleased]\n'), 'undated Unreleased heading')
+  assert(!md.includes('Unreleased] —'), 'no date on Unreleased')
+})
+
+test('explicit versions require canonical semantic version syntax', () => {
+  assert(resolveSectionVersion('4.0.0') === '4.0.0', 'canonical semver accepted')
+  for (const invalid of ['v4.0.0', '4.0', '04.0.0', '4.0.0-beta.1', '4.0.0; echo unsafe', '']) {
+    expectThrows(() => resolveSectionVersion(invalid), /semantic version/i, `reject ${JSON.stringify(invalid)}`)
+  }
+})
+
+test('CLI parsing rejects missing, duplicate, and unknown values before writes', () => {
+  const parsed = parseArgs(['--since', 'v3.18', '--version', '4.0.0', '--write'])
+  assert(parsed.since === 'v3.18' && parsed.version === '4.0.0' && parsed.write === true, JSON.stringify(parsed))
+  expectThrows(() => parseArgs(['--version']), /requires a value/i, 'missing version')
+  expectThrows(() => parseArgs(['--version', '4.0.0', '--version', '4.0.1']), /duplicate/i, 'duplicate version')
+  expectThrows(() => parseArgs(['--publish']), /unknown option/i, 'unknown option')
+  expectThrows(() => parseArgs(['--since', '-n1']), /Git revision/i, 'Git option injection')
+})
+
+test('Git log receives operator input as one literal argv element', () => {
+  const since = 'v3.18; echo never-executed'
+  let received: string[] = []
+  const subjects = commitSubjects(since, (args) => {
+    received = [...args]
+    return 'feat: safe subject\n'
+  })
+  assert(JSON.stringify(received) === JSON.stringify(['log', `${since}..HEAD`, '--no-merges', '--format=%s']), JSON.stringify(received))
+  assert(JSON.stringify(subjects) === JSON.stringify(['feat: safe subject']), JSON.stringify(subjects))
+})
+
+test('section insertion preserves Unreleased-first ordering', () => {
+  const existing = '# Changelog\n\n---\n\n## [Unreleased]\n\n- Pending.\n\n## [3.25.0] — 2026-07-16\n\n- Old.\n'
+  const released = renderSection('4.0.0', '2026-08-17', groupCommits(['feat: release']))
+  const next = insertSection(existing, released, '4.0.0')
+  assert(next.indexOf('## [Unreleased]') < next.indexOf('## [4.0.0]'), 'Unreleased remains first')
+  assert(next.indexOf('## [4.0.0]') < next.indexOf('## [3.25.0]'), 'new version follows Unreleased')
+
+  const withoutUnreleased = '# Changelog\n\n---\n\n## [3.25.0] — 2026-07-16\n\n- Old.\n'
+  const pending = renderSection('Unreleased', '2026-08-17', groupCommits(['fix: pending']))
+  const withUnreleased = insertSection(withoutUnreleased, pending, 'Unreleased')
+  assert(withUnreleased.indexOf('## [Unreleased]') < withUnreleased.indexOf('## [3.25.0]'), 'new Unreleased is first')
+})
+
+test('duplicate headings fail closed without changing the input', () => {
+  const existing = '# Changelog\n\n## [Unreleased]\n\n- Existing.\n'
+  const original = existing
+  const duplicate = renderSection('Unreleased', '2026-08-17', groupCommits(['feat: duplicate']))
+  expectThrows(() => insertSection(existing, duplicate, 'Unreleased'), /already exists/i, 'duplicate Unreleased')
+  assert(existing === original, 'input remains unchanged')
 })
 
 console.log(`\n${passed} passed, ${failed} failed`);

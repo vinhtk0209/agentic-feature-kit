@@ -123,8 +123,9 @@ Kit version **v3.25** is the current prompt authority and remains consistent wit
 
 A kit version does not imply that a provider bundle changed, and a bundle version does not claim
 that the complete flagship workflow was requalified. Historical missing tags are not fabricated.
-See the [changelog](CHANGELOG.md), [public-release readiness plan](docs/roadmap/p17-018-public-release-plan.md),
-and [Apache-2.0 license](LICENSE) for the current authorities. The root npm package remains private;
+See the [changelog](CHANGELOG.md), [current unreleased notes](docs/releasing/UNRELEASED.md),
+[public-release readiness plan](docs/roadmap/p17-018-public-release-plan.md), and
+[Apache-2.0 license](LICENSE) for the current authorities. The root npm package remains private;
 source-release readiness is separate from package distribution.
 
 ## Security and data boundaries
@@ -145,8 +146,8 @@ source-release readiness is separate from package distribution.
 - Provider bundles expose the shared capabilities listed here, not the entire legacy flagship.
 - Optional source connectors need their own configuration and are not required for local inputs.
 - Root package visibility remains private, and no package-distribution path is enabled.
-- Dependency-license inventory, SBOM, nightly CI, clean-clone timing, changelog reconciliation, and
-  unresolved internal-marker dispositions remain outside this slice.
+- Dependency-license inventory, SBOM, nightly CI, clean-clone timing, and unresolved internal-marker
+  dispositions remain outside this slice.
 
 ## Documentation map
 
@@ -164,6 +165,6 @@ root entry does not duplicate their install or API contracts.
 ## Contribution and support status
 
 The repository now has bounded contribution, security, support, and community policies plus typed
-issue and pull request templates. These governance routes do not make the candidate public-release
-eligible: release notes, marker remediation, supply-chain gates, nightly qualification, and clean-
-clone evidence remain required.
+issue and pull request templates and one current unreleased-note owner. These routes do not make the
+candidate public-release eligible: marker remediation, supply-chain gates, nightly qualification,
+and clean-clone evidence remain required.

@@ -3,23 +3,22 @@
  * changelog.ts — dependency-free changelog automation (C-04).
  *
  * Generates a Keep-a-Changelog section from Conventional Commits since the last release, and
- * (with --write) prepends it to CHANGELOG.md. Intentionally NO changesets/standard-version:
- * the kit's version is the hand-edited `PROMPT_VERSION` (source of truth), so this tool
- * SUGGESTS a semver bump from the commits but uses PROMPT_VERSION as the actual version
- * unless --version is passed. That keeps the "only edit PROMPT_VERSION" rule intact.
+ * (with --write) inserts it into CHANGELOG.md. Intentionally NO changesets/standard-version:
+ * the kit's version is the hand-edited `PROMPT_VERSION` (source of truth), while this tool
+ * defaults to an Unreleased section and accepts only an explicit canonical semantic version.
  *
  * Shares its commit parser with the commit-msg hook (commit-msg.ts) — one grammar, one test.
  *
  * Usage:
  *   npx tsx scripts/changelog.ts                 # preview the next section (default --dry)
  *   npx tsx scripts/changelog.ts --since v3.17   # range from a git ref
- *   npx tsx scripts/changelog.ts --write         # prepend the section to CHANGELOG.md
+ *   npx tsx scripts/changelog.ts --write         # insert a new Unreleased section
  *   npx tsx scripts/changelog.ts --version 3.19.0 --write
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 // ─── Conventional-commit grammar (shared with commit-msg.ts) ─────────────────────
 
@@ -95,7 +94,11 @@ export function bumpVersion(version: string, bump: 'major' | 'minor' | 'patch'):
 }
 
 export function renderSection(version: string, date: string, groups: Record<string, string[]>): string {
-  const lines = [`## [${version}] — ${date}`, ''];
+  const validatedVersion = version === 'Unreleased' ? version : resolveSectionVersion(version);
+  const heading = validatedVersion === 'Unreleased'
+    ? '## [Unreleased]'
+    : `## [${validatedVersion}] — ${date}`;
+  const lines = [heading, ''];
   let any = false;
   for (const section of SECTION_ORDER) {
     const items = groups[section];
@@ -107,6 +110,56 @@ export function renderSection(version: string, date: string, groups: Record<stri
   }
   if (!any) lines.push('_No notable changes._', '');
   return lines.join('\n');
+}
+
+/** Resolve the section target without turning the current source version into a release claim. */
+export function resolveSectionVersion(explicitVersion: string | undefined): string {
+  if (explicitVersion === undefined) return 'Unreleased';
+  if (!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(explicitVersion)) {
+    throw new Error(`Explicit version must be a canonical semantic version (MAJOR.MINOR.PATCH): ${JSON.stringify(explicitVersion)}`);
+  }
+  return explicitVersion;
+}
+
+function versionHeadings(markdown: string): string[] {
+  return [...markdown.matchAll(/^## \[([^\]]+)\](?: — \d{4}-\d{2}(?:-\d{2})?)?\s*$/gm)]
+    .map((match) => match[1]);
+}
+
+/** Insert one validated section while preserving a single Unreleased-first authority. */
+export function insertSection(existing: string, section: string, version: string): string {
+  const target = version === 'Unreleased' ? version : resolveSectionVersion(version);
+  if (existing.includes('\r') || section.includes('\r')) throw new Error('CHANGELOG.md and generated sections must use LF line endings.');
+
+  const headings = versionHeadings(existing);
+  const seen = new Set<string>();
+  for (const heading of headings) {
+    if (seen.has(heading)) throw new Error(`Changelog heading [${heading}] already exists more than once.`);
+    seen.add(heading);
+  }
+  if (seen.has(target)) throw new Error(`Changelog heading [${target}] already exists.`);
+
+  const generatedHeadings = versionHeadings(section);
+  if (generatedHeadings.length !== 1 || generatedHeadings[0] !== target) {
+    throw new Error(`Generated section must contain exactly one [${target}] heading.`);
+  }
+
+  const firstVersion = /^## \[/m.exec(existing);
+  let insertAt = firstVersion?.index ?? existing.length;
+  if (target !== 'Unreleased') {
+    const unreleased = /^## \[Unreleased\]\s*$/m.exec(existing);
+    if (unreleased) {
+      const nextHeading = /^## \[/gm;
+      nextHeading.lastIndex = unreleased.index + unreleased[0].length;
+      insertAt = nextHeading.exec(existing)?.index ?? existing.length;
+    }
+  }
+
+  const before = existing.slice(0, insertAt).trimEnd();
+  const after = existing.slice(insertAt).trimStart();
+  return after
+    ? `${before}\n\n${section.trim()}\n\n${after.trimEnd()}\n`
+    : `${before}\n\n${section.trim()}\n`;
 }
 
 // ─── Source-of-truth version (PROMPT_VERSION) ────────────────────────────────────
@@ -125,19 +178,23 @@ export function resolvePromptVersion(root: string): string | null {
 
 // ─── Git ─────────────────────────────────────────────────────────────────────────
 
-function lastReleaseTag(): string | null {
+export type GitRunner = (args: string[]) => string;
+
+const defaultGitRunner: GitRunner = (args) => execFileSync('git', args, { encoding: 'utf8' });
+
+export function lastReleaseTag(runGit: GitRunner = defaultGitRunner): string | null {
   try {
-    const tags = execSync('git tag --sort=-creatordate', { encoding: 'utf8' }).split('\n').map((t) => t.trim());
+    const tags = runGit(['tag', '--sort=-creatordate']).split('\n').map((t) => t.trim());
     return tags.find((t) => /^v?\d+\.\d+(\.\d+)?$/.test(t)) ?? null;
   } catch {
     return null;
   }
 }
 
-function commitSubjects(since: string | null): string[] {
+export function commitSubjects(since: string | null, runGit: GitRunner = defaultGitRunner): string[] {
   try {
     const range = since ? `${since}..HEAD` : 'HEAD';
-    const out = execSync(`git log ${range} --no-merges --format=%s`, { encoding: 'utf8' });
+    const out = runGit(['log', range, '--no-merges', '--format=%s']);
     return out.split('\n').map((s) => s.trim()).filter(Boolean);
   } catch {
     return [];
@@ -146,58 +203,104 @@ function commitSubjects(since: string | null): string[] {
 
 // ─── CLI ─────────────────────────────────────────────────────────────────────────
 
-function parseArgs(argv: string[]): Record<string, string | boolean> {
-  const out: Record<string, string | boolean> = {};
+export interface ChangelogArgs {
+  since?: string;
+  version?: string;
+  write?: true;
+}
+
+/** Parse only the supported CLI shape so malformed input fails before any file write. */
+export function parseArgs(argv: string[]): ChangelogArgs {
+  const out: ChangelogArgs = {};
+  const seen = new Set<string>();
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
-    if (a.startsWith('--')) {
-      const k = a.slice(2);
-      const n = argv[i + 1];
-      if (n && !n.startsWith('--')) { out[k] = n; i += 1; } else { out[k] = true; }
+    if (!a.startsWith('--')) throw new Error(`Unexpected positional argument: ${JSON.stringify(a)}`);
+    const key = a.slice(2);
+    if (!['since', 'version', 'write'].includes(key)) throw new Error(`Unknown option: --${key}`);
+    if (seen.has(key)) throw new Error(`Duplicate option: --${key}`);
+    seen.add(key);
+
+    if (key === 'write') {
+      out.write = true;
+      continue;
     }
+
+    const value = argv[i + 1];
+    if (!value || value.startsWith('--')) throw new Error(`Option --${key} requires a value.`);
+    if (/[\0\r\n]/.test(value)) throw new Error(`Option --${key} contains a forbidden control character.`);
+    if (key === 'since') {
+      if (value.startsWith('-')) throw new Error('Option --since must be a Git revision, not a Git option.');
+      out.since = value;
+    } else {
+      out.version = resolveSectionVersion(value);
+    }
+    i += 1;
+  }
+  if (out.since === '') {
+    throw new Error('Option --since requires a value.');
+  }
+  if (out.version === '') {
+    throw new Error('Option --version requires a value.');
   }
   return out;
 }
 
-if (process.argv[1] && /changelog\.ts$/.test(process.argv[1].replace(/\\/g, '/'))) {
+function failCli(error: unknown): never {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`Changelog generation failed: ${message}`);
+  process.exit(2);
+}
+
+function main(): void {
   const root = process.cwd();
-  const args = parseArgs(process.argv.slice(2));
-  const since = typeof args.since === 'string' ? args.since : lastReleaseTag();
+  let args: ChangelogArgs;
+  try {
+    args = parseArgs(process.argv.slice(2));
+  } catch (error) {
+    failCli(error);
+  }
+
+  const since = args.since ?? lastReleaseTag();
   const subjects = commitSubjects(since);
 
   if (subjects.length === 0) {
-    console.error(`No commits found${since ? ` since ${since}` : ''}. Nothing to release.`);
+    console.error(`No commits found${since ? ` since ${since}` : ''}. Nothing to record.`);
     process.exit(1);
   }
 
   const groups = groupCommits(subjects);
   const bump = suggestBump(subjects);
   const prompt = resolvePromptVersion(root);
-  const version = typeof args.version === 'string'
-    ? args.version
-    : (prompt ?? bumpVersion('0.0.0', bump));
+  const version = resolveSectionVersion(args.version);
   const date = new Date().toISOString().slice(0, 10);
   const section = renderSection(version, date, groups);
 
   console.log(`\nRange: ${since ? `${since}..HEAD` : 'all history'} · ${subjects.length} commit(s)`);
   console.log(`Suggested bump (from commits): ${bump}`);
   console.log(prompt ? `PROMPT_VERSION (source of truth): ${prompt}` : 'PROMPT_VERSION: not found');
-  console.log(`Section version: ${version}\n`);
+  console.log(`Section target: ${version}\n`);
   console.log('─'.repeat(70));
   console.log(section);
   console.log('─'.repeat(70));
 
   if (args.write) {
     const file = path.join(root, 'CHANGELOG.md');
-    const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '# Changelog\n\n---\n';
-    const marker = existing.indexOf('\n## [');
-    const next = marker >= 0
-      ? existing.slice(0, marker) + '\n' + section + existing.slice(marker + 1)
-      : existing.trimEnd() + '\n\n' + section;
+    const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '# Changelog\n';
+    let next: string;
+    try {
+      next = insertSection(existing, section, version);
+    } catch (error) {
+      failCli(error);
+    }
     fs.writeFileSync(file, next, 'utf8');
-    console.log(`\n✅ Prepended the [${version}] section to CHANGELOG.md`);
-    console.log('   Review it, then commit. (Version stays PROMPT_VERSION unless you pass --version.)');
+    console.log(`\n✅ Inserted the [${version}] section into CHANGELOG.md`);
+    console.log('   Review it, then commit. No tag, release, publish, or push was performed.');
   } else {
-    console.log('\n(dry run — pass --write to prepend this to CHANGELOG.md)');
+    console.log('\n(dry run — pass --write to insert this section into CHANGELOG.md)');
   }
+}
+
+if (process.argv[1] && /changelog\.ts$/.test(process.argv[1].replace(/\\/g, '/'))) {
+  main();
 }
