@@ -1,6 +1,6 @@
 # P17-016 Wave B1 v2: Central writer boundary and coverage plan
 
-**Status:** Approved — implementation in progress
+**Status:** Approved — B1/B2A complete; B2B/B2C/B2D kit adapters implemented, broader migration pending
 **Date:** 2026-08-14
 **Roadmap task:** P17-016
 **Policy:** ADR-002 `T1/R1/C1/L1/E1`
@@ -231,8 +231,21 @@ storage is claimed until later cutover/migration waves pass.
 
 ## Next slices
 
-- B2: cut over best-effort kit telemetry/verification/install writers after their runtime context
-  and external token-RPC boundary are explicit.
+- B2A input contract is locked by `p17-016-wave-b2a-input-lock.md` as Accepted
+  `T1/R1/X1/C1/S1/L1/E1`; it adds no writer behavior or persistence.
+- B2B implements only `kit.verification.record`: one command-boundary UUID is passed unchanged,
+  local git-note proof remains, the raw central REST mutation is removed, and missing v2 tenant
+  attestation/Wave C sink returns one closed in-process receipt. No central row is claimed.
+- B2C implements only `kit.telemetry.central-upsert`: shared pure UUID/receipt validation backs a
+  thin run-version adapter, the successful legacy-auth path emits one closed in-process receipt,
+  and the raw `repo_runs` REST mutation is removed without treating auth as tenant proof. No central
+  row is claimed and the legacy insert/RPC paths remain migration-blocked.
+- B2D implements only `kit.sync.install-report`: normal sync owns one command UUID before
+  admission/write, the post-copy batch emits at most one closed receipt, and the raw `installs`
+  REST loop is removed without exposing target cardinality, repository, or version. No central row
+  is claimed; dry-run, guards, snapshots, copy, and rollback behavior remain independently tested.
+- No `adapter_planned` kit writer remains after B2D. The three legacy RPC/insert entries stay
+  `migration_blocked`, and central sink capability remains blocked until Wave C.
 - B3: add local-only compatibility state and cut over dashboard run/orchestrator evidence producers.
 - B4: complete every registry entry as converted or fail-closed before Wave C migration.
 - Wave C and later retain their own authorization, migration, rollback, and evidence gates.

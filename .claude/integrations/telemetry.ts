@@ -21,6 +21,10 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveCanonicalKitVersion } from "./kit-version";
+import {
+  createBlockedRunVersionReceipt,
+  resolveRunVersionCommandRunId,
+} from "./run-version-writer-adapter";
 
 const SUPABASE_URL = "https://vkuojxgvkxndftenrdno.supabase.co";
 const SUPABASE_ANON_KEY =
@@ -31,29 +35,15 @@ const SUPABASE_ANON_KEY =
 // version would corrupt the dashboard's provenance before any network/write path runs.
 //
 // FORMAT MUST MATCH scripts/sync-to-targets.ts `resolveTargetVersion()` exactly:
-// `major.minor` + ".0" (e.g. "3.17.0"). The dashboard compares repo_runs.last_run_version
-// (written here) with installs.kit_version (written by the sync script); diverging
-// formats would make "installed vs running" mismatch falsely. Keep both in lockstep.
+// `major.minor` + ".0" (e.g. "3.17.0"). Historical repo_runs rows and any future tenant-safe
+// writer use this format alongside installs.kit_version. P17-016 B2C pauses new repo_runs writes
+// until a tenant-attested Wave C sink exists; keep the format authority stable during that pause.
 function resolveKitVersion(): string {
   const thisFile = fileURLToPath(import.meta.url);
   const repoRoot = path.dirname(path.dirname(path.dirname(thisFile)));
   return resolveCanonicalKitVersion(repoRoot);
 }
 const KIT_VERSION = resolveKitVersion();
-
-// Resolve the repo this telemetry.ts lives in, so we can record per-repo runs.
-// Layout is always <repo>/.claude/integrations/telemetry.ts, so the repo root is
-// three dirs up. Used to upsert repo_runs (mirrors how sync writes `installs`).
-function resolveRepo(): string {
-  try {
-    const thisFile = fileURLToPath(import.meta.url);
-    const repoRoot = path.dirname(path.dirname(path.dirname(thisFile)));
-    return path.basename(repoRoot);
-  } catch {
-    return "unknown";
-  }
-}
-const REPO = resolveRepo();
 
 // The sidecar injects the actual runtime identity. Manual/legacy use remains Claude-compatible,
 // while malformed identities fail before any network request or marker can be emitted.
@@ -130,14 +120,14 @@ async function rpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {
 }
 
 type VerifyResult =
-  | { valid: true; owner: string; runs_used: number; max_runs: number | null }
+  | { valid: true; runs_used: number; max_runs: number | null }
   | { valid: false; reason: string };
 
 // Returns the intended exit code instead of calling process.exit() directly.
 // Callers must schedule process.exit() via setImmediate() so that libuv has
 // one event-loop cycle to process the server-side connection-close event
 // before we tear down the process (avoids the Windows UV_HANDLE_CLOSING assert).
-async function verify(): Promise<number> {
+async function verify(runId: string): Promise<number> {
   const token = getToken();
   if (!token) {
     console.error("❌ KIT_TOKEN not set. Add KIT_TOKEN=<your-token> to your .env.");
@@ -156,17 +146,19 @@ async function verify(): Promise<number> {
     return 0;
   }
 
-  if (result.valid) {
+  if (result.valid === true) {
     const quota =
       result.max_runs === null ? "unlimited" : `${result.runs_used}/${result.max_runs}`;
-    console.log(`✅ Token valid — ${result.owner} (runs: ${quota})`);
+    console.log(`✅ Token valid (runs: ${quota})`);
     // Announce the version that is actually running to the sidecar (step0). This is the single
-    // version source (resolveKitVersion → PROMPT_VERSION), so the dashboard's per-run kit_version
-    // can never drift from installs/repo_runs. Also flags to the sidecar that this run emits
-    // markers at all — so it can tell a measured-0 metric from an unmeasured (marker-less) run.
+    // version source (resolveKitVersion → PROMPT_VERSION). It preserves the value a future
+    // tenant-safe run-version writer will use and flags to the sidecar that this run emits markers
+    // at all — so it can tell a measured-0 metric from an unmeasured (marker-less) run.
     emitKitEvent({ type: "meta", kitVersion: KIT_VERSION, runner: RUNNER });
-    // Record this repo's running version (best-effort; never blocks verify).
-    await recordRepoRun();
+    // Trusted v2 tenant context and the Wave C sink do not exist yet. Emit one closed local
+    // compatibility receipt; never treat legacy auth success as tenant proof or central-write access.
+    const receipt = createBlockedRunVersionReceipt({ runId, createdAt: new Date().toISOString() });
+    console.log(`@@PRIVACY_RECEIPT@@ ${JSON.stringify(receipt)}`);
     return 0;
   } else {
     const msg: Record<string, string> = {
@@ -192,32 +184,6 @@ async function insert(table: string, row: Record<string, unknown>): Promise<void
   } catch (e) {
     console.error(`⚠️  telemetry ${table} skipped: ${(e as Error).message}`);
   }
-}
-
-/**
- * Best-effort upsert into a telemetry table (insert-or-update on the primary key);
- * never throws to the caller. Used for repo_runs so each repo keeps one row.
- */
-async function upsert(table: string, row: Record<string, unknown>): Promise<void> {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-      method: "POST",
-      headers: { ...headers, Prefer: "resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify(row),
-    });
-    if (!res.ok) console.error(`⚠️  telemetry ${table}: ${res.status}`);
-  } catch (e) {
-    console.error(`⚠️  telemetry ${table} skipped: ${(e as Error).message}`);
-  }
-}
-
-/** Record that THIS repo ran the kit at the current version (per-repo, upsert). */
-async function recordRepoRun(): Promise<void> {
-  await upsert("repo_runs", {
-    repo: REPO,
-    last_run_version: KIT_VERSION,
-    last_run_at: new Date().toISOString(),
-  });
 }
 
 /** Look up the caller's token_id via the verify function's side channel. */
@@ -264,7 +230,7 @@ const [cmd, ...args] = process.argv.slice(2);
   let exitCode = 0;
   switch (cmd) {
     case "verify":
-      exitCode = await verify();
+      exitCode = await verify(resolveRunVersionCommandRunId(undefined));
       break;
     case "feature":
       if (!args[0]) { console.error("usage: telemetry feature <FeatureName>"); exitCode = 2; break; }

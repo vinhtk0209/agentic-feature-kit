@@ -1,13 +1,13 @@
 {
   "schemaVersion": "1.1.0",
   "artifactId": "post-17-phase-capability-matrix",
-  "generatedOn": "2026-08-14",
+  "generatedOn": "2026-08-15",
   "approvalBasis": "Operator-authorized post-17 durable goal; P17-002 orchestrator contract is done; P17-006 implementation remains readiness-gated until this artifact passes its attack suite.",
   "sourceContracts": {
     "phaseBoundary": {
       "path": "docs/roadmap/post-17-orchestrator-boundaries.json",
       "schemaVersion": "1.0.0",
-      "sha256": "80a544bab7fcf7c56574d7ae2b5a9660221f7fc9272b75babf6f994dcb68e5ac"
+      "sha256": "5c688a72987311ba7d88bd98bf9de1434175dac5fc57c266508eb8a460a03182"
     },
     "conservationGolden": {
       "path": "docs/roadmap/post-17-orchestrator-golden.json",

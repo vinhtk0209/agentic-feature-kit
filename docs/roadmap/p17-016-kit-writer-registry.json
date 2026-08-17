@@ -31,15 +31,15 @@
     },
     {
       "id": "kit.sync.install-report",
-      "sourcePath": "scripts/sync-to-targets.ts",
-      "sourceAnchor": "async function reportInstalls(",
-      "transport": "supabase_rest",
+      "sourcePath": ".claude/integrations/install-writer-adapter.ts",
+      "sourceAnchor": "export function createBlockedInstallReceipt(input: unknown): BlockedInstallReceipt {",
+      "transport": "in_process",
       "dataFamilies": ["install_run"],
-      "currentPrivacyState": "legacy_raw",
-      "prohibitedFieldObservations": ["raw_repository"],
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
       "targetWave": "B2",
-      "disposition": "adapter_planned",
-      "rationaleCode": "install_writer_needs_tenant_context_and_opaque_repo"
+      "disposition": "fail_closed",
+      "rationaleCode": "tenant_attestation_and_sink_unavailable"
     },
     {
       "id": "kit.telemetry.central-insert",
@@ -55,15 +55,15 @@
     },
     {
       "id": "kit.telemetry.central-upsert",
-      "sourcePath": ".claude/integrations/telemetry.ts",
-      "sourceAnchor": "async function upsert(table: string, row: Record<string, unknown>): Promise<void> {",
-      "transport": "supabase_rest",
+      "sourcePath": ".claude/integrations/run-version-writer-adapter.ts",
+      "sourceAnchor": "export function createBlockedRunVersionReceipt(input: unknown): BlockedRunVersionReceipt {",
+      "transport": "in_process",
       "dataFamilies": ["install_run"],
-      "currentPrivacyState": "legacy_raw",
-      "prohibitedFieldObservations": ["raw_repository"],
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
       "targetWave": "B2",
-      "disposition": "adapter_planned",
-      "rationaleCode": "run_version_writer_needs_tenant_context_and_event_split"
+      "disposition": "fail_closed",
+      "rationaleCode": "tenant_attestation_and_sink_unavailable"
     },
     {
       "id": "kit.telemetry.token-rpc",
@@ -79,15 +79,15 @@
     },
     {
       "id": "kit.verification.record",
-      "sourcePath": ".claude/integrations/record-verify.ts",
-      "sourceAnchor": "export async function pushVerifyRecord(note: VerifyNote): Promise<void> {",
-      "transport": "supabase_rest",
+      "sourcePath": ".claude/integrations/verification-writer-capability.ts",
+      "sourceAnchor": "export async function executeVerificationWrite(input: unknown): Promise<CentralWriterResult> {",
+      "transport": "in_process",
       "dataFamilies": ["verification"],
-      "currentPrivacyState": "legacy_raw",
-      "prohibitedFieldObservations": ["raw_feature_name", "raw_path", "raw_repository"],
-      "targetWave": "B2",
-      "disposition": "adapter_planned",
-      "rationaleCode": "verification_writer_needs_uuid_run_and_opaque_identifiers"
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
+      "targetWave": "C4",
+      "disposition": "capability_ready",
+      "rationaleCode": "disposable_verified_default_runtime_blocked"
     }
   ]
 }

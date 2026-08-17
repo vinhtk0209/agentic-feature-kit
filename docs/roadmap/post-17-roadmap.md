@@ -66,16 +66,16 @@ When complete:
 | P17-006 | P1 | 3 | done | Phase-aware model selection and routing | Allows explicit quality/cost/latency routing without silent provider substitution. |
 | P17-007 | P1 | 4 | backlog | Normalized same-input provider parity | Separates action smoke from real planning/implementation parity. |
 | P17-008 | P0 | 3 | done | Installable distribution bundles | Produces validated Codex, Claude, and Copilot bundles over one shared core. |
-| P17-009 | P1 | 2 | in_progress | Cross-platform release qualification | Proves Windows and Linux behavior in CI, including paths, quoting, setup, and process cleanup. |
+| P17-009 | P1 | 2 | done | Cross-platform release qualification | Proves Windows and Linux behavior in CI, including paths, quoting, setup, and process cleanup. |
 | P17-010 | P1 | 2 | done | CLI reliability and direct integration tests | Makes malformed input and I/O failures explicit for feedback/KPI/public CLI paths. |
 | P17-011 | P1 | 2 | done | Honest isolated-worktree browser verification | Stops `infra-blocked` from being confused with verified browser behavior. |
 | P17-012 | P1 | 2 | done | Convention and stack portability audit | Gates Open edX conventions instead of treating them as universal defaults. |
 | P17-013 | P1 | 2 | done | Documentation and runtime claim audit | Detects version, parity, generated-edition, and documentation drift. |
-| P17-014 | P2 | 5 | ready | Opt-in distributed control plane | Coordinates typed remote work without default remote execution or arbitrary shell. |
+| P17-014 | P2 | 5 | in_progress | Opt-in distributed control plane | Coordinates typed remote work without default remote execution or arbitrary shell. |
 | P17-015 | P2 | 4 | done | Detailed cross-machine progress tracking | Links each task to the exact machine-safe run, retry lineage, and evidence hash. |
 | P17-016 | P1 | 3 | in_progress | Privacy-safe specification and usage data criteria | Prevents private specs, secrets, or cross-tenant data from leaking into learning data. |
 | P17-017 | P2 | 5 | backlog | Provider-neutral build harness with optional RAG | Keeps repository facts authoritative while measuring any retrieval benefit safely. |
-| P17-018 | P2 | 4 | backlog | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
+| P17-018 | P2 | 4 | ready | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
 | P17-019 | P2 | 4 | backlog | Credential lifecycle adapter | Handles token expiry only through an explicit project auth capability. |
 | P17-020 | P2 | 4 | backlog | Self-improvement drift, bias, and evolution tracking | Prevents one feature cluster from overfitting prompt evolution and adds golden rollback. |
 | P17-021 | P1 | 5 | backlog | Distributed Control Panel UI and Remote Operations Console | Proves authorized machine/task operations through a real Control Plane, remote worker, execution, evidence, and browser-visible terminal state. |
@@ -97,8 +97,8 @@ deterministic artifact safely, the roadmap should prepare and test it before req
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness
-  is complete and P17-015 is now done, so P17-014 is ready. No implementation or external action is
-  authorized by this status transition.
+  is complete and P17-015 is now done. P17-014 is now `in_progress` under its implementation plan;
+  no runtime or external action is authorized by this status transition.
 - **P17-016 (`T1/R1/C1/L1/E1`):** opaque multi-tenant metadata-only central storage; exact finite
   retention profiles; optional learning/indexing/evaluation/diagnostic scopes off; quarantined
   explicitly mapped legacy data; and metadata-only evidence with no default legal hold. P17-016
@@ -107,7 +107,8 @@ deterministic artifact safely, the roadmap should prepare and test it before req
 - **P17-018 (`A1/L1`):** target external software-delivery engineers, evaluators, maintainers,
   contributors, and security researchers; retain Apache-2.0 for repository source and provider
   bundles. The repository remains private and the package remains `private: true` until separately
-  authorized. P17-018 stays backlog because P17-009 and implementation evidence are incomplete.
+  authorized. P17-018 is ready because P17-009 now has accepted Linux/Windows/aggregate evidence;
+  P17-018 implementation and release evidence remain incomplete.
 
 ## Wave order
 

@@ -1,6 +1,6 @@
 # P17-018 Public Release and GitHub Adoption Plan
 
-**Input status:** Locked (`A1/L1`); implementation remains dependency-blocked by P17-009
+**Input status:** Locked (`A1/L1`); implementation is dependency-unblocked and ready
 **Date:** 2026-08-14
 **Task:** P17-018
 
@@ -30,8 +30,9 @@ parts now have durable authority:
   states that source artifacts are public-ready under Apache-2.0, and the Codex/Claude manifests
   already declare `Apache-2.0`.
 
-Decision `A1/L1` therefore completes the input gap, but dependency P17-009 and every implementation,
-verification, and external-release gate remain in force.
+Decision `A1/L1` completes the input gap. P17-009 now supplies accepted remote Linux/Windows and
+aggregate release-gate evidence; every P17-018 implementation, verification, and external-release
+gate remains in force.
 
 ## Audience decision A1
 
@@ -173,8 +174,8 @@ paths, or credential-bearing `.env` examples are forbidden.
 
 ## CI, nightly, and failure visibility
 
-P17-009 must first prove the current Windows/Linux workflow from a real remote run. P17-018 then
-adds a public-adoption workflow without weakening that matrix:
+P17-009 has proven the current Windows/Linux workflow through real remote run `31827980057`.
+P17-018 adds a public-adoption workflow without weakening that matrix:
 
 - PR/push: Node 24, `npm ci`, full kit, provider distribution, roadmap/claim/version/drift gates,
   documentation link check, release-manifest allowlist, license/secret/internal-marker scans.
@@ -256,7 +257,7 @@ evidence, and workspace-only configuration.
 
 ## Implementation plan
 
-Implementation may start only after P17-009 provides accepted remote Windows/Linux evidence.
+Implementation may now start because P17-009 provides accepted remote Windows/Linux evidence.
 
 1. Checkpoint this plan/readiness transition separately.
 2. Add a release-manifest contract and internal/private marker classification with positive and
@@ -266,8 +267,8 @@ Implementation may start only after P17-009 provides accepted remote Windows/Lin
 4. Add governance/support/security/community files and current changelog/release notes.
 5. Add documentation link, license, package allowlist, SBOM/dependency, secret, internal-marker,
    archive, and clean-clone gates.
-6. Add nightly/manual CI only after P17-009's current workflow is remotely proven; preserve
-   read-only permissions and no external provider/database/release action.
+6. Add nightly/manual CI while preserving P17-009's proven matrix, read-only permissions, and no
+   external provider/database/release action.
 7. Run clean-clone Linux/Windows evidence, deterministic double-build, extracted runtime smokes,
    and documentation quickstart/browser checks.
 8. Complete P17-018 only when all local and authorized remote evidence is durable. Keep repository
@@ -300,8 +301,9 @@ Implementation may start only after P17-009 provides accepted remote Windows/Lin
 
 ## Completion boundary
 
-P17-018 readiness is complete because `A1/L1` are locked. P17-018 itself remains backlog until
-P17-009 completes and the implementation/evidence ladder above passes. “Public-ready” means an
+P17-018 readiness is complete because `A1/L1` are locked, and its P17-009 dependency is complete.
+P17-018 is therefore `ready`, but remains incomplete until the implementation/evidence ladder above
+passes. “Public-ready” means an
 authorized operator can publish the exact proven commit without discovering an undocumented
 audience, license, security, packaging, privacy, or onboarding decision; it does not mean any
 artifact or repository has already been made public.

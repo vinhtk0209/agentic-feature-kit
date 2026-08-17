@@ -94,8 +94,13 @@ assert.deepEqual((phaseModelRouting.readiness as Record<string, unknown>).missin
 assert.ok(((phaseModelRouting.readiness as Record<string, unknown>).inputs as string[]).includes('docs/roadmap/post-17-phase-capability-matrix.json'))
 assert.ok(fs.existsSync(path.join(root, 'docs', 'roadmap', 'post-17-phase-capability-matrix.json')))
 
+const crossPlatformRelease = tasks.find((task) => task.id === 'P17-009')!
+assert.equal(crossPlatformRelease.status, 'done', 'P17-009 closes only after accepted remote matrix evidence')
+assert.equal((crossPlatformRelease.readiness as Record<string, unknown>).complete, true)
+assert.deepEqual((crossPlatformRelease.readiness as Record<string, unknown>).missing, [])
+
 const publicRelease = tasks.find((task) => task.id === 'P17-018')!
-assert.equal(publicRelease.status, 'backlog', 'P17-018 stays dependency-blocked after its inputs are locked')
+assert.equal(publicRelease.status, 'ready', 'P17-018 becomes ready after P17-009 remote qualification')
 assert.equal((publicRelease.readiness as Record<string, unknown>).complete, true)
 assert.deepEqual((publicRelease.readiness as Record<string, unknown>).missing, [])
 assert.ok(((publicRelease.readiness as Record<string, unknown>).inputs as string[]).includes('docs/roadmap/p17-018-public-release-plan.md'))

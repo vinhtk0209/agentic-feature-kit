@@ -47,7 +47,7 @@ assert.equal(panel.readiness.missing.length, 9, 'only completed P17-015 may clos
 assert.ok(!panel.readiness.missing.includes('completed P17-015 machine/task/run/evidence and retry-lineage model'))
 assert.ok(panel.readiness.missing.includes('operator-approved RBAC and separation-of-duties matrix'))
 assert.deepEqual(panel.dependencies, ['P17-014', 'P17-015', 'P17-016'])
-assert.equal(topology.status, 'ready')
+assert.equal(topology.status, 'in_progress')
 assert.equal(topology.readiness.complete, true)
 assert.equal(progress.status, 'done')
 assert.equal(privacy.status, 'in_progress')

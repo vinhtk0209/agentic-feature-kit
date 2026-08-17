@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0.0",
   "artifactId": "post-17-orchestrator-boundaries",
-  "generatedOn": "2026-08-14",
+  "generatedOn": "2026-08-15",
   "approvalBasis": "operator-confirmed post-17 scope",
   "source": {
     "path": ".claude/commands/feature-from-confluence.md",
     "canonicalization": "crlf-to-lf",
-    "gitCommit": "0387c41ad075bb839dcef838c8fc450028f1497f",
-    "gitBlob": "be90b90f1b127320d9e5fd6b4e6560501a3dd09f",
-    "sha256": "bb33e2a58b178926ca81a95a9e1fa737bb6b5d805cab099b97d0f862aea2f410",
+    "gitCommit": "7643eea39c5fc79cfefd75c0ad9d4f0cb8b3a57e",
+    "gitBlob": "6123ddf81f4ba344048601099090e7b4a401e786",
+    "sha256": "60d9a1946c4b9cd4fa0c8a40ce0e7b55fe35c76c3b1815a759f6136cad9a4053",
     "lineCount": 2686
   },
   "runtimeContracts": {

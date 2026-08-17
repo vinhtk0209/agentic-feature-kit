@@ -58,6 +58,123 @@ and never writes files. Supported modes are `create-envelope`, `validate-envelop
 and `compare-golden`. Provider skills remain thin and cannot redefine ordering, gates, evidence,
 or completion semantics.
 
+## Control Plane pure contracts (P17-014 A2A–A3B)
+
+`src/control-plane.ts` defines the closed four-operation registry, opaque bounded operation inputs,
+hard resource-budget profiles, and explicit worker capability manifest used by later P17-014 slices.
+The domain takes an injected `ControlPlaneHashPort`; it imports no runtime, filesystem, environment,
+network, dashboard, or provider module.
+
+The registry contains protocol vocabulary only. A capability manifest advertises an explicit sorted
+subset and binds each operation to its contract hash and fixed adapter identifier/version. Neither
+artifact proves an adapter is installed or a worker exists. Execution envelopes, machine/task/lease
+identity, state/replay, signing, persistence, APIs, worker processes, and provider distribution are
+not implemented in A2A and remain disabled.
+
+### Unsigned execution envelope (P17-014 A2B)
+
+The same module now creates and validates one exact, content-addressed execution envelope. It binds
+tenant and P17-015-compatible identity references to one canonical A2A descriptor/input, canonical
+lease/deadline timestamps, and a metadata-only P17-015 evidence policy. Identity UUIDs are lowercase,
+attempt lineage is self-consistent, repository identity cannot diverge from an operation input, and
+the fully serialized envelope is bounded to 256 KiB.
+
+`serializeControlPlaneExecutionEnvelope` is the sole canonical full-envelope serializer for the
+future A3 signing boundary. A2B does not contain a signature, key, nonce, clock read, state machine,
+lease operation, P17-015 lookup/write, persistence, network, runtime adapter, or availability claim.
+The validated value grants no execution authority by itself.
+
+### Task state, lease, cancellation, receipt, and recovery (P17-014 A2C)
+
+`src/control-plane-state.ts` is a separate pure domain module around the immutable A2B envelope. It
+discriminates definition approval from runtime approval, enforces expected-resource-version CAS,
+records at most one active envelope lease, bounds heartbeat renewal to 15 seconds and the envelope
+deadline, and models cooperative cancellation without treating disconnect as cancellation.
+
+Receipts contain only canonical identity and hashes. Exact replay is idempotent; conflicting, late,
+or cancel-losing success receipts cannot mutate state and are returned as closed conflict/quarantine
+decisions. Expiry recovery can reclaim an unstarted lease, route a stored receipt, recommend a new
+P17-015 attempt for started read-only work, or require manual recovery for unknown/side-effecting
+outcomes. A2C does not create that retry or prove P17-015 references; A2D owns binding and lineage.
+Signing and durable journal behavior remain A3, and persistence, authorization, APIs, workers, UI,
+and remote execution remain later privacy-gated slices.
+
+### P17-015 progress composition (P17-014 A2D)
+
+`src/control-plane-progress.ts` closes the pure A2 layer without importing the Node-backed P17-015
+runtime. It accepts a type-only ledger-view port; tests and later application adapters compose that
+port with the real `buildProgressTaskView` validator. This preserves P17-015 as the sole binding,
+event-chain, evidence, and retry-lineage authority while keeping emitted Control Plane code free of
+platform imports.
+
+A tenant-bound content-addressed mapping explicitly joins the A2B repository UUID to the configured
+P17-015 repo slug. Binding proofs match all shared identity, retention, current-attempt, state, and
+event-tail fields. Receipt proofs require the exact terminal tail and evidence hash set. Retry proofs
+call the A2C recovery decision, preserve the entire validated ledger prefix, and bind exactly one
+queued `retry_started` successor plus its new A2B envelope. Outputs contain hashes and bounded IDs
+only; they do not append progress, persist tenant ownership, sign content, or dispatch work.
+
+### Detached envelope and receipt signing (P17-014 A3A)
+
+`src/control-plane-signing.ts` adds a pure detached-signature boundary over the A2-owned canonical
+serializers. Envelope signatures use only `serializeControlPlaneExecutionEnvelope`; receipt
+signatures use the A2C-owned `serializeControlPlaneExecutionReceipt`. Fixed-key signing bytes carry
+distinct envelope/receipt domains plus exact tenant, signer, key version, signing time, and payload
+hash metadata. They never embed or rewrite the payload.
+
+The pure module accepts injected signer, verifier, and hash ports. It rejects structural, metadata,
+encoding, payload, cross-protocol, and port failures with closed errors. Receipt signer identity must
+equal the immutable envelope machine. A valid signature proves only possession over exact bytes; it
+does not authorize a key, tenant, operation, or execution.
+
+`src/control-plane-signing-node.ts` is the isolated real Ed25519 adapter. It exposes a public SPKI
+key and a signer closure, never a private-key property. The A3B domain consumes these ports without
+moving authorization policy or key lifecycle into the platform adapter.
+
+### Worker request authentication and machine key lifecycle (P17-014 A3B)
+
+`src/control-plane-machine-keys.ts` owns the exact, public-only machine key-set contract. A set has at
+most eight version-sorted records, exactly one highest-version active key or no active key, and a
+monotonic CAS version. Rotation requires the current active key and creates one non-renewable grace
+window of at most five minutes. Revocation is immediate, clears any retirement deadline, and never
+promotes an older key. The module contains no key generation, secret material, storage, or platform
+dependency.
+
+`src/control-plane-worker-request-auth.ts` owns one exact Ed25519 wrapper for the five closed worker
+request kinds. It derives the canonical POST path from request kind and lease identity, hashes at
+most 64 KiB of exact UTF-8 body text, accepts only the fixed 60-second age and 30-second future-skew
+bounds, and composes an injected clock, tenant/machine key-set lookup, verifier factory, and atomic
+authorized-nonce port. The nonce port receives a domain-separated tenant/machine/key-bound hash and
+the observed key-set version, never the raw nonce.
+
+A3B proves pure policy and port ordering only. It does not create enrollment grants, key or nonce
+storage, database transactions, HTTP handlers, worker processes, execution state, network delivery,
+dashboard UI, or remote execution. Those remain disabled until their separately reviewed A4–A6 and
+privacy-gated adapters are implemented.
+
+### Transactional signed-delivery worker journal (P17-014 A3C)
+
+`src/control-plane-worker-journal.ts` owns the exact journal entry and monotonic compare-and-set
+application boundary. A prepared entry retains the A2B envelope and A3A detached signature, binds
+the tenant, machine, and delivery identity, and must commit before a future executor can start. Its
+states reuse A2C's `not_started`, `execution_started`, `receipt_available`, and `unknown` recovery
+vocabulary. Same-delivery redelivery resumes only an unstarted entry, routes ambiguous execution to
+A2C recovery, or replays the exact stored signed receipt. Acknowledgement never deletes that receipt.
+
+Every loaded entry is bounded before cryptographic validation, structurally exact, domain-hashed,
+and revalidated through the injected Control Plane and worker verifiers. Prepare/start are bounded
+by the signed envelope's initial lease window; late signed receipts remain replayable but A2C alone
+decides whether server state accepts or quarantines them. The pure source imports no platform,
+filesystem, process, network, database, or execution adapter.
+
+`src/control-plane-worker-journal-node.ts` is an explicit disposable proof adapter. It requires an
+injected absolute non-root directory, rejects symlink/junction roots, hashes journal keys into path
+names, flushes bounded temporary segments, and publishes immutable revisions through an exclusive
+hard link. Restart selects only contiguous integrity-checked committed history; torn temporary files
+are ignored and corrupt committed history fails closed. The adapter has no default location and does
+not claim encrypted storage, malicious-local-user tamper resistance, cross-platform power-loss
+durability, retention, compaction, a worker process, an executor, or remote execution.
+
 ## Semantic Specification
 
 `src/semantic-spec.ts` converts source-backed acceptance criteria into schema `1.0.0` while keeping
