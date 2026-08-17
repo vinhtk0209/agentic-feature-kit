@@ -58,7 +58,7 @@ and never writes files. Supported modes are `create-envelope`, `validate-envelop
 and `compare-golden`. Provider skills remain thin and cannot redefine ordering, gates, evidence,
 or completion semantics.
 
-## Control Plane pure contracts (P17-014 A2A–A2C)
+## Control Plane pure contracts (P17-014 A2A–A3B)
 
 `src/control-plane.ts` defines the closed four-operation registry, opaque bounded operation inputs,
 hard resource-budget profiles, and explicit worker capability manifest used by later P17-014 slices.
@@ -128,9 +128,52 @@ equal the immutable envelope machine. A valid signature proves only possession o
 does not authorize a key, tenant, operation, or execution.
 
 `src/control-plane-signing-node.ts` is the isolated real Ed25519 adapter. It exposes a public SPKI
-key and a signer closure, never a private-key property. Request freshness, authorized key sets, and
-durable execution state remain later A3 slices; persistence, API, worker, UI, and distribution remain
-disabled.
+key and a signer closure, never a private-key property. The A3B domain consumes these ports without
+moving authorization policy or key lifecycle into the platform adapter.
+
+### Worker request authentication and machine key lifecycle (P17-014 A3B)
+
+`src/control-plane-machine-keys.ts` owns the exact, public-only machine key-set contract. A set has at
+most eight version-sorted records, exactly one highest-version active key or no active key, and a
+monotonic CAS version. Rotation requires the current active key and creates one non-renewable grace
+window of at most five minutes. Revocation is immediate, clears any retirement deadline, and never
+promotes an older key. The module contains no key generation, secret material, storage, or platform
+dependency.
+
+`src/control-plane-worker-request-auth.ts` owns one exact Ed25519 wrapper for the five closed worker
+request kinds. It derives the canonical POST path from request kind and lease identity, hashes at
+most 64 KiB of exact UTF-8 body text, accepts only the fixed 60-second age and 30-second future-skew
+bounds, and composes an injected clock, tenant/machine key-set lookup, verifier factory, and atomic
+authorized-nonce port. The nonce port receives a domain-separated tenant/machine/key-bound hash and
+the observed key-set version, never the raw nonce.
+
+A3B proves pure policy and port ordering only. It does not create enrollment grants, key or nonce
+storage, database transactions, HTTP handlers, worker processes, execution state, network delivery,
+dashboard UI, or remote execution. Those remain disabled until their separately reviewed A4–A6 and
+privacy-gated adapters are implemented.
+
+### Transactional signed-delivery worker journal (P17-014 A3C)
+
+`src/control-plane-worker-journal.ts` owns the exact journal entry and monotonic compare-and-set
+application boundary. A prepared entry retains the A2B envelope and A3A detached signature, binds
+the tenant, machine, and delivery identity, and must commit before a future executor can start. Its
+states reuse A2C's `not_started`, `execution_started`, `receipt_available`, and `unknown` recovery
+vocabulary. Same-delivery redelivery resumes only an unstarted entry, routes ambiguous execution to
+A2C recovery, or replays the exact stored signed receipt. Acknowledgement never deletes that receipt.
+
+Every loaded entry is bounded before cryptographic validation, structurally exact, domain-hashed,
+and revalidated through the injected Control Plane and worker verifiers. Prepare/start are bounded
+by the signed envelope's initial lease window; late signed receipts remain replayable but A2C alone
+decides whether server state accepts or quarantines them. The pure source imports no platform,
+filesystem, process, network, database, or execution adapter.
+
+`src/control-plane-worker-journal-node.ts` is an explicit disposable proof adapter. It requires an
+injected absolute non-root directory, rejects symlink/junction roots, hashes journal keys into path
+names, flushes bounded temporary segments, and publishes immutable revisions through an exclusive
+hard link. Restart selects only contiguous integrity-checked committed history; torn temporary files
+are ignored and corrupt committed history fails closed. The adapter has no default location and does
+not claim encrypted storage, malicious-local-user tamper resistance, cross-platform power-loss
+durability, retention, compaction, a worker process, an executor, or remote execution.
 
 ## Semantic Specification
 
