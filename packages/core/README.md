@@ -149,8 +149,31 @@ the observed key-set version, never the raw nonce.
 
 A3B proves pure policy and port ordering only. It does not create enrollment grants, key or nonce
 storage, database transactions, HTTP handlers, worker processes, execution state, network delivery,
-dashboard UI, or remote execution. Those remain disabled until their separately reviewed A3C–A6
-and privacy-gated adapters are implemented.
+dashboard UI, or remote execution. Those remain disabled until their separately reviewed A4–A6 and
+privacy-gated adapters are implemented.
+
+### Transactional signed-delivery worker journal (P17-014 A3C)
+
+`src/control-plane-worker-journal.ts` owns the exact journal entry and monotonic compare-and-set
+application boundary. A prepared entry retains the A2B envelope and A3A detached signature, binds
+the tenant, machine, and delivery identity, and must commit before a future executor can start. Its
+states reuse A2C's `not_started`, `execution_started`, `receipt_available`, and `unknown` recovery
+vocabulary. Same-delivery redelivery resumes only an unstarted entry, routes ambiguous execution to
+A2C recovery, or replays the exact stored signed receipt. Acknowledgement never deletes that receipt.
+
+Every loaded entry is bounded before cryptographic validation, structurally exact, domain-hashed,
+and revalidated through the injected Control Plane and worker verifiers. Prepare/start are bounded
+by the signed envelope's initial lease window; late signed receipts remain replayable but A2C alone
+decides whether server state accepts or quarantines them. The pure source imports no platform,
+filesystem, process, network, database, or execution adapter.
+
+`src/control-plane-worker-journal-node.ts` is an explicit disposable proof adapter. It requires an
+injected absolute non-root directory, rejects symlink/junction roots, hashes journal keys into path
+names, flushes bounded temporary segments, and publishes immutable revisions through an exclusive
+hard link. Restart selects only contiguous integrity-checked committed history; torn temporary files
+are ignored and corrupt committed history fails closed. The adapter has no default location and does
+not claim encrypted storage, malicious-local-user tamper resistance, cross-platform power-loss
+durability, retention, compaction, a worker process, an executor, or remote execution.
 
 ## Semantic Specification
 
