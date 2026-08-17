@@ -151,7 +151,7 @@ for (const source of [
 
 assert.ok(!fs.existsSync(path.join(kitRoot, 'packages', 'core', 'package.json')), 'unexpected package-local core manifest')
 assert.match(adr, /\*\*Status:\*\* Accepted — topology\/trust locked; implementation planning started/)
-assert.match(plan, /\*\*Status:\*\* Authorized under standing continuation authority — A1 planning in progress; no runtime implementation/)
+assert.match(plan, /\*\*Status:\*\* In progress — A1\/A2\/A3 contracts implemented locally; A4 privacy-gated; no worker or remote runtime/)
 
 const c5Plan = fs.readFileSync(
   path.join(kitRoot, 'docs', 'roadmap', 'p17-016-wave-c5-live-cutover-plan.md'),
