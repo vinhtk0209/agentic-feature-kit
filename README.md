@@ -1,128 +1,165 @@
-# feature-from-confluence — Claude Code Agentic Workflow Kit (standalone)
+# Agentic Feature Kit
 
 [![Workflow Kit CI](https://github.com/vinhtk0209/agentic-feature-kit/actions/workflows/workflow-kit-ci.yml/badge.svg)](https://github.com/vinhtk0209/agentic-feature-kit/actions/workflows/workflow-kit-ci.yml)
 
-> **One command. Your spec becomes convention-compliant, PR-ready code — with human-in-the-loop gates, a deterministic self-test toolchain, and a self-improvement loop.**
->
-> Kit version **v3.25**. The flagship workflow currently runs in Claude Code. Post-17 provider-neutral
-> capabilities are being released incrementally for Codex, Claude Code, and GitHub Copilot under
-> `providers/`; each capability declares its own readiness and compatibility boundary.
+Agentic Feature Kit is an evidence-backed software delivery toolkit. It packages deterministic,
+fail-closed workflow capabilities for Codex, Claude Code, and GitHub Copilot while keeping shared
+business rules in one provider-neutral core.
 
-## Requirements
+> **Release status:** the source tree has a validated release manifest and provider distributions,
+> but it is not yet public-release eligible. Governance, marker remediation, supply-chain gates,
+> nightly qualification, and clean-clone evidence remain required before an external release.
 
-- **Node ≥ 20** (`.nvmrc` pins 24), npm
-- **Claude Code** (the slash commands live in `.claude/commands/`)
-- Optional: **Playwright** (UI verification, auto-installed via devDeps) and a **Confluence MCP** (optional spec source — see below)
+## Choose a provider
 
-## Provider packages (post-17)
-
-The versioned provider source packages live under `providers/`, while all shared business rules
-live once under `packages/core/`. **Project Intelligence** profiles repository facts; the
-fingerprint-bound **Stack Portability** contract then resolves framework layout, HTTP transport,
-mapping helpers, and target-specific assumptions without provider heuristics. The additive
-**Phase Model Router** then makes content-addressed `selected`, `no_model`, or `needs_input`
-decisions from explicit qualification evidence without executing a provider.
-
-| Provider | Supported source surface | Current status |
+| Provider | Repository surface | Start here |
 |---|---|---|
-| Codex | `.codex-plugin/plugin.json` + Agent Skills | Self-contained directory + deterministic ZIP `0.5.0` |
-| Claude Code | `.claude-plugin/plugin.json` + skills + read-only agents | Self-contained directory + deterministic ZIP `0.5.0` |
-| GitHub Copilot | `.github/skills` + `.github/agents/*.agent.md` | Self-contained repository bundle + deterministic ZIP `0.5.0` |
+| Codex | `.codex-plugin/plugin.json` and Agent Skills | [Codex package guide](providers/codex/agentic-feature-kit/README.md) |
+| Claude Code | `.claude-plugin/plugin.json`, skills, and read-only agents | [Claude Code package guide](providers/claude/agentic-feature-kit/README.md) |
+| GitHub Copilot | `.github/skills` and `.github/agents/*.agent.md` | [GitHub Copilot bundle guide](providers/copilot/agentic-feature-kit/README.md) |
 
-Run `npm run build:providers` to generate all three distributions under ignored
-`dist/provider-bundles/0.5.0/`. Every bundle carries the same five Node 20+ shared runtimes
-(Project Intelligence, Stack Portability, Conditional Quality Gates, Workflow Orchestrator, and
-Phase Model Routing),
-schemas/contracts, Apache-2.0 license, content-addressed manifest, and release checksum. The clean
-distribution suite executes all five capabilities from extracted archives without `tsx`, a source
-checkout, or repository `node_modules`. See `providers/README.md` for provider-specific use and
-verification. No installation, package publication, marketplace registration, provider execution,
+All three archives use `agentic-feature-kit-<provider>-0.5.0.zip` and extract to
+`agentic-feature-kit/`. A provider label identifies the discovery surface; it does not expand a
+capability beyond the compatibility declared by that package.
+
+## Audience and boundaries
+
+Agentic Feature Kit is designed for:
+
+- external software engineers and technical leads evaluating evidence-backed feature workflows;
+- maintainers installing a repository-local package for one of the three provider surfaces;
+- contributors extending shared schemas, pure contracts, adapters, fixtures, tests, or docs;
+- security reviewers assessing local execution, credentials, evidence, and archive boundaries.
+
+It is not a hosted service, managed control plane, no-code product, or promise of compatibility
+with every framework, authentication flow, source system, or enterprise topology. Public source
+readiness does not imply an uptime, migration, or response-time SLA.
+
+## Quickstart from a clean clone
+
+Requirements: Git, npm, and Node `>=20`; Node 24 is the qualification runtime pinned by `.nvmrc`.
+
+```bash
+git clone https://github.com/vinhtk0209/agentic-feature-kit.git
+cd agentic-feature-kit
+npm ci
+npm run build:providers
+npm run test:provider-distribution
+```
+
+After dependency installation, the build creates three ignored local archives and SHA-256
+checksums under `dist/provider-bundles/0.5.0/`. The distribution test extracts every archive into
+an isolated directory and runs all shared capabilities without the source checkout or repository
+`node_modules`. A later release slice will measure the complete quickstart on clean Linux and
+Windows clones; this README does not claim that timing yet.
+
+These commands do not install into a real user directory, invoke a provider, load credentials, or
+perform an external write.
+
+No installation, package publication, marketplace registration, provider execution,
 sync, or push is performed by the build/test flow.
 
-## Setup
+## Shared capabilities
+
+Every provider bundle carries the same Node 20+ capability set:
+
+- Project Intelligence
+- Stack Portability
+- Conditional Quality Gates
+- Workflow Orchestrator
+- Phase Model Routing
+
+Shared core | 1.3.0
+
+The [shared-core contract and stability guide](packages/core/README.md) owns capability behavior.
+The [provider package model](providers/README.md) owns bundle layout, validation, checksums, and the
+distribution security boundary. Provider-specific setup and removal stay in the selector guides
+above.
+
+## Legacy Claude Code flagship
+
+The repository also retains the mature Claude Code B0–B12 workflow and its slash commands. The npm
+compatibility name remains `feature-from-confluence-kit`, and `/feature-from-confluence` remains the
+flagship command for turning a spec into convention-compliant, PR-ready code with human gates.
+
+Shared provider packages do not imply flagship workflow parity. They expose the versioned shared
+capabilities listed above; they do not claim the complete Claude Code command workflow on Codex or
+GitHub Copilot.
+
+The flagship accepts local Markdown, pasted text, PDF, Word, or an optional Confluence connector.
+Missing connector configuration does not block the local sources. See the [Claude Code setup
+guide](.claude/SETUP.md) for that legacy surface.
+
+The legacy one-way installation path retains its existing guard contract. Real sync is fail-closed:
+the current kit version needs a live `verified=true` record, `--force-unverified` requires an
+explicit reason, and dirty source also requires `--force-dirty`. That operator path is not part of
+the public quickstart and R2 performs no sync.
+
+## Verify from source
 
 ```bash
-npm install                         # root: installs tsx, typescript, playwright (devDeps)
-# Optional spec/verification connectors (each is self-contained):
-( cd .claude/mcp-server  && npm install )   # Confluence MCP (optional)
-( cd .claude/mcp-workflow && npm install )   # workflow MCP (optional)
+npm test
+npm run test:provider-distribution
+npm run test:cross-platform-release
+npm run check:public-release-contract
 ```
 
-1. **Optionally add a `CLAUDE.md` to your project root.** The workflow combines explicit instructions with observed manifests/imports. Missing or conflicting required evidence returns `needs_input`; it does not manufacture React, HTTP-client, transform, or alias defaults.
-2. **(Optional) Confluence:** copy `.claude/mcp-server/.env.example` → `.claude/mcp-server/.env` and fill credentials. **Never commit `.env`** (it's gitignored).
+`npm test` runs the complete integration and drift suite. Provider distribution tests rebuild and
+exercise all extracted archives. The cross-platform release gate validates platform-qualified
+artifacts. The public-release contract checks the exact Git-index tree and classifications; its
+current result is intentionally `contractValid=true` and `candidateStatus=blocked` until later
+release work resolves every blocker.
 
-## Verify the kit
+## Version and release model
 
-```bash
-npm test          # = npm run test:kit
-```
+| Domain | Current authority | Meaning |
+|---|---|---|
+| Kit/prompt version | `v3.25` | Flagship prompt and repository toolchain version |
+| Provider bundle version | `0.5.0` | Provider archive and manifest version |
+| Shared core version | `1.3.0` | Provider-neutral capability contract version |
 
-`test:kit` runs all integration suites + `version-check` + `workflow:index --check` + the prompt-budget ratchet `--gate`. The CI workflow (`.github/workflows/workflow-kit-ci.yml`) runs the same on every PR.
+Kit version **v3.25** is the current prompt authority and remains consistent with package version
+`3.25.0`.
 
-## Syncing the kit to target repos (workspace)
+A kit version does not imply that a provider bundle changed, and a bundle version does not claim
+that the complete flagship workflow was requalified. Historical missing tags are not fabricated.
+See the [changelog](CHANGELOG.md), [public-release readiness plan](docs/roadmap/p17-018-public-release-plan.md),
+and [Apache-2.0 license](LICENSE) for the current authorities. The root npm package remains private;
+source-release readiness is separate from package distribution.
 
-This kit is the **source of truth**. Use the sync script to push it into the repos that consume it (one-way, source always wins):
+## Security and data boundaries
 
-Real sync is fail-closed: the current kit version must have a live `verified=true` record before any
-target write begins. The only explicit override is `--force-unverified "<reason>"`; dirty source
-also requires `--force-dirty`. Use `npm run sync:dry` for safe preview and guard verification.
+- Never commit `.env` files, tokens, private specifications, user paths, or service credentials.
+- Provider archives are built from explicit allowlists and include only repository-local runtime
+  sources, schemas, manifests, docs, checksums, and the license.
+- Build and verification flows require no provider credential and perform no remote provider or
+  data-service action.
+- Formal vulnerability-reporting and support policies are a required later release slice. They are
+  intentionally not linked before the corresponding files exist.
 
-```bash
-npm run sync          # copy allowlisted paths -> target repos, then report versions
-npm run sync:dry      # preview only (no files written, no Supabase write)
-```
+Do not expose sensitive findings through a public issue while the private reporting policy is
+unfinished. The absence of a formal policy is a release blocker, not permission to disclose data.
 
-- Targets + paths are declared in **`sync.config.json`** (`targets`, `syncPaths`). Only allowlisted paths (`commands/`, `integrations/`, `templates/`, `_content/`, `prompt-evolution.md`) are touched — anything else in a target (e.g. `.env`, `mcp-server/`) is left alone.
-- After an authorized, guard-approved copy, the script observes each target's installed
-  `PROMPT_VERSION` locally. P17-016 B2D pauses central `installs` writes until trusted tenant
-  attestation and a Wave C sink exist; a non-dry batch emits one closed local privacy receipt
-  instead. This post-copy diagnostic remains best-effort and cannot bypass the pre-sync guard.
-- The kit's own **`.env`** may override `SUPABASE_URL` / `SUPABASE_ANON_KEY` for the fail-closed
-  verified-run admission query; otherwise that query uses its public RLS-protected fallback. The
-  install compatibility reporter reads no credential and performs no network request.
+## Limitations
 
-## Database migrations (Supabase)
+- The package does not provide a hosted runtime, remote orchestration service, or production SLA.
+- Provider bundles expose the shared capabilities listed here, not the entire legacy flagship.
+- Optional source connectors need their own configuration and are not required for local inputs.
+- Root package visibility remains private, and no package-distribution path is enabled.
+- Governance, dependency-license inventory, SBOM, nightly CI, clean-clone timing, and unresolved
+  internal-marker dispositions remain outside this slice.
 
-SQL in **`migrations/`** is run **manually** in the Supabase SQL editor (the scripts never run DDL):
+## Documentation map
 
-| File | Purpose |
-|---|---|
-| `0001_installs.sql` | `installs` table — historical per-repo install rows; new sync reporting is paused by P17-016 B2D until a tenant-attested Wave C sink exists |
-| `0002_repo_runs.sql` | `repo_runs` table — historical per-repo run-version rows; new upserts are paused by P17-016 B2C until a tenant-attested Wave C sink exists |
+- [Claude Code developer guide](docs/claude-commands/README.md) — flagship workflow behavior.
+- [Integration map](docs/claude-commands/INTEGRATIONS.md) — toolchain wiring and data flow.
+- [Token optimization guide](docs/claude-commands/TOKEN-OPTIMIZATION.md) — context and lazy loading.
 
-Both schemas retain anon + RLS policies. The dashboard joins stored rows per-repo on `/versions`,
-but both `installs` and `repo_runs` must be treated as historical/stale while tenant-safe central
-reporting is paused. Guard-approved sync and successful `telemetry verify` now emit separate closed
-local privacy receipts instead of writing those tables.
+Provider package and shared-core authorities are linked from their owning sections above so the
+root entry does not duplicate their install or API contracts.
 
-## Commands (Claude Code slash commands)
+## Contribution and support status
 
-| Command | Purpose |
-|---|---|
-| `/feature-from-confluence <spec>` | Full B0–B12 workflow with confirm gates (flagship) |
-| `/new-feature` | Lightweight scaffold **without** a spec |
-| `/drop-mock <api.ts>` | Remove `USE_MOCK` infra when the real API lands |
-| `/api-contract <feature>` | Reverse-engineer a `.http` contract from a data layer |
-| `/playwright-verify <route>` | Standalone UI verification (screenshots, UX states) |
-| `/codex-review` | Repo-convention branch review (complements built-in `/code-review`) |
-
-> **Run these from a browser:** the companion **kit-dashboard** ships a **Command Runner** (`/run`)
-> that launches these commands on any repo without a terminal — live output, interactive gates, and
-> per-run token/cost telemetry on `/performance`. See `kit-dashboard/README.md`.
-
-## Spec sources are pluggable
-
-`/feature-from-confluence` accepts the spec from any of:
-**Confluence (optional MCP)** · **PDF** · **Word** · **local markdown** · **pasted text**.
-The Confluence MCP (`.claude/mcp-server/`) is a **reference connector, not a hard dependency** — if it isn't configured, use any other source. See the command file's `## ARG VALIDATION` / `B0` for the contract.
-
-## Where to read more
-
-- `.claude/SETUP.md` — files in the kit + setup detail
-- `docs/claude-commands/README.md` — full developer guide (English; `README.vi.md` is a may-lag translation)
-- `docs/claude-commands/INTEGRATIONS.md` — toolchain wiring map, dependency graph, data-flow
-- `docs/claude-commands/TOKEN-OPTIMIZATION.md` — context/lazy-load strategy
-
-## Security
-
-`.env` files hold credentials and are gitignored — **never commit them**. Ship only `.env.example`.
+Contribution, security, support, and community policies are the next P17-018 implementation slice.
+Until those tracked policies and templates exist, treat this repository as an evaluation candidate,
+sanitize all reproduction evidence, and do not infer a support SLA or public contribution process.
