@@ -216,7 +216,11 @@ assert.equal(
   kitPackage.scripts['test:post-17-privacy-wave-c3c-service-role-denial'],
   'npx tsx scripts/post-17-privacy-wave-c3c-service-role-denial.test.ts',
 )
-assert.ok(kitPackage.scripts['test:kit'].includes('npm run test:post-17-privacy-wave-c3c-service-role-denial'))
+assert.ok(
+  kitPackage.scripts['test:workspace-contracts'].includes(
+    'npm run test:post-17-privacy-wave-c3c-service-role-denial',
+  ),
+)
 assert.equal(
   dashboardPackage.scripts['test:p17-016-c3c-service-role-denial'],
   'vitest run tests/p17-016-c3c-service-role-denial.test.ts',

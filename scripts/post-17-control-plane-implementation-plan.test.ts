@@ -30,7 +30,9 @@ const task = roadmap.tasks.find((candidate) => candidate.id === 'P17-014')
 const readinessGaps: string[] = []
 if (!fs.existsSync(planPath)) readinessGaps.push('control-plane implementation plan')
 if (packageJson.scripts[commandName] !== expectedCommand) readinessGaps.push('focused package registration')
-if (!packageJson.scripts['test:kit']?.includes(`npm run ${commandName}`)) readinessGaps.push('full kit registration')
+if (!packageJson.scripts['test:workspace-contracts']?.includes(`npm run ${commandName}`)) {
+  readinessGaps.push('workspace contract registration')
+}
 if (task?.status !== 'in_progress') readinessGaps.push('canonical P17-014 status transition')
 if (!/\| P17-014 \| P2 \| 5 \| in_progress \|/.test(roadmapMd)) readinessGaps.push('human roadmap status transition')
 if (!adr.includes('**Status:** Accepted — topology/trust locked; implementation planning started')) {

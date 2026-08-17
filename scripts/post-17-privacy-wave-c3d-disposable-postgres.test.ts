@@ -127,8 +127,10 @@ assert.equal(
   'npx tsx scripts/post-17-privacy-wave-c3d-disposable-postgres.test.ts',
 )
 assert.ok(
-  kitPackage.scripts['test:kit']?.includes('npm run test:post-17-privacy-wave-c3d-disposable-postgres'),
-  'C3D cross-repository validator is not registered in the full kit suite',
+  kitPackage.scripts['test:workspace-contracts']?.includes(
+    'npm run test:post-17-privacy-wave-c3d-disposable-postgres',
+  ),
+  'C3D cross-repository validator is not registered in the workspace contract suite',
 )
 
 console.log('P17-016 Wave C3D disposable PostgreSQL: PASS (20 legacy, 5 foundation, 6 RPCs, 10 scenario groups)')

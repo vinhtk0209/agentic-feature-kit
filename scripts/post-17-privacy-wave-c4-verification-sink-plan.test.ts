@@ -101,8 +101,10 @@ for (const attack of [
 const expectedCommand = 'npx tsx scripts/post-17-privacy-wave-c4-verification-sink-plan.test.ts'
 assert.equal(packageJson.scripts['test:post-17-privacy-wave-c4-verification-sink-plan'], expectedCommand)
 assert.ok(
-  packageJson.scripts['test:kit']?.includes('npm run test:post-17-privacy-wave-c4-verification-sink-plan'),
-  'C4 plan validator is not registered in the full kit suite',
+  packageJson.scripts['test:workspace-contracts']?.includes(
+    'npm run test:post-17-privacy-wave-c4-verification-sink-plan',
+  ),
+  'C4 plan validator is not registered in the workspace contract suite',
 )
 
 const affirmativeSurface = normalized
