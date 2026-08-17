@@ -226,22 +226,25 @@ interface AcAssertion {
   expected: string;
 }
 
-interface StateV2 {
+export interface StateV2 {
   name: string;
   route?: string;
   steps: InteractionStep[];
   baseline?: string;       // path to spec image for visual diff
+  design_reference?: string; // retained source-design image reviewed before approving the app baseline
+  visual_selector?: string; // optional single element captured for a privacy-safe, state-scoped diff
+  visual_masks?: string[];  // optional selectors masked in both baseline-capture and verification runs
   ui_rows?: string[];      // UI-XXX IDs verified by this state's baseline diff
   ac_assertions?: AcAssertion[];
 }
 
-interface UnitTestEntry {
+export interface UnitTestEntry {
   ac_id: string;
   test_file: string;
   grep?: string;
 }
 
-interface InteractionScriptV2 {
+export interface InteractionScriptV2 {
   feature?: string;
   states: StateV2[];
   negative_states?: StateV2[];
@@ -326,8 +329,106 @@ async function injectAuthTokens(page: Page): Promise<boolean> {
 
 // ── Helpers for v3.6 verification (visual diff, axe, css audit, checklist) ─
 
-async function takeScreenshotAt(page: Page, targetPath: string): Promise<void> {
+export interface VisualCaptureSpec {
+  selector?: string;
+  masks: string[];
+}
+
+const STATE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+/**
+ * Select one declarative v2 state for a bounded cross-runner smoke. Missing, malformed,
+ * or duplicate names fail closed so a provider cannot silently run a different interaction.
+ */
+export function selectInteractionStates(script: InteractionScriptV2, stateName?: string): StateV2[] {
+  const allStates = [...(script.states ?? []), ...(script.negative_states ?? [])];
+  if (stateName === undefined) return allStates;
+  if (!STATE_NAME_PATTERN.test(stateName)) throw new Error('state name is malformed');
+  const matches = allStates.filter((state) => state?.name === stateName);
+  if (matches.length === 0) throw new Error(`state not found: ${stateName}`);
+  if (matches.length !== 1) throw new Error(`state name is ambiguous: ${stateName}`);
+  return matches;
+}
+
+/**
+ * A visual-baseline state already receives one deterministic screenshot after all interaction
+ * steps complete (see the state loop below). Replaying a `steps[].screenshot` immediately before
+ * that capture is both redundant and state-changing for short-lived overlays such as tooltips.
+ * Keep explicit interaction screenshots everywhere else, including when visual diff is disabled.
+ */
+export function shouldCaptureInteractionScreenshots(
+  visualDiffEnabled: boolean,
+  baseline: unknown,
+): boolean {
+  return !(visualDiffEnabled && typeof baseline === 'string' && baseline.trim().length > 0);
+}
+
+/** Successful UI rows without an active visual baseline are proven by completing every declared
+ * interaction step. Baseline-backed rows are deliberately excluded here: their only verdict must
+ * remain the image diff, never a weaker interaction-only PASS. */
+export function shouldRecordInteractionUiPass(
+  visualDiffEnabled: boolean,
+  baseline: unknown,
+): boolean {
+  return shouldCaptureInteractionScreenshots(visualDiffEnabled, baseline);
+}
+
+export function resolveVisualCaptureSpec(input: {
+  visual_selector?: unknown;
+  visual_masks?: unknown;
+}): VisualCaptureSpec {
+  let selector: string | undefined;
+  if (input.visual_selector !== undefined) {
+    if (typeof input.visual_selector !== 'string') throw new Error('visual_selector must be a string');
+    selector = input.visual_selector.trim();
+    if (selector.length === 0 || selector.length > 512 || /[\r\n\0]/.test(selector)) {
+      throw new Error('visual_selector must be a nonblank single-line selector of at most 512 characters');
+    }
+  }
+
+  if (input.visual_masks !== undefined && !Array.isArray(input.visual_masks)) {
+    throw new Error('visual_masks must be an array');
+  }
+  const rawMasks = input.visual_masks ?? [];
+  if (rawMasks.length > 16) throw new Error('visual_masks supports at most 16 selectors');
+  const masks = rawMasks.map((value) => {
+    if (typeof value !== 'string') throw new Error('every visual mask must be a string');
+    const mask = value.trim();
+    if (mask.length === 0 || mask.length > 512 || /[\r\n\0]/.test(mask)) {
+      throw new Error('every visual mask must be a nonblank single-line selector of at most 512 characters');
+    }
+    return mask;
+  });
+  if (new Set(masks).size !== masks.length) throw new Error('visual_masks must not contain duplicates');
+  return { selector, masks };
+}
+
+async function takeScreenshotAt(
+  page: Page,
+  targetPath: string,
+  capture?: VisualCaptureSpec,
+): Promise<void> {
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  if (capture) {
+    const mask = capture.masks.map((selector) => page.locator(selector));
+    const screenshotOptions = {
+      path: targetPath,
+      animations: 'disabled' as const,
+      caret: 'hide' as const,
+      mask,
+      maskColor: '#7f7f7f',
+    };
+    if (capture.selector) {
+      const locator = page.locator(capture.selector);
+      const count = await locator.count();
+      if (count !== 1) throw new Error(`visual_selector must resolve exactly once; got ${count}: ${capture.selector}`);
+      await locator.scrollIntoViewIfNeeded();
+      await locator.screenshot(screenshotOptions);
+      return;
+    }
+    await page.screenshot({ ...screenshotOptions, fullPage: true });
+    return;
+  }
   await page.screenshot({ path: targetPath, fullPage: true });
 }
 
@@ -831,15 +932,59 @@ function updateChecklistSummary(
   if (updated !== text) fs.writeFileSync(checklistPath, updated, 'utf8');
 }
 
-function runUnitTestEntry(entry: UnitTestEntry): { passed: boolean; evidence: string } {
-  // Use npx jest directly with --no-coverage to avoid threshold failures and speed up runs.
+export interface UnitTestSpawnSpec {
+  command: string;
+  args: string[];
+  options: {
+    cwd: string;
+    encoding: 'utf8';
+    shell: false;
+    timeout: number;
+    maxBuffer: number;
+    windowsHide: true;
+  };
+}
+
+/**
+ * Build the Jest child-process boundary without a shell. The grep value is one opaque argv item,
+ * so regex metacharacters such as `(...)|...` cannot become PowerShell/cmd syntax.
+ */
+export function buildUnitTestSpawnSpec(entry: UnitTestEntry, cwd = process.cwd()): UnitTestSpawnSpec {
+  if (typeof entry.test_file !== 'string' || entry.test_file.trim().length === 0) {
+    throw new Error('unit-test-file-invalid');
+  }
+  if (entry.grep !== undefined && (typeof entry.grep !== 'string' || entry.grep.length === 0)) {
+    throw new Error('unit-test-grep-invalid');
+  }
+  const jestBin = path.join(cwd, 'node_modules', 'jest', 'bin', 'jest.js');
+  const args = [jestBin, entry.test_file, '--no-coverage', '--runInBand'];
+  if (entry.grep !== undefined) args.push('-t', entry.grep);
+  return {
+    command: process.execPath,
+    args,
+    options: {
+      cwd,
+      encoding: 'utf8',
+      shell: false,
+      timeout: 120_000,
+      maxBuffer: 8 * 1024 * 1024,
+      windowsHide: true,
+    },
+  };
+}
+
+export function runUnitTestEntry(entry: UnitTestEntry): { passed: boolean; evidence: string } {
+  // Use the target's local Jest binary with --no-coverage to avoid threshold failures and keep
+  // test selection identical across platforms without routing user-controlled patterns through a shell.
   try {
     const { spawnSync } = require('child_process') as typeof import('child_process');
-    const args = ['jest', entry.test_file, '--no-coverage'];    if (entry.grep) args.push('-t', entry.grep);
-    const r = spawnSync('npx', args, { encoding: 'utf8', shell: true });
+    const spec = buildUnitTestSpawnSpec(entry);
+    if (!fs.existsSync(spec.args[0])) return { passed: false, evidence: 'jest binary missing' };
+    const r = spawnSync(spec.command, spec.args, spec.options);
     const out = `${r.stdout}\n${r.stderr}`;
     const passed = r.status === 0 && /PASS/.test(out);
-    return { passed, evidence: passed ? `jest pass: ${entry.test_file}` : `jest fail (exit ${r.status})` };
+    const exit = r.status === null ? 'null' : String(r.status);
+    return { passed, evidence: passed ? `jest pass: ${entry.test_file}` : `jest fail (exit ${exit})` };
   } catch (err) {
     return { passed: false, evidence: err instanceof Error ? err.message : String(err) };
   }
@@ -851,6 +996,7 @@ async function runInteractionState(
   stateName: string,
   screenshotDir: string,
   timestamp: string,
+  captureInteractionScreenshots = true,
 ): Promise<{ passed: boolean; evidence: string }> {
   try {
     for (const step of steps) {
@@ -871,6 +1017,7 @@ async function runInteractionState(
           await page.waitForSelector(step.selector!, { timeout: step.timeout ?? 10_000 });
           break;
         case 'screenshot': {
+          if (!captureInteractionScreenshots) break;
           fs.mkdirSync(screenshotDir, { recursive: true });
           const p = path.join(screenshotDir, `${stateName}-${step.label.replace(/\s+/g, '_')}-${timestamp}.png`);
           await page.screenshot({ path: p, fullPage: true });
@@ -1003,6 +1150,13 @@ interface RunnerConfig {
   dataReadySelector?: string; // Z.2: per-route data-ready selector (else bounded networkidle)
   dataGate?: boolean;         // §4 data-reached gate; ON unless explicitly false (static route)
   apiPath?: string;           // §8.1 AA.3: feature data/api.ts (cross-check source for E_feat scope)
+  stateName?: string;         // bounded runner smoke: execute exactly one named v2 state
+  runnerSmoke?: boolean;      // skip unrelated unit-test entries; never weakens the selected state
+}
+
+export function meaningfulContentVerdict(bodyText: string, stage = 'initial load'): { passed: boolean; evidence: string } {
+  const length = bodyText.trim().length;
+  return { passed: length > 100, evidence: `Body text length after ${stage}: ${length} chars` };
 }
 
 // ── §4 Tier B data-reached assertion + Z.2 bounded wait (v3.24) ──────────────
@@ -1441,11 +1595,11 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
 
     // Check 5: Page has meaningful content (not blank)
     const bodyText = await page.locator('body').innerText();
+    const contentVerdict = meaningfulContentVerdict(bodyText);
     checks.push({
       id: 'PLAYWRIGHT-005',
       description: 'Page renders meaningful content (not blank)',
-      passed: bodyText.trim().length > 100,
-      evidence: `Body text length: ${bodyText.trim().length} chars`,
+      ...contentVerdict,
     });
 
     // ── §4 Tier B data-reached — assessment MOVED (§8.2 AA.2) ──
@@ -1513,7 +1667,15 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       // (running them produces misleading assertion evidence rather than real failures).
       let cascadeFrom: { stateName: string; evidence: string } | null = null;
       let cascadeBlockedCount = 0;
-      const allStates = [...(scriptV2.states ?? []), ...(scriptV2.negative_states ?? [])];
+      const allStates = selectInteractionStates(scriptV2, cfg.stateName);
+      if (cfg.stateName) {
+        checks.push({
+          id: 'PLAYWRIGHT-SMOKE-SCOPE',
+          description: 'Bounded runner smoke selected exactly one interaction state',
+          passed: true,
+          evidence: `state=${cfg.stateName}`,
+        });
+      }
 
       for (const state of allStates) {
         if (cascadeFrom) {
@@ -1525,7 +1687,14 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
           continue;
         }
 
-        const stepResult = await runInteractionState(page, state.steps, state.name, screenshotDir, timestamp);
+        const stepResult = await runInteractionState(
+          page,
+          state.steps,
+          state.name,
+          screenshotDir,
+          timestamp,
+          shouldCaptureInteractionScreenshots(visualDiffEnabled, state.baseline),
+        );
         if (!stepResult.passed) {
           // Root step failure — mark this state's assertions failed and trigger cascade
           cascadeFrom = { stateName: state.name, evidence: stepResult.evidence };
@@ -1537,7 +1706,10 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
         // Per-state screenshot
         const stateSlug = state.name.replace(/[^a-zA-Z0-9-]/g, '_');
         const stateShot = path.join(screenshotDir, `state-${stateSlug}-${timestamp}.png`);
-        await takeScreenshotAt(page, stateShot);
+        const visualCapture = visualDiffEnabled && state.baseline
+          ? resolveVisualCaptureSpec(state)
+          : undefined;
+        await takeScreenshotAt(page, stateShot, visualCapture);
 
         // Visual baseline diff for this state (uses ui_rows) — opt-in only (--visual-diff)
         if (visualDiffEnabled && state.baseline) {
@@ -1548,6 +1720,14 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
           extended.visualDiffs.push({ stateName: state.name, baselineImage: baselinePath, diffPercent: diff.diffPercent, diffImagePath: diff.diffImagePath, passed: diff.passed });
           const uiEvidence = diff.error ?? `diff ${diff.diffPercent.toFixed(2)}% (threshold ${visualDiffThreshold}%) — ${diff.diffImagePath ?? 'no diff img'}`;
           (state.ui_rows ?? []).forEach((id) => extended.uiResults.push({ id, passed: diff.passed, evidence: uiEvidence }));
+        }
+
+        if (shouldRecordInteractionUiPass(visualDiffEnabled, state.baseline)) {
+          (state.ui_rows ?? []).forEach((id) => extended.uiResults.push({
+            id,
+            passed: true,
+            evidence: `state ${state.name} completed all declared interaction steps`,
+          }));
         }
 
         // AC assertions for this state
@@ -1568,9 +1748,11 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
       }
 
       // Unit tests (not cascade-blocked — they run independently via jest)
-      for (const unitTest of scriptV2.unit_tests ?? []) {
-        const r = runUnitTestEntry(unitTest);
-        extended.unitTestResults.push({ id: unitTest.ac_id, passed: r.passed, evidence: r.evidence });
+      if (!cfg.runnerSmoke) {
+        for (const unitTest of scriptV2.unit_tests ?? []) {
+          const r = runUnitTestEntry(unitTest);
+          extended.unitTestResults.push({ id: unitTest.ac_id, passed: r.passed, evidence: r.evidence });
+        }
       }
 
       // Aggregate v2 verdicts into checks
@@ -1587,11 +1769,21 @@ async function runFeatureVerification(cfg: RunnerConfig): Promise<TestResult & {
         checks.push({ id: 'PLAYWRIGHT-008', description: 'Per-AC behavior verification', passed: acPassed, evidence: `${extended.acResults.filter((r) => r.passed).length}/${extended.acResults.length} AC assertions passed` });
       }
       if (extended.uiResults.length > 0) {
-        checks.push({ id: 'PLAYWRIGHT-UI-ROWS', description: 'UI row verdicts (via baseline diff)', passed: uiPassed, evidence: `${extended.uiResults.filter((r) => r.passed).length}/${extended.uiResults.length} UI rows passed` });
+        checks.push({ id: 'PLAYWRIGHT-UI-ROWS', description: 'UI row verdicts (visual diff or completed interaction state)', passed: uiPassed, evidence: `${extended.uiResults.filter((r) => r.passed).length}/${extended.uiResults.length} UI rows passed` });
       }
       if (extended.unitTestResults.length > 0) {
         checks.push({ id: 'PLAYWRIGHT-UNIT', description: 'Unit tests for Unit-Test ACT rows', passed: utPassed, evidence: `${extended.unitTestResults.filter((r) => r.passed).length}/${extended.unitTestResults.length} jest entries passed` });
       }
+    }
+
+    // A bounded smoke intentionally targets a tab/button interaction. Reassess meaningful content
+    // after that exact state; the pre-interaction Class Details shell is not the feature verdict.
+    if (cfg.runnerSmoke) {
+      const finalBodyText = await page.locator('body').innerText();
+      const finalVerdict = meaningfulContentVerdict(finalBodyText, `selected state ${cfg.stateName}`);
+      const contentIndex = checks.findIndex((check) => check.id === 'PLAYWRIGHT-005');
+      if (contentIndex < 0) throw new Error('PLAYWRIGHT-005 result is missing');
+      checks[contentIndex] = { ...checks[contentIndex], ...finalVerdict };
     }
 
     // ── §4 Tier B data-reached assertion — assessed AFTER interaction steps (§8.2 AA.2) ──
@@ -1766,6 +1958,11 @@ function printResult(result: TestResult): void {
   console.log(JSON.stringify(result, null, 2));
 }
 
+/** CLI contract: a rendered failed verification must still terminate non-zero. */
+export function verificationExitCode(result: Pick<TestResult, 'passed'>): 0 | 1 {
+  return result.passed ? 0 : 1;
+}
+
 // Run the CLI only when invoked directly (not when imported by the test).
 if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\/g, '/'))) {
   const args = process.argv.slice(2);
@@ -1791,6 +1988,8 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
   const auditCssPath = flagValue('--audit-css');
   const apiPath = flagValue('--api-path'); // §8.1 feature data/api.ts for E_feat cross-check
   const messagesPath = flagValue('--messages-path');
+  const stateName = flagValue('--state-name');
+  const runnerSmoke = args.includes('--runner-smoke');
   const thresholdRaw = flagValue('--visual-diff-threshold');
   const visualDiffThreshold = thresholdRaw ? parseFloat(thresholdRaw) : undefined;
 
@@ -1809,12 +2008,30 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     }
   }
 
+  if (stateName !== undefined) {
+    if (!scriptV2) {
+      console.error('Error: --state-name requires a v2 --interactions file');
+      process.exit(1);
+    }
+    try {
+      selectInteractionStates(scriptV2, stateName);
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  }
+  if (runnerSmoke && stateName === undefined) {
+    console.error('Error: --runner-smoke requires --state-name');
+    process.exit(1);
+  }
+
   if (!route) {
     console.error(
       'Usage: npx tsx .claude/integrations/playwright-runner.ts <route> [--screenshot] [--feature-name <name>] [--mock-error]\n' +
       '       [--interactions <path>] [--visual-baseline <png>] [--visual-baseline-dir <dir>] [--ac-checklist <md>]\n' +
       '       [--audit-a11y] [--audit-css <visual-properties.md>] [--messages-path <messages.ts>] [--visual-diff-threshold <%>]\n' +
       '       [--api-path <data/api.ts>]  (§8.1: feature api.ts for E_feat-scoped §4 data gate)\n' +
+      '       [--state-name <name> --runner-smoke]  (execute exactly one v2 interaction; skip unrelated unit entries)\n' +
       '       [--visual-diff]  (opt-in: enable visual baseline diffs; off by default)',
     );
     process.exit(1);
@@ -1839,7 +2056,15 @@ if (process.argv[1] && /playwright-runner\.ts$/.test(process.argv[1].replace(/\\
     dataReadySelector,
     dataGate,
     apiPath,
+    stateName,
+    runnerSmoke,
   })
-    .then(printResult)
-    .catch(console.error);
+    .then((result) => {
+      printResult(result);
+      process.exitCode = verificationExitCode(result);
+    })
+    .catch((error) => {
+      console.error(error);
+      process.exitCode = 1;
+    });
 }

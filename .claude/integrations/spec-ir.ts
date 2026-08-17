@@ -58,7 +58,7 @@ export const sha256 = (buf: Buffer | string): string =>
 // NOT match stays a plain paragraph, never a fabricated AC (validateSpecIR would reject a fabricated
 // quote anyway, since it must be a literal substring of a real paragraph — this heuristic just
 // decides which real paragraphs get promoted to acceptanceCriteria[]).
-const AC_LEAD_IN = /^\s*(?:AC[-\s]?\d+[:.)]?|(?:acceptance\s+criteri(?:a|on)\s*\d*[:.)]?)|\d+[).]\s|[-*•]\s*(?:given|when|then)\b|given\b.*\bwhen\b.*\bthen\b)/i;
+const AC_LEAD_IN = /^\s*(?:\|\s*(?:\*\*|__)?AC[-\s]?\d+(?:\*\*|__)?\s*\||AC[-\s]?\d+[:.)]?|(?:acceptance\s+criteri(?:a|on)\s+\d+[:.)]?)|\d+[).]\s|[-*•]\s*(?:given|when|then)\b|given\b.*\bwhen\b.*\bthen\b)/i;
 
 /**
  * Scan an adapter's normalized paragraphs for AC-shaped text. Pure, format-agnostic — every

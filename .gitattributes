@@ -1,3 +1,13 @@
+# Cross-platform byte hashes require one canonical text representation; binary detection remains
+# automatic and binary files are not converted.
+* text=auto eol=lf
+
 # Git hook shell scripts must stay LF even on Windows autocrlf checkouts —
 # a CRLF shebang line makes /bin/sh fail with "bad interpreter" when the hook runs.
 .githooks/* text eol=lf
+
+# Evidence manifests bind exact bytes, so committed JSON and transcript text must not be
+# rewritten by Windows core.autocrlf checkouts.
+docs/evidence/*.json text eol=lf
+docs/specs/**/.evidence/**/*.json text eol=lf
+docs/specs/**/.evidence/**/*.txt text eol=lf

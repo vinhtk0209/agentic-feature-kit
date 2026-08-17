@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "feature": "i2-codex-live-completion",
+  "phase": "B0",
+  "builtAt": "2026-08-10T15:35:51.246Z",
+  "files": [
+    {
+      "role": "output",
+      "path": "docs/evidence/i2-live-completion-2026-08-10.json",
+      "sha256": "41448112a2350e3de9d098b2a2b4aaceb0eb526e94d0cccb108cde70824ca338",
+      "bytes": 1311
+    },
+    {
+      "role": "backend-binding",
+      "path": "docs/specs/i2-codex-live-completion/.evidence/B0/backend-binding.json",
+      "sha256": "f9cccb6cf618246ba0fc8d5ee998fb81876df33b6c814c952c96e09828c3344c",
+      "bytes": 459
+    },
+    {
+      "role": "transcript",
+      "path": "docs/specs/i2-codex-live-completion/.evidence/B0/transcripts/codex-live-shared-gate.txt",
+      "sha256": "dca804537caf577ddb8cacffeb0605b23701e6232847e059d0e256500fea1c03",
+      "bytes": 16
+    }
+  ],
+  "manifestHash": "057cd841323446b9aa60a8ec2bf5393330c457ccd7e69fafb96f2d1c5d7bb199",
+  "estimatedTokens": 447,
+  "budgetTokens": 4000
+}

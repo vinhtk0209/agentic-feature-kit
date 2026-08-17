@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workflow-kit.local/schemas/cross-machine-progress.schema.json",
+  "title": "Cross-machine progress envelope",
+  "oneOf": [
+    { "$ref": "#/$defs/progressRunBinding" },
+    { "$ref": "#/$defs/progressEvent" }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "taskId": {
+      "type": "string",
+      "pattern": "^P17-[0-9]{3}$"
+    },
+    "safeSlug": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "progressRunBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "taskId",
+        "commandRunId",
+        "machineId",
+        "repoId",
+        "runner",
+        "providerExecutionId",
+        "rootRunId",
+        "parentRunId",
+        "attempt",
+        "retentionClass",
+        "createdAt",
+        "bindingHash"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "taskId": { "$ref": "#/$defs/taskId" },
+        "commandRunId": { "$ref": "#/$defs/uuid" },
+        "machineId": { "$ref": "#/$defs/uuid" },
+        "repoId": { "$ref": "#/$defs/safeSlug" },
+        "runner": { "$ref": "#/$defs/safeSlug" },
+        "providerExecutionId": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            }
+          ]
+        },
+        "rootRunId": { "$ref": "#/$defs/uuid" },
+        "parentRunId": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/uuid" }
+          ]
+        },
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "retentionClass": { "enum": ["short_lived", "standard"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "bindingHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "sha256",
+        "manifestSchemaVersion",
+        "mediaType",
+        "bytes",
+        "labelCode",
+        "verificationStatus",
+        "taskId",
+        "commandRunId",
+        "attempt",
+        "bindingHash"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "manifestSchemaVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "mediaType": {
+          "enum": ["application/json", "text/markdown", "image/png", "image/jpeg", "application/zip"]
+        },
+        "bytes": { "type": "integer", "minimum": 0, "maximum": 67108864 },
+        "labelCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "verificationStatus": { "enum": ["verified", "quarantined", "unavailable"] },
+        "taskId": { "$ref": "#/$defs/taskId" },
+        "commandRunId": { "$ref": "#/$defs/uuid" },
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "bindingHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "progressEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "eventId",
+        "taskId",
+        "commandRunId",
+        "machineId",
+        "bindingHash",
+        "sequence",
+        "previousEventHash",
+        "state",
+        "phaseId",
+        "reasonCode",
+        "evidence",
+        "occurredAt",
+        "receivedAt",
+        "eventHash"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "eventId": { "$ref": "#/$defs/uuid" },
+        "taskId": { "$ref": "#/$defs/taskId" },
+        "commandRunId": { "$ref": "#/$defs/uuid" },
+        "machineId": { "$ref": "#/$defs/uuid" },
+        "bindingHash": { "$ref": "#/$defs/sha256" },
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "previousEventHash": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/sha256" }
+          ]
+        },
+        "state": {
+          "enum": ["queued", "running", "awaiting_input", "awaiting_approval", "passed", "failed", "cancelled", "tracking_failed"]
+        },
+        "phaseId": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "string",
+              "pattern": "^(B(0(\\.5)?|1|2|3|4|5|6(\\.5)?|7|8(\\.[56])?|9(\\.[56])?|10(\\.5)?|11|12(\\.[568])?)|D(0(\\.5)?|1(\\.5)?|cross-2))$"
+            }
+          ]
+        },
+        "reasonCode": {
+          "enum": [
+            "scheduled",
+            "retry_started",
+            "started",
+            "resumed",
+            "phase_progress",
+            "input_required",
+            "approval_required",
+            "completed",
+            "verification_failed",
+            "provider_failed",
+            "operator_cancelled",
+            "persistence_failed",
+            "integrity_conflict"
+          ]
+        },
+        "evidence": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/evidenceRef" }
+          ]
+        },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "receivedAt": { "type": "string", "format": "date-time" },
+        "eventHash": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

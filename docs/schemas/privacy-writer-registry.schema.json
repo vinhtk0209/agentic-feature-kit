@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.workflow-kit.dev/privacy-writer-registry.schema.json",
+  "title": "P17-016 central writer registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schemaVersion", "policyVersion", "repository", "scope", "entries"],
+  "properties": {
+    "$schema": { "const": "https://schemas.workflow-kit.dev/privacy-writer-registry.schema.json" },
+    "schemaVersion": { "const": 1 },
+    "policyVersion": { "const": "p17-016-v1" },
+    "repository": { "enum": ["claude-workflow-kit", "kit-dashboard"] },
+    "scope": { "const": "writer-entry-points" },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourcePath",
+        "sourceAnchor",
+        "transport",
+        "dataFamilies",
+        "currentPrivacyState",
+        "prohibitedFieldObservations",
+        "targetWave",
+        "disposition",
+        "rationaleCode"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,79}$" },
+        "sourcePath": { "type": "string", "minLength": 3, "maxLength": 180 },
+        "sourceAnchor": { "type": "string", "minLength": 8, "maxLength": 180 },
+        "transport": {
+          "enum": ["external_http", "identity_control", "in_process", "local_http", "supabase_admin", "supabase_client", "supabase_rest", "supabase_rpc"]
+        },
+        "dataFamilies": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "command_run",
+              "error_signal",
+              "external_notification",
+              "identity_control",
+              "install_run",
+              "legacy_feature_event",
+              "legacy_orchestrator_state",
+              "operator_execution",
+              "progress",
+              "release_evidence",
+              "token_usage",
+              "verification"
+            ]
+          }
+        },
+        "currentPrivacyState": {
+          "enum": ["contract_validated", "legacy_raw", "outside_central_scope", "partially_minimized", "test_fixture"]
+        },
+        "prohibitedFieldObservations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "arbitrary_content",
+              "auth_secret",
+              "raw_email",
+              "raw_feature_name",
+              "raw_log",
+              "raw_message",
+              "raw_path",
+              "raw_prompt",
+              "raw_repository",
+              "raw_url"
+            ]
+          }
+        },
+        "targetWave": { "enum": ["B2", "B3", "B4", "C3", "C4", "none"] },
+        "disposition": {
+          "enum": [
+            "adapter_planned",
+            "capability_ready",
+            "deferred_identity",
+            "external_transport",
+            "fail_closed",
+            "local_only_required",
+            "local_store_required",
+            "migration_blocked",
+            "test_only"
+          ]
+        },
+        "rationaleCode": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,79}$" }
+      }
+    }
+  }
+}

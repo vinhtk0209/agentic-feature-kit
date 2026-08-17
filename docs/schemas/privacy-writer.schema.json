@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-feature-kit.local/schemas/privacy-writer.schema.json",
+  "title": "P17-016 privacy writer contracts",
+  "oneOf": [
+    { "$ref": "#/$defs/centralWriteAttempt" },
+    { "$ref": "#/$defs/sinkCapabilityDescriptor" },
+    { "$ref": "#/$defs/centralWriteReceipt" },
+    { "$ref": "#/$defs/blockedResult" }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "writerId": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{2,127}$" },
+    "capabilityId": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+    "family": {
+      "enum": ["command_run", "token_usage", "progress", "verification", "install_run", "error_signal", "learning_aggregate", "release_dossier"]
+    },
+    "centralWriteAttempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "policyVersion", "writerId", "record"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-v1" },
+        "writerId": { "$ref": "#/$defs/writerId" },
+        "record": { "$ref": "privacy-policy.schema.json#/$defs/centralRecord" }
+      }
+    },
+    "sinkCapabilityDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "policyVersion", "capabilityId", "tenantId", "families"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-v1" },
+        "capabilityId": { "$ref": "#/$defs/capabilityId" },
+        "tenantId": { "$ref": "#/$defs/uuid" },
+        "families": { "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/family" } }
+      }
+    },
+    "centralWriteReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "policyVersion", "writerId", "tenantId", "family", "recordHash", "persistenceId", "replayed", "storedAt"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-v1" },
+        "writerId": { "$ref": "#/$defs/writerId" },
+        "tenantId": { "$ref": "#/$defs/uuid" },
+        "family": { "$ref": "#/$defs/family" },
+        "recordHash": { "$ref": "#/$defs/hash" },
+        "persistenceId": { "$ref": "#/$defs/uuid" },
+        "replayed": { "type": "boolean" },
+        "storedAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "blockedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ok", "statusCode", "reasonCode", "privacyReasonCode", "ruleId", "receipt"],
+      "properties": {
+        "ok": { "const": false },
+        "statusCode": { "const": "blocked" },
+        "reasonCode": { "enum": ["invalid_writer_request", "policy_rejected", "sink_capability_unavailable", "sink_response_refused", "storage_unavailable"] },
+        "privacyReasonCode": {
+          "enum": ["malformed_envelope", "unknown_fields", "untrusted_tenant_context", "processing_scope_disabled", "prohibited_content", "suspected_secret", "invalid_opaque_identifier", "invalid_timestamp", "invalid_retention_profile", "retention_extension_attempted", "invalid_field", "integrity_mismatch", null]
+        },
+        "ruleId": { "type": "string", "pattern": "^[a-z][a-z0-9_.]{0,127}$" },
+        "receipt": { "type": "null" }
+      }
+    }
+  }
+}

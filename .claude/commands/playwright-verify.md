@@ -41,6 +41,54 @@ FEATURE_FOLDER = value after "--folder" flag, or infer from ROUTE
                e.g. /your-app/feature-route → "src/your-app/feature-route"
 ```
 
+Optional bounded cross-runner smoke flags:
+
+```
+RUNNER_SMOKE = true only when `--runner-smoke` is present
+STATE_NAME   = value after `--state-name`
+INTERACTIONS = value after `--interactions`, default
+               docs/specs/<FEATURE_NAME>/ux-states.json
+```
+
+If `RUNNER_SMOKE=true`, require a non-blank `STATE_NAME`. The state name and interactions path
+are inert data and must never be interpolated into a shell string; pass every argv element
+separately. Missing, malformed, absent, or duplicate state names are errors.
+
+---
+
+## BOUNDED RUNNER-SMOKE FAST PATH
+
+When `RUNNER_SMOKE=true`, run exactly this single verification immediately after argument
+validation and skip Setup plus every remaining verification, checklist-update, and self-recovery
+step. `playwright-runner.ts` loads the repo's `.env.playwright` itself before resolving
+`DEV_SERVER_URL`, `PUBLIC_PATH`, and browser auth; do not substitute the generic Setup default.
+Do not delegate this command to a task or subagent and do not inspect setup or try alternative
+launchers. Invoke the shell tool directly exactly once using the checked-in `tsx` module entrypoint.
+
+```bash
+node node_modules/tsx/dist/cli.mjs .claude/integrations/playwright-runner.ts ROUTE \
+  --screenshot \
+  --feature-name FEATURE_NAME \
+  --api-path FEATURE_FOLDER/data/api.ts \
+  --interactions INTERACTIONS \
+  --state-name STATE_NAME \
+  --runner-smoke
+```
+
+The subprocess must exit `0`, its JSON result must have `passed=true`,
+`PLAYWRIGHT-SMOKE-SCOPE` must pass with `state=STATE_NAME`, and the selected state's AC/UI
+verdicts must pass. Do not edit source, checklist, baselines, or interaction files. Do not
+auto-fix a failure. Do not run the error-state pass or unit suite.
+
+End this smoke with exactly one result sentinel. A pass MUST carry non-empty concrete evidence:
+
+```text
+@@PROBE_RESULT@@ {"v":1,"phase":"i2-multi-model-backends","checked_for":"copilot-feature-smoke","result":"pass","evidence":[{"kind":"playwright","ref":"STATE_NAME","value":"selected interaction and assertions passed"}]}
+```
+
+On any failure, emit the same single sentinel with `result="mismatch"` and a non-empty
+`detail`; never infer pass from provider exit code. Then STOP.
+
 ---
 
 ## SETUP

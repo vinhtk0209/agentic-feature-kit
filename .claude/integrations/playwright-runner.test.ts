@@ -18,6 +18,11 @@ import {
   deriveFeatureEndpoints, urlMatchesEndpoint, EndpointDerivationError,
   resolveDataAssessPoint, finalizeDataReachedVerdict, DataAssessPoint,
   replaceSummarySection, countChecklistSection, updateChecklistRows,
+  buildUnitTestSpawnSpec, resolveVisualCaptureSpec, shouldCaptureInteractionScreenshots,
+  shouldRecordInteractionUiPass,
+  selectInteractionStates, InteractionScriptV2,
+  meaningfulContentVerdict,
+  verificationExitCode,
 } from './playwright-runner';
 
 let passed = 0;
@@ -26,6 +31,150 @@ function test(name: string, fn: () => void) {
   try { fn(); passed += 1; console.log(`✅ ${name}`); } catch (e) { failed += 1; console.log(`❌ ${name}\n     ${(e as Error).message}`); }
 }
 function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
+
+// ── B11 visual capture boundary ─────────────────────────────────────────────
+
+test('visual capture preserves one element selector and bounded privacy masks', () => {
+  const spec = resolveVisualCaptureSpec({
+    visual_selector: "[data-testid='pr-performance-chart']",
+    visual_masks: ['.pr-learner-link', '[data-private]'],
+  });
+  assert(spec.selector === "[data-testid='pr-performance-chart']", 'selector must remain exact');
+  assert(spec.masks.join('|') === '.pr-learner-link|[data-private]', 'mask order and text must remain exact');
+});
+
+test('visual capture rejects malformed, duplicate, and unbounded selectors fail-closed', () => {
+  const attacks = [
+    { visual_selector: '' },
+    { visual_selector: 'a\nbutton' },
+    { visual_masks: 'not-an-array' },
+    { visual_masks: ['.same', '.same'] },
+    { visual_masks: Array.from({ length: 17 }, (_, i) => `.mask-${i}`) },
+  ];
+  for (const attack of attacks) {
+    let rejected = false;
+    try { resolveVisualCaptureSpec(attack); } catch { rejected = true; }
+    assert(rejected, `malformed visual capture must fail closed: ${JSON.stringify(attack)}`);
+  }
+});
+
+test('visual baseline states capture once while non-baseline and non-visual states preserve interaction screenshots', () => {
+  assert(
+    shouldCaptureInteractionScreenshots(true, 'visual-baselines/tooltip.png') === false,
+    'active visual baseline must skip the redundant interaction screenshot',
+  );
+  assert(
+    shouldCaptureInteractionScreenshots(false, 'visual-baselines/tooltip.png') === true,
+    'disabled visual diff must preserve the explicit interaction screenshot',
+  );
+  assert(
+    shouldCaptureInteractionScreenshots(true, undefined) === true,
+    'states without baselines must preserve the explicit interaction screenshot',
+  );
+  assert(
+    shouldCaptureInteractionScreenshots(true, '   ') === true,
+    'blank baseline values must not silently suppress evidence screenshots',
+  );
+});
+
+test('successful non-baseline UI states clear stale failures without weakening baseline verdicts', () => {
+  assert(
+    shouldRecordInteractionUiPass(true, undefined) === true,
+    'a successful interaction-only state must emit a PASS verdict',
+  );
+  assert(
+    shouldRecordInteractionUiPass(false, 'visual-baselines/state.png') === true,
+    'visual-disabled execution must use completed interactions as its UI verdict',
+  );
+  assert(
+    shouldRecordInteractionUiPass(true, 'visual-baselines/state.png') === false,
+    'an active visual baseline must remain governed only by image diff',
+  );
+});
+
+// ── Cross-runner bounded state smoke ────────────────────────────────────────
+
+test('runner-smoke command uses one direct shell invocation and forbids task delegation', () => {
+  const command = fs.readFileSync(path.join(process.cwd(), '.claude', 'commands', 'playwright-verify.md'), 'utf8');
+  const smokeStart = command.indexOf('## BOUNDED RUNNER-SMOKE FAST PATH');
+  const smokeEnd = command.indexOf('\n## SETUP', smokeStart);
+  assert(smokeStart >= 0 && smokeEnd > smokeStart, 'runner-smoke section must have exact boundaries');
+  const smoke = command.slice(smokeStart, smokeEnd);
+  assert(
+    smoke.includes('node node_modules/tsx/dist/cli.mjs .claude/integrations/playwright-runner.ts ROUTE'),
+    'runner smoke must use the checked-in direct Node entrypoint',
+  );
+  assert(smoke.includes('Do not delegate this command to a task or subagent'), 'runner smoke must forbid delegation');
+  assert(smoke.includes('--api-path FEATURE_FOLDER/data/api.ts'), 'runner smoke must bind the feature API source');
+  assert(!smoke.includes('npx tsx .claude/integrations/playwright-runner.ts ROUTE'), 'runner smoke must not use the Windows shim path');
+});
+
+test('CLI exit code fails closed when the rendered verification result fails', () => {
+  assert(verificationExitCode({ passed: true }) === 0, 'a passing result must exit zero');
+  assert(verificationExitCode({ passed: false }) === 1, 'a failing result must exit non-zero');
+});
+
+const focusedStates: InteractionScriptV2 = {
+  states: [
+    { name: 'load-dashboard', steps: [] },
+    { name: 'authorized-csv-export-current-filter', steps: [] },
+  ],
+  negative_states: [{ name: 'csv-export-unauthorized-401', steps: [] }],
+};
+
+test('bounded runner smoke selects exactly one named positive or negative state', () => {
+  const positive = selectInteractionStates(focusedStates, 'authorized-csv-export-current-filter');
+  assert(positive.length === 1 && positive[0].name === 'authorized-csv-export-current-filter', 'positive state must remain exact');
+  const negative = selectInteractionStates(focusedStates, 'csv-export-unauthorized-401');
+  assert(negative.length === 1 && negative[0].name === 'csv-export-unauthorized-401', 'negative state must remain exact');
+  assert(selectInteractionStates(focusedStates).length === 3, 'no filter must preserve the full v2 sequence');
+});
+
+test('bounded runner smoke rejects missing, malformed, and duplicate state names fail-closed', () => {
+  const duplicate: InteractionScriptV2 = {
+    states: [{ name: 'same', steps: [] }],
+    negative_states: [{ name: 'same', steps: [] }],
+  };
+  for (const [script, name] of [
+    [focusedStates, 'missing'],
+    [focusedStates, '../escape'],
+    [duplicate, 'same'],
+  ] as Array<[InteractionScriptV2, string]>) {
+    let rejected = false;
+    try { selectInteractionStates(script, name); } catch { rejected = true; }
+    assert(rejected, `state selection must reject ${name}`);
+  }
+});
+
+test('meaningful-content verdict is deterministic and can be reassessed after a selected state', () => {
+  assert(meaningfulContentVerdict('short shell').passed === false, 'short pre-interaction shell must fail');
+  const postState = meaningfulContentVerdict('x'.repeat(101), 'selected state export-csv');
+  assert(postState.passed === true, 'post-state feature content must pass at the existing threshold');
+  assert(postState.evidence.includes('after selected state export-csv: 101 chars'), 'evidence must name the assessment point');
+});
+
+// ── B11 unit-test process boundary ───────────────────────────────────────────
+
+test('unit-test spawn keeps regex metacharacters in one opaque argv item with no shell', () => {
+  const grep = 'assessment charts — (single collapsed endpoint, carries exam_id|ALL filter omits exam_id)';
+  const spec = buildUnitTestSpawnSpec({ ac_id: 'ACT-BR4', test_file: 'feature/data/api.test.ts', grep }, 'C:\\repo');
+  assert(spec.command === process.execPath, 'Jest must run through the current native Node executable');
+  assert(spec.options.shell === false, 'unit-test execution must never enable a command shell');
+  assert(spec.args.filter((arg) => arg === '--runInBand').length === 1, 'Jest must use one deterministic in-band worker');
+  assert(spec.args[spec.args.length - 1] === grep, 'grep pattern must remain one byte-identical argv item');
+  assert(spec.args.filter((arg) => arg === '-t').length === 1, 'grep must have exactly one -t selector');
+});
+
+test('unit-test spawn rejects blank file and grep values before process creation', () => {
+  for (const entry of [
+    { ac_id: 'A', test_file: '' },
+    { ac_id: 'A', test_file: 'x.test.ts', grep: '' },
+  ]) {
+    let rejected = false;
+    try { buildUnitTestSpawnSpec(entry, 'C:\\repo'); } catch { rejected = true; }
+    assert(rejected, 'malformed unit-test selector must fail closed');
+  }
+});
 
 // ── analyzeCascade ────────────────────────────────────────────────────
 

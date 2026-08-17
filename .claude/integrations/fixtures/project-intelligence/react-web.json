@@ -1,0 +1,13 @@
+{
+  "files": {
+    "package.json": "{\"scripts\":{\"dev\":\"vite\",\"build\":\"vite build\",\"test\":\"vitest run\",\"lint\":\"eslint .\",\"typecheck\":\"tsc --noEmit\",\"test:e2e\":\"playwright test\"},\"dependencies\":{\"react\":\"19.0.0\",\"react-dom\":\"19.0.0\",\"react-router-dom\":\"7.0.0\",\"react-intl\":\"7.0.0\",\"styled-components\":\"6.0.0\",\"@tanstack/react-query\":\"5.0.0\",\"axios\":\"1.0.0\",\"@mui/material\":\"7.0.0\"},\"devDependencies\":{\"typescript\":\"5.0.0\"}}",
+    "package-lock.json": "{}",
+    "tsconfig.json": "{\n  // JSONC is the normal TypeScript configuration format.\n  \"compilerOptions\": {\n    \"paths\": { \"@app/*\": [\"src/*\"], },\n  },\n}",
+    "AGENTS.md": "# Fixture instructions",
+    "src/accounts/AccountPage.tsx": "export const AccountPage = () => null",
+    "src/accounts/data/api.ts": "export const loadAccount = () => null",
+    "src/accounts/messages.ts": "export const messages = {}",
+    "src/accounts/AccountPage.scss": ".account {}",
+    "src/accounts/AccountPage.test.tsx": "test('account', () => {})"
+  }
+}

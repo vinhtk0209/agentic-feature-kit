@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0.0",
+  "mode": "managed",
+  "worktreeRoot": "C:/absolute/path/to/linked-worktree",
+  "serverUrl": "http://127.0.0.1:3000",
+  "managed": {
+    "executable": "node",
+    "args": ["scripts/dev-server.js", "--port", "3000"],
+    "readyPath": "/home",
+    "timeoutMs": 60000
+  }
+}

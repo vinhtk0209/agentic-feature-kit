@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vinhtk0209/agentic-feature-kit/schemas/orchestrator-phase-envelope-1.0.0.json",
+  "title": "Agentic Feature Kit Orchestrator Phase Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "contractVersion", "runId", "feature", "phase", "stage",
+    "transitionIndex", "previousEnvelopeHash", "status", "inputs", "outputs",
+    "evidence", "gate", "envelopeHash"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "contractVersion": { "const": "1.0.0" },
+    "runId": { "type": "string", "minLength": 1 },
+    "feature": { "type": "string", "minLength": 1 },
+    "phase": { "type": "string", "minLength": 1 },
+    "stage": { "type": "string", "minLength": 1 },
+    "transitionIndex": { "type": "integer", "minimum": 0 },
+    "previousEnvelopeHash": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+    "status": { "enum": ["completed", "skipped", "awaiting_gate", "failed"] },
+    "inputs": { "type": "array", "items": { "$ref": "#/$defs/artifactReference" } },
+    "outputs": { "type": "array", "items": { "$ref": "#/$defs/artifactReference" } },
+    "evidence": { "$ref": "#/$defs/artifactReference" },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "status", "authority", "autoApproved"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "status": { "enum": ["not_required", "awaiting", "approved", "rejected", "computed_pass", "computed_fail"] },
+        "authority": { "enum": ["none", "human", "explicit-autonomy", "trusted-verifier"] },
+        "autoApproved": { "const": false }
+      }
+    },
+    "envelopeHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  },
+  "$defs": {
+    "artifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "contractKey", "uri", "sha256", "bytes"],
+      "properties": {
+        "role": { "enum": ["input", "output", "evidence"] },
+        "contractKey": { "type": "string", "minLength": 1 },
+        "uri": { "type": "string", "pattern": "^(artifact|evidence)://[A-Za-z0-9._~:/-]+$" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

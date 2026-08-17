@@ -1,0 +1,10 @@
+{
+  "files": {
+    "package.json": "{\"dependencies\":{\"react\":\"19.0.0\",\"react-native\":\"0.80.0\",\"expo\":\"53.0.0\",\"expo-router\":\"5.0.0\",\"i18next\":\"25.0.0\"},\"devDependencies\":{\"typescript\":\"5.0.0\"}}",
+    "yarn.lock": "# fixture",
+    "tsconfig.json": "{}",
+    "src/profile/ProfileScreen.tsx": "export const ProfileScreen = () => null",
+    "src/profile/services/profile.ts": "export const loadProfile = () => null",
+    "src/profile/ProfileScreen.test.tsx": "test('profile', () => {})"
+  }
+}

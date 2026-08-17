@@ -6,7 +6,7 @@
  *   1. Read routes[] from ux-states.json (or extract from states[].screen)
  *   2. Run playwright-runner.ts for each route (serial)
  *   3. Run scoped types + lint checks (errors outside feature folder are pre-existing)
- *   4. Update checklist.md PLAYWRIGHT-* rows
+ *   4. Update checklist.md PLAYWRIGHT-* rows, then enforce coverage from that durable evidence
  *   5. Return structured JSON
  *
  * Usage:
@@ -29,15 +29,25 @@
 import { execSync, spawnSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { resolveRoutes, parseUxStates } from './ux-states';
+import { resolveB11ExecutionRoutes, parseUxStates } from './ux-states';
 import { resolveContractHttp, AmbiguousHttpFileError } from './contract-probe';
 import { checkPlaywrightToken } from './version-check';
+import {
+  createBrowserTargetRequirement,
+  isLinkedGitWorktree,
+  loadBrowserTargetConfig,
+  prepareBrowserTarget,
+  type BrowserTargetProvenance,
+  type BrowserTargetSession,
+} from './worktree-browser-target';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface RouteResult {
+export interface RouteResult {
   route: string;
   passed: boolean;
+  status?: 'verified' | 'failed' | 'needs_input' | 'rejected';
+  targetProvenanceHash?: string;
   checks: Array<{ id: string; passed: boolean; message: string }>;
   screenshotPath?: string;
 }
@@ -52,6 +62,7 @@ interface B11Result {
   contractWarnings: number;
   routeResults: RouteResult[];
   checklistUpdated: boolean;
+  browserTarget: BrowserTargetProvenance | null;
   summary: string;
 }
 
@@ -77,6 +88,36 @@ export function computeGatesPass(b11_a: 'pass' | 'fail', coverageErrors: number,
   return b11_a === 'pass' && coverageErrors === 0 && b11_b !== 'fail';
 }
 
+/**
+ * Runs the evidence-producing Tier-B stage before the HR33/34/35/36 reader. Initial captures
+ * legitimately begin below HR35's ratio floor; evaluating it before Playwright would permanently
+ * prevent the only trusted writer from recording the evidence that the final gate must inspect.
+ */
+export async function runTierBThenCoverage(input: {
+  routes: readonly string[];
+  tierBRan: boolean;
+  runRoute: (route: string) => Promise<RouteResult>;
+  updateChecklist: (routeResults: RouteResult[]) => boolean;
+  runCoverage: () => { coverageErrors: number; coverageSummary: string };
+}): Promise<{
+  routeResults: RouteResult[];
+  b11_b: 'pass' | 'fail' | 'skip';
+  checklistUpdated: boolean;
+  coverageErrors: number;
+  coverageSummary: string;
+}> {
+  const routeResults: RouteResult[] = [];
+  if (input.tierBRan) {
+    for (const route of input.routes) routeResults.push(await input.runRoute(route));
+  }
+  const b11_b = computeB11B(routeResults, input.tierBRan);
+  const checklistUpdated = routeResults.length > 0
+    ? input.updateChecklist(routeResults)
+    : false;
+  const { coverageErrors, coverageSummary } = input.runCoverage();
+  return { routeResults, b11_b, checklistUpdated, coverageErrors, coverageSummary };
+}
+
 // ─── Args ────────────────────────────────────────────────────────────────────
 
 // True only when b11-runner.ts is the CLI entry point — NOT when imported (b11-runner.test.ts imports
@@ -93,6 +134,8 @@ const featureName = args[0] ?? ''; // '' only on a non-CLI import (main() never 
 const featurePathIdx = args.indexOf('--feature-path');
 const featurePath = featurePathIdx >= 0 ? args[featurePathIdx + 1] : null;
 const noPlaywright = args.includes('--no-playwright');
+const browserTargetConfigIdx = args.indexOf('--browser-target-config');
+const browserTargetConfigPath = browserTargetConfigIdx >= 0 ? args[browserTargetConfigIdx + 1] : null;
 
 const cwd = process.cwd();
 const specsDir = path.join(cwd, 'docs', 'specs', featureName);
@@ -185,6 +228,7 @@ function run(cmd: string, timeoutMs = 120_000): { code: number; stdout: string; 
 async function runPlaywrightSpawn(
   cmd: string,
   timeoutMs: number,
+  envOverrides: NodeJS.ProcessEnv = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     const proc = spawn(cmd, {
@@ -192,6 +236,7 @@ async function runPlaywrightSpawn(
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: process.platform !== 'win32',
+      env: { ...process.env, ...envOverrides },
     });
     let stdout = '';
     let stderr = '';
@@ -251,12 +296,12 @@ function writeFile(filePath: string, content: string): void {
 // ─── Step 1: Read routes ──────────────────────────────────────────────────────
 
 function readRoutes(): string[] {
-  // Route resolution lives in ux-states.ts (single source of truth, shared with the integration
-  // test) so the B5 flat schema (states[].route) can never silently diverge from the reader again
-  // — audit F1. parseUxStates returns null on malformed JSON → resolveRoutes → [].
+  // Route planning lives in ux-states.ts (single source of truth, shared with tests). A v2 script
+  // that explicitly self-navigates every resolved route is executed once; incomplete/malformed
+  // proof retains the normal per-route behavior rather than silently reducing coverage.
   const raw = readFile(path.join(specsDir, 'ux-states.json'));
   if (!raw) return [];
-  return resolveRoutes(parseUxStates(raw));
+  return resolveB11ExecutionRoutes(parseUxStates(raw));
 }
 
 function readStateCount(): number {
@@ -270,7 +315,11 @@ function readStateCount(): number {
 
 // ─── Step 2: Run playwright for each route ────────────────────────────────────
 
-async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<RouteResult> {
+async function runPlaywrightForRoute(
+  route: string,
+  timeoutMs: number,
+  browserTarget: BrowserTargetSession | null = null,
+): Promise<RouteResult> {
   const runnerPath = path.join(integrationsDir, 'playwright-runner.ts');
   if (!fs.existsSync(runnerPath)) {
     return { route, passed: false, checks: [{ id: 'RUNNER', passed: false, message: 'playwright-runner.ts not found' }] };
@@ -310,7 +359,11 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
     apiPathArg,
   ].filter(Boolean).join(' ');
 
-  const { code, stdout, stderr } = await runPlaywrightSpawn(cmd, timeoutMs);
+  const { code, stdout, stderr } = await runPlaywrightSpawn(
+    cmd,
+    timeoutMs,
+    browserTarget?.serverUrl ? { DEV_SERVER_URL: browserTarget.serverUrl } : {},
+  );
 
   // playwright-runner outputs JSON — try to parse it
   try {
@@ -324,6 +377,8 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
       return {
         route,
         passed: parsed.passed ?? code === 0,
+        status: (parsed.passed ?? code === 0) ? 'verified' : 'failed',
+        targetProvenanceHash: browserTarget?.provenance.contentHash,
         checks: parsed.checks ?? [],
         screenshotPath: parsed.screenshotPath,
       };
@@ -335,7 +390,23 @@ async function runPlaywrightForRoute(route: string, timeoutMs: number): Promise<
   return {
     route,
     passed: code === 0,
+    status: code === 0 ? 'verified' : 'failed',
+    targetProvenanceHash: browserTarget?.provenance.contentHash,
     checks: [{ id: 'PLAYWRIGHT-RUN', passed: code === 0, message: stdout || stderr }],
+  };
+}
+
+export function browserTargetRouteResult(route: string, target: BrowserTargetProvenance): RouteResult {
+  return {
+    route,
+    passed: false,
+    status: target.status === 'rejected' ? 'rejected' : 'needs_input',
+    targetProvenanceHash: target.contentHash,
+    checks: [{
+      id: 'WORKTREE-BROWSER-TARGET',
+      passed: false,
+      message: `${target.reasonCode}: ${target.evidence.join('; ')}`,
+    }],
   };
 }
 
@@ -364,8 +435,9 @@ function runStaticAnalysis(): { typeErrors: number; lintErrors: number; b11_a: '
   if (featurePath) {
     const lintResult = run(`npx eslint --ext .js,.jsx,.ts,.tsx "${featurePath}" 2>&1`);
     const lintOutput = lintResult.stdout + lintResult.stderr;
-    lintErrors = (lintOutput.match(/\d+ error/g) ?? [])
-      .reduce((sum, m) => sum + parseInt(m, 10), 0);
+    for (const match of lintOutput.match(/\d+ error/g) ?? []) {
+      lintErrors += parseInt(match, 10);
+    }
   }
 
   const b11_a: 'pass' | 'fail' = typeErrors === 0 && lintErrors === 0 ? 'pass' : 'fail';
@@ -549,37 +621,70 @@ async function main(): Promise<void> {
   // Static analysis
   const { typeErrors, lintErrors, b11_a } = runStaticAnalysis();
 
-  // Coverage gate (HR33/34/35/36) — reported alongside static analysis
-  const { coverageErrors, coverageSummary } = runCoverageGate();
-
   // Contract probe (advisory) — .http contract vs data/types.ts
   const { contractErrors, contractWarnings, contractSummary } = runContractProbe();
 
-  // Playwright
-  const routeResults: RouteResult[] = [];
+  // Tier B writes its checklist evidence before the final HR33/34/35/36 coverage reader runs.
   const tierBRan = !noPlaywright && routes.length > 0;
-  if (tierBRan) {
-    // v3.24 Tier B auth preflight — fail closed on a missing/stale/expiring token
-    // BEFORE any browser context is created. A bad token renders an empty-shell
-    // 401 page that a shell-only assertion would false-pass (the class §4 closes).
-    assertPlaywrightTokenFresh(resolvePlaywrightEnvPath());
-    for (const route of routes) {
-      routeResults.push(await runPlaywrightForRoute(route, playwrightTimeoutMs));
+  const identityRequired = tierBRan && (isLinkedGitWorktree(cwd) || browserTargetConfigPath !== null);
+  let browserTarget: BrowserTargetProvenance | null = null;
+  let browserTargetSession: BrowserTargetSession | null = null;
+  if (identityRequired) {
+    if (!browserTargetConfigPath) {
+      browserTarget = createBrowserTargetRequirement({
+        cwd,
+        route: routes[0],
+        reasonCode: 'browser-target-config-required',
+        evidence: ['linked worktree requires --browser-target-config', 'serve the exact worktree or provide byte identity'],
+      });
+    } else {
+      try {
+        const config = loadBrowserTargetConfig(browserTargetConfigPath);
+        browserTargetSession = await prepareBrowserTarget({ cwd, route: routes[0], config });
+        browserTarget = browserTargetSession.provenance;
+      } catch (error) {
+        browserTarget = createBrowserTargetRequirement({
+          cwd,
+          route: routes[0],
+          status: 'rejected',
+          reasonCode: 'browser-target-config-invalid',
+          evidence: [error instanceof Error ? error.message : String(error)],
+        });
+      }
     }
   }
-  // Link 1: routeResults → b11_b (pure, tested).
-  const b11_b = computeB11B(routeResults, tierBRan);
-
-  // Update checklist
-  const checklistUpdated = routeResults.length > 0
-    ? updateChecklistPlaywright(routeResults)
-    : false;
+  const targetBlocked = browserTarget !== null && browserTarget.status !== 'verified';
+  let tierResult: Awaited<ReturnType<typeof runTierBThenCoverage>>;
+  try {
+    if (tierBRan && !targetBlocked) assertPlaywrightTokenFresh(resolvePlaywrightEnvPath());
+    tierResult = await runTierBThenCoverage({
+      routes,
+      tierBRan,
+      runRoute: (route) => targetBlocked && browserTarget
+        ? Promise.resolve(browserTargetRouteResult(route, browserTarget))
+        : runPlaywrightForRoute(route, playwrightTimeoutMs, browserTargetSession),
+      updateChecklist: updateChecklistPlaywright,
+      runCoverage: runCoverageGate,
+    });
+  } finally {
+    await browserTargetSession?.close();
+  }
+  const {
+    routeResults,
+    b11_b,
+    checklistUpdated,
+    coverageErrors,
+    coverageSummary,
+  } = tierResult;
 
   const passedRoutes = routeResults.filter((r) => r.passed).length;
   const summary = [
     `Static: types=${typeErrors} errors, lint=${lintErrors} errors (b11_a=${b11_a})`,
     coverageSummary,
     contractSummary,
+    browserTarget
+      ? `Browser target: ${browserTarget.status}/${browserTarget.reasonCode} (${browserTarget.contentHash})`
+      : 'Browser target: main-workspace legacy server contract',
     routes.length > 0
       ? `Playwright: ${passedRoutes}/${routeResults.length} routes passed (b11_b=${b11_b})`
       : 'Playwright: no routes defined (b11_b=skip)',
@@ -595,6 +700,7 @@ async function main(): Promise<void> {
     contractWarnings,
     routeResults,
     checklistUpdated,
+    browserTarget,
     summary,
   };
 
@@ -606,7 +712,7 @@ async function main(): Promise<void> {
     fs.mkdirSync(specsDir, { recursive: true });
     writeFile(
       path.join(specsDir, '.b11-result.json'),
-      JSON.stringify({ b11_a, b11_b, coverageErrors, writtenAt: new Date().toISOString() }, null, 2),
+      JSON.stringify({ b11_a, b11_b, coverageErrors, browserTarget, writtenAt: new Date().toISOString() }, null, 2),
     );
   } catch { /* non-fatal — stdout JSON remains the primary contract */ }
 

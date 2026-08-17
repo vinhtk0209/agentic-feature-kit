@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "identity": {
+    "provider": "copilot",
+    "modelKey": "copilot-gpt-5.3-codex",
+    "modelId": "gpt-5.3-codex",
+    "adapterVersion": "i2-provider-live-smoke-copilot-v1"
+  },
+  "capabilityHash": "98791dce4fd3c0e5d813aa496aa40de5ff851a159e171ec11272b0c908d3d362",
+  "cost": {
+    "status": "unknown",
+    "inputTokens": null,
+    "outputTokens": null,
+    "costUsd": null
+  },
+  "bindingHash": "78faf55351ed25af13f2a82ffa369208631f0b2acd29cc5344f436f4c5948eb4"
+}

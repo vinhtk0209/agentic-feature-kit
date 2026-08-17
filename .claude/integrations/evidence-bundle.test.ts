@@ -14,10 +14,14 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { spawnSync } from 'child_process';
 import {
-  buildBundle, verifyBundle, resumeFromBundles, PHASE_ORDER,
+  buildBundle, verifyBundle, verifyBackendBoundBundle, resumeFromBundles, PHASE_ORDER,
+  CONDITIONAL_EVIDENCE_PHASES,
   UnknownPhaseError, MissingArtifactError, EmptyBundleError, ContextBudgetExceededError,
 } from './evidence-bundle';
+import { createEvidenceBinding, normalizeCost, verifyEvidenceBinding, type EvidenceBackendBinding } from './multi-provider-backends';
+import { sha256 } from './spec-ir';
 
 let passed = 0;
 let failed = 0;
@@ -29,6 +33,10 @@ function assertThrows(fn: () => void, ctor: Function, label: string) {
   try { fn(); } catch (e) { assert(e instanceof ctor, `${label}: expected ${ctor.name}, got ${(e as Error)?.constructor?.name}: ${(e as Error).message}`); return; }
   throw new Error(`${label}: expected a throw, got a normal return`);
 }
+function assertUnsafeArtifact(fn: () => void, label: string) {
+  try { fn(); } catch (e) { assert((e as Error).name === 'UnsafeArtifactError', `${label}: expected UnsafeArtifactError, got ${(e as Error)?.constructor?.name}: ${(e as Error).message}`); return; }
+  throw new Error(`${label}: expected an unsafe-artifact throw, got a normal return`);
+}
 
 function mkTmpRepo(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'evidence-bundle-'));
@@ -37,6 +45,32 @@ function writeRepoFile(cwd: string, relPath: string, content: string): void {
   const abs = path.join(cwd, relPath);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, content, 'utf8');
+}
+
+function resolveLoadedTsxCli(): string {
+  const local = path.resolve(__dirname, '..', '..', 'node_modules', 'tsx', 'dist', 'cli.mjs');
+  if (fs.existsSync(local)) return local;
+  const loaded = Object.keys(require.cache).find((candidate) => /[\\/]node_modules[\\/]tsx[\\/]dist[\\/]register-[^\\/]+\.cjs$/.test(candidate));
+  if (!loaded) throw new Error('test harness: unable to locate the loaded tsx runtime');
+  const packageMarker = `${path.sep}node_modules${path.sep}tsx${path.sep}`;
+  const packageIndex = loaded.lastIndexOf(packageMarker);
+  if (packageIndex < 0) throw new Error('test harness: loaded tsx path is malformed');
+  return path.join(loaded.slice(0, packageIndex), 'node_modules', 'tsx', 'dist', 'cli.mjs');
+}
+
+function backendBinding(): EvidenceBackendBinding {
+  return createEvidenceBinding({
+    trusted: {
+      identity: { provider: 'codex', modelKey: 'codex', modelId: 'codex-fixture', adapterVersion: 'test-v1' },
+      capabilities: ['execute-phase', 'evidence-binding'],
+      capabilityHash: 'a'.repeat(64),
+    },
+    cost: normalizeCost(undefined),
+  });
+}
+
+function manifestHash(files: Array<{ role: string; path: string; sha256: string; bytes: number }>): string {
+  return sha256([...files].sort((a, b) => a.path.localeCompare(b.path)).map((file) => `${file.role}|${file.path}|${file.sha256}|${file.bytes}`).join('\n'));
 }
 
 // ─── (a) bundle builder collects declared artifacts into an addressable bundle ───────────────
@@ -67,6 +101,61 @@ test('(a) build: fail-closed on a declared-but-missing artifact (never a silent 
   assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), 'no partial bundle dir left behind after a missing-artifact failure');
 });
 
+test('(a-security) build rejects secret-bearing env and runner credential paths before manifest writes', () => {
+  for (const relPath of ['.env.playwright', '.claude/mcp-server/.env', 'kit-dashboard/runner.secrets.json']) {
+    const cwd = mkTmpRepo();
+    writeRepoFile(cwd, relPath, 'SECRET_VALUE=must-not-be-hashed');
+    assertUnsafeArtifact(() => buildBundle({ featureName: 'Foo', phase: 'B0.5', cwd, inputs: [relPath] }), relPath);
+    assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), `unsafe ${relPath} must not leave a partial evidence directory`);
+  }
+});
+
+test('(a-security) build rejects a repo-escape path before reading or writing evidence', () => {
+  const parent = mkTmpRepo();
+  const cwd = path.join(parent, 'repo');
+  fs.mkdirSync(cwd);
+  writeRepoFile(parent, 'outside.txt', 'outside secret material');
+  assertUnsafeArtifact(() => buildBundle({ featureName: 'Foo', phase: 'B0', cwd, inputs: ['../outside.txt'] }), 'repo escape');
+  assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), 'repo escape must not leave a partial evidence directory');
+});
+
+test('(a-security) documentation env examples remain eligible evidence', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, '.env.example', 'SAFE_PLACEHOLDER=');
+  writeRepoFile(cwd, '.claude/mcp-server/.env.test.example', 'SAFE_PLACEHOLDER=');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0.5', cwd, inputs: ['.env.example', '.claude/mcp-server/.env.test.example'] });
+  assert(manifest.files.length === 2, `expected two safe example inputs, got ${manifest.files.length}`);
+});
+
+test('(a-security) verifier rejects a self-consistent forged manifest that references a secret path', () => {
+  const cwd = mkTmpRepo();
+  const content = 'PLAYWRIGHT_ACCESS_TOKEN=must-not-be-verified';
+  writeRepoFile(cwd, '.env.playwright', content);
+  const files = [{ role: 'input', path: '.env.playwright', sha256: sha256(content), bytes: Buffer.byteLength(content) }];
+  const forged = { schemaVersion: 1, feature: 'Foo', phase: 'B0.5', builtAt: new Date().toISOString(), files, manifestHash: manifestHash(files), estimatedTokens: 1, budgetTokens: 1500 };
+  writeRepoFile(cwd, 'docs/specs/Foo/.evidence/B0.5/manifest.json', `${JSON.stringify(forged, null, 2)}\n`);
+  const result = verifyBundle('Foo', 'B0.5', cwd);
+  assert(result.valid === false, 'secret-referencing forged manifest must fail verification');
+  assert(result.fileMismatches.some((m) => (m as { reason: string }).reason === 'unsafe-path'), `expected unsafe-path mismatch: ${JSON.stringify(result.fileMismatches)}`);
+});
+
+test('(a-security) CLI rejects a secret transcript-file source before copying its content', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, '.env.playwright', 'PLAYWRIGHT_ACCESS_TOKEN=must-not-be-copied');
+  const cli = path.resolve(__dirname, 'evidence-bundle.ts');
+  const tsxCli = resolveLoadedTsxCli();
+  const result = spawnSync(process.execPath, [tsxCli, cli, 'build', 'Foo', 'B0.5', '--transcript-file', 'preflight=.env.playwright'], { cwd, encoding: 'utf8' });
+  assert(result.status !== 0, `secret transcript-file must fail closed, got ${result.status}`);
+  assert(result.stderr.includes('UnsafeArtifactError'), `CLI must expose the named bounded failure: ${result.stderr}`);
+  assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence')), 'secret transcript-file must not leave a copied transcript or manifest');
+});
+
+test('(a-security) flagship workflow forbids secret-bearing evidence references at B0.5', () => {
+  const prompt = fs.readFileSync(path.resolve(__dirname, '..', 'commands', 'feature-from-confluence.md'), 'utf8');
+  assert(prompt.includes('Never bundle secret-bearing configuration.'), 'global evidence protocol must forbid secret configuration');
+  assert(prompt.includes('Do not reference `.env.playwright` or any other environment/credential file.'), 'B0.5 must explicitly use non-sensitive status evidence');
+});
+
 test('(a) build: rejects an unknown phase id (typo-safety over PHASE_ORDER)', () => {
   const cwd = mkTmpRepo();
   writeRepoFile(cwd, 'docs/specs/Foo/x.md', 'x');
@@ -81,6 +170,29 @@ test('(a) build: refuses an empty bundle (zero inputs/outputs/transcripts)', () 
 test('PHASE_ORDER covers all 23 B-phases from the flagship command (B0..B12.8)', () => {
   assert(PHASE_ORDER.length === 23, `expected 23 phases, got ${PHASE_ORDER.length}: ${PHASE_ORDER.join(',')}`);
   assert(PHASE_ORDER[0] === 'B0' && PHASE_ORDER[PHASE_ORDER.length - 1] === 'B12.8', 'order runs B0 -> B12.8');
+});
+
+test('D-cross-2 has a fail-closed evidence contract without becoming an unconditional resume phase', () => {
+  assert(CONDITIONAL_EVIDENCE_PHASES.length === 1 && CONDITIONAL_EVIDENCE_PHASES[0] === 'D-cross-2', 'conditional evidence registry must contain exact D-cross-2');
+  assert(!(PHASE_ORDER as readonly string[]).includes('D-cross-2'), 'conditional D-cross-2 must not block ineligible CREATE resumes');
+
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/components/Foo/RECONCILE.json', '{"verdict":"clean"}\n');
+  const built = buildBundle({
+    featureName: 'Foo',
+    phase: 'D-cross-2',
+    cwd,
+    outputs: ['docs/components/Foo/RECONCILE.json'],
+    transcripts: { parser: 'parser=exact-existing-contract-parser\nverdict=clean\n' },
+  });
+  assert(built.phase === 'D-cross-2');
+  assert(verifyBundle('Foo', 'D-cross-2', cwd).valid, 'executed D-cross-2 must produce a verifiable manifest');
+  assert(resumeFromBundles('Foo', cwd).resumeFromPhase === 'B0', 'conditional evidence must not reorder the 23 B-phase resume chain');
+
+  const prompt = fs.readFileSync(path.resolve(__dirname, '..', 'commands', 'feature-from-confluence.md'), 'utf8');
+  assert(prompt.includes('MUST be **two separate tool invocations**'), 'STOP-gate emitters must never be compounded into duplicate sentinel output');
+  assert(prompt.includes('evidence-bundle.ts build "<FeatureName>" "D-cross-2"'), 'executed D-cross-2 must build a durable manifest');
+  assert(prompt.includes('evidence-bundle.ts verify "<FeatureName>" "D-cross-2"'), 'executed D-cross-2 must verify before branching');
 });
 
 // ─── (b) sha256 manifest: per-file + top-level hash ──────────────────────────────────────────
@@ -250,6 +362,90 @@ test('(e) budget: a small bundle within its declared budget builds normally (the
   writeRepoFile(cwd, 'docs/specs/Foo/small.md', 'tiny content');
   const manifest = buildBundle({ featureName: 'Foo', phase: 'B4', cwd, outputs: ['docs/specs/Foo/small.md'] });
   assert(manifest.estimatedTokens <= manifest.budgetTokens, 'a small bundle must not be flagged over budget');
+});
+
+// ─── I2-B: optional v1-compatible backend-binding sidecar ───────────────────────────────────
+
+test('(I2-B) legacy v1 bundle keeps its file-list semantics while strict backend verification refuses an absent claim', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'legacy output');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'] });
+  assert(manifest.schemaVersion === 1, 'legacy manifest schema must remain v1');
+  assert(manifest.files.length === 1 && manifest.files[0].role === 'output', 'legacy file-list must contain only the declared output');
+  assert(verifyBundle('Foo', 'B0', cwd).valid, 'legacy verifyBundle semantics must remain valid');
+  const strict = verifyBackendBoundBundle('Foo', 'B0', cwd);
+  assert(!strict.valid && strict.reason === 'binding-missing', 'strict verifier must not infer a backend claim from a legacy bundle');
+});
+
+test('(I2-B) bound v1 bundle hashes exactly one valid backend-binding sidecar', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: backendBinding() });
+  const entry = manifest.files.find((file) => file.role === 'backend-binding');
+  assert(manifest.schemaVersion === 1 && manifest.files.length === 2, 'sidecar must be additive to schema v1');
+  assert(!!entry && entry.path.endsWith('/backend-binding.json'), 'manifest must hash the generated sidecar');
+  assert(verifyBundle('Foo', 'B0', cwd).valid, 'generic verifier must hash-check a bound sidecar');
+  assert(verifyBackendBoundBundle('Foo', 'B0', cwd).valid, 'strict verifier must accept the valid bound bundle');
+});
+
+test('(I2-B) sidecar tamper or removal fails generic hash verification and strict binding verification', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: backendBinding() });
+  const sidecar = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0', 'backend-binding.json');
+  const tampered = JSON.parse(fs.readFileSync(sidecar, 'utf8')) as EvidenceBackendBinding;
+  tampered.identity.provider = 'claude';
+  assert(!verifyEvidenceBinding(tampered), 'identity mutation must invalidate the binding itself');
+  fs.writeFileSync(sidecar, JSON.stringify(tampered, null, 2), 'utf8');
+  assert(!verifyBundle('Foo', 'B0', cwd).valid, 'tampered sidecar must fail generic file hashing');
+  assert(!verifyBackendBoundBundle('Foo', 'B0', cwd).valid, 'tampered sidecar must fail strict verification');
+  fs.unlinkSync(sidecar);
+  assert(!verifyBundle('Foo', 'B0', cwd).valid, 'removed sidecar must fail generic verification');
+  assert(!verifyBackendBoundBundle('Foo', 'B0', cwd).valid, 'removed sidecar must fail strict verification');
+});
+
+test('(I2-B) duplicate binding sentinel is rejected even if an attacker recomputes the v1 manifest hash', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: backendBinding() });
+  const sidecar = manifest.files.find((file) => file.role === 'backend-binding')!;
+  const forgedFiles = [...manifest.files, { ...sidecar }];
+  const forged = { ...manifest, files: forgedFiles, manifestHash: manifestHash(forgedFiles) };
+  const manifestPath = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0', 'manifest.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(forged, null, 2), 'utf8');
+  assert(verifyBundle('Foo', 'B0', cwd).valid, 'generic v1 verifier permits duplicate hashed paths by legacy design');
+  const strict = verifyBackendBoundBundle('Foo', 'B0', cwd);
+  assert(!strict.valid && strict.reason === 'binding-duplicate', 'strict verifier must reject ambiguous backend-binding sentinels');
+});
+
+test('(I2-B) malformed binding sentinel is rejected even if an attacker recomputes the v1 file and manifest hashes', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  const manifest = buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: backendBinding() });
+  const sidecarPath = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0', 'backend-binding.json');
+  const malformed = Buffer.from('{"identity":', 'utf8');
+  fs.writeFileSync(sidecarPath, malformed);
+  const forgedFiles = manifest.files.map((file) => file.role === 'backend-binding'
+    ? { ...file, sha256: sha256(malformed), bytes: malformed.length }
+    : file);
+  const forged = { ...manifest, files: forgedFiles, manifestHash: manifestHash(forgedFiles) };
+  const manifestPath = path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0', 'manifest.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(forged, null, 2), 'utf8');
+  assert(verifyBundle('Foo', 'B0', cwd).valid, 'generic v1 verifier must accept the attacker-rehashed malformed sidecar');
+  const strict = verifyBackendBoundBundle('Foo', 'B0', cwd);
+  assert(!strict.valid && strict.reason === 'binding-invalid', 'strict verifier must reject malformed backend-binding JSON');
+});
+
+test('(I2-B) invalid binding is refused before the builder creates any partial evidence files', () => {
+  const cwd = mkTmpRepo();
+  writeRepoFile(cwd, 'docs/specs/Foo/a.md', 'bound output');
+  const invalid = { ...backendBinding(), bindingHash: 'not-a-valid-hash' };
+  assertThrows(
+    () => buildBundle({ featureName: 'Foo', phase: 'B0', cwd, outputs: ['docs/specs/Foo/a.md'], backendBinding: invalid }),
+    Error,
+    'invalid backend binding',
+  );
+  assert(!fs.existsSync(path.join(cwd, 'docs', 'specs', 'Foo', '.evidence', 'B0')), 'invalid binding must leave zero partial bundle writes');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

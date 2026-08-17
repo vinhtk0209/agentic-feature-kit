@@ -1,0 +1,31 @@
+{
+  "sentinel": "continuous-assurance/v1",
+  "schemaVersion": 1,
+  "checks": [
+    {
+      "id": "contract-probe-attack-suite",
+      "kind": "command",
+      "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/contract-probe.test.ts"]
+    },
+    {
+      "id": "contract-probe-defer-attack-suite",
+      "kind": "command",
+      "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/contract-probe.defer.test.ts"]
+    },
+    {
+      "id": "checklist-defer-reprobe",
+      "kind": "command",
+      "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/checklist-defer.test.ts"]
+    },
+    {
+      "id": "us-ad-095-progress-reports-spec-drift",
+      "kind": "spec-refetch-drift",
+      "baselineIrPath": ".claude/assurance/baselines/us-ad-095-progress-reports.spec-ir.json",
+      "actor": {
+        "command": ["node", "node_modules/tsx/dist/cli.mjs", ".claude/integrations/confluence-refetch-actor.ts"],
+        "sourceRef": "confluence:830569842"
+      }
+    }
+  ],
+  "quarantine": []
+}

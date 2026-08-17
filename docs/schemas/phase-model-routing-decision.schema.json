@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-feature-kit.dev/schemas/phase-model-routing-decision.schema.json",
+  "title": "Phase Model Routing Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "requestId",
+    "requestHash",
+    "matrixHash",
+    "phaseId",
+    "phaseContractHash",
+    "evaluatedAt",
+    "status",
+    "requiredCapabilities",
+    "requiredRuntimePermissions",
+    "activeConditionIds",
+    "candidates",
+    "selectedCandidateId",
+    "reasonCodes",
+    "fallback",
+    "optimizerDisposition",
+    "decisionHash"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "requestId": { "$ref": "#/$defs/safeId" },
+    "requestHash": { "$ref": "#/$defs/sha256" },
+    "matrixHash": { "$ref": "#/$defs/sha256" },
+    "phaseId": { "$ref": "#/$defs/safeId" },
+    "phaseContractHash": { "$ref": "#/$defs/sha256" },
+    "evaluatedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["selected", "no_model", "needs_input"] },
+    "requiredCapabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/safeId" }
+    },
+    "requiredRuntimePermissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/safeId" }
+    },
+    "activeConditionIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/safeId" }
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/candidateEvaluation" }
+    },
+    "selectedCandidateId": {
+      "oneOf": [
+        { "$ref": "#/$defs/safeId" },
+        { "type": "null" }
+      ]
+    },
+    "reasonCodes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/reasonCode" }
+    },
+    "fallback": {
+      "oneOf": [
+        { "$ref": "phase-model-routing-request.schema.json#/$defs/fallback" },
+        { "type": "null" }
+      ]
+    },
+    "optimizerDisposition": {
+      "enum": [
+        "not_applicable",
+        "operator_order_selected",
+        "performance_evidence_insufficient",
+        "qualified_tie_break_selected"
+      ]
+    },
+    "decisionHash": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "selected" } } },
+      "then": { "properties": { "selectedCandidateId": { "$ref": "#/$defs/safeId" } } },
+      "else": { "properties": { "selectedCandidateId": { "type": "null" } } }
+    }
+  ],
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reasonCode": {
+      "enum": [
+        "phase_model_forbidden",
+        "phase_model_not_requested",
+        "condition_unknown",
+        "condition_not_applicable",
+        "candidate_unknown",
+        "candidate_disabled",
+        "documentation_missing",
+        "documentation_expired",
+        "configuration_missing",
+        "runtime_entitlement_missing",
+        "runtime_entitlement_expired",
+        "resolved_identity_mismatch",
+        "availability_unknown",
+        "candidate_unavailable",
+        "phase_qualification_missing",
+        "phase_qualification_expired",
+        "phase_qualification_failed",
+        "phase_contract_mismatch",
+        "adapter_capability_hash_mismatch",
+        "required_capability_missing",
+        "runtime_permission_missing",
+        "context_window_unknown",
+        "context_window_insufficient",
+        "requested_effort_unsupported",
+        "fallback_missing_lineage",
+        "fallback_not_replay_safe",
+        "fallback_contract_mismatch",
+        "fallback_permission_escalation",
+        "performance_evidence_insufficient",
+        "operator_order_selected",
+        "qualified_tie_break_selected"
+      ]
+    },
+    "candidateEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "candidateEvidenceHash", "eligible", "reasonCodes"],
+      "properties": {
+        "candidateId": { "$ref": "#/$defs/safeId" },
+        "candidateEvidenceHash": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "eligible": { "type": "boolean" },
+        "reasonCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/reasonCode" }
+        }
+      }
+    }
+  }
+}

@@ -47,8 +47,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { sha256 } from './spec-ir';
 import { estimateTokens } from './prompt-budget';
+import { verifyEvidenceBinding, type EvidenceBackendBinding } from './multi-provider-backends';
 
-// ─── Canonical B-phase order (feature-from-confluence.md `## B*` headings) ───────────────────
+// ─── Canonical phase registry ───────────────────────────────────────────────────────────────────────
 
 export const PHASE_ORDER = [
   'B0', 'B0.5', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B6.5', 'B7', 'B8', 'B8.5', 'B8.6',
@@ -56,15 +57,24 @@ export const PHASE_ORDER = [
 ] as const;
 export type Phase = typeof PHASE_ORDER[number];
 
-export function isKnownPhase(phase: string): phase is Phase {
-  return (PHASE_ORDER as readonly string[]).includes(phase);
+// D-cross-2 is conditional (ENHANCE + REAL only), so it must not be inserted into PHASE_ORDER:
+// bundles-only resume cannot infer whether a skipped run was eligible. When the phase does run,
+// however, it has the same fail-closed build/verify contract as every B-phase.
+export const CONDITIONAL_EVIDENCE_PHASES = ['D-cross-2'] as const;
+export type ConditionalEvidencePhase = typeof CONDITIONAL_EVIDENCE_PHASES[number];
+export type EvidencePhase = Phase | ConditionalEvidencePhase;
+
+export function isKnownPhase(phase: string): phase is EvidencePhase {
+  return (PHASE_ORDER as readonly string[]).includes(phase)
+    || (CONDITIONAL_EVIDENCE_PHASES as readonly string[]).includes(phase);
 }
 
 // Order-of-magnitude budgets, not tuned measurements — gate/STOP phases (B4, B6, B8, B9, B9.5,
 // B9.6, B10.5) produce little to no file output so get small budgets; content-generation phases
 // (B1, B5, B7, B10, B11) get the largest. Override per-call via buildBundle's `budgetTokens`.
-export const DEFAULT_PHASE_BUDGET_TOKENS: Record<Phase, number> = {
+export const DEFAULT_PHASE_BUDGET_TOKENS: Record<EvidencePhase, number> = {
   'B0': 4000, 'B0.5': 1500, 'B1': 6000, 'B2': 2000, 'B3': 4000, 'B4': 1000,
+  'D-cross-2': 6000,
   'B5': 8000, 'B6': 1000, 'B6.5': 3000, 'B7': 6000, 'B8': 1000, 'B8.5': 2000, 'B8.6': 4000,
   'B9': 1000, 'B9.5': 1000, 'B9.6': 1000, 'B10': 12000, 'B10.5': 1000, 'B11': 10000, 'B12': 3000,
   'B12.5': 2000, 'B12.6': 2000, 'B12.8': 2000,
@@ -86,6 +96,13 @@ export class MissingArtifactError extends Error {
   }
 }
 
+export class UnsafeArtifactError extends Error {
+  constructor(public readonly artifactPath: string, public readonly reason: 'outside-repo' | 'sensitive-path' | 'symlink-or-reparse' | 'invalid-path') {
+    super(`evidence-bundle: refusing unsafe artifact path "${artifactPath}" (${reason})`);
+    this.name = 'UnsafeArtifactError';
+  }
+}
+
 export class EmptyBundleError extends Error {
   constructor(public readonly feature: string, public readonly phase: string) {
     super(`evidence-bundle: refusing to write an empty bundle for ${feature}/${phase} (zero inputs, outputs, and transcripts)`);
@@ -100,10 +117,17 @@ export class ContextBudgetExceededError extends Error {
   }
 }
 
+export class InvalidBackendBindingError extends Error {
+  constructor() {
+    super('evidence-bundle: backend binding is malformed or fails its tamper-evident verification');
+    this.name = 'InvalidBackendBindingError';
+  }
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────────────────────
 
 export interface EvidenceFileEntry {
-  role: 'input' | 'output' | 'transcript';
+  role: 'input' | 'output' | 'transcript' | 'backend-binding';
   path: string; // repo-relative, POSIX separators
   sha256: string;
   bytes: number;
@@ -112,7 +136,7 @@ export interface EvidenceFileEntry {
 export interface EvidenceManifest {
   schemaVersion: 1;
   feature: string;
-  phase: Phase;
+  phase: EvidencePhase;
   builtAt: string;
   files: EvidenceFileEntry[];
   manifestHash: string;
@@ -128,6 +152,8 @@ export interface BuildBundleInput {
   outputs?: string[];
   /** name -> inline text content; written into the bundle itself (not referenced externally). */
   transcripts?: Record<string, string>;
+  /** Optional I2 backend-evidence claim; emitted as one hash-bound sidecar without changing manifest v1. */
+  backendBinding?: EvidenceBackendBinding;
   budgetTokens?: number;
   allowOverBudget?: boolean;
 }
@@ -135,7 +161,7 @@ export interface BuildBundleInput {
 export interface FileMismatch {
   path: string;
   role: string;
-  reason: 'missing' | 'hash-mismatch';
+  reason: 'missing' | 'hash-mismatch' | 'unsafe-path';
   expectedSha256?: string;
   actualSha256?: string;
 }
@@ -146,6 +172,15 @@ export interface VerifyResult {
   manifestSelfConsistent: boolean;
   fileMismatches: FileMismatch[];
   manifest?: EvidenceManifest;
+}
+
+export interface BackendBoundVerifyResult {
+  exists: boolean;
+  valid: boolean;
+  /** The unchanged P1 verifier result, retained for callers that need generic v1 diagnostics. */
+  bundle: VerifyResult;
+  reason?: 'bundle-missing' | 'bundle-invalid' | 'binding-missing' | 'binding-duplicate' | 'binding-invalid';
+  backendBinding?: EvidenceBackendBinding;
 }
 
 export interface ResumeBlockedAt {
@@ -168,12 +203,56 @@ function toPosix(p: string): string {
   return p.split(path.sep).join('/');
 }
 
+const SENSITIVE_ARTIFACT_BASENAMES = new Set([
+  '.npmrc', '.yarnrc', '.netrc', '.pypirc',
+  'runner.secrets.json', 'credentials.json', 'secrets.json', 'service-account.json',
+  'id_rsa', 'id_ed25519',
+]);
+
+function isInside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+function isSensitiveArtifactPath(repoRelativePath: string): boolean {
+  return toPosix(repoRelativePath).split('/').some((rawSegment) => {
+    const segment = rawSegment.toLowerCase();
+    const safeEnvExample = segment === '.env.example' || (segment.startsWith('.env.') && segment.endsWith('.example'));
+    if ((segment === '.env' || segment.startsWith('.env.')) && !safeEnvExample) return true;
+    if (SENSITIVE_ARTIFACT_BASENAMES.has(segment)) return true;
+    return /\.(?:pem|p12|pfx|key)$/.test(segment);
+  });
+}
+
+function resolveSafeArtifactPath(cwd: string, artifactPath: string): { abs: string; repoRelative: string } {
+  if (typeof artifactPath !== 'string' || artifactPath.trim() === '' || artifactPath.includes('\0')) {
+    throw new UnsafeArtifactError(String(artifactPath), 'invalid-path');
+  }
+  const root = path.resolve(cwd);
+  const abs = path.resolve(root, artifactPath);
+  if (!isInside(root, abs)) throw new UnsafeArtifactError(artifactPath, 'outside-repo');
+  const repoRelative = toPosix(path.relative(root, abs));
+  if (isSensitiveArtifactPath(repoRelative)) throw new UnsafeArtifactError(artifactPath, 'sensitive-path');
+  if (fs.existsSync(abs)) {
+    const stat = fs.lstatSync(abs);
+    if (stat.isSymbolicLink()) throw new UnsafeArtifactError(artifactPath, 'symlink-or-reparse');
+    const realRoot = fs.realpathSync.native(root);
+    const realArtifact = fs.realpathSync.native(abs);
+    if (!isInside(realRoot, realArtifact)) throw new UnsafeArtifactError(artifactPath, 'outside-repo');
+  }
+  return { abs, repoRelative };
+}
+
 function bundleDir(cwd: string, feature: string, phase: string): string {
   return path.join(cwd, 'docs', 'specs', feature, '.evidence', phase);
 }
 
 function manifestFilePath(cwd: string, feature: string, phase: string): string {
   return path.join(bundleDir(cwd, feature, phase), 'manifest.json');
+}
+
+function backendBindingFilePath(cwd: string, feature: string, phase: string): string {
+  return path.join(bundleDir(cwd, feature, phase), 'backend-binding.json');
 }
 
 /** Deterministic canonical serialization of the file list, sorted by path — the input to
@@ -193,6 +272,9 @@ export function buildBundle(input: BuildBundleInput): EvidenceManifest {
   if (!input.featureName) throw new Error('evidence-bundle: featureName is required');
   if (!isKnownPhase(input.phase)) throw new UnknownPhaseError(input.phase);
   const phase = input.phase;
+  // An I2 claim must be fully valid before this builder creates a directory, transcript, sidecar,
+  // or manifest. Legacy callers omit the field and keep the byte-level v1 build path unchanged.
+  if (input.backendBinding !== undefined && !verifyEvidenceBinding(input.backendBinding)) throw new InvalidBackendBindingError();
 
   const inputs = input.inputs ?? [];
   const outputs = input.outputs ?? [];
@@ -203,10 +285,10 @@ export function buildBundle(input: BuildBundleInput): EvidenceManifest {
   const missing: string[] = [];
   const refEntries: EvidenceFileEntry[] = [];
   const resolveRef = (role: 'input' | 'output', relPath: string): void => {
-    const abs = path.resolve(cwd, relPath);
+    const { abs, repoRelative } = resolveSafeArtifactPath(cwd, relPath);
     if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) { missing.push(relPath); return; }
     const buf = fs.readFileSync(abs);
-    refEntries.push({ role, path: toPosix(path.relative(cwd, abs)), sha256: sha256(buf), bytes: buf.length });
+    refEntries.push({ role, path: repoRelative, sha256: sha256(buf), bytes: buf.length });
   };
   inputs.forEach((p) => resolveRef('input', p));
   outputs.forEach((p) => resolveRef('output', p));
@@ -223,7 +305,19 @@ export function buildBundle(input: BuildBundleInput): EvidenceManifest {
     transcriptWrites.push({ absPath, buf, entry });
   }
 
-  const allEntries = [...refEntries, ...transcriptWrites.map((t) => t.entry)];
+  const backendBindingWrite = input.backendBinding === undefined ? undefined : (() => {
+    const absPath = backendBindingFilePath(cwd, input.featureName, phase);
+    const buf = Buffer.from(`${JSON.stringify(input.backendBinding, null, 2)}\n`, 'utf8');
+    const entry: EvidenceFileEntry = {
+      role: 'backend-binding',
+      path: toPosix(path.relative(cwd, absPath)),
+      sha256: sha256(buf),
+      bytes: buf.length,
+    };
+    return { absPath, buf, entry };
+  })();
+
+  const allEntries = [...refEntries, ...transcriptWrites.map((t) => t.entry), ...(backendBindingWrite ? [backendBindingWrite.entry] : [])];
   if (allEntries.length === 0) throw new EmptyBundleError(input.featureName, phase);
 
   const totalBytes = allEntries.reduce((sum, e) => sum + e.bytes, 0);
@@ -238,6 +332,10 @@ export function buildBundle(input: BuildBundleInput): EvidenceManifest {
   // Pass 2 — all checks passed; now actually write (transcripts + manifest).
   if (transcriptWrites.length > 0) fs.mkdirSync(transcriptsDir, { recursive: true });
   for (const t of transcriptWrites) fs.writeFileSync(t.absPath, t.buf);
+  if (backendBindingWrite) {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(backendBindingWrite.absPath, backendBindingWrite.buf);
+  }
 
   const sortedFiles = [...allEntries].sort((a, b) => a.path.localeCompare(b.path));
   const manifest: EvidenceManifest = {
@@ -280,7 +378,13 @@ export function verifyBundle(featureName: string, phase: string, cwd: string = p
   // even if manifest.json itself was left untouched.
   const fileMismatches: FileMismatch[] = [];
   for (const f of manifest.files ?? []) {
-    const abs = path.resolve(cwd, f.path);
+    let abs: string;
+    try {
+      abs = resolveSafeArtifactPath(cwd, f.path).abs;
+    } catch (error) {
+      if (error instanceof UnsafeArtifactError) { fileMismatches.push({ path: String(f.path), role: String(f.role), reason: 'unsafe-path' }); continue; }
+      throw error;
+    }
     if (!fs.existsSync(abs)) { fileMismatches.push({ path: f.path, role: f.role, reason: 'missing' }); continue; }
     const actual = sha256(fs.readFileSync(abs));
     if (actual !== f.sha256) {
@@ -295,6 +399,37 @@ export function verifyBundle(featureName: string, phase: string, cwd: string = p
     fileMismatches,
     manifest,
   };
+}
+
+/**
+ * Verify the optional I2 backend-evidence claim. This deliberately does not change
+ * verifyBundle() or resumeFromBundles(): v1 bundles without a claim remain valid to P1 callers.
+ * A caller that claims backend execution must instead use this strict verifier.
+ */
+export function verifyBackendBoundBundle(featureName: string, phase: string, cwd: string = process.cwd()): BackendBoundVerifyResult {
+  const bundle = verifyBundle(featureName, phase, cwd);
+  if (!bundle.exists) return { exists: false, valid: false, bundle, reason: 'bundle-missing' };
+  if (!bundle.valid || !bundle.manifest) return { exists: true, valid: false, bundle, reason: 'bundle-invalid' };
+
+  const expectedPath = toPosix(path.relative(cwd, backendBindingFilePath(cwd, featureName, phase)));
+  const files = Array.isArray(bundle.manifest.files) ? bundle.manifest.files : [];
+  // Treat either the reserved role or the reserved path as a sentinel. This makes an alias,
+  // duplicate, or role substitution fail closed rather than letting it look like a legacy file.
+  const sentinels = files.filter((file) => file.role === 'backend-binding' || file.path === expectedPath);
+  if (sentinels.length === 0) return { exists: true, valid: false, bundle, reason: 'binding-missing' };
+  if (sentinels.length !== 1) return { exists: true, valid: false, bundle, reason: 'binding-duplicate' };
+  const [sidecar] = sentinels;
+  if (sidecar.role !== 'backend-binding' || sidecar.path !== expectedPath) {
+    return { exists: true, valid: false, bundle, reason: 'binding-invalid' };
+  }
+
+  try {
+    const binding = JSON.parse(fs.readFileSync(backendBindingFilePath(cwd, featureName, phase), 'utf8')) as EvidenceBackendBinding;
+    if (!verifyEvidenceBinding(binding)) return { exists: true, valid: false, bundle, reason: 'binding-invalid' };
+    return { exists: true, valid: true, bundle, backendBinding: binding };
+  } catch {
+    return { exists: true, valid: false, bundle, reason: 'binding-invalid' };
+  }
 }
 
 // ─── Resume ────────────────────────────────────────────────────────────────────────────────
@@ -342,7 +477,10 @@ function parseTranscripts(args: string[]): Record<string, string> {
     if (a === '--transcript-file') {
       const raw = args[i + 1] ?? '';
       const eq = raw.indexOf('=');
-      if (eq > 0) out[raw.slice(0, eq)] = fs.readFileSync(raw.slice(eq + 1), 'utf8');
+      if (eq > 0) {
+        const source = resolveSafeArtifactPath(process.cwd(), raw.slice(eq + 1));
+        out[raw.slice(0, eq)] = fs.readFileSync(source.abs, 'utf8');
+      }
     }
   });
   return out;

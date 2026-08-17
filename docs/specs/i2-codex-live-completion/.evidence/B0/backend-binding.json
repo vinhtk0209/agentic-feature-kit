@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "identity": {
+    "provider": "codex",
+    "modelKey": "codex",
+    "modelId": "gpt-5.6-sol",
+    "adapterVersion": "i2-codex-live-smoke-v1"
+  },
+  "capabilityHash": "fbeaafb6ebffcbb26fa6d92abd775d86e0220b2b01aa445998fdbd9603aece40",
+  "cost": {
+    "status": "unknown",
+    "inputTokens": null,
+    "outputTokens": null,
+    "costUsd": null
+  },
+  "bindingHash": "5964639b267ecd50cae6e7e5bba215d5ca9adfa1b4bd2889664e516a3df07f10"
+}

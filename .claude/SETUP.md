@@ -475,6 +475,13 @@ npm run workflow:digest -- <F>    # write feature-digest.md for a finalConfirmed
 npm run test:kit                  # full toolchain self-test (lint-feature + ownership + integration + eval + eval-regression + lesson-registry + improve-trigger + prompt-budget + contract-probe + learned-config + friction-meter + feature-index + feature-digest)
 ```
 
+`feedback-analyzer.ts` and `kpi-report.ts` reject unknown, duplicate, missing-value, and ambiguous
+arguments with exit code `2`. Input and output failures emit exactly one structured
+`@@CLI_ERROR@@` record on stderr and do not emit success output. An explicitly selected missing or
+malformed history file is an error; an absent default history remains an empty first-run state. KPI
+dashboard generation replaces the report atomically and restores the previous report if the final
+rename fails.
+
 > **B11 must verify ACs, not just route health.** A route returning HTTP 200 is *not* AC verification. The
 > machine-enforced AC step is `verify:browser` (→ `playwright-runner.ts`) driven by the feature's
 > `ux-states.json` `ac_assertions[]` — it injects the `.env.playwright` token into `localStorage`, runs against

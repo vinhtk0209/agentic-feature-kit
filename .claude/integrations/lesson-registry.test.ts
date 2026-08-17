@@ -6,7 +6,7 @@
  * Exit 0 = all pass, 1 = a test failed.
  */
 
-import { parseLessons, buildReport, parseCliArgs, syncCheck } from './lesson-registry';
+import { parseLessons, buildReport, extractVersionScopedLessons, parseCliArgs, syncCheck } from './lesson-registry';
 
 let passed = 0;
 let failed = 0;
@@ -238,6 +238,46 @@ test('syncCheck — real prompt-evolution.md passes (all W-series paired)', () =
   }
   const r = syncCheck(fs.readFileSync(evo, 'utf-8'));
   assert(r.ok, `prompt-evolution.md has ${r.orphaned.length} orphaned annotation(s) > max 1: ${r.orphaned.map((o: { id: string; lineNumber: number }) => o.id).join(', ')}`);
+});
+
+const VERSION_SCOPED_LESSON = `
+<!-- @lesson id="L-2026-07-16-001" classification="automated_gate" priority="high" root_cause="workflow_design_flaw" enforced_by="b11-runner.test.ts" test_status="enforced" live_validated="false" kit_version="3.25.0" observed_at="2026-07-16T00:00:00.000Z" -->
+### Change AA.4 — Token freshness threshold
+Immutable lesson prose.
+`;
+
+test('extractVersionScopedLessons — emits canonical evidence from the existing lesson parser', () => {
+  const lessons = extractVersionScopedLessons(VERSION_SCOPED_LESSON, '3.25.0');
+  assert(lessons.length === 1, `expected one lesson, got ${lessons.length}`);
+  assert(lessons[0].id === 'L-2026-07-16-001', `wrong id ${lessons[0].id}`);
+  assert(lessons[0].title === 'Change AA.4 — Token freshness threshold', `wrong title ${lessons[0].title}`);
+  assert(lessons[0].observedAt === '2026-07-16T00:00:00.000Z', `wrong observedAt ${lessons[0].observedAt}`);
+  assert(/^[a-f0-9]{64}$/.test(lessons[0].evidenceHash), 'evidence hash must be lowercase SHA-256');
+  const crlf = extractVersionScopedLessons(VERSION_SCOPED_LESSON.replace(/\n/g, '\r\n'), '3.25.0');
+  assert(crlf[0].evidenceHash === lessons[0].evidenceHash, 'line endings must not change evidence identity');
+});
+
+test('extractVersionScopedLessons — semantic title edits change immutable evidence identity', () => {
+  const before = extractVersionScopedLessons(VERSION_SCOPED_LESSON, '3.25.0')[0];
+  const after = extractVersionScopedLessons(VERSION_SCOPED_LESSON.replace('Token freshness threshold', 'Different semantic title'), '3.25.0')[0];
+  assert(before.evidenceHash !== after.evidenceHash, 'semantic title change must change evidence hash');
+  const proseEdit = extractVersionScopedLessons(VERSION_SCOPED_LESSON.replace('Immutable lesson prose.', 'Semantically different lesson prose.'), '3.25.0')[0];
+  assert(before.evidenceHash !== proseEdit.evidenceHash, 'semantic prose change must change evidence hash');
+});
+
+test('extractVersionScopedLessons — missing evidence, malformed bindings, and duplicates fail closed', () => {
+  const mustThrow = (content: string, version = '3.25.0') => {
+    let threw = false;
+    try { extractVersionScopedLessons(content, version); } catch { threw = true; }
+    assert(threw, 'expected version-scoped extraction to throw');
+  };
+  mustThrow(VERSION_SCOPED_LESSON, '3.26.0');
+  mustThrow(VERSION_SCOPED_LESSON.replace('kit_version="3.25.0"', 'kit_version="v3.25"'));
+  mustThrow(VERSION_SCOPED_LESSON.replace('observed_at="2026-07-16T00:00:00.000Z"', 'observed_at="2026-02-31T00:00:00.000Z"'));
+  mustThrow(VERSION_SCOPED_LESSON.replace('live_validated="false"', 'live_validated="maybe"'));
+  mustThrow(VERSION_SCOPED_LESSON.replace('kit_version="3.25.0"', 'kit_version="3.25.0" kit_version="3.25.0"'));
+  mustThrow(VERSION_SCOPED_LESSON.replace('kit_version="3.25.0"', 'kit_version="3.25.0" unexpected="true"'));
+  mustThrow(`${VERSION_SCOPED_LESSON}\n${VERSION_SCOPED_LESSON}`);
 });
 
 // ─── Report ──────────────────────────────────────────────────────────────────

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://schemas.workflow-kit.dev/privacy-writer-registry.schema.json",
+  "schemaVersion": 1,
+  "policyVersion": "p17-016-v1",
+  "repository": "claude-workflow-kit",
+  "scope": "writer-entry-points",
+  "entries": [
+    {
+      "id": "kit.bin.platform-rpc",
+      "sourcePath": "bin/lib/supabase.ts",
+      "sourceAnchor": "export async function rpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {",
+      "transport": "supabase_rpc",
+      "dataFamilies": ["identity_control", "legacy_feature_event"],
+      "currentPrivacyState": "legacy_raw",
+      "prohibitedFieldObservations": ["auth_secret"],
+      "targetWave": "B2",
+      "disposition": "migration_blocked",
+      "rationaleCode": "generic_rpc_mixes_reads_and_verify_side_effects"
+    },
+    {
+      "id": "kit.p2.local-operator-transport",
+      "sourcePath": "scripts/p2-operator-demo.ts",
+      "sourceAnchor": "const response = await fetch('http://127.0.0.1:4001/p2/execute', {",
+      "transport": "local_http",
+      "dataFamilies": ["operator_execution"],
+      "currentPrivacyState": "outside_central_scope",
+      "prohibitedFieldObservations": ["auth_secret", "raw_path", "raw_prompt", "raw_repository"],
+      "targetWave": "none",
+      "disposition": "external_transport",
+      "rationaleCode": "local_sidecar_execution_is_not_central_storage"
+    },
+    {
+      "id": "kit.sync.install-report",
+      "sourcePath": ".claude/integrations/install-writer-adapter.ts",
+      "sourceAnchor": "export function createBlockedInstallReceipt(input: unknown): BlockedInstallReceipt {",
+      "transport": "in_process",
+      "dataFamilies": ["install_run"],
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
+      "targetWave": "B2",
+      "disposition": "fail_closed",
+      "rationaleCode": "tenant_attestation_and_sink_unavailable"
+    },
+    {
+      "id": "kit.telemetry.central-insert",
+      "sourcePath": ".claude/integrations/telemetry.ts",
+      "sourceAnchor": "async function insert(table: string, row: Record<string, unknown>): Promise<void> {",
+      "transport": "supabase_rest",
+      "dataFamilies": ["error_signal", "legacy_feature_event"],
+      "currentPrivacyState": "legacy_raw",
+      "prohibitedFieldObservations": ["raw_feature_name", "raw_message"],
+      "targetWave": "B2",
+      "disposition": "migration_blocked",
+      "rationaleCode": "legacy_usage_shape_has_no_exact_policy_family"
+    },
+    {
+      "id": "kit.telemetry.central-upsert",
+      "sourcePath": ".claude/integrations/run-version-writer-adapter.ts",
+      "sourceAnchor": "export function createBlockedRunVersionReceipt(input: unknown): BlockedRunVersionReceipt {",
+      "transport": "in_process",
+      "dataFamilies": ["install_run"],
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
+      "targetWave": "B2",
+      "disposition": "fail_closed",
+      "rationaleCode": "tenant_attestation_and_sink_unavailable"
+    },
+    {
+      "id": "kit.telemetry.token-rpc",
+      "sourcePath": ".claude/integrations/telemetry.ts",
+      "sourceAnchor": "async function rpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {",
+      "transport": "supabase_rpc",
+      "dataFamilies": ["identity_control", "legacy_feature_event"],
+      "currentPrivacyState": "legacy_raw",
+      "prohibitedFieldObservations": ["auth_secret"],
+      "targetWave": "B2",
+      "disposition": "migration_blocked",
+      "rationaleCode": "external_rpc_contract_and_tenant_resolution_are_missing"
+    },
+    {
+      "id": "kit.verification.record",
+      "sourcePath": ".claude/integrations/verification-writer-capability.ts",
+      "sourceAnchor": "export async function executeVerificationWrite(input: unknown): Promise<CentralWriterResult> {",
+      "transport": "in_process",
+      "dataFamilies": ["verification"],
+      "currentPrivacyState": "contract_validated",
+      "prohibitedFieldObservations": [],
+      "targetWave": "C4",
+      "disposition": "capability_ready",
+      "rationaleCode": "disposable_verified_default_runtime_blocked"
+    }
+  ]
+}

@@ -35,6 +35,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { execFileSync } from "child_process";
+import { parseCanonicalPromptVersion } from "../.claude/integrations/kit-version";
+import {
+  createBlockedInstallReceipt,
+  resolveInstallCommandRunId,
+} from "../.claude/integrations/install-writer-adapter";
 
 // Resolve kit root from this file's location, not from cwd.
 // (DEV AZURE path has a space -> import.meta.url is URL-encoded; fileURLToPath decodes it.)
@@ -45,15 +50,15 @@ const CONFIG_PATH = path.join(KIT_ROOT, "sync.config.json");
 const ENV_PATH = path.join(KIT_ROOT, ".env");
 
 // Public anon creds fallback (RLS-protected) — mirrors telemetry.ts so the A1.3 verify backstop can
-// query even without a .env (Gap C). loadKitEnv() may override these via process.env before the guard runs.
+// query even without a .env (Gap C). loadKitEnv() may override these before the guard runs.
 const FALLBACK_SUPABASE_URL = "https://vkuojxgvkxndftenrdno.supabase.co";
 const FALLBACK_SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdW9qeGd2a3huZGZ0ZW5yZG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjgwMzMsImV4cCI6MjA5NzAwNDAzM30.MrTuIuN1kghxMXu0yyOW9MtmXVY7xH0-2HSCwTKo2cU";
 
 /**
  * Minimal .env loader (no dotenv dependency). Reads the kit's OWN .env and sets
- * any keys not already present in process.env. Used for SUPABASE_URL / anon key.
- * Silent if the file is absent — install reporting just gets skipped downstream.
+ * any keys not already present in process.env. Used only by the verified-run admission query.
+ * Silent if the file is absent because the query retains its public RLS-protected fallback.
  */
 function loadKitEnv(): void {
   if (!fs.existsSync(ENV_PATH)) return;
@@ -398,24 +403,34 @@ function assertCleanClaudeTree(dryRun: boolean, forceDirty: boolean): void {
 }
 
 // ---------------------------------------------------------------------------
-// Install reporting (Part B): after syncing a target, record which kit version
-// now lives on that repo into Supabase `installs` (upsert on `repo`).
+// Install observation compatibility (P17-016 B2D): after target work, retain local version
+// observations but block central persistence until tenant attestation and a Wave C sink exist.
 // ---------------------------------------------------------------------------
 
-interface InstallReport {
+export interface InstallReport {
   repo: string; // stable repo id = basename of the target path
   kitVersion: string; // e.g. "3.17.0", matching usage_logs.kit_version format
 }
 
+export interface InstallReportDependencies {
+  now?: () => string;
+  log?: (message: string) => void;
+  warn?: (message: string) => void;
+}
+
 /**
- * Parse PROMPT_VERSION from a target's OWN command file so we record what was
+ * Parse PROMPT_VERSION from a target's OWN command file so we observe what was
  * actually synced there. Returns null if the file/marker is missing.
  *
  * FORMAT MUST MATCH telemetry.ts `resolveKitVersion()` exactly: `major.minor` + ".0"
- * (e.g. "3.17.0"). The dashboard compares installs.kit_version (written here) with
- * repo_runs.last_run_version (written by telemetry); if these two diverge in format,
- * "installed vs running" will mismatch falsely. Keep both in lockstep.
+ * (e.g. "3.17.0"). Historical repo_runs rows and any future tenant-safe run-version writer use
+ * that format when compared with installs.kit_version. P17-016 B2C pauses new repo_runs writes
+ * until a tenant-attested Wave C sink exists; keep the shared format stable during that pause.
  */
+export function resolveSourceVersionFromPromptContent(content: string): string | null {
+  return parseCanonicalPromptVersion(content);
+}
+
 function resolveTargetVersion(targetRel: string): string | null {
   const cmdFile = path.resolve(
     KIT_ROOT,
@@ -426,79 +441,46 @@ function resolveTargetVersion(targetRel: string): string | null {
   );
   try {
     const content = fs.readFileSync(cmdFile, "utf8");
-    const m = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
-    return m ? m[1] + ".0" : null;
+    return resolveSourceVersionFromPromptContent(content);
   } catch {
     return null;
   }
 }
 
 /**
- * Upsert install rows into Supabase via PostgREST. The ENTIRE block is best-effort:
- * any failure (missing env, network, Supabase down) only warns — it must NEVER
- * block or fail the file sync that already succeeded.
+ * Emit one command-level compatibility receipt after a non-dry sync batch. Raw target observations
+ * never cross the adapter and are not iterated in non-dry mode, so target cardinality stays local.
+ * This post-copy diagnostic remains best-effort and never changes completed file-sync semantics.
  */
-async function reportInstalls(
+export async function reportInstalls(
   reports: InstallReport[],
-  dryRun: boolean
+  dryRun: boolean,
+  runId: unknown,
+  dependencies: InstallReportDependencies = {},
 ): Promise<void> {
   if (reports.length === 0) return;
 
+  const log = dependencies.log ?? ((message: string) => console.log(message));
+  const warn = dependencies.warn ?? ((message: string) => console.warn(message));
+
   if (dryRun) {
-    console.log("\nInstall report (dry run — nothing sent to Supabase):");
+    log("\nInstall report (dry run — central persistence is disabled):");
     for (const r of reports) {
-      console.log(`  would report version ${r.kitVersion} for repo ${r.repo}`);
+      log(`  observed version ${r.kitVersion} for repo ${r.repo}`);
     }
     return;
   }
 
   try {
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_ANON_KEY;
-    if (!url || !key) {
-      console.warn(
-        "\n⚠️  Skipping install report: SUPABASE_URL / SUPABASE_ANON_KEY not set in .env."
-      );
-      return;
-    }
-
-    const synced_at = new Date().toISOString();
-    const headers = {
-      "Content-Type": "application/json",
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      // Upsert on the primary key (repo); return nothing to keep it light.
-      Prefer: "resolution=merge-duplicates,return=minimal",
-      // Match telemetry.ts: avoid the Windows undici keep-alive teardown assert.
-      Connection: "close",
-    };
-
-    console.log("\nInstall report:");
-    for (const r of reports) {
-      try {
-        const res = await fetch(`${url}/rest/v1/installs`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            repo: r.repo,
-            kit_version: r.kitVersion,
-            synced_at,
-          }),
-        });
-        if (!res.ok) {
-          console.warn(
-            `  ⚠️  ${r.repo}: report failed (${res.status} ${await res.text()})`
-          );
-        } else {
-          console.log(`  ✓ ${r.repo} → ${r.kitVersion}`);
-        }
-      } catch (e) {
-        console.warn(`  ⚠️  ${r.repo}: report failed (${(e as Error).message})`);
-      }
-    }
-  } catch (e) {
-    // Defensive: nothing here may bubble up and fail the sync.
-    console.warn(`\n⚠️  Install report skipped: ${(e as Error).message}`);
+    const receipt = createBlockedInstallReceipt({
+      runId,
+      createdAt: (dependencies.now ?? (() => new Date().toISOString()))(),
+    });
+    log("\nInstall report: central persistence blocked until tenant attestation and a Wave C sink exist.");
+    log(`@@PRIVACY_RECEIPT@@ ${JSON.stringify(receipt)}`);
+  } catch {
+    // File copies already completed. Keep the historical best-effort boundary without echoing input.
+    warn("\n⚠️  Install report blocked locally.");
   }
 }
 
@@ -533,7 +515,7 @@ function argValue(name: string): string | null {
 // of the standing "don't sync an unproven evolution" rule.
 //
 // FAIL-CLOSED is the whole point and the reason this breaks the codebase's usual fail-open Supabase
-// convention (reportInstalls / telemetry both fail-open): a guard that fails open would be bypassable
+// convention (legacy telemetry remains fail-open): a guard that fails open would be bypassable
 // by simply making Supabase unreachable — useless. Sync is deliberate/low-frequency, so blocking on
 // an outage is a small cost; the conscious --force-unverified override covers a genuine outage.
 //
@@ -553,8 +535,7 @@ function resolveSourceVersion(): string | null {
     const content = SRC_REF
       ? (git(["show", `${SRC_REF}:.claude/commands/feature-from-confluence.md`], "utf8") as string)
       : fs.readFileSync(path.join(SOURCE_CLAUDE, "commands", "feature-from-confluence.md"), "utf8");
-    const m = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
-    return m ? m[1] + ".0" : null;
+    return resolveSourceVersionFromPromptContent(content);
   } catch {
     return null;
   }
@@ -576,7 +557,7 @@ export async function countVerifiedRuns(version: string): Promise<number> {
         apikey: key,
         Authorization: `Bearer ${key}`,
         Prefer: "count=exact",
-        Connection: "close", // Windows undici teardown (see telemetry.ts / reportInstalls)
+        Connection: "close", // Windows undici teardown (see telemetry.ts)
       },
     }
   );
@@ -586,50 +567,72 @@ export async function countVerifiedRuns(version: string): Promise<number> {
   return Number.isNaN(total) ? 0 : total;
 }
 
+export type VerifiedSyncAdmission =
+  | { outcome: "allow"; version: string | null; count: number | null; forced: boolean }
+  | { outcome: "warn" | "deny"; version: string | null; reason: string };
+
+/** Pure/injectable admission decision. A tagged source is versioned, but that is not proof. */
+export async function evaluateVerifiedSyncAdmission(input: {
+  dryRun: boolean;
+  forceUnverified: string | null;
+  sourceRef: string | null;
+  resolveSourceVersion: () => string | null;
+  countVerifiedRuns: (version: string) => Promise<number>;
+}): Promise<VerifiedSyncAdmission> {
+  if (input.forceUnverified) return { outcome: "allow", version: null, count: null, forced: true };
+
+  const sourceLabel = input.sourceRef ? `ref ${input.sourceRef}` : "working tree";
+  const version = input.resolveSourceVersion();
+  if (!version) {
+    const reason = `verify backstop: could not resolve the kit version (PROMPT_VERSION) for ${sourceLabel}.`;
+    return { outcome: input.dryRun ? "warn" : "deny", version: null, reason };
+  }
+
+  let count: number;
+  try {
+    count = await input.countVerifiedRuns(version);
+  } catch (error) {
+    const reason = `verify backstop: cannot reach Supabase to confirm kit ${version} is verified (${(error as Error).message}).`;
+    return { outcome: input.dryRun ? "warn" : "deny", version, reason };
+  }
+  if (count > 0) return { outcome: "allow", version, count, forced: false };
+
+  const reason = `verify backstop: kit ${version} has NO computed-verified run (verify_records empty for it).`;
+  return { outcome: input.dryRun ? "warn" : "deny", version, reason };
+}
+
 /**
  * A1.3 verify backstop. Mirrors assertCleanClaudeTree: FAIL-CLOSED (exit 1), a conscious
  * --force-unverified <reason> override (logged/auditable), and dry-run softens a refusal to a warning.
+ * The same verified=true requirement applies to the working tree and every --ref source.
  */
 async function assertVerifiedForSync(dryRun: boolean, forceUnverified: string | null): Promise<void> {
-  // A --ref deploy ships a committed, tagged version (its own conscious gate) — skip, like the dirty guard.
-  if (SRC_REF) return;
+  const decision = await evaluateVerifiedSyncAdmission({
+    dryRun,
+    forceUnverified,
+    sourceRef: SRC_REF,
+    resolveSourceVersion,
+    countVerifiedRuns,
+  });
 
-  if (forceUnverified) {
+  if (decision.outcome === "allow" && decision.forced) {
     console.warn(`\n⚠️  --force-unverified: syncing WITHOUT a proven verify record.`);
     console.warn(`    Reason (logged): "${forceUnverified}"`);
     console.warn(`    This bypasses the A1.3 backstop — a conscious, auditable override.\n`);
     return;
   }
-
-  const version = resolveSourceVersion();
-  if (!version) {
-    const msg = "verify backstop: could not resolve the kit version (PROMPT_VERSION) being synced.";
-    if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
-    fail(`${msg}\n  Fix the command file's PROMPT_VERSION, or override with --force-unverified "<reason>".`);
+  if (decision.outcome === "allow") {
+    console.log(`✓ verify backstop: kit ${decision.version} has ${decision.count} computed-verified run(s) — sync allowed.`);
+    return;
   }
-
-  let count: number;
-  try {
-    count = await countVerifiedRuns(version);
-  } catch (e) {
-    const msg = `verify backstop: cannot reach Supabase to confirm kit ${version} is verified (${(e as Error).message}).`;
-    if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
-    console.error(`\nERROR: ${msg}`);
-    console.error("  FAIL-CLOSED: an unreachable backstop is not proof. Retry when Supabase is up,");
-    console.error('  or override consciously with --force-unverified "<reason>".\n');
-    await closeFetchSockets();
-    process.exit(1);
-  }
-
-  if (count > 0) {
-    console.log(`✓ verify backstop: kit ${version} has ${count} computed-verified run(s) — sync allowed.`);
+  if (decision.outcome === "warn") {
+    console.warn(`  ! ${decision.reason} (dry run — a real sync would refuse here.)`);
     return;
   }
 
-  const msg = `verify backstop: kit ${version} has NO computed-verified run (verify_records empty for it).`;
-  if (dryRun) { console.warn(`  ! ${msg} (dry run — a real sync would refuse here.)`); return; }
-  console.error(`\nERROR: ${msg}`);
-  console.error(`  Run a real feature through the B11 wrapper to record a verified run for ${version}, then re-sync.`);
+  console.error(`\nERROR: ${decision.reason}`);
+  console.error("  FAIL-CLOSED: a missing/unreachable verified=true backstop is not proof.");
+  if (decision.version) console.error(`  Run a real feature through B11 to verify ${decision.version}, then re-sync.`);
   console.error('  Or override consciously with --force-unverified "<reason>".\n');
   await closeFetchSockets();
   process.exit(1);
@@ -655,6 +658,10 @@ async function main() {
     rollbackTarget(target as string, argValue("snapshot"), process.argv.includes("--list"));
     return;
   }
+
+  // R1: normal sync owns one invocation UUID before admission and target writes. Rollback mode has
+  // no install-writer attempt and returns above without manufacturing an identity.
+  const commandRunId = resolveInstallCommandRunId(undefined);
 
   // npm reserves --dry-run and strips it before the script sees argv, but exposes it
   // as npm_config_dry_run=true. Honor that so `npm run sync -- --dry-run` is still safe.
@@ -719,8 +726,8 @@ async function main() {
     }
   }
 
-  // Best-effort install report; never blocks the sync above.
-  await reportInstalls(installReports, dryRun);
+  // Best-effort closed compatibility receipt; never blocks or mutates the sync above.
+  await reportInstalls(installReports, dryRun, commandRunId);
   await closeFetchSockets();
 
   console.log(

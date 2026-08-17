@@ -5,13 +5,14 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import axios from 'axios';
-import TurndownService from 'turndown';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync, writeFileSync, readdirSync, existsSync, readFileSync } from 'fs';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
+import { getConfluenceJson } from './confluence-http.js';
+import { htmlToMarkdown } from './confluence-markdown.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, '.env') });
@@ -39,21 +40,6 @@ function extractBaseUrl(url: string): string {
 function extractUsId(title: string): string | null {
   const m = title.match(/US-[A-Z]{1,4}-\d+/i);
   return m ? m[0].toUpperCase() : null;
-}
-
-function htmlToMarkdown(html: string): string {
-  const td = new TurndownService({
-    headingStyle: 'atx',
-    bulletListMarker: '-',
-    codeBlockStyle: 'fenced',
-  });
-
-  // Strip Confluence macros that don't convert cleanly
-  const cleaned = html
-    .replace(/<ac:[^>]*>[\s\S]*?<\/ac:[^>]*>/g, '')
-    .replace(/<ri:[^>]*\/?>/g, '');
-
-  return td.turndown(cleaned);
 }
 
 function extractImageUrls(html: string, baseConfUrl: string): string[] {
@@ -136,13 +122,22 @@ async function fetchConfluence(url: string): Promise<ConfluencePage> {
 
   const agent = new (await import('https')).Agent({ rejectUnauthorized: false });
   const apiUrl = `${baseConfUrl}/rest/api/content/${pageId}?expand=body.export_view,title,space`;
-  const apiResp = await axios.get(apiUrl, {
-    headers: { ...auth, Accept: 'application/json' },
-    httpsAgent: agent,
-  });
-  const { data } = apiResp;
+  const data = await getConfluenceJson(
+    apiUrl,
+    { ...auth, Accept: 'application/json' },
+    process.env,
+    {},
+    agent,
+  ) as {
+    title?: unknown;
+    space?: { name?: unknown };
+    body?: { export_view?: { value?: unknown } };
+  };
+  if (typeof data.title !== 'string' || typeof data.body?.export_view?.value !== 'string') {
+    throw new Error('Confluence page response is missing title or body.export_view.value');
+  }
   const title: string = data.title;
-  const space: string = data.space?.name ?? '';
+  const space: string = typeof data.space?.name === 'string' ? data.space.name : '';
   const html: string = data.body.export_view.value;
   const markdown = htmlToMarkdown(html);
   return { pageId, title, space, html, markdown, baseConfUrl, authHeader: auth, agent };

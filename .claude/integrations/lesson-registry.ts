@@ -24,6 +24,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { createHash } from 'crypto';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,19 @@ export interface Lesson {
   testStatus: LessonTestStatus;
   /** Prose snippet immediately following the annotation (first 120 chars) */
   snippet: string;
+  /** Optional authoritative O1 binding; legacy lessons remain unversioned. */
+  kitVersion: string | null;
+  observedAt: string | null;
+  liveValidated: boolean | string | null;
+  title: string;
+}
+
+export interface VersionScopedLesson {
+  kitVersion: string;
+  id: string;
+  title: string;
+  evidenceHash: string;
+  observedAt: string;
 }
 
 export interface LessonReport {
@@ -150,6 +164,9 @@ export function parseLessons(content: string): Lesson[] {
     // Grab up to 200 chars of content after the comment for the snippet
     const afterComment = text.slice(endIdx, endIdx + 300).replace(/\s+/g, ' ').trim();
     const snippet = afterComment.slice(0, 120);
+    const heading = text.slice(endIdx).split('\n').slice(0, 6)
+      .map((line) => line.trim().match(/^#{2,4}\s+(.+)$/)?.[1]?.trim() || '')
+      .find(Boolean) || '';
 
     const id = attr(raw, 'id');
     if (!id) continue; // skip malformed annotations
@@ -159,11 +176,85 @@ export function parseLessons(content: string): Lesson[] {
     const rootCause = attr(raw, 'root_cause') || 'unknown';
     const enforcedBy = attr(raw, 'enforced_by') || 'none';
     const testStatus = coerce<LessonTestStatus>(attr(raw, 'test_status') || 'pending', VALID_TEST_STATUSES, 'pending', 'test_status', id);
+    const kitVersion = attr(raw, 'kit_version') || null;
+    const observedAt = attr(raw, 'observed_at') || null;
+    const liveValidatedText = attr(raw, 'live_validated');
+    const liveValidated = liveValidatedText === '' ? null : liveValidatedText === 'true' ? true : liveValidatedText === 'false' ? false : liveValidatedText;
 
-    lessons.push({ id, classification, priority, rootCause, enforcedBy, testStatus, snippet });
+    lessons.push({ id, classification, priority, rootCause, enforcedBy, testStatus, snippet, kitVersion, observedAt, liveValidated, title: heading });
   }
 
   return lessons;
+}
+
+const isCanonicalVersion = (value: string): boolean => /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.0$/.test(value);
+const isCanonicalTimestamp = (value: string): boolean => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+  && !Number.isNaN(Date.parse(value)) && new Date(Date.parse(value)).toISOString() === value;
+
+/**
+ * Uses the established lesson parser, then applies the stricter O1 evidence boundary.
+ * Legacy unversioned lessons remain valid for the registry but cannot enter an O1 dossier.
+ */
+export function extractVersionScopedLessons(content: string, version: string): VersionScopedLesson[] {
+  if (!isCanonicalVersion(version)) throw new Error('version-scoped lessons require canonical N.N.0');
+  const normalized = content.replace(/\r\n/g, '\n');
+  LESSON_COMMENT_RE.lastIndex = 0;
+  const rawAnnotations: Array<{ raw: string; start: number; end: number }> = [];
+  let rawMatch: RegExpExecArray | null;
+  // Count any annotation that attempts a kit_version binding so missing/malformed ids cannot be skipped silently.
+  // eslint-disable-next-line no-cond-assign
+  while ((rawMatch = LESSON_COMMENT_RE.exec(normalized)) !== null) {
+    rawAnnotations.push({ raw: rawMatch[1], start: rawMatch.index, end: rawMatch.index + rawMatch[0].length });
+  }
+  const rawScoped = rawAnnotations.filter((entry) => /\bkit_version\s*=/.test(entry.raw));
+  const expectedAttributes = ['classification', 'enforced_by', 'id', 'kit_version', 'live_validated', 'observed_at', 'priority', 'root_cause', 'test_status'];
+  for (const entry of rawScoped) {
+    const attributeNames = [...entry.raw.matchAll(/\b([a-z_]+)="[^"]*"/g)].map((match) => match[1]).sort();
+    if (attributeNames.length !== expectedAttributes.length || attributeNames.some((name, index) => name !== expectedAttributes[index])) {
+      throw new Error('version-scoped lesson annotation has duplicate, missing, or unexpected attributes');
+    }
+  }
+  const parsed = parseLessons(normalized);
+  const scoped = parsed.filter((lesson) => lesson.kitVersion !== null);
+  if (rawScoped.length !== scoped.length) throw new Error('version-scoped lesson annotation is malformed');
+
+  const seen = new Set<string>();
+  const output: VersionScopedLesson[] = [];
+  for (const lesson of scoped) {
+    if (!lesson.kitVersion || !isCanonicalVersion(lesson.kitVersion)
+      || !lesson.observedAt || !isCanonicalTimestamp(lesson.observedAt)
+      || typeof lesson.liveValidated !== 'boolean'
+      || !/^L-[A-Za-z0-9][A-Za-z0-9-]*$/.test(lesson.id)
+      || lesson.title.trim() === '') {
+      throw new Error(`version-scoped lesson ${lesson.id || '(missing)'} has malformed evidence`);
+    }
+    const key = `${lesson.kitVersion}\u0000${lesson.id}`;
+    if (seen.has(key)) throw new Error(`duplicate version-scoped lesson ${lesson.id}`);
+    seen.add(key);
+    if (lesson.kitVersion !== version) continue;
+    const sourceIndex = rawAnnotations.findIndex((entry) => attr(entry.raw, 'id') === lesson.id && attr(entry.raw, 'kit_version') === lesson.kitVersion);
+    if (sourceIndex < 0) throw new Error(`version-scoped lesson ${lesson.id} has no exact source block`);
+    const source = rawAnnotations[sourceIndex];
+    const nextStart = rawAnnotations[sourceIndex + 1]?.start ?? normalized.length;
+    const body = normalized.slice(source.end, nextStart).replace(/[ \t]+$/gm, '').trim();
+    if (body === '') throw new Error(`version-scoped lesson ${lesson.id} has no evidence body`);
+    const evidenceHash = createHash('sha256').update(JSON.stringify({
+      kitVersion: lesson.kitVersion,
+      id: lesson.id,
+      title: lesson.title,
+      classification: lesson.classification,
+      priority: lesson.priority,
+      rootCause: lesson.rootCause,
+      enforcedBy: lesson.enforcedBy,
+      testStatus: lesson.testStatus,
+      liveValidated: lesson.liveValidated,
+      observedAt: lesson.observedAt,
+      body,
+    })).digest('hex');
+    output.push({ kitVersion: lesson.kitVersion, id: lesson.id, title: lesson.title, evidenceHash, observedAt: lesson.observedAt });
+  }
+  if (output.length === 0) throw new Error(`no authoritative lessons for ${version}`);
+  return output.sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export function buildReport(lessons: Lesson[]): LessonReport {
@@ -244,18 +335,21 @@ export function parseCliArgs(argv: string[]): {
   gate: boolean;
   json: boolean;
   syncCheck: boolean;
+  versionScoped: string | null;
 } {
   const fileIdx = argv.indexOf('--evolution-file');
   const evolutionFile =
     fileIdx >= 0
       ? argv[fileIdx + 1]
       : path.join(process.cwd(), '.claude', 'prompt-evolution.md');
+  const versionIdx = argv.indexOf('--version-scoped');
   return {
     evolutionFile,
     summary: argv.includes('--summary'),
     gate: argv.includes('--gate'),
     json: argv.includes('--json'),
     syncCheck: argv.includes('--sync-check'),
+    versionScoped: versionIdx >= 0 ? argv[versionIdx + 1] || '' : null,
   };
 }
 
@@ -276,6 +370,17 @@ if (process.argv[1] && /lesson-registry\.ts$/.test(process.argv[1].replace(/\\/g
   const content = fs.readFileSync(opts.evolutionFile, 'utf-8');
   const lessons = parseLessons(content);
   const report = buildReport(lessons);
+
+  if (opts.versionScoped !== null) {
+    try {
+      const scoped = extractVersionScopedLessons(content, opts.versionScoped);
+      console.log(`@@VERSION_SCOPED_LESSONS@@${JSON.stringify({ schemaVersion: 1, kitVersion: opts.versionScoped, lessons: scoped })}`);
+      process.exit(0);
+    } catch (error) {
+      console.error(`lesson-registry: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    }
+  }
 
   if (opts.syncCheck) {
     const result = syncCheck(content);

@@ -33,7 +33,7 @@ import {
 // ── Types ─────────────────────────────────────────────────────────────────
 
 type VerifyResult =
-  | { valid: true; owner: string; runs_used: number; max_runs: number | null }
+  | { valid: true; runs_used: number; max_runs: number | null }
   | { valid: false; reason: string };
 
 interface EditionDefaults {
@@ -119,12 +119,11 @@ async function login(args: string[]): Promise<number> {
   const cfg: WorkflowConfig = {
     agent: edition.agent,
     token,
-    owner: result.owner,
     verified_at: new Date().toISOString(),
     version: edition.version,
   };
   saveConfig(cfg);
-  console.log(`✅ Logged in as ${result.owner}. Token saved to ${getConfigPath(edition.agent)}.`);
+  console.log(`✅ Token verified. Token saved to ${getConfigPath(edition.agent)}.`);
   return 0;
 }
 
@@ -234,7 +233,6 @@ async function status(args: string[]): Promise<number> {
         result.max_runs === null
           ? "unlimited"
           : `${result.runs_used}/${result.max_runs}`;
-      console.log(`Owner       : ${result.owner}`);
       console.log(`Status      : ✅ Valid (runs: ${quota})`);
       return 0;
     } else {

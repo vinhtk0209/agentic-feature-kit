@@ -163,12 +163,12 @@ conflate them:
   **authoritative local record**. If it fails, `recordVerify` **throws** (`:237-238`). B11 MUST treat
   a throw here as "verify did not complete" and **STOP — not proceed to B12, not report success.**
   This is the fail-closed anchor: no note = no verified state, full stop.
-- **The Supabase row** (`pushVerifyRecord`, `record-verify.ts:295-339`) is **best-effort / fail-open
-  by design** (try/catch, only `console.error` on failure, `:331-338`; rationale `:283-294` — "a
-  telemetry outage must never fail a real feature run"). If the network/Supabase is down, the git
-  note still exists locally but the `verify_records` row does not — so **sync stays blocked** (the
-  kit-side guard reads that table and is fail-CLOSED, `:286-287`). That is the *correct* end state:
-  the run is locally valid, but sync is not unblocked until the row lands.
+- **Central persistence** is superseded by P17-016 B2B. `record-verify.ts` no longer contains the
+  legacy `verify_records` REST writer. It creates or validates one command-boundary UUID and emits
+  one closed in-process receipt with `outcome=blocked` and
+  `reasonCode=tenant_attestation_unavailable`; the receipt contains no raw note, repository,
+  feature, or path fields. The local git note may be valid while **sync stays blocked**, because no
+  trusted v2 tenant attestation or Wave C central sink exists.
 
 **Specification for B11 (to implement in Block 4):**
 
@@ -180,9 +180,10 @@ conflate them:
    false, `:84-86`). That is a *successful* record of a *failing* verify — it routes into the existing
    B11 failure/rollback options (`feature-from-confluence.md:2195-2209`), NOT to B12. B11 must key
    "proceed" on `verified === true`, never merely on "the record wrote".
-3. If the note wrote but the Supabase push warned (`⚠️ verify_records upsert failed`,
-   `record-verify.ts:332`), B11 completes locally but must **tell the user sync is still blocked**
-   until the row lands (offer a re-push), rather than implying sync is now open.
+3. If the note wrote, B11 validates the safe success banner and exact closed privacy receipt. A
+   locally true verdict may proceed to B12, but B11 must **tell the user sync is still blocked**
+   because central verification persistence is unavailable. Repeating capture cannot create a
+   central row; a later separately approved tenant-attested sink is required.
 
 ---
 
@@ -201,4 +202,10 @@ conflate them:
 5. Bump v3.20 → v3.21 (all 4 stamps + package.json) and add tests proving the wire fires and fails
    closed on a write failure.
 
-**None of §6 is done. Awaiting the §1 capture-vs-record sign-off before any code.**
+## 7. P17-016 B2B supersession (2026-08-15)
+
+Section 5's central-persistence behavior above supersedes the original fail-open REST design. The
+local git-note authority, real tier-exit derivation, content-hash coverage, and pre-commit scope
+guard remain. The legacy central writer, hardcoded client credential, raw repository/feature/path
+payload, and environment-owned run-ID fallback are removed. This amendment does not claim a
+central record, tenant isolation, migration, sync unlock, target distribution, or Wave C sink.

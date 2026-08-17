@@ -5,7 +5,7 @@
  * §5 fail-closed contract (measurement-layer-b11-wire.md):
  *   §5(a) git-note write failure  → the wrapper THROWS (CLI exits ≠ 0) → B11 must STOP, no B12.
  *   §5(b) a real failing tier      → verified === false (record written, verdict false) → rollback.
- *   §5(c) Supabase push failure    → pushVerifyRecord is FAIL-OPEN; the sync guard stays FAIL-CLOSED.
+ *   §5(c) no trusted v2 context/sink → emit a closed in-process receipt; sync remains FAIL-CLOSED.
  * W.3 split (measurement-layer-content-hash-split.md):
  *   §1   computeContentHash({ codePath, specName }) covers the nested code tree + flat ux-states.json.
  *   §7.1 missing/empty codePath → throw. §7.2 Tier B ran w/o ux-states → throw.
@@ -13,7 +13,7 @@
  *   §4   the pre-commit hook validates staged SCOPE against the note (no feature-root guessing).
  * Plus A1.1 target-run enforcement + writer/hook no-drift (same computeContentHash module).
  *
- * NOTHING here touches real Supabase or any real sync path: network only via a mocked global.fetch.
+ * NOTHING here touches real Supabase or any real sync path. The sync read-side test uses mocked fetch.
  * Run: npx tsx .claude/integrations/record-verify.test.ts
  */
 import * as fs from 'fs';
@@ -26,7 +26,8 @@ import {
   assertLeafFeatureDir,
   recordVerify,
   captureAndRecord,
-  pushVerifyRecord,
+  createVerificationWriterReceipt,
+  resolveKitVersion,
   VERIFY_NOTES_REF,
   VerifyNote,
 } from './record-verify';
@@ -49,6 +50,7 @@ function throws(fn: () => void, re: RegExp, label: string): void {
 }
 
 const KIT_ROOT = process.cwd();
+const RUN_ID = '123e4567-e89b-42d3-a456-426614174000';
 const git = (cwd: string, args: string[]) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 
 /** Run a kit .ts script via `npx tsx` from an arbitrary cwd (quoted space-containing path; shell for npx.cmd). */
@@ -64,6 +66,10 @@ function makeTargetRepo(withCommit: boolean): string {
   git(dir, ['config', 'user.email', 't@t.t']);
   git(dir, ['config', 'user.name', 'T']);
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: '@target/app' }), 'utf8');
+  // A target that can run the B11 verifier has already received the kit command authority via sync.
+  const commandDir = path.join(dir, '.claude', 'commands');
+  fs.mkdirSync(commandDir, { recursive: true });
+  fs.writeFileSync(path.join(commandDir, 'feature-from-confluence.md'), 'PROMPT_VERSION: v3.25\n', 'utf8');
   if (withCommit) { git(dir, ['add', '-A']); git(dir, ['commit', '-qm', 'init', '--no-verify']); }
   return dir;
 }
@@ -92,6 +98,35 @@ function inDir<T>(dir: string, fn: () => T): T {
 const NESTED = 'src/studio-home/tabs-section/class-management/tabs/ProgressReports';
 
 async function main(): Promise<void> {
+  await test('shared verify label resolver normalizes vN.N and fails closed for malformed or missing authority', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rv-version-'));
+    const commandDir = path.join(dir, '.claude', 'commands');
+    fs.mkdirSync(commandDir, { recursive: true });
+    const commandFile = path.join(commandDir, 'feature-from-confluence.md');
+    fs.writeFileSync(commandFile, 'PROMPT_VERSION: v3.25\n', 'utf8');
+    assert(resolveKitVersion(dir) === '3.25.0', 'vN.N must normalize through shared resolver');
+    fs.writeFileSync(commandFile, 'PROMPT_VERSION: v3.25.1\n', 'utf8');
+    throws(() => resolveKitVersion(dir), /kit-version/, 'malformed authority');
+    fs.writeFileSync(commandFile, '# absent\n', 'utf8');
+    throws(() => resolveKitVersion(dir), /kit-version/, 'missing authority');
+    rm(dir);
+  });
+
+  await test('malformed version authority blocks recordVerify before it can write a git note', () => {
+    const dir = makeTargetRepo(true);
+    scaffoldFeature(dir, 'src/demo');
+    const commandDir = path.join(dir, '.claude', 'commands');
+    fs.mkdirSync(commandDir, { recursive: true });
+    fs.writeFileSync(path.join(commandDir, 'feature-from-confluence.md'), 'PROMPT_VERSION: v3.25.1\n', 'utf8');
+    try {
+      inDir(dir, () => throws(
+        () => recordVerify({ phase: 'verify_complete', codePath: 'src/demo', specName: null, tierA_exit: 0, tierB_exit: null, runner_run_id: RUN_ID }),
+        /kit-version/, 'malformed version must stop before note write'));
+      const note = git(dir, ['notes', `--ref=${VERIFY_NOTES_REF}`, 'show', 'HEAD']);
+      assert(note.status !== 0, 'a rejected version authority must not write a verify note');
+    } finally { rm(dir); }
+  });
+
   // ── computeVerified truth table ──
   await test('computeVerified: 0/0→true, 0/null→true, 1/0→false, 0/1→false', () => {
     assert(computeVerified(0, 0) === true, '0/0');
@@ -106,7 +141,7 @@ async function main(): Promise<void> {
     scaffoldFeature(dir, 'src/demo'); // valid leaf so assertLeafFeatureDir passes; failure is the note write
     try {
       inDir(dir, () => throws(
-        () => recordVerify({ phase: 'verify_complete', codePath: 'src/demo', specName: null, tierA_exit: 0, tierB_exit: null }),
+        () => recordVerify({ phase: 'verify_complete', codePath: 'src/demo', specName: null, tierA_exit: 0, tierB_exit: null, runner_run_id: RUN_ID }),
         /git notes add failed/, '§5(a)'));
     } finally { rm(dir); }
   });
@@ -182,7 +217,7 @@ async function main(): Promise<void> {
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'feature-from-confluence-kit' }), 'utf8');
       git(dir, ['add', '-A']); git(dir, ['commit', '-qm', 'init', '--no-verify']);
       inDir(dir, () => throws(
-        () => recordVerify({ phase: 'verify_complete', codePath: 'src/demo', specName: null, tierA_exit: 0, tierB_exit: null }),
+        () => recordVerify({ phase: 'verify_complete', codePath: 'src/demo', specName: null, tierA_exit: 0, tierB_exit: null, runner_run_id: RUN_ID }),
         /package\.json name/, 'A1.1 package'));
     } finally { rm(dir); }
   });
@@ -266,27 +301,42 @@ async function main(): Promise<void> {
     scaffoldFeature(dir, 'src/demo');
     try {
       inDir(dir, () => throws(
-        () => recordVerify({ phase: 'verify_complete', codePath: 'src/demo', specName: null, tierA_exit: 0, tierB_exit: 0 }),
+        () => recordVerify({ phase: 'verify_complete', codePath: 'src/demo', specName: null, tierA_exit: 0, tierB_exit: 0, runner_run_id: RUN_ID }),
         /no --spec-name given/, '§7.2 no spec-name'));
     } finally { rm(dir); }
   });
 
-  // ── §5(c) pushVerifyRecord FAIL-OPEN; sync guard FAIL-CLOSED ──
+  // ── §5(c) verification writer blocks locally; sync guard stays FAIL-CLOSED ──
   const fakeNote: VerifyNote = {
     phase: 'verify_complete', feature: 'US-AD-095-ProgressReports', code_path: NESTED,
     spec_name: 'US-AD-095-ProgressReports', tierA_exit: 0, tierB_exit: 0, verified: true,
-    content_hash: 'deadbeef', coverage: [], runner_run_id: 'run-test', kit_version: '3.22.0',
+    content_hash: 'deadbeef', coverage: [], runner_run_id: RUN_ID, kit_version: '3.22.0',
     at: new Date().toISOString(),
   };
-  await test('§5(c) pushVerifyRecord: fetch throws (network dead) → does NOT throw (fail-open)', async () => {
+  await test('§5(c) blocked receipt is exact and performs no fetch', () => {
     const realFetch = global.fetch;
-    global.fetch = (() => { throw new Error('ECONNREFUSED (simulated)'); }) as unknown as typeof fetch;
-    try { await pushVerifyRecord(fakeNote); } finally { global.fetch = realFetch; }
+    let fetchCalls = 0;
+    global.fetch = (() => { fetchCalls += 1; throw new Error('unexpected fetch'); }) as unknown as typeof fetch;
+    try {
+      const receipt = createVerificationWriterReceipt(fakeNote, '2026-08-15T00:00:00.000Z');
+      assert(JSON.stringify(receipt) === JSON.stringify({
+        schemaVersion: 1,
+        policyVersion: 'p17-016-v1',
+        writerId: 'kit.verification.record',
+        runId: RUN_ID,
+        tenantContextStatus: 'unavailable',
+        outcome: 'blocked',
+        reasonCode: 'tenant_attestation_unavailable',
+        createdAt: '2026-08-15T00:00:00.000Z',
+      }), `unexpected receipt: ${JSON.stringify(receipt)}`);
+      assert(fetchCalls === 0, `blocked receipt must not call fetch, got ${fetchCalls}`);
+    } finally { global.fetch = realFetch; }
   });
-  await test('§5(c) pushVerifyRecord: HTTP non-ok → does NOT throw, warns (fail-open)', async () => {
-    const realFetch = global.fetch;
-    global.fetch = (async () => ({ ok: false, status: 503, text: async () => 'down' })) as unknown as typeof fetch;
-    try { await pushVerifyRecord(fakeNote); } finally { global.fetch = realFetch; }
+  await test('§5(c) blocked receipt contains no raw verification-note identifiers', () => {
+    const encoded = JSON.stringify(createVerificationWriterReceipt(fakeNote, '2026-08-15T00:00:00.000Z'));
+    for (const raw of [fakeNote.feature, fakeNote.code_path, fakeNote.spec_name, 'feature', 'code_path', 'spec_name']) {
+      assert(raw === null || !encoded.includes(raw), `closed receipt must not contain ${JSON.stringify(raw)}`);
+    }
   });
   await test('§5(c) countVerifiedRuns: empty verify_records (content-range */0) → 0 → guard refuses', async () => {
     const realFetch = global.fetch;
@@ -307,6 +357,7 @@ async function main(): Promise<void> {
     git(dir, ['add', '-A']); git(dir, ['commit', '-qm', 'feat', '--no-verify']);
     const note = inDir(dir, () => recordVerify({
       phase: 'verify_complete', codePath: NESTED, specName: 'US-AD-095-ProgressReports', tierA_exit: 0, tierB_exit: 0,
+      runner_run_id: RUN_ID,
     }));
     return { dir, note };
   }
@@ -319,7 +370,7 @@ async function main(): Promise<void> {
       fs.writeFileSync(path.join(dir, NESTED, 'components', 'X.tsx'), 'export const X=1;\n'); // still under codePath
       git(dir, ['add', `${NESTED}/components/X.tsx`]);
       // Re-verify so the note hash matches the new tree, then stage only in-scope + re-run hook.
-      inDir(dir, () => recordVerify({ phase: 'verify_complete', codePath: NESTED, specName: 'US-AD-095-ProgressReports', tierA_exit: 0, tierB_exit: 0 }));
+      inDir(dir, () => recordVerify({ phase: 'verify_complete', codePath: NESTED, specName: 'US-AD-095-ProgressReports', tierA_exit: 0, tierB_exit: 0, runner_run_id: RUN_ID }));
       const r = runHook(dir);
       const out = `${r.stdout || ''}${r.stderr || ''}`;
       assert(r.status === 0, `in-scope + fresh note must pass; got ${r.status}:\n${out}`);

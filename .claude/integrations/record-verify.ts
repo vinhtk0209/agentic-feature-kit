@@ -26,18 +26,23 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { execFileSync, spawnSync } from 'child_process';
+import { resolveCanonicalKitVersion } from './kit-version';
+import {
+  createBlockedVerificationReceipt,
+  resolveCommandRunId,
+  validateCommandRunId,
+  type BlockedVerificationReceipt,
+} from './verification-writer-adapter';
+import {
+  executeVerificationWrite,
+  type VerificationWriterCapabilityDependencies,
+} from './verification-writer-capability';
+import type { CentralWriterResult } from './core/privacy-writer';
 
 export const VERIFY_NOTES_REF = 'refs/notes/verify';
 
 /** The kit source-of-truth package name — one of the A1.1 repo-role markers (see assertNotKitRepo). */
 const KIT_PACKAGE_NAME = 'feature-from-confluence-kit';
-
-// Supabase (public anon creds — RLS-protected). Hardcoded fallback mirrors telemetry.ts so the
-// target-side verify_records write works even without a .env; env vars override if present (Gap C).
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://vkuojxgvkxndftenrdno.supabase.co';
-const SUPABASE_ANON_KEY =
-  process.env.SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdW9qeGd2a3huZGZ0ZW5yZG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjgwMzMsImV4cCI6MjA5NzAwNDAzM30.MrTuIuN1kghxMXu0yyOW9MtmXVY7xH0-2HSCwTKo2cU';
 
 export interface RecordVerifyInput {
   /** The workflow phase this verdict is for. */
@@ -58,8 +63,8 @@ export interface RecordVerifyInput {
   tierA_exit: number;
   /** b11-runner exit code, or null if Tier B was legitimately skipped (§3.3). */
   tierB_exit: number | null;
-  /** Ties this record to a specific command run (marker stream); remote-backstop seam (§3.6). */
-  runner_run_id?: string;
+  /** Ties this local note to one validated command-boundary UUID. */
+  runner_run_id: string;
   /** Kit version; defaults to the resolved PROMPT_VERSION. */
   kit_version?: string;
   /** ISO8601 timestamp; metadata only — never a validity input (§3.4). */
@@ -155,17 +160,9 @@ function assertNotKitRepo(repoRoot: string): void {
   }
 }
 
-/** Resolve kit version from commands/feature-from-confluence.md PROMPT_VERSION (mirrors telemetry.ts). */
-function resolveKitVersion(repoRoot: string): string {
-  try {
-    const cmdFile = path.join(repoRoot, '.claude', 'commands', 'feature-from-confluence.md');
-    const content = fs.readFileSync(cmdFile, 'utf8');
-    const match = content.match(/PROMPT_VERSION:\s*v([\d.]+)/);
-    if (match) return match[1] + '.0';
-  } catch {
-    /* fall through */
-  }
-  return '3.18.0';
+/** Resolve kit version from the shared PROMPT_VERSION authority (mirrors telemetry.ts). */
+export function resolveKitVersion(repoRoot: string): string {
+  return resolveCanonicalKitVersion(repoRoot);
 }
 
 /** Recursively list every `data/` directory at-or-under `root` (the kit's per-feature marker). */
@@ -284,6 +281,7 @@ export function computeContentHash(
  * overwritten (-f) on re-verify. Returns the written note.
  */
 export function recordVerify(input: RecordVerifyInput): VerifyNote {
+  const runRef = validateCommandRunId(input.runner_run_id);
   const repoRoot = resolveRepoRoot();
   // A1.1 repo-role guard: never attach a code-verify note to the kit source-of-truth repo.
   assertNotKitRepo(repoRoot);
@@ -316,7 +314,7 @@ export function recordVerify(input: RecordVerifyInput): VerifyNote {
     verified: computeVerified(input.tierA_exit, input.tierB_exit),
     content_hash: hash,
     coverage,
-    runner_run_id: input.runner_run_id ?? process.env.KIT_RUN_ID ?? generateRunId(),
+    runner_run_id: runRef,
     kit_version: input.kit_version ?? resolveKitVersion(repoRoot),
     at: input.at ?? new Date().toISOString(),
   };
@@ -347,17 +345,15 @@ export function captureAndRecord(opts: {
   tierBCmd?: string | null;
   runner_run_id?: string;
 }): VerifyNote {
+  const runRef = resolveCommandRunId(opts.runner_run_id);
   const repoRoot = resolveRepoRoot();
   // A1.1 repo-role guard — fail BEFORE running the tier commands if we're in the kit repo.
   assertNotKitRepo(repoRoot);
 
-  // §10.9 C3b-iii — resolved ONCE, here, so the SAME id both (a) reaches the reader (via the
-  // spawned tierA/tierB process's env) and (b) is what verify_records.runner_run_id ends up
-  // storing. Two separate resolutions (one for env, one inside recordVerify) would use
-  // generateRunId()'s randomness twice and produce TWO different ids — breaking the provenance
+  // §10.9 C3b-iii — resolved ONCE at this capture boundary, so the SAME UUID both (a) reaches the reader (via the
+  // spawned tierA/tierB process's env) and (b) is stored in the retained local note. Two generated
+  // identities would break the provenance
   // the D9.2 own-run trust rule depends on (the reader must see the id the record actually got).
-  const runRef = opts.runner_run_id ?? process.env.KIT_RUN_ID ?? generateRunId();
-
   const runExit = (cmd: string): number => {
     const r = spawnSync(cmd, { cwd: repoRoot, shell: true, stdio: 'inherit', env: { ...process.env, KIT_RUN_ID: runRef } });
     // Signal death or spawn failure → treat as failure, never as pass.
@@ -378,70 +374,44 @@ export function captureAndRecord(opts: {
   });
 }
 
-function generateRunId(): string {
-  return `run-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+/**
+ * B2B central-writer boundary. The local git note remains the target-repo verification proof.
+ * Central persistence is blocked before record construction because no v2 server-attested tenant
+ * context or Wave C sink exists. The returned L1 receipt contains no note, repo, path, or feature.
+ */
+export function createVerificationWriterReceipt(
+  note: VerifyNote,
+  createdAt: string = new Date().toISOString(),
+): BlockedVerificationReceipt {
+  return createBlockedVerificationReceipt({ runId: note.runner_run_id, createdAt });
 }
 
 /**
- * Best-effort target-side upsert of the verdict into Supabase `verify_records` (A1.3 — the WRITE
- * half of the remote sync backstop). Called by the CLI right after the git note is written (the CLI
- * IS the B11-wrapper entry point). BEST-EFFORT by design: a telemetry outage must never fail a real
- * feature run — mirrors telemetry.ts. The asymmetry is intentional: this WRITE is fail-open, but the
- * kit-side SYNC guard that READS this table (assertVerifiedForSync) is fail-CLOSED.
- *
- * NOT an adversarial control (A1.4 — KNOWN, ACCEPTED v1 limit): the anon key is public, so this row
- * is exactly as forgeable as the git note — forging both costs no more than forging one. Its job is
- * (1) give the kit-side sync guard verify VISIBILITY it otherwise has zero of, and (2) catch
- * NON-adversarial self-report (a run that never computed a real exit code). It does NOT make sync
- * tamper-proof; do not describe it as security.
+ * C4C explicit capability path. It projects only the verification allowlist from the retained
+ * local note and requires every tenant/policy/storage dependency from its server-side caller.
+ * The CLI never calls this path implicitly; both default command branches remain B2B-blocked.
  */
-export async function pushVerifyRecord(note: VerifyNote): Promise<void> {
+export function persistVerificationWithCapability(
+  note: VerifyNote,
+  dependencies: VerificationWriterCapabilityDependencies,
+): Promise<CentralWriterResult> {
   try {
-    const repoRoot = resolveRepoRoot();
-    const repo = path.basename(repoRoot);
-    let head_sha = '';
-    try {
-      head_sha = (
-        execFileSync('git', ['-C', repoRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }) as string
-      ).trim();
-    } catch {
-      /* unborn branch / no HEAD yet — leave blank */
-    }
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/verify_records`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Prefer: 'resolution=merge-duplicates,return=minimal',
-        Connection: 'close', // avoid the Windows undici keep-alive teardown assert (see telemetry.ts)
-      },
-      body: JSON.stringify({
-        runner_run_id: note.runner_run_id,
-        repo,
-        head_sha,
-        feature: note.feature,
-        // W.3 v3.22 — code_path/spec_name columns (migrations/0004). Additive; if the migration is not
-        // yet applied the POST 400s and the fail-open catch below keeps the local note valid.
-        code_path: note.code_path,
-        spec_name: note.spec_name,
-        verified: note.verified,
-        // snake_case keys to match the verify_records columns (Postgres folds unquoted identifiers
-        // to lowercase; values still come from the camelCase VerifyNote fields).
-        tier_a_exit: note.tierA_exit,
-        tier_b_exit: note.tierB_exit,
-        content_hash: note.content_hash,
-        kit_version: note.kit_version,
-        created_at: note.at,
-      }),
+    return executeVerificationWrite({
+      runId: note.runner_run_id,
+      repoLocalId: dependencies.repoLocalId,
+      contentHash: note.content_hash,
+      kitVersion: note.kit_version,
+      verified: note.verified,
+      tierExitCodes: [note.tierA_exit, ...(note.tierB_exit === null ? [] : [note.tierB_exit])],
+      observedAt: note.at,
+      context: dependencies.context,
+      grant: dependencies.grant,
+      clock: dependencies.clock,
+      opaqueIdentifierPort: dependencies.opaqueIdentifierPort,
+      sinkCapability: dependencies.sinkCapability,
     });
-    if (!res.ok) {
-      console.error(`⚠️  verify_records upsert failed (${res.status}) — the sync backstop won't see this run.`);
-    } else {
-      console.log(`↑ verify_records upserted (repo=${repo}, kit_version=${note.kit_version}, verified=${note.verified}).`);
-    }
-  } catch (e) {
-    console.error(`⚠️  verify_records upsert skipped: ${(e as Error).message}`);
+  } catch {
+    return executeVerificationWrite(null);
   }
 }
 
@@ -495,18 +465,19 @@ async function main(): Promise<void> {
       console.error('--tierA must be a real exit code (Tier A always runs); null is not allowed.');
       process.exit(1);
     }
+    const commandRunId = resolveCommandRunId(flags['run-id']);
     const note = recordVerify({
       phase: (flags.phase as 'verify_complete' | 'final_confirmed') ?? 'verify_complete',
       codePath: flags['feature-path'],
       specName: flags['spec-name'] ?? null,
       tierA_exit,
       tierB_exit: parseExit(flags.tierB),
-      runner_run_id: flags['run-id'],
+      runner_run_id: commandRunId,
       kit_version: flags['kit-version'],
     });
-    console.log(JSON.stringify(note, null, 2));
+    const receipt = createVerificationWriterReceipt(note);
+    console.log(`@@PRIVACY_RECEIPT@@ ${JSON.stringify(receipt)}`);
     console.log(`\n✅ verify note written to ${VERIFY_NOTES_REF} @ HEAD — verified=${note.verified}`);
-    await pushVerifyRecord(note);
     break;
   }
 
@@ -515,17 +486,18 @@ async function main(): Promise<void> {
       console.error('Usage: record-verify.ts capture --feature-path <src/dir> [--spec-name <docs/specs folder>] --tierA-cmd "<cmd>" [--tierB-cmd "<cmd>"]');
       process.exit(1);
     }
+    const commandRunId = resolveCommandRunId(flags['run-id']);
     const note = captureAndRecord({
       phase: (flags.phase as 'verify_complete' | 'final_confirmed') ?? 'verify_complete',
       codePath: flags['feature-path'],
       specName: flags['spec-name'] ?? null,
       tierACmd: flags['tierA-cmd'],
       tierBCmd: flags['tierB-cmd'] ?? null,
-      runner_run_id: flags['run-id'],
+      runner_run_id: commandRunId,
     });
-    console.log(JSON.stringify(note, null, 2));
+    const receipt = createVerificationWriterReceipt(note);
+    console.log(`@@PRIVACY_RECEIPT@@ ${JSON.stringify(receipt)}`);
     console.log(`\n✅ verify note written to ${VERIFY_NOTES_REF} @ HEAD — verified=${note.verified}`);
-    await pushVerifyRecord(note);
     break;
   }
 

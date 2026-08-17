@@ -1,0 +1,12 @@
+{
+  "files": {
+    "package.json": "{\"dependencies\":{\"vue\":\"3.5.0\",\"vue-router\":\"4.0.0\",\"vue-i18n\":\"10.0.0\",\"pinia\":\"3.0.0\"},\"devDependencies\":{\"typescript\":\"5.0.0\",\"sass\":\"1.0.0\"}}",
+    "pnpm-lock.yaml": "lockfileVersion: '9.0'",
+    "tsconfig.json": "{}",
+    "CLAUDE.md": "# Vue fixture",
+    "src/catalog/CatalogPage.vue": "<template><main /></template>",
+    "src/catalog/api/catalog.ts": "export const loadCatalog = () => null",
+    "src/catalog/i18n/en.json": "{}",
+    "src/catalog/CatalogPage.spec.ts": "test('catalog', () => {})"
+  }
+}

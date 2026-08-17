@@ -25,6 +25,7 @@ function assert(cond: boolean, msg: string) { if (!cond) throw new Error(msg); }
 // Use absolute paths so the scripts are found regardless of CWD.
 const TELEMETRY = path.resolve(__dirname, 'telemetry.ts');
 const MOCK_RUNNER = path.resolve(__dirname, 'telemetry-mock-runner.ts');
+const FEATURE_PROMPT = path.resolve(__dirname, '..', 'commands', 'feature-from-confluence.md');
 
 type Env = Record<string, string | undefined>;
 
@@ -74,6 +75,47 @@ function runMocked(args: string[], env: Env = {}): SpawnSyncReturns<string> {
   });
 }
 
+function mockFetchKinds(output: string): string[] {
+  return output.split(/\r?\n/)
+    .filter((line) => line.startsWith('@@MOCK_FETCH@@ '))
+    .map((line) => (JSON.parse(line.slice('@@MOCK_FETCH@@ '.length)) as { kind: string }).kind)
+}
+
+function privacyReceipts(output: string): Record<string, unknown>[] {
+  return output.split(/\r?\n/)
+    .filter((line) => line.startsWith('@@PRIVACY_RECEIPT@@ '))
+    .map((line) => JSON.parse(line.slice('@@PRIVACY_RECEIPT@@ '.length)) as Record<string, unknown>)
+}
+
+/** Run an isolated copy with a broken installed PROMPT_VERSION; no fetch mock is needed because startup must fail first. */
+function runBrokenVersionAuthority(promptSource: string): SpawnSyncReturns<string> {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kit-tel-version-'));
+  const integrationDir = path.join(root, '.claude', 'integrations');
+  const coreDir = path.join(integrationDir, 'core');
+  const commandDir = path.join(root, '.claude', 'commands');
+  fs.mkdirSync(coreDir, { recursive: true });
+  fs.mkdirSync(commandDir, { recursive: true });
+  fs.copyFileSync(TELEMETRY, path.join(integrationDir, 'telemetry.ts'));
+  fs.copyFileSync(path.resolve(__dirname, 'kit-version.ts'), path.join(integrationDir, 'kit-version.ts'));
+  fs.copyFileSync(path.resolve(__dirname, 'run-version-writer-adapter.ts'), path.join(integrationDir, 'run-version-writer-adapter.ts'));
+  for (const file of ['blocked-central-writer.ts', 'privacy-policy.ts', 'privacy-writer.ts']) {
+    fs.copyFileSync(path.resolve(__dirname, 'core', file), path.join(coreDir, file));
+  }
+  fs.writeFileSync(path.join(commandDir, 'feature-from-confluence.md'), promptSource, 'utf8');
+  try {
+    return spawnSync(`npx tsx "${path.join(integrationDir, 'telemetry.ts')}" verify`, {
+      // Use the existing local tsx dependency; module location, not cwd, defines the authority root.
+      cwd: path.resolve(__dirname, '..', '..'),
+      env: buildEnv({ KIT_TOKEN: 'test-token' }),
+      encoding: 'utf8',
+      shell: true,
+      timeout: 30000,
+    });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
 // ── Tests: KIT_TOKEN guard ────────────────────────────────────────────────────
 
 test('missing KIT_TOKEN → verify exits 1 (no network call)', () => {
@@ -96,12 +138,71 @@ test('missing KIT_TOKEN → verify exits 1 (no network call)', () => {
   }
 });
 
+test('malformed PROMPT_VERSION exits nonzero before telemetry can issue a network request', () => {
+  const r = runBrokenVersionAuthority('PROMPT_VERSION: v3.25.1\n');
+  const out = `${r.stdout}\n${r.stderr}`;
+  assert(r.status !== 0, `broken authority must stop telemetry, got ${r.status}`);
+  assert(out.includes('kit-version:'), `failure must identify authority parsing, got: ${out}`);
+  assert(!out.includes('Token valid') && !out.includes('@@KIT_EVENT@@'), 'telemetry must not enter its network/write path after version failure');
+});
+
 // ── Tests: verify command dispatch ───────────────────────────────────────────
 
 test('verify — valid token → exits 0', () => {
   const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'valid' });
   assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
   assert(r.stdout.includes('✅'), 'stdout should show valid checkmark');
+  assert(!r.stdout.toLowerCase().includes('owner'), 'valid verifier response is bounded and must not expose owner identity');
+  assert(r.stdout.includes('"kitVersion":"3.25.0"'), 'the telemetry marker must expose canonical PROMPT_VERSION N.N.0');
+});
+
+test('verify binds dashboard-injected runner identity and run nonce into the meta marker', () => {
+  const nonce = 'b'.repeat(64);
+  const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'valid', KIT_RUNNER_ID: 'codex', KIT_EVENT_NONCE: nonce });
+  assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
+  assert(r.stdout.includes(`"runner":"codex","runNonce":"${nonce}"`), `marker did not bind runner/nonce: ${r.stdout}`);
+});
+
+test('B2C valid auth preserves the meta marker but emits one closed receipt and no repo_runs write', () => {
+  const nonce = 'e'.repeat(64);
+  const r = runMocked(['verify'], {
+    MOCK_VERIFY_RESULT: 'valid',
+    KIT_RUNNER_ID: 'codex',
+    KIT_EVENT_NONCE: nonce,
+    KIT_RUN_ID: 'spoofed-environment-run-id',
+  });
+  assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
+  assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"meta","kitVersion":"3.25.0","runner":"codex","runNonce":"${nonce}"}`), 'meta marker drifted');
+  const kinds = mockFetchKinds(r.stdout);
+  assert(kinds.filter((kind) => kind === 'verify_rpc').length === 1, `expected one auth RPC, got ${kinds}`);
+  assert(!kinds.includes('repo_runs_write'), `repo_runs write must be removed, got ${kinds}`);
+  const receipts = privacyReceipts(r.stdout);
+  assert(receipts.length === 1, `expected one privacy receipt, got ${receipts.length}`);
+  assert(JSON.stringify(receipts[0]) === JSON.stringify({
+    schemaVersion: 1,
+    policyVersion: 'p17-016-v1',
+    writerId: 'kit.telemetry.central-upsert',
+    runId: receipts[0].runId,
+    tenantContextStatus: 'unavailable',
+    outcome: 'blocked',
+    reasonCode: 'tenant_attestation_unavailable',
+    createdAt: receipts[0].createdAt,
+  }), `receipt shape drifted: ${JSON.stringify(receipts[0])}`);
+  assert(
+    typeof receipts[0].runId === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receipts[0].runId),
+    'receipt must carry a canonical UUID',
+  );
+  assert(receipts[0].runId !== 'spoofed-environment-run-id', 'KIT_RUN_ID must not be input authority');
+  for (const forbidden of ['repository', 'owner', 'token', 'kitVersion', 'tenantId', 'subjectId']) {
+    assert(!(forbidden in receipts[0]), `receipt leaked ${forbidden}`);
+  }
+});
+
+test('verify rejects malformed dashboard runner identity before network use', () => {
+  const r = runMocked(['verify'], { MOCK_VERIFY_RESULT: 'valid', KIT_RUNNER_ID: 'codex;forged' });
+  assert(r.status !== 0, `invalid runner must fail closed, got ${r.status}`);
+  assert(!r.stdout.includes('Token valid') && !r.stdout.includes('@@KIT_EVENT@@'), 'invalid runner must not enter telemetry or marker path');
 });
 
 test('verify — invalid token → exits 1', () => {
@@ -137,9 +238,38 @@ test('feature missing arg → exits 2', () => {
 // ── Tests: error command dispatch ─────────────────────────────────────────────
 
 test('error <type> <phase> <msg> → exits 0 (best-effort)', () => {
-  const r = runMocked(['error', 'step_failure', 'B11', 'tests failed']);
+  const nonce = 'c'.repeat(64);
+  const r = runMocked(['error', 'step_failure', 'B11', 'tests failed'], { KIT_EVENT_NONCE: nonce });
   assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
   assert(r.stdout.includes('📊'), 'stdout should log the error telemetry event');
+  assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"error","phase":"B11","runNonce":"${nonce}"}`), 'error marker must bind one canonical phase and nonce');
+});
+
+test('error accepts the exact canonical D-cross-2 phase token', () => {
+  const nonce = 'd'.repeat(64);
+  const r = runMocked(['error', 'step_failure', 'D-cross-2', 'contract drift'], { KIT_EVENT_NONCE: nonce });
+  assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
+  assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"error","phase":"D-cross-2","runNonce":"${nonce}"}`), 'error marker must preserve the exact canonical D-cross-2 token');
+});
+
+test('error rejects the historical Dcross-2 typo before telemetry or marker output', () => {
+  const r = runMocked(['error', 'step_failure', 'Dcross-2', 'contract drift']);
+  assert(r.status === 2, `historical typo must fail closed with exit 2, got ${r.status}`);
+  assert(r.stderr.includes('canonical phase'), `failure must explain the canonical phase contract: ${r.stderr}`);
+  assert(!r.stdout.includes('📊') && !r.stdout.includes('@@KIT_EVENT@@'), 'invalid phase must not enter telemetry or marker output');
+});
+
+test('error rejects a descriptive step label before telemetry or marker output', () => {
+  const r = runMocked(['error', 'step_failure', 'B0 — Evidence Bundle', 'bundle missing']);
+  assert(r.status === 2, `descriptive phase must fail closed with exit 2, got ${r.status}`);
+  assert(r.stderr.includes('canonical phase'), `failure must explain the canonical phase contract: ${r.stderr}`);
+  assert(!r.stdout.includes('📊') && !r.stdout.includes('@@KIT_EVENT@@'), 'invalid phase must not enter telemetry or marker output');
+});
+
+test('feature workflow instructs error telemetry to use one canonical phase ID', () => {
+  const prompt = fs.readFileSync(FEATURE_PROMPT, 'utf8');
+  assert(prompt.includes('telemetry.ts error step_failure "<canonical-phase-id>"'), 'workflow must call error telemetry with the canonical phase placeholder');
+  assert(!prompt.includes('telemetry.ts error step_failure "<step-name>"'), 'workflow must not teach the malformed descriptive-label call');
 });
 
 test('error too few args → exits 2', () => {

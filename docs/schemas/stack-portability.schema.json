@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-feature-kit.dev/schemas/stack-portability-1.0.0.json",
+  "title": "Stack Portability Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileFingerprint",
+    "status",
+    "framework",
+    "conventions",
+    "assumptions",
+    "blockingFindings",
+    "advisories",
+    "evidencePaths",
+    "resultHash"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "profileFingerprint": { "$ref": "#/$defs/sha256" },
+    "status": { "enum": ["ready", "needs_input"] },
+    "framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter", "strategy", "fallbackFiles", "capabilityFiles", "evidence"],
+      "properties": {
+        "adapter": {
+          "oneOf": [
+            { "enum": ["react-web", "react-native", "vue", "angular"] },
+            { "type": "null" }
+          ]
+        },
+        "strategy": { "enum": ["reference-first", "framework-default", "unresolved"] },
+        "fallbackFiles": { "$ref": "#/$defs/sortedStrings" },
+        "capabilityFiles": { "$ref": "#/$defs/sortedStrings" },
+        "evidence": { "$ref": "#/$defs/nonEmptySortedStrings" }
+      }
+    },
+    "conventions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["http", "responseTransform", "requestTransform", "mappingPolicy"],
+      "properties": {
+        "http": { "$ref": "#/$defs/httpDecision" },
+        "responseTransform": { "$ref": "#/$defs/transformDecision" },
+        "requestTransform": { "$ref": "#/$defs/transformDecision" },
+        "mappingPolicy": { "const": "named-feature-mapper" }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "$ref": "#/$defs/openEdxHttpAssumption" },
+        { "$ref": "#/$defs/openEdxResponseAssumption" },
+        { "$ref": "#/$defs/openEdxRequestAssumption" },
+        { "$ref": "#/$defs/paragonAssumption" }
+      ],
+      "items": false
+    },
+    "blockingFindings": { "$ref": "#/$defs/sortedStrings" },
+    "advisories": { "$ref": "#/$defs/sortedStrings" },
+    "evidencePaths": { "$ref": "#/$defs/nonEmptySortedStrings" },
+    "resultHash": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "identifier": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$" },
+    "sortedStrings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "nonEmptySortedStrings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "decisionBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "adapter", "symbol", "targetSpecific", "evidence"],
+      "properties": {
+        "state": { "enum": ["declared", "observed", "unknown", "conflict"] },
+        "adapter": {},
+        "symbol": { "oneOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "targetSpecific": { "type": "boolean" },
+        "evidence": { "$ref": "#/$defs/nonEmptySortedStrings" }
+      }
+    },
+    "httpDecision": {
+      "allOf": [
+        { "$ref": "#/$defs/decisionBase" },
+        {
+          "properties": {
+            "adapter": {
+              "oneOf": [
+                { "enum": ["openedx-get-http-client", "axios", "ky", "graphql-request", "apollo", "fetch"] },
+                { "type": "null" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "transformDecision": {
+      "allOf": [
+        { "$ref": "#/$defs/decisionBase" },
+        {
+          "properties": {
+            "adapter": {
+              "oneOf": [
+                { "enum": ["openedx-camel-case", "openedx-snake-case", "custom"] },
+                { "type": "null" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "assumptionBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "active", "evidence"],
+      "properties": {
+        "id": {},
+        "active": { "type": "boolean" },
+        "evidence": { "$ref": "#/$defs/nonEmptySortedStrings" }
+      }
+    },
+    "openEdxHttpAssumption": {
+      "allOf": [{ "$ref": "#/$defs/assumptionBase" }, { "properties": { "id": { "const": "openedx-http-client" } } }]
+    },
+    "openEdxResponseAssumption": {
+      "allOf": [{ "$ref": "#/$defs/assumptionBase" }, { "properties": { "id": { "const": "openedx-response-transform" } } }]
+    },
+    "openEdxRequestAssumption": {
+      "allOf": [{ "$ref": "#/$defs/assumptionBase" }, { "properties": { "id": { "const": "openedx-request-transform" } } }]
+    },
+    "paragonAssumption": {
+      "allOf": [{ "$ref": "#/$defs/assumptionBase" }, { "properties": { "id": { "const": "paragon-ui" } } }]
+    }
+  }
+}

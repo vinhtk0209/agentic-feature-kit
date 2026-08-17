@@ -7,7 +7,8 @@
  * Checks (all kit-side-possible, no external/network deps, single process):
  *   - staged docs/specs/<Feature>/checklist.md   → header-lock (v3.10/3.11) + ACT header format
  *   - staged docs/specs/<Feature>/ux-states.json → LOCKED v2 schema + `expected` enum (v3.7)
- *   - INDEX consistency: a staged feature must appear in the (staged) docs/specs/INDEX.md
+ *   - INDEX consistency: a staged workflow feature (one with context-summary.md) must appear in
+ *     the staged docs/specs/INDEX.md; evidence-only/spec-only folders follow the generator and skip
  *   - staged *.ts → SYNTAX check via esbuild (the same engine `tsx --check` uses)
  *
  * NOT done (impossible/wrong kit-side — A1.2): no Tier B / no verify-note read; no lint-feature
@@ -41,7 +42,11 @@ function transform(): typeof import('esbuild').transformSync {
 /** Read a path's STAGED (index) bytes — validates what is actually committed, not the worktree. */
 function readStaged(pathRel: string): string | null {
   try {
-    return execFileSync('git', ['show', `:${pathRel}`], { encoding: 'utf8' });
+    return execFileSync('git', ['show', `:${pathRel}`], {
+      encoding: 'utf8',
+      // A missing optional context-summary is an expected negative lookup, not hook noise.
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
   } catch {
     return null;
   }
@@ -62,6 +67,20 @@ function featureOf(pathRel: string): string | null {
   if (parts[0] !== 'docs' || parts[1] !== 'specs') return null;
   if (parts[2].startsWith('.')) return null;      // .amendments, .current-feature
   return parts[2];
+}
+
+/** Mirror feature-index.ts: only folders with a staged/tracked context-summary are indexed. */
+export function featureRequiresIndex(
+  feature: string,
+  readPath: (pathRel: string) => string | null = readStaged,
+): boolean {
+  return readPath(`docs/specs/${feature}/context-summary.md`) !== null;
+}
+
+/** Token-boundary match prevents a shorter name from matching an unrelated feature row. */
+export function featureIsListed(indexText: string, feature: string): boolean {
+  const listed = new RegExp(`(^|[^\\w-])${feature.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^\\w-]|$)`, 'm');
+  return listed.test(indexText);
 }
 
 function checkChecklist(pathRel: string, text: string, problems: Problem[]): void {
@@ -171,16 +190,16 @@ function main(): void {
     else if (base === 'ux-states.json') checkUxStates(p, text, problems);
   }
 
-  if (features.size > 0) {
+  const indexedFeatures = [...features].filter((feature) => featureRequiresIndex(feature));
+  if (indexedFeatures.length > 0) {
     const indexText = readStaged('docs/specs/INDEX.md');
     if (indexText === null) {
       problems.push({ file: 'docs/specs/INDEX.md',
         msg: 'not staged/tracked, but a feature spec is being committed',
         fix: 'run `npm run workflow:index` and stage docs/specs/INDEX.md.' });
     } else {
-      for (const f of features) {
-        const listed = new RegExp(`(^|[^\\w-])${f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^\\w-]|$)`, 'm');
-        if (!listed.test(indexText)) {
+      for (const f of indexedFeatures) {
+        if (!featureIsListed(indexText, f)) {
           problems.push({ file: 'docs/specs/INDEX.md',
             msg: `stale — feature "${f}" is being committed but is not listed`,
             fix: 'run `npm run workflow:index` and stage the refreshed docs/specs/INDEX.md.' });
@@ -205,4 +224,4 @@ function main(): void {
   process.exit(0);
 }
 
-main();
+if (require.main === module) main();

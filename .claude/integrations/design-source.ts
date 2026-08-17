@@ -36,6 +36,8 @@ import { createHash } from 'crypto';
 // ─── Core model (mirrors §5 of design-to-ui-agent-architecture.md) ─────────────
 
 export interface DesignModel {
+  /** Versioned artifact contract. Readers fail closed on an unsupported value. */
+  schemaVersion: 1;
   source: 'figma';
   screens: ScreenModel[];
   /** Deterministic content hash of the resolved screens — for future re-run diffing

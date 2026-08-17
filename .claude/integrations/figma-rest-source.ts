@@ -64,6 +64,7 @@ interface RawNodesResponse {
   name?: string;
   nodes: Record<string, RawNodeEntry>;
 }
+interface RawFileResponse { version?: string }
 
 // ─── Options ───────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,17 @@ export class FigmaRestSource implements DesignSource {
     this.token = opts.token ?? process.env.FIGMA_TOKEN;
     this.fetchImpl = opts.fetchImpl ?? (globalThis.fetch as typeof fetch);
     this.baseUrl = (opts.baseUrl ?? DEFAULT_BASE).replace(/\/+$/, '');
+  }
+
+  /** Cheap version probe used by D0.5 before accepting an on-branch cache artifact. */
+  async getFileVersion(fileKey: string): Promise<string> {
+    if (!this.token) throw new Error('FIGMA_TOKEN missing — set the FIGMA_TOKEN environment variable');
+    if (typeof this.fetchImpl !== 'function') throw new Error('No fetch implementation available (Node 18+ global fetch or opts.fetchImpl)');
+    const res = await this.fetchImpl(`${this.baseUrl}/v1/files/${encodeURIComponent(fileKey)}`, { headers: { 'X-Figma-Token': this.token } });
+    if (!res.ok) throw new Error(`Figma API version request failed (${res.status} ${res.statusText}) for file ${fileKey}`);
+    const body = await res.json() as RawFileResponse;
+    if (!body.version || typeof body.version !== 'string') throw new Error(`Figma API returned no version for file ${fileKey}`);
+    return body.version;
   }
 
   /** Fetch one node cluster. Clear, specific errors for the auth failures seen in real
@@ -281,7 +293,7 @@ export class FigmaRestSource implements DesignSource {
       const entry = await this.fetchNodes(fileKey, nodeId);
       screens.push(this.toScreenModel(entry, ref));
     }
-    return { source: 'figma', screens, hash: hashScreens(screens) };
+    return { schemaVersion: 1, source: 'figma', screens, hash: hashScreens(screens) };
   }
 }
 

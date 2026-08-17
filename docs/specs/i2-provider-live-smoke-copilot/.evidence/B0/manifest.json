@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "i2-provider-live-smoke-copilot",
+  "phase": "B0",
+  "builtAt": "2026-08-11T10:48:59.870Z",
+  "files": [
+    {
+      "role": "backend-binding",
+      "path": "docs/specs/i2-provider-live-smoke-copilot/.evidence/B0/backend-binding.json",
+      "sha256": "fb2a1a09506e24f58ef6653251b89c08b8aeb17bf07f8f1a75746b2aaa1820f0",
+      "bytes": 490
+    },
+    {
+      "role": "transcript",
+      "path": "docs/specs/i2-provider-live-smoke-copilot/.evidence/B0/transcripts/copilot-live-smoke-output.txt",
+      "sha256": "d1ed9a618cf9716e7ff053834f9cf6c90245713f68119f3556a5af58ac59522e",
+      "bytes": 19
+    }
+  ],
+  "manifestHash": "592c1ca49dca2266db7df99c5585ab3e3b008f09bbea33dc82c6e608aff29c8a",
+  "estimatedTokens": 127,
+  "budgetTokens": 4000
+}

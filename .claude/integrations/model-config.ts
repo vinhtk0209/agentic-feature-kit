@@ -17,8 +17,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+export const REASONING_EFFORTS = ['default', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type ReasoningEffort = typeof REASONING_EFFORTS[number];
+
 /** A model entry. `provider` groups models by backend (claude/copilot/codex/…); defaults to 'claude'. */
-export interface ModelEntry { id: string; label: string; provider: string }
+export interface ModelEntry { id: string; label: string; provider: string; reasoningEfforts: ReasoningEffort[] }
 export interface ModelConfig {
   version: number;
   primary: string;
@@ -33,11 +36,15 @@ export const DEFAULT_MODEL_CONFIG: ModelConfig = {
   primary: 'opus',
   fallback: ['sonnet', 'haiku'],
   models: {
-    opus: { id: 'claude-opus-4-8', label: 'Opus 4.8', provider: 'claude' },
-    sonnet: { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', provider: 'claude' },
-    haiku: { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', provider: 'claude' },
-    fable: { id: 'claude-fable-5', label: 'Fable 5', provider: 'claude' },
-    copilot: { id: 'github-copilot', label: 'GitHub Copilot', provider: 'copilot' },
+    opus: { id: 'claude-opus-4-8', label: 'Opus 4.8', provider: 'claude', reasoningEfforts: ['default'] },
+    sonnet: { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', provider: 'claude', reasoningEfforts: ['default'] },
+    haiku: { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', provider: 'claude', reasoningEfforts: ['default'] },
+    fable: { id: 'claude-fable-5', label: 'Fable 5', provider: 'claude', reasoningEfforts: ['default'] },
+    copilot: { id: 'github-copilot', label: 'GitHub Copilot (legacy selector)', provider: 'copilot', reasoningEfforts: ['default'] },
+    'copilot-gpt-5.3-codex': { id: 'gpt-5.3-codex', label: 'Copilot · GPT-5.3 Codex', provider: 'copilot', reasoningEfforts: ['default', 'low', 'medium', 'high', 'xhigh'] },
+    'copilot-gpt-5.4': { id: 'gpt-5.4', label: 'Copilot · GPT-5.4', provider: 'copilot', reasoningEfforts: ['default', 'none', 'low', 'medium', 'high', 'xhigh'] },
+    codex: { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', provider: 'codex', reasoningEfforts: ['default', 'none', 'low', 'medium', 'high', 'xhigh', 'max'] },
+    'grok-4.5': { id: 'grok-4.5', label: 'Grok 4.5', provider: 'grok', reasoningEfforts: ['default'] },
   },
 };
 
@@ -55,10 +62,26 @@ export function normalizeConfig(raw: unknown): ModelConfig {
   for (const [key, v] of Object.entries(models as Record<string, unknown>)) {
     const e = v as Record<string, unknown>;
     if (!e || typeof e.id !== 'string') throw new Error(`model "${key}" needs a string id`);
+    const rawReasoningEfforts = e.reasoningEfforts;
+    let reasoningEfforts: ReasoningEffort[] = ['default'];
+    if (rawReasoningEfforts !== undefined) {
+      if (!Array.isArray(rawReasoningEfforts) || rawReasoningEfforts.length === 0) {
+        throw new Error(`model "${key}" reasoningEfforts must be a non-empty array`);
+      }
+      const normalized = rawReasoningEfforts.map((effort) => {
+        if (typeof effort !== 'string' || !(REASONING_EFFORTS as readonly string[]).includes(effort)) {
+          throw new Error(`model "${key}" has unsupported reasoning effort`);
+        }
+        return effort as ReasoningEffort;
+      });
+      reasoningEfforts = [...new Set(normalized)];
+      if (!reasoningEfforts.includes('default')) throw new Error(`model "${key}" reasoningEfforts must include default`);
+    }
     reg[key] = {
       id: e.id,
       label: typeof e.label === 'string' ? e.label : key,
       provider: typeof e.provider === 'string' && e.provider.trim() ? e.provider : DEFAULT_PROVIDER,
+      reasoningEfforts,
     };
   }
   const primary = typeof o.primary === 'string' ? o.primary : Object.keys(reg)[0];
@@ -98,6 +121,18 @@ export function modelId(cfg: ModelConfig, key: string): string | undefined {
 /** Provider of a model key (e.g. "opus" → "claude", "copilot" → "copilot"). */
 export function providerOf(cfg: ModelConfig, key: string): string | undefined {
   return cfg.models[key]?.provider;
+}
+
+/** Validate a requested effort against the exact selected model; missing means provider default. */
+export function reasoningEffortForModel(cfg: ModelConfig, key: string, requested: unknown = 'default'): ReasoningEffort {
+  if (typeof requested !== 'string' || !(REASONING_EFFORTS as readonly string[]).includes(requested)) {
+    throw new Error(`reasoning effort is invalid for model "${key}"`);
+  }
+  const model = cfg.models[key];
+  if (!model || !Array.isArray(model.reasoningEfforts) || !model.reasoningEfforts.includes(requested as ReasoningEffort)) {
+    throw new Error(`reasoning effort "${requested}" is not supported by model "${key}"`);
+  }
+  return requested as ReasoningEffort;
 }
 
 /** Distinct providers configured, in first-seen order. */
