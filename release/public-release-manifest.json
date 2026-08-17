@@ -28,8 +28,16 @@
     "sha256": "73c343099eb530726b27c3cafd4f1ad1a2ff3b7fba60a73dcb3d1ed8f333a6c3"
   },
   "requiredPaths": [
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/feature_request.yml",
+    ".github/pull_request_template.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
     "LICENSE",
     "README.md",
+    "SECURITY.md",
+    "SUPPORT.md",
     "package-lock.json",
     "package.json",
     "packages/core/README.md",
@@ -1288,6 +1296,30 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".github/workflows/workflow-kit-ci.yml",
       "decision": "include",
       "contentKind": "text",
@@ -1324,6 +1356,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "CODE_OF_CONDUCT.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "LESSONS-FOR-KIT.md",
       "decision": "include",
       "contentKind": "text",
@@ -1337,6 +1381,18 @@
     },
     {
       "path": "README.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "SECURITY.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "SUPPORT.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -2264,6 +2320,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r2-public-entry-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r3a-governance-surface-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3404,6 +3466,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/post-17-public-release-r3a-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3429,6 +3497,12 @@
     },
     {
       "path": "scripts/public-entry-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/public-governance-contract.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

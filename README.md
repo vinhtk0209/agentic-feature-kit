@@ -134,11 +134,10 @@ source-release readiness is separate from package distribution.
   sources, schemas, manifests, docs, checksums, and the license.
 - Build and verification flows require no provider credential and perform no remote provider or
   data-service action.
-- Formal vulnerability-reporting and support policies are a required later release slice. They are
-  intentionally not linked before the corresponding files exist.
-
-Do not expose sensitive findings through a public issue while the private reporting policy is
-unfinished. The absence of a formal policy is a release blocker, not permission to disclose data.
+- Vulnerabilities and sensitive findings use the private route in the security policy; never place
+  credentials, private specifications, customer data, or exploit details in a public issue.
+- Support and contribution routes are documented, but they do not create an SLA, hosted-service
+  commitment, release authorization, or provider endorsement.
 
 ## Limitations
 
@@ -146,20 +145,25 @@ unfinished. The absence of a formal policy is a release blocker, not permission 
 - Provider bundles expose the shared capabilities listed here, not the entire legacy flagship.
 - Optional source connectors need their own configuration and are not required for local inputs.
 - Root package visibility remains private, and no package-distribution path is enabled.
-- Governance, dependency-license inventory, SBOM, nightly CI, clean-clone timing, and unresolved
-  internal-marker dispositions remain outside this slice.
+- Dependency-license inventory, SBOM, nightly CI, clean-clone timing, changelog reconciliation, and
+  unresolved internal-marker dispositions remain outside this slice.
 
 ## Documentation map
 
 - [Claude Code developer guide](docs/claude-commands/README.md) — flagship workflow behavior.
 - [Integration map](docs/claude-commands/INTEGRATIONS.md) — toolchain wiring and data flow.
 - [Token optimization guide](docs/claude-commands/TOKEN-OPTIMIZATION.md) — context and lazy loading.
+- [Contributing](CONTRIBUTING.md) — development boundaries, test ladder, and pull request evidence.
+- [Security policy](SECURITY.md) — private vulnerability reporting and disclosure coordination.
+- [Support](SUPPORT.md) — bug, feature, and sensitive-report routing without an SLA.
+- [Code of Conduct](CODE_OF_CONDUCT.md) — community behavior and enforcement expectations.
 
 Provider package and shared-core authorities are linked from their owning sections above so the
 root entry does not duplicate their install or API contracts.
 
 ## Contribution and support status
 
-Contribution, security, support, and community policies are the next P17-018 implementation slice.
-Until those tracked policies and templates exist, treat this repository as an evaluation candidate,
-sanitize all reproduction evidence, and do not infer a support SLA or public contribution process.
+The repository now has bounded contribution, security, support, and community policies plus typed
+issue and pull request templates. These governance routes do not make the candidate public-release
+eligible: release notes, marker remediation, supply-chain gates, nightly qualification, and clean-
+clone evidence remain required.
