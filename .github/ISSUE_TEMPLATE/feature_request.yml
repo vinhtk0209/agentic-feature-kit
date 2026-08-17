@@ -1,0 +1,64 @@
+name: Feature request
+description: Propose a bounded Agentic Feature Kit capability
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem and desired outcome without private specifications or credentials. A request does not authorize external execution or publication.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or maintainer problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: desired_outcome
+    attributes:
+      label: Desired outcome
+      description: What observable result would demonstrate value?
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Affected provider surface
+      options:
+        - Provider-neutral shared core
+        - Codex
+        - Claude Code
+        - GitHub Copilot
+        - Multiple providers
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing capabilities or smaller approaches you evaluated.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Proposed scope and non-goals
+      description: Identify boundaries, compatibility concerns, and measurable success criteria.
+    validations:
+      required: true
+  - type: textarea
+    id: security_data
+    attributes:
+      label: Security, privacy, and data impact
+      description: Describe new trust boundaries, stored data, credentials, or external effects, using synthetic details only.
+    validations:
+      required: true
+  - type: checkboxes
+    id: security_confirmation
+    attributes:
+      label: Request boundary
+      description: Do not include credentials, private specifications, customer data, raw logs, or exploit details.
+      options:
+        - label: No external write, provider execution, publication, or credential use is implied by this request.
+          required: true

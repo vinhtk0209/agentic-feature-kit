@@ -311,14 +311,6 @@ await test('CLI rejects an unclassified synthetic service reference and never em
 })
 
 await test('current public-release authorities cover the exact planned index and report only unresolved dispositions', () => {
-  const evidencePath = 'docs/evidence/post-17-public-release-r2-public-entry-2026-08-17.md'
-  const hasEvidence = fs.existsSync(path.join(root, ...evidencePath.split('/')))
-  const plannedPaths = [
-    'docs/roadmap/p17-018-r2-public-entry-plan.md',
-    'scripts/post-17-public-release-r2-plan.test.ts',
-    'scripts/public-entry-contract.test.ts',
-    ...(hasEvidence ? [evidencePath] : []),
-  ]
   const listed = spawnSync('git', ['ls-files', '--stage', '-z'], {
     cwd: root,
     encoding: null,
@@ -329,14 +321,26 @@ await test('current public-release authorities cover the exact planned index and
   assert.ok(listed.stdout instanceof Uint8Array)
   const records = parseGitIndexRecords(listed.stdout)
   const modeByPath = new Map(records.map((record) => [record.path, record.mode]))
-  const expectedPaths = [...new Set([...modeByPath.keys(), ...plannedPaths])].sort()
-  assert.equal(expectedPaths.length, hasEvidence ? 579 : 578)
+  const expectedPaths = [...modeByPath.keys()].sort()
 
   const manifestBytes = fs.readFileSync(path.join(root, 'release', 'public-release-manifest.json'))
   const registryBytes = fs.readFileSync(path.join(root, 'release', 'internal-marker-classification.json'))
   const manifest = parsePublicReleaseManifest(JSON.parse(manifestBytes.toString('utf8')))
   const markerRegistry = parseInternalMarkerRegistry(JSON.parse(registryBytes.toString('utf8')))
   assert.deepEqual(manifest.entries.map((entry) => entry.path), expectedPaths)
+  const expectedExcludedEntries = [
+    ['docs/evidence/i1-self-improvement-cycle-2026-08-12.json', 'private-evidence'],
+    ['docs/evidence/i1-self-improvement-cycle-2026-08-12.md', 'private-evidence'],
+    ['docs/evidence/post-17-cross-machine-tracking.md', 'private-evidence'],
+    ['docs/evidence/post-17-privacy-wave-c2-schema-migration-design-2026-08-16.md', 'private-evidence'],
+    ['sync.config.json', 'workspace-only'],
+  ]
+  assert.deepEqual(
+    manifest.entries
+      .filter((entry) => entry.decision === 'exclude')
+      .map((entry) => [entry.path, entry.reasonCode]),
+    expectedExcludedEntries,
+  )
   assert.deepEqual(markerRegistry.markers.map((marker) => [marker.id, marker.expectedTotal]), [
     ['internal-company-token', 0],
     ['internal-hostname', 21],
@@ -359,10 +363,11 @@ await test('current public-release authorities cover the exact planned index and
     }
   })
   const result = evaluatePublicReleaseCandidate({ manifestBytes, registryBytes, files, sha256: nodeSha256 })
+  const expectedIncludedPaths = expectedPaths.length - expectedExcludedEntries.length
   assert.equal(result.contractValid, true, JSON.stringify(result))
   assert.equal(result.candidateStatus, 'blocked')
-  assert.equal(result.includedPaths, hasEvidence ? 574 : 573)
-  assert.equal(result.excludedPaths, 5)
+  assert.equal(result.includedPaths, expectedIncludedPaths)
+  assert.equal(result.excludedPaths, expectedExcludedEntries.length)
   assert.equal(result.classifiedOccurrences, 73)
   assert.equal(result.blockers.length, 31)
   assert.deepEqual([...new Set(result.blockers.map((blocker) => blocker.code))], ['unresolved-marker-disposition'])

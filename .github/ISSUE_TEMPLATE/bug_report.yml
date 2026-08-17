@@ -1,0 +1,76 @@
+name: Bug report
+description: Report reproducible behavior in Agentic Feature Kit
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a defect. Do not include credentials, private specifications, customer data, raw logs, or exploit details. Use the private security route for sensitive findings.
+  - type: input
+    id: kit_version
+    attributes:
+      label: Kit version or commit
+      description: Provide the exact version, tag, or commit SHA.
+      placeholder: v3.25 or 0123456789abcdef
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider surface
+      options:
+        - Codex
+        - Claude Code
+        - GitHub Copilot
+        - Shared core
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: operating_system
+    attributes:
+      label: Operating system
+      placeholder: Windows 11, Ubuntu 24.04, or macOS 15
+    validations:
+      required: true
+  - type: input
+    id: node_version
+    attributes:
+      label: Node version
+      placeholder: 24.x
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Use synthetic input and list exact commands in order.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized_evidence
+    attributes:
+      label: Sanitized evidence
+      description: Include minimal output, evidence hashes, or links that contain no sensitive data.
+    validations:
+      required: true
+  - type: checkboxes
+    id: security_confirmation
+    attributes:
+      label: Public-data confirmation
+      description: Do not include credentials, private specifications, customer data, raw logs, or exploit details.
+      options:
+        - label: This public issue does not contain sensitive vulnerability details.
+          required: true

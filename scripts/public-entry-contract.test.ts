@@ -40,6 +40,10 @@ const expectedHeadings = [
 const requiredRelativeLinks = [
   'LICENSE',
   'CHANGELOG.md',
+  'CONTRIBUTING.md',
+  'SECURITY.md',
+  'SUPPORT.md',
+  'CODE_OF_CONDUCT.md',
   'providers/README.md',
   'providers/codex/agentic-feature-kit/README.md',
   'providers/claude/agentic-feature-kit/README.md',
@@ -252,7 +256,14 @@ function validateReadme(markdown: string, packageJson: JsonRecord, checkLinks = 
   ] as Array<[RegExp, string]>) {
     if (pattern.test(markdown)) errors.push(code)
   }
-  if (/\]\((?:CONTRIBUTING|SECURITY|SUPPORT|CODE_OF_CONDUCT)\.md(?:[#)]|$)/.test(markdown)) errors.push('premature-governance-link')
+  for (const governanceLink of [
+    '[Contributing](CONTRIBUTING.md)',
+    '[Security policy](SECURITY.md)',
+    '[Support](SUPPORT.md)',
+    '[Code of Conduct](CODE_OF_CONDUCT.md)',
+  ]) {
+    if (markdown.split(governanceLink).length - 1 !== 1) errors.push(`governance-link-required-once:${governanceLink}`)
+  }
   if (checkLinks) errors.push(...validateLinks(markdown, root))
   return errors
 }
@@ -288,6 +299,10 @@ cd agentic-feature-kit
 npm ci
 npm run build:providers
 npm run test:provider-distribution
+[Contributing](CONTRIBUTING.md)
+[Security policy](SECURITY.md)
+[Support](SUPPORT.md)
+[Code of Conduct](CODE_OF_CONDUCT.md)
 `
 
 let passed = 0
@@ -333,7 +348,7 @@ async function main(): Promise<void> {
       ['official claim', `${canonicalReadme}\nOfficial provider integration.`],
       ['public-ready claim', canonicalReadme.replace('not yet public-release eligible', 'is public-release ready')],
       ['workspace entry', `${canonicalReadme}\nSee kit-dashboard for target repos.`],
-      ['premature governance', `${canonicalReadme}\n[Security](SECURITY.md)`],
+      ['missing governance', canonicalReadme.replace('[Security policy](SECURITY.md)', 'Security policy')],
       ['host path', `${canonicalReadme}\nC:\\Users\\example\\secret.txt`],
     ]
     for (const [name, attack] of attacks) assert.notDeepEqual(validateReadme(attack, canonicalPackage, false), [], `attack accepted: ${name}`)
