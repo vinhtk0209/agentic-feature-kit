@@ -58,7 +58,7 @@ and never writes files. Supported modes are `create-envelope`, `validate-envelop
 and `compare-golden`. Provider skills remain thin and cannot redefine ordering, gates, evidence,
 or completion semantics.
 
-## Control Plane pure contracts (P17-014 A2A–A2C)
+## Control Plane pure contracts (P17-014 A2A–A3B)
 
 `src/control-plane.ts` defines the closed four-operation registry, opaque bounded operation inputs,
 hard resource-budget profiles, and explicit worker capability manifest used by later P17-014 slices.
@@ -128,9 +128,29 @@ equal the immutable envelope machine. A valid signature proves only possession o
 does not authorize a key, tenant, operation, or execution.
 
 `src/control-plane-signing-node.ts` is the isolated real Ed25519 adapter. It exposes a public SPKI
-key and a signer closure, never a private-key property. Request freshness, authorized key sets, and
-durable execution state remain later A3 slices; persistence, API, worker, UI, and distribution remain
-disabled.
+key and a signer closure, never a private-key property. The A3B domain consumes these ports without
+moving authorization policy or key lifecycle into the platform adapter.
+
+### Worker request authentication and machine key lifecycle (P17-014 A3B)
+
+`src/control-plane-machine-keys.ts` owns the exact, public-only machine key-set contract. A set has at
+most eight version-sorted records, exactly one highest-version active key or no active key, and a
+monotonic CAS version. Rotation requires the current active key and creates one non-renewable grace
+window of at most five minutes. Revocation is immediate, clears any retirement deadline, and never
+promotes an older key. The module contains no key generation, secret material, storage, or platform
+dependency.
+
+`src/control-plane-worker-request-auth.ts` owns one exact Ed25519 wrapper for the five closed worker
+request kinds. It derives the canonical POST path from request kind and lease identity, hashes at
+most 64 KiB of exact UTF-8 body text, accepts only the fixed 60-second age and 30-second future-skew
+bounds, and composes an injected clock, tenant/machine key-set lookup, verifier factory, and atomic
+authorized-nonce port. The nonce port receives a domain-separated tenant/machine/key-bound hash and
+the observed key-set version, never the raw nonce.
+
+A3B proves pure policy and port ordering only. It does not create enrollment grants, key or nonce
+storage, database transactions, HTTP handlers, worker processes, execution state, network delivery,
+dashboard UI, or remote execution. Those remain disabled until their separately reviewed A3C–A6
+and privacy-gated adapters are implemented.
 
 ## Semantic Specification
 

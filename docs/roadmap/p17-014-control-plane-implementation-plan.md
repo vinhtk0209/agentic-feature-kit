@@ -197,6 +197,8 @@ flowchart TB
 | Progress composition domain | `claude-workflow-kit/packages/core/src/control-plane-progress.ts` | tenant-bound repository mapping plus P17-015 binding, projection, receipt-tail/evidence, and linear-retry proofs through an injected port |
 | Detached-signing domain | `claude-workflow-kit/packages/core/src/control-plane-signing.ts` | domain-separated A2B envelope and A2C receipt signature metadata, canonical bytes, and pure signer/verifier composition |
 | Node Ed25519 adapter | `claude-workflow-kit/packages/core/src/control-plane-signing-node.ts` | explicit real Ed25519 generation/sign/verify mechanics with a closure-local private key and public SPKI output |
+| Machine-key lifecycle domain | `claude-workflow-kit/packages/core/src/control-plane-machine-keys.ts` | exact bounded public key sets, active/retiring/revoked authorization, CAS-aware rotation grace, and immediate no-fallback revocation |
+| Worker-request authentication | `claude-workflow-kit/packages/core/src/control-plane-worker-request-auth.ts` | derived POST paths, canonical body/signature bytes, clock freshness, key lookup/verifier composition, and atomic authorized-nonce port |
 | Existing operation domains | `packages/core/src/project-intelligence.ts`, `workflow-orchestrator.ts` | real provider-neutral operation behavior and phase contracts |
 | Progress domain | `packages/core/src/cross-machine-progress.ts` | run/attempt/event/evidence identity and transitions |
 | Application ports | future kit shared-core modules | clock, signer/verifier, nonce, repository, journal, progress, executor interfaces |
@@ -230,6 +232,12 @@ Add canonical signing bytes, Ed25519 signer/verifier ports and Node adapter, non
 key version/rotation/revocation decisions, and a transactional journal port with a disposable local
 implementation. Prove duplicate delivery, changed envelope, all crash points, late receipt, unknown
 side effect, and offline restart without starting a network listener.
+
+A3 is split into independently evidenced slices: A3A owns detached A2B/A2C signing and the Node
+Ed25519 adapter; A3B owns worker-request canonicalization, bounded freshness, atomic authorized nonce
+consumption, and machine-key lifecycle policy; A3C owns transactional journal/crash/restart behavior.
+No A3B port implementation is persistence evidence, and no A3C journal may redefine A3B request or
+key authorization.
 
 ### A4 — Tenant-scoped persistence and repositories
 
