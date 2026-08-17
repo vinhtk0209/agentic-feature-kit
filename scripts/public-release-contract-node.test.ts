@@ -310,18 +310,13 @@ await test('CLI rejects an unclassified synthetic service reference and never em
   }
 })
 
-await test('current R1 authorities cover the exact planned index and report only unresolved dispositions', () => {
-  const evidencePath = 'docs/evidence/post-17-public-release-r1-manifest-classification-2026-08-17.md'
+await test('current public-release authorities cover the exact planned index and report only unresolved dispositions', () => {
+  const evidencePath = 'docs/evidence/post-17-public-release-r2-public-entry-2026-08-17.md'
   const hasEvidence = fs.existsSync(path.join(root, ...evidencePath.split('/')))
   const plannedPaths = [
-    'docs/roadmap/p17-018-r1-release-manifest-plan.md',
-    'release/internal-marker-classification.json',
-    'release/public-release-manifest.json',
-    'scripts/post-17-public-release-r1-plan.test.ts',
-    'scripts/public-release-contract-node.test.ts',
-    'scripts/public-release-contract-node.ts',
-    'scripts/public-release-contract.test.ts',
-    'scripts/public-release-contract.ts',
+    'docs/roadmap/p17-018-r2-public-entry-plan.md',
+    'scripts/post-17-public-release-r2-plan.test.ts',
+    'scripts/public-entry-contract.test.ts',
     ...(hasEvidence ? [evidencePath] : []),
   ]
   const listed = spawnSync('git', ['ls-files', '--stage', '-z'], {
@@ -335,7 +330,7 @@ await test('current R1 authorities cover the exact planned index and report only
   const records = parseGitIndexRecords(listed.stdout)
   const modeByPath = new Map(records.map((record) => [record.path, record.mode]))
   const expectedPaths = [...new Set([...modeByPath.keys(), ...plannedPaths])].sort()
-  assert.equal(expectedPaths.length, hasEvidence ? 575 : 574)
+  assert.equal(expectedPaths.length, hasEvidence ? 579 : 578)
 
   const manifestBytes = fs.readFileSync(path.join(root, 'release', 'public-release-manifest.json'))
   const registryBytes = fs.readFileSync(path.join(root, 'release', 'internal-marker-classification.json'))
@@ -366,7 +361,7 @@ await test('current R1 authorities cover the exact planned index and report only
   const result = evaluatePublicReleaseCandidate({ manifestBytes, registryBytes, files, sha256: nodeSha256 })
   assert.equal(result.contractValid, true, JSON.stringify(result))
   assert.equal(result.candidateStatus, 'blocked')
-  assert.equal(result.includedPaths, hasEvidence ? 570 : 569)
+  assert.equal(result.includedPaths, hasEvidence ? 574 : 573)
   assert.equal(result.excludedPaths, 5)
   assert.equal(result.classifiedOccurrences, 73)
   assert.equal(result.blockers.length, 31)

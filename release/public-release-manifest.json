@@ -2041,6 +2041,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-r2-public-entry-2026-08-17.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
@@ -2252,6 +2258,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r1-release-manifest-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r2-public-entry-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3386,6 +3398,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/post-17-public-release-r2-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3405,6 +3423,12 @@
     },
     {
       "path": "scripts/pre-commit.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/public-entry-contract.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
