@@ -94,8 +94,10 @@ for (const attack of [
 const c3Command = 'npx tsx scripts/post-17-privacy-wave-c3-tenant-foundation-execution.test.ts'
 assert.equal(packageJson.scripts['test:post-17-privacy-wave-c3-tenant-foundation-execution'], c3Command)
 assert.ok(
-  packageJson.scripts['test:kit']?.includes('npm run test:post-17-privacy-wave-c3-tenant-foundation-execution'),
-  'C3 plan validator is not registered in the full kit suite',
+  packageJson.scripts['test:workspace-contracts']?.includes(
+    'npm run test:post-17-privacy-wave-c3-tenant-foundation-execution',
+  ),
+  'C3 plan validator is not registered in the workspace contract suite',
 )
 
 const affirmativeSurface = normalized

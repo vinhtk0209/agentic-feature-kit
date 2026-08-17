@@ -1,0 +1,261 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "agentic-feature-kit-internal-marker-classification",
+  "fingerprint": {
+    "algorithm": "sha256",
+    "domain": "agentic-feature-kit/public-marker/v1"
+  },
+  "detectors": [
+    {
+      "id": "hostname-v1",
+      "kind": "hostname"
+    },
+    {
+      "id": "known-token-v1",
+      "kind": "token"
+    },
+    {
+      "id": "supabase-project-ref-v1",
+      "kind": "supabase-project-ref"
+    },
+    {
+      "id": "windows-user-path-v1",
+      "kind": "windows-user-path"
+    }
+  ],
+  "markers": [
+    {
+      "id": "internal-company-token",
+      "detectorId": "known-token-v1",
+      "fingerprintSha256": "55e2df72e60870f1da684c144eb7ea720c5958259c9dc37e50f1d66eed2f9fb9",
+      "expectedTotal": 0,
+      "occurrences": []
+    },
+    {
+      "id": "internal-hostname",
+      "detectorId": "hostname-v1",
+      "fingerprintSha256": "49d59786804ea36cc1eaae2e270caf0e9df894eadcec92a110651f116c77d4cf",
+      "expectedTotal": 21,
+      "occurrences": [
+        {
+          "path": ".claude/assurance/baselines/us-ad-095-progress-reports.spec-ir.json",
+          "expectedCount": 13,
+          "disposition": "replace-with-synthetic-fixture",
+          "reasonCode": "internal-service-fixture"
+        },
+        {
+          "path": ".claude/integrations/confluence-b0-intake.test.ts",
+          "expectedCount": 1,
+          "disposition": "replace-with-synthetic-fixture",
+          "reasonCode": "internal-service-fixture"
+        },
+        {
+          "path": ".claude/integrations/confluence-refetch-actor.test.ts",
+          "expectedCount": 5,
+          "disposition": "replace-with-synthetic-fixture",
+          "reasonCode": "internal-service-fixture"
+        },
+        {
+          "path": ".claude/mcp-server/confluence-http.test.ts",
+          "expectedCount": 2,
+          "disposition": "replace-with-synthetic-fixture",
+          "reasonCode": "internal-service-fixture"
+        }
+      ]
+    },
+    {
+      "id": "live-supabase-project-ref",
+      "detectorId": "supabase-project-ref-v1",
+      "fingerprintSha256": "d5b7bcc56029942d6f4e5274fec1b9f4dfe870943051dead0cb50e391bba8182",
+      "expectedTotal": 11,
+      "occurrences": [
+        {
+          "path": ".claude/integrations/telemetry.ts",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "live-service-default"
+        },
+        {
+          "path": "bin/lib/supabase.ts",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "live-service-default"
+        },
+        {
+          "path": "docs/evidence/i1-self-improvement-cycle-2026-08-12.json",
+          "expectedCount": 1,
+          "disposition": "move-to-private-archive",
+          "reasonCode": "historical-private-evidence"
+        },
+        {
+          "path": "docs/evidence/i1-self-improvement-cycle-2026-08-12.md",
+          "expectedCount": 1,
+          "disposition": "move-to-private-archive",
+          "reasonCode": "historical-private-evidence"
+        },
+        {
+          "path": "docs/evidence/post-17-cross-machine-tracking.md",
+          "expectedCount": 1,
+          "disposition": "move-to-private-archive",
+          "reasonCode": "historical-private-evidence"
+        },
+        {
+          "path": "docs/evidence/post-17-privacy-wave-c2-schema-migration-design-2026-08-16.md",
+          "expectedCount": 1,
+          "disposition": "move-to-private-archive",
+          "reasonCode": "historical-private-evidence"
+        },
+        {
+          "path": "docs/roadmap/p17-016-wave-c2-schema-inventory-migration-design-plan.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "scripts/post-17-privacy-wave-c2-schema-migration-design.test.ts",
+          "expectedCount": 2,
+          "disposition": "replace-with-synthetic-fixture",
+          "reasonCode": "internal-service-fixture"
+        },
+        {
+          "path": "scripts/post-17-privacy-wave-c4d-disposable-verification.test.ts",
+          "expectedCount": 1,
+          "disposition": "replace-with-synthetic-fixture",
+          "reasonCode": "internal-service-fixture"
+        },
+        {
+          "path": "scripts/sync-to-targets.ts",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "live-service-default"
+        }
+      ]
+    },
+    {
+      "id": "local-user-path",
+      "detectorId": "windows-user-path-v1",
+      "fingerprintSha256": "0ac46f461df6235202015b30e55906d9c2c91479533465f0045fa161d44eb531",
+      "expectedTotal": 1,
+      "occurrences": [
+        {
+          "path": "docs/evidence/post-17-worktree-browser-verification.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "local-user-context"
+        }
+      ]
+    },
+    {
+      "id": "workspace-target-authoring",
+      "detectorId": "known-token-v1",
+      "fingerprintSha256": "dc8c0c3f495a30e7ae24ac811cd9c0a5cfa34689c6a8f46fdc2881a782c4418a",
+      "expectedTotal": 10,
+      "occurrences": [
+        {
+          "path": ".claude/prompt-evolution.md",
+          "expectedCount": 2,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": ".gitignore",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "docs/design/_review/section-10-clean.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "docs/design/measurement-layer-b11-gate-and-version-bootstrap.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "docs/design/measurement-layer-b11-wire.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "docs/design/measurement-layer-tier-b-environment.md",
+          "expectedCount": 2,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "docs/design/measurement-layer-v1.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "sync.config.json",
+          "expectedCount": 1,
+          "disposition": "move-to-private-archive",
+          "reasonCode": "workspace-identity"
+        }
+      ]
+    },
+    {
+      "id": "workspace-target-learning",
+      "detectorId": "known-token-v1",
+      "fingerprintSha256": "e9b50f08930935c764e091eb6ae793f6d1305e0a4bd89f455237bff16acc7782",
+      "expectedTotal": 30,
+      "occurrences": [
+        {
+          "path": ".claude/_content/images.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": ".claude/prompt-evolution.md",
+          "expectedCount": 23,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": ".gitignore",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "docs-site/pages/api-reference.mdx",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "docs/design/measurement-layer-b11-wire.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "docs/design/measurement-layer-v1.md",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "scripts/sync-to-targets.ts",
+          "expectedCount": 1,
+          "disposition": "genericize",
+          "reasonCode": "workspace-identity"
+        },
+        {
+          "path": "sync.config.json",
+          "expectedCount": 1,
+          "disposition": "move-to-private-archive",
+          "reasonCode": "workspace-identity"
+        }
+      ]
+    }
+  ]
+}

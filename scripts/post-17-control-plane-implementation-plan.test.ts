@@ -30,7 +30,9 @@ const task = roadmap.tasks.find((candidate) => candidate.id === 'P17-014')
 const readinessGaps: string[] = []
 if (!fs.existsSync(planPath)) readinessGaps.push('control-plane implementation plan')
 if (packageJson.scripts[commandName] !== expectedCommand) readinessGaps.push('focused package registration')
-if (!packageJson.scripts['test:kit']?.includes(`npm run ${commandName}`)) readinessGaps.push('full kit registration')
+if (!packageJson.scripts['test:workspace-contracts']?.includes(`npm run ${commandName}`)) {
+  readinessGaps.push('workspace contract registration')
+}
 if (task?.status !== 'in_progress') readinessGaps.push('canonical P17-014 status transition')
 if (!/\| P17-014 \| P2 \| 5 \| in_progress \|/.test(roadmapMd)) readinessGaps.push('human roadmap status transition')
 if (!adr.includes('**Status:** Accepted — topology/trust locked; implementation planning started')) {
@@ -149,7 +151,7 @@ for (const source of [
 
 assert.ok(!fs.existsSync(path.join(kitRoot, 'packages', 'core', 'package.json')), 'unexpected package-local core manifest')
 assert.match(adr, /\*\*Status:\*\* Accepted — topology\/trust locked; implementation planning started/)
-assert.match(plan, /\*\*Status:\*\* Authorized under standing continuation authority — A1 planning in progress; no runtime implementation/)
+assert.match(plan, /\*\*Status:\*\* In progress — A1\/A2\/A3 contracts implemented locally; A4 privacy-gated; no worker or remote runtime/)
 
 const c5Plan = fs.readFileSync(
   path.join(kitRoot, 'docs', 'roadmap', 'p17-016-wave-c5-live-cutover-plan.md'),

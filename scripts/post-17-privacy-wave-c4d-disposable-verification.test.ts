@@ -142,8 +142,10 @@ assert.equal(
   'npx tsx scripts/post-17-privacy-wave-c4d-disposable-verification.test.ts',
 )
 assert.ok(
-  kitPackage.scripts['test:kit']?.includes('npm run test:post-17-privacy-wave-c4d-disposable-verification'),
-  'C4D cross-repository validator is not registered in the full kit suite',
+  kitPackage.scripts['test:workspace-contracts']?.includes(
+    'npm run test:post-17-privacy-wave-c4d-disposable-verification',
+  ),
+  'C4D cross-repository validator is not registered in the workspace contract suite',
 )
 
 console.log('P17-016 Wave C4D disposable verification: PASS (2 repositories, 2 tenants, 17 scenarios)')

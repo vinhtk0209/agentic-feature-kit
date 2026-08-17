@@ -21,8 +21,8 @@ const expectedCommand = 'npx tsx scripts/post-17-privacy-wave-c5-live-cutover-pl
 const readinessGaps: string[] = []
 if (!fs.existsSync(planPath)) readinessGaps.push('C5A architecture/readiness plan')
 if (packageJson.scripts[commandName] !== expectedCommand) readinessGaps.push('focused package registration')
-if (!packageJson.scripts['test:kit']?.includes(`npm run ${commandName}`)) {
-  readinessGaps.push('full kit registration')
+if (!packageJson.scripts['test:workspace-contracts']?.includes(`npm run ${commandName}`)) {
+  readinessGaps.push('workspace contract registration')
 }
 assert.deepEqual(readinessGaps, [], `C5A readiness gaps: ${readinessGaps.join(', ')}`)
 

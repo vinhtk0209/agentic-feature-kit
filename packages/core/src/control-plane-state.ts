@@ -410,6 +410,24 @@ function canonicalReceipt(value: Omit<ControlPlaneExecutionReceipt, 'receiptHash
   })
 }
 
+function canonicalFullReceipt(value: ControlPlaneExecutionReceipt): string {
+  return JSON.stringify({
+    schemaVersion: value.schemaVersion,
+    contractVersion: value.contractVersion,
+    identity: value.identity,
+    envelopeHash: value.envelopeHash,
+    operationCode: value.operationCode,
+    operationContractHash: value.operationContractHash,
+    outcome: value.outcome,
+    completedAt: value.completedAt,
+    progressBindingHash: value.progressBindingHash,
+    progressTailHash: value.progressTailHash,
+    evidenceHashes: value.evidenceHashes,
+    resultHash: value.resultHash,
+    receiptHash: value.receiptHash,
+  })
+}
+
 function validateTaskIdentity(value: unknown): ControlPlaneTaskIdentity {
   assertPlainTree(value, 'task identity')
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_SHAPE', 'task identity')
@@ -895,6 +913,15 @@ export function validateControlPlaneExecutionReceipt(
   const computed = sha256(port, canonicalReceipt(withoutHash), 'execution receipt hash')
   if (record.receiptHash !== computed) fail('INVALID_HASH', 'execution receipt')
   return deepFreeze({ ...withoutHash, receiptHash: record.receiptHash })
+}
+
+export function serializeControlPlaneExecutionReceipt(
+  value: unknown,
+  envelopeInput: unknown,
+  registryInput: unknown,
+  port: ControlPlaneHashPort,
+): string {
+  return canonicalFullReceipt(validateControlPlaneExecutionReceipt(value, envelopeInput, registryInput, port))
 }
 
 export function applyControlPlaneExecutionReceipt(

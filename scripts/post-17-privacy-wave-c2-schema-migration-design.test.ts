@@ -348,7 +348,9 @@ assert.equal(
   'npx tsx scripts/post-17-privacy-wave-c2-schema-migration-design.test.ts',
 )
 assert.ok(
-  kitPackage.scripts['test:kit'].includes('npm run test:post-17-privacy-wave-c2-schema-migration-design'),
+  kitPackage.scripts['test:workspace-contracts'].includes(
+    'npm run test:post-17-privacy-wave-c2-schema-migration-design',
+  ),
 )
 assert.equal(
   dashboardPackage.scripts['test:p17-016-wave-c2-migration-design'],
