@@ -42,32 +42,8 @@
       "id": "live-supabase-project-ref",
       "detectorId": "supabase-project-ref-v1",
       "fingerprintSha256": "d5b7bcc56029942d6f4e5274fec1b9f4dfe870943051dead0cb50e391bba8182",
-      "expectedTotal": 5,
+      "expectedTotal": 1,
       "occurrences": [
-        {
-          "path": "docs/evidence/i1-self-improvement-cycle-2026-08-12.json",
-          "expectedCount": 1,
-          "disposition": "move-to-private-archive",
-          "reasonCode": "historical-private-evidence"
-        },
-        {
-          "path": "docs/evidence/i1-self-improvement-cycle-2026-08-12.md",
-          "expectedCount": 1,
-          "disposition": "move-to-private-archive",
-          "reasonCode": "historical-private-evidence"
-        },
-        {
-          "path": "docs/evidence/post-17-cross-machine-tracking.md",
-          "expectedCount": 1,
-          "disposition": "move-to-private-archive",
-          "reasonCode": "historical-private-evidence"
-        },
-        {
-          "path": "docs/evidence/post-17-privacy-wave-c2-schema-migration-design-2026-08-16.md",
-          "expectedCount": 1,
-          "disposition": "move-to-private-archive",
-          "reasonCode": "historical-private-evidence"
-        },
         {
           "path": "docs/roadmap/p17-016-wave-c2-schema-inventory-migration-design-plan.md",
           "expectedCount": 1,
@@ -94,7 +70,7 @@
       "id": "workspace-target-authoring",
       "detectorId": "known-token-v1",
       "fingerprintSha256": "dc8c0c3f495a30e7ae24ac811cd9c0a5cfa34689c6a8f46fdc2881a782c4418a",
-      "expectedTotal": 8,
+      "expectedTotal": 7,
       "occurrences": [
         {
           "path": ".gitignore",
@@ -131,12 +107,6 @@
           "expectedCount": 1,
           "disposition": "genericize",
           "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "sync.config.json",
-          "expectedCount": 1,
-          "disposition": "move-to-private-archive",
-          "reasonCode": "workspace-identity"
         }
       ]
     },
@@ -144,7 +114,7 @@
       "id": "workspace-target-learning",
       "detectorId": "known-token-v1",
       "fingerprintSha256": "e9b50f08930935c764e091eb6ae793f6d1305e0a4bd89f455237bff16acc7782",
-      "expectedTotal": 7,
+      "expectedTotal": 6,
       "occurrences": [
         {
           "path": ".claude/_content/images.md",
@@ -180,12 +150,6 @@
           "path": "scripts/sync-to-targets.ts",
           "expectedCount": 1,
           "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "sync.config.json",
-          "expectedCount": 1,
-          "disposition": "move-to-private-archive",
           "reasonCode": "workspace-identity"
         }
       ]

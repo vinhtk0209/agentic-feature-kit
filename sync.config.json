@@ -1,5 +1,5 @@
 {
-  "targets": ["../isu-elearner-learning", "../tempp/isu-elearner-authoring"],
+  "targets": ["../example-learning-app", "../example-authoring-app"],
   "syncPaths": [
     "commands/",
     "integrations/",

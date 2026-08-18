@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "agentic-feature-kit-private-archive-receipt",
+  "archiveId": "p17-018-r4d-private-archive-2026-08-18",
+  "format": "zip",
+  "sourceCommit": "57d6a5d7de4ffffffa51a9fea79cc3501e48bf54",
+  "artifactCount": 5,
+  "totalSourceBytes": 23454,
+  "archiveSha256": "aab8a81ebe9d30ec8363721e53cbc7ca496558cb503d90f400ae2de92dbd41d9",
+  "status": "verified-private"
+}

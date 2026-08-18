@@ -13,6 +13,9 @@ dist/
 .claude/mcp-server/.env
 .claude/mcp-workflow/.env
 
+# Machine-local operational sync targets; tracked defaults remain public-safe examples.
+sync.config.local.json
+
 # Playwright auth (local only)
 .env.playwright
 
