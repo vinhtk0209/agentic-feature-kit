@@ -7,7 +7,10 @@ import {
   type SelfImprovementRegistry,
 } from './self-improvement-cycle';
 import { createHash } from 'crypto';
+import { spawnSync } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 let passed = 0;
 let failed = 0;
@@ -22,6 +25,14 @@ const mustThrow = (fn: () => void, pattern: RegExp) => {
   assert(pattern.test(message), `expected ${pattern}, got ${message || 'no error'}`);
 };
 const sha = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
+const runCli = (registryPath: string) => {
+  const cli = path.join(process.cwd(), '.claude', 'integrations', 'self-improvement-cycle.ts');
+  if (process.platform === 'win32') {
+    const quote = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    return spawnSync(`npx tsx ${quote(cli)} verify ${quote(registryPath)}`, { encoding: 'utf8', shell: true });
+  }
+  return spawnSync(path.join(process.cwd(), 'node_modules', '.bin', 'tsx'), [cli, 'verify', registryPath], { encoding: 'utf8' });
+};
 const rows = [
   {
     runnerRunId: 'run-before-001', headSha: 'a'.repeat(40), feature: 'Feature-A', taskType: 'BASELINE', phase: 'B11', kitVersion: '3.25.0',
@@ -119,6 +130,22 @@ test('canonical record-verify Tier A wiring retains checklist, ux-states, and ha
   assert(capture![1].includes('--checklist docs/specs/<FeatureName>/checklist.md'), 'checklist binding is missing');
   assert(capture![1].includes('--ux-states docs/specs/<FeatureName>/ux-states.json'), 'ux-states binding is missing');
   assert(capture![1].includes('--min-verified 0.6 --gate'), 'hard gate binding is missing');
+});
+
+test('CLI verifies a generated synthetic registry without a private evidence dependency', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'self-improvement-cycle-cli-'));
+  const registryPath = path.join(directory, 'synthetic-registry.json');
+  try {
+    const registry = admitCycle(emptyRegistry(), input());
+    fs.writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`, 'utf8');
+    const result = runCli(registryPath);
+    assert(result.status === 0, `CLI exited ${result.status}: ${result.stderr}`);
+    const output = JSON.parse(result.stdout) as { valid: boolean; cycles: number; registryHash: string };
+    assert(output.valid === true && output.cycles === 1, 'CLI did not verify the synthetic cycle');
+    assert(output.registryHash === registry.registryHash, 'CLI registry hash drifted');
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

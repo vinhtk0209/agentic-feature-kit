@@ -41,13 +41,13 @@ import {
   createBlockedInstallReceipt,
   resolveInstallCommandRunId,
 } from "../.claude/integrations/install-writer-adapter";
+import { loadSyncConfig } from "./sync-config";
 
 // Resolve kit root from this file's location, not from cwd.
 // (DEV AZURE path has a space -> import.meta.url is URL-encoded; fileURLToPath decodes it.)
 const thisFile = fileURLToPath(import.meta.url);
 const KIT_ROOT = path.dirname(path.dirname(thisFile)); // scripts/ -> kit root
 const SOURCE_CLAUDE = path.join(KIT_ROOT, ".claude");
-const CONFIG_PATH = path.join(KIT_ROOT, "sync.config.json");
 const ENV_PATH = path.join(KIT_ROOT, ".env");
 
 /**
@@ -75,30 +75,10 @@ function loadKitEnv(): void {
   }
 }
 
-type SyncConfig = { targets: string[]; syncPaths: string[] };
 type ChangeKind = "added" | "updated" | "unchanged";
 interface FileChange {
   rel: string; // path relative to .claude/
   kind: ChangeKind;
-}
-
-function loadConfig(): SyncConfig {
-  if (!fs.existsSync(CONFIG_PATH)) {
-    fail(`Missing config: ${CONFIG_PATH}`);
-  }
-  let cfg: SyncConfig;
-  try {
-    cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
-  } catch (e) {
-    return fail(`Invalid JSON in ${CONFIG_PATH}: ${(e as Error).message}`);
-  }
-  if (!Array.isArray(cfg.targets) || cfg.targets.length === 0) {
-    fail("sync.config.json: `targets` must be a non-empty array");
-  }
-  if (!Array.isArray(cfg.syncPaths) || cfg.syncPaths.length === 0) {
-    fail("sync.config.json: `syncPaths` must be a non-empty array");
-  }
-  return cfg;
 }
 
 // When set (via --ref), source files are read from this git ref of the kit instead
@@ -692,12 +672,13 @@ async function main() {
   assertCleanClaudeTree(dryRun, forceDirty);
 
   loadKitEnv();
-  const cfg = loadConfig();
+  const { config: cfg, source: configSource } = loadSyncConfig(KIT_ROOT);
 
   console.log(
     `sync-to-targets ${dryRun ? "(DRY RUN — no files written)" : ""}`.trim()
   );
   console.log(`source: ${SRC_REF ? `git ref ${SRC_REF} @ ${KIT_ROOT}` : SOURCE_CLAUDE}`);
+  console.log(`config: ${configSource}`);
   console.log(`syncPaths: ${cfg.syncPaths.join(", ")}`);
 
   // A1.3 verify backstop (fail-closed): refuse unless the kit version being synced has >=1

@@ -25,7 +25,7 @@
   },
   "markerRegistry": {
     "path": "release/internal-marker-classification.json",
-    "sha256": "6ba601fa8d03ad5231d1f27898fc29236f03cb446baa62c4f69f89923b829309"
+    "sha256": "db68f178a8c5db088c6de227f5bb755b26ff1da5d9276546ace9c48e2c1b1288"
   },
   "requiredPaths": [
     ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -1662,6 +1662,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/design/adr-006-private-source-public-export-boundary.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/design/continuous-assurance.md",
       "decision": "include",
       "contentKind": "text",
@@ -1744,18 +1750,6 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
-    },
-    {
-      "path": "docs/evidence/i1-self-improvement-cycle-2026-08-12.json",
-      "decision": "exclude",
-      "contentKind": "text",
-      "reasonCode": "private-evidence"
-    },
-    {
-      "path": "docs/evidence/i1-self-improvement-cycle-2026-08-12.md",
-      "decision": "exclude",
-      "contentKind": "text",
-      "reasonCode": "private-evidence"
     },
     {
       "path": "docs/evidence/i2-live-completion-2026-08-10.json",
@@ -1899,12 +1893,6 @@
       "reasonCode": "public-source"
     },
     {
-      "path": "docs/evidence/post-17-cross-machine-tracking.md",
-      "decision": "exclude",
-      "contentKind": "text",
-      "reasonCode": "private-evidence"
-    },
-    {
       "path": "docs/evidence/post-17-cross-platform-ci.md",
       "decision": "include",
       "contentKind": "text",
@@ -2025,12 +2013,6 @@
       "reasonCode": "public-source"
     },
     {
-      "path": "docs/evidence/post-17-privacy-wave-c2-schema-migration-design-2026-08-16.md",
-      "decision": "exclude",
-      "contentKind": "text",
-      "reasonCode": "private-evidence"
-    },
-    {
       "path": "docs/evidence/post-17-privacy-wave-c3a-tenant-attestation-contracts-2026-08-16.md",
       "decision": "include",
       "contentKind": "text",
@@ -2140,6 +2122,12 @@
     },
     {
       "path": "docs/evidence/post-17-public-release-r4c-prompt-history-aliases-2026-08-18.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/evidence/post-17-public-release-r4d-private-archive-boundary-2026-08-18.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -2398,6 +2386,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r4c-prompt-history-genericization-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r4d-private-archive-boundary-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3166,6 +3160,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "release/private-archive-receipt.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "release/public-release-manifest.json",
       "decision": "include",
       "contentKind": "text",
@@ -3580,6 +3580,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/post-17-public-release-r4d-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3652,6 +3658,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/public-release-private-archive-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/public-release-prompt-history-contract.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3694,6 +3706,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/sync-config.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/sync-config.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/sync-install-report.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3731,9 +3755,9 @@
     },
     {
       "path": "sync.config.json",
-      "decision": "exclude",
+      "decision": "include",
       "contentKind": "text",
-      "reasonCode": "workspace-only"
+      "reasonCode": "public-source"
     },
     {
       "path": "verify-split.sh",

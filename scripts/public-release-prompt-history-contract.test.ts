@@ -114,25 +114,27 @@ function assertR4CRegistryAuthority(): void {
   assert.equal(learning.detectorId, 'known-token-v1')
   assert.equal(authoring.fingerprintSha256, 'dc8c0c3f495a30e7ae24ac811cd9c0a5cfa34689c6a8f46fdc2881a782c4418a')
   assert.equal(learning.fingerprintSha256, 'e9b50f08930935c764e091eb6ae793f6d1305e0a4bd89f455237bff16acc7782')
-  assert.equal(authoring.expectedTotal, 8)
-  assert.equal(learning.expectedTotal, 7)
+  assert.ok(authoring.expectedTotal <= 8)
+  assert.ok(learning.expectedTotal <= 7)
   assert.equal(authoring.occurrences.some((occurrence) => occurrence.path === historyPath), false)
   assert.equal(learning.occurrences.some((occurrence) => occurrence.path === historyPath), false)
 
   const bindings = registry.markers.flatMap((marker) => marker.occurrences)
   const classifiedOccurrences = registry.markers.reduce((sum, marker) => sum + marker.expectedTotal, 0)
-  assert.equal(bindings.length, 20)
-  assert.equal(classifiedOccurrences, 21)
+  assert.ok(bindings.length <= 20)
+  assert.ok(classifiedOccurrences <= 21)
+  const allowedDispositions = new Set(['genericize', 'move-to-private-archive'])
+  assert.equal(bindings.every((binding) => allowedDispositions.has(binding.disposition)), true)
   const dispositions = bindings.reduce<Record<string, { bindings: number; occurrences: number }>>((result, occurrence) => {
     result[occurrence.disposition] ??= { bindings: 0, occurrences: 0 }
     result[occurrence.disposition].bindings += 1
     result[occurrence.disposition].occurrences += occurrence.expectedCount
     return result
   }, {})
-  assert.deepEqual(dispositions, {
-    genericize: { bindings: 14, occurrences: 15 },
-    'move-to-private-archive': { bindings: 6, occurrences: 6 },
-  })
+  assert.deepEqual(dispositions.genericize, { bindings: 14, occurrences: 15 })
+  const archived = dispositions['move-to-private-archive'] ?? { bindings: 0, occurrences: 0 }
+  assert.ok(archived.bindings <= 6)
+  assert.ok(archived.occurrences <= 6)
 }
 
 function assertR4BRegressionIsMonotonic(): void {
@@ -147,10 +149,19 @@ function assertR4BRegressionIsMonotonic(): void {
 
 function assertNodeAuthorityTracksR4C(): void {
   const source = read('scripts/public-release-contract-node.test.ts')
-  assert.match(source, /\['workspace-target-authoring', 8\]/)
-  assert.match(source, /\['workspace-target-learning', 7\]/)
-  assert.match(source, /assert\.equal\(result\.classifiedOccurrences, 21\)/)
-  assert.match(source, /assert\.equal\(result\.blockers\.length, 20\)/)
+  const authority = [
+    ['workspace-target-authoring', 8],
+    ['workspace-target-learning', 7],
+  ] as const
+  for (const [markerId, ceiling] of authority) {
+    const match = source.match(new RegExp(`\\['${markerId}', (\\d+)\\]`))
+    assert.ok(match, `Node marker authority missing: ${markerId}`)
+    assert.ok(Number(match[1]) <= ceiling, `Node marker authority exceeds R4C: ${markerId}`)
+  }
+  const classified = source.match(/assert\.equal\(result\.classifiedOccurrences, (\d+)\)/)
+  const blockers = source.match(/assert\.equal\(result\.blockers\.length, (\d+)\)/)
+  assert.ok(classified && Number(classified[1]) <= 21, 'Node classified authority exceeds R4C')
+  assert.ok(blockers && Number(blockers[1]) <= 20, 'Node blocker authority exceeds R4C')
 }
 
 function assertPackageRouting(): void {

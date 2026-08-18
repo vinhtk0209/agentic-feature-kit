@@ -328,13 +328,7 @@ await test('current public-release authorities cover the exact planned index and
   const manifest = parsePublicReleaseManifest(JSON.parse(manifestBytes.toString('utf8')))
   const markerRegistry = parseInternalMarkerRegistry(JSON.parse(registryBytes.toString('utf8')))
   assert.deepEqual(manifest.entries.map((entry) => entry.path), expectedPaths)
-  const expectedExcludedEntries = [
-    ['docs/evidence/i1-self-improvement-cycle-2026-08-12.json', 'private-evidence'],
-    ['docs/evidence/i1-self-improvement-cycle-2026-08-12.md', 'private-evidence'],
-    ['docs/evidence/post-17-cross-machine-tracking.md', 'private-evidence'],
-    ['docs/evidence/post-17-privacy-wave-c2-schema-migration-design-2026-08-16.md', 'private-evidence'],
-    ['sync.config.json', 'workspace-only'],
-  ]
+  const expectedExcludedEntries: Array<[string, string]> = []
   assert.deepEqual(
     manifest.entries
       .filter((entry) => entry.decision === 'exclude')
@@ -344,10 +338,10 @@ await test('current public-release authorities cover the exact planned index and
   assert.deepEqual(markerRegistry.markers.map((marker) => [marker.id, marker.expectedTotal]), [
     ['internal-company-token', 0],
     ['internal-hostname', 0],
-    ['live-supabase-project-ref', 5],
+    ['live-supabase-project-ref', 1],
     ['local-user-path', 1],
-    ['workspace-target-authoring', 8],
-    ['workspace-target-learning', 7],
+    ['workspace-target-authoring', 7],
+    ['workspace-target-learning', 6],
   ])
 
   const files: CandidateFile[] = manifest.entries.map((entry) => {
@@ -363,13 +357,12 @@ await test('current public-release authorities cover the exact planned index and
     }
   })
   const result = evaluatePublicReleaseCandidate({ manifestBytes, registryBytes, files, sha256: nodeSha256 })
-  const expectedIncludedPaths = expectedPaths.length - expectedExcludedEntries.length
   assert.equal(result.contractValid, true, JSON.stringify(result))
   assert.equal(result.candidateStatus, 'blocked')
-  assert.equal(result.includedPaths, expectedIncludedPaths)
-  assert.equal(result.excludedPaths, expectedExcludedEntries.length)
-  assert.equal(result.classifiedOccurrences, 21)
-  assert.equal(result.blockers.length, 20)
+  assert.equal(result.includedPaths, expectedPaths.length)
+  assert.equal(result.excludedPaths, 0)
+  assert.equal(result.classifiedOccurrences, 15)
+  assert.equal(result.blockers.length, 14)
   assert.deepEqual([...new Set(result.blockers.map((blocker) => blocker.code))], ['unresolved-marker-disposition'])
 })
 
