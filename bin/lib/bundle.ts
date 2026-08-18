@@ -10,7 +10,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { rpc, RPC_HEADERS } from "./supabase";
+import { rpc } from "./supabase";
+
+const CONNECTION_CLOSE_HEADERS = { Connection: 'close' } as const
 
 export async function getBundleUrl(
   token: string,
@@ -41,7 +43,7 @@ export async function downloadAndExtract(
 ): Promise<void> {
   const url = await getBundleUrl(token, agent, version);
 
-  const res = await fetch(url, { headers: { Connection: RPC_HEADERS.Connection } });
+  const res = await fetch(url, { headers: CONNECTION_CLOSE_HEADERS });
   if (!res.ok) throw new Error(`Bundle download failed: ${res.status} ${res.statusText}`);
   const buffer = Buffer.from(await res.arrayBuffer());
 

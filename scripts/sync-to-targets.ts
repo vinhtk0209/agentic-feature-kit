@@ -36,6 +36,7 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 import { execFileSync } from "child_process";
 import { parseCanonicalPromptVersion } from "../.claude/integrations/kit-version";
+import { resolveLegacyBackendConfig } from "../packages/core/src/legacy-backend-config";
 import {
   createBlockedInstallReceipt,
   resolveInstallCommandRunId,
@@ -48,12 +49,6 @@ const KIT_ROOT = path.dirname(path.dirname(thisFile)); // scripts/ -> kit root
 const SOURCE_CLAUDE = path.join(KIT_ROOT, ".claude");
 const CONFIG_PATH = path.join(KIT_ROOT, "sync.config.json");
 const ENV_PATH = path.join(KIT_ROOT, ".env");
-
-// Public anon creds fallback (RLS-protected) — mirrors telemetry.ts so the A1.3 verify backstop can
-// query even without a .env (Gap C). loadKitEnv() may override these before the guard runs.
-const FALLBACK_SUPABASE_URL = "https://vkuojxgvkxndftenrdno.supabase.co";
-const FALLBACK_SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdW9qeGd2a3huZGZ0ZW5yZG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjgwMzMsImV4cCI6MjA5NzAwNDAzM30.MrTuIuN1kghxMXu0yyOW9MtmXVY7xH0-2HSCwTKo2cU";
 
 /**
  * Minimal .env loader (no dotenv dependency). Reads the kit's OWN .env and sets
@@ -544,18 +539,26 @@ function resolveSourceVersion(): string | null {
 /**
  * Count computed-verified runs for a kit version in Supabase verify_records. GLOBAL — no repo filter
  * (Gap B): an evolution is proven by >=1 verified run ANYWHERE, not per specific target. THROWS on
- * any non-OK / network error so the caller FAILS-CLOSED (an unreachable backstop is not proof).
+ * missing/invalid configuration or any non-OK/network error so the caller FAILS-CLOSED.
  */
-export async function countVerifiedRuns(version: string): Promise<number> {
-  const url = process.env.SUPABASE_URL || FALLBACK_SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
-  const res = await fetch(
-    `${url}/rest/v1/verify_records?select=runner_run_id&kit_version=eq.${encodeURIComponent(version)}&verified=is.true&limit=1`,
+export interface VerifiedRunCountDependencies {
+  env?: unknown;
+  fetch?: typeof globalThis.fetch;
+}
+
+export async function countVerifiedRuns(
+  version: string,
+  dependencies: VerifiedRunCountDependencies = {},
+): Promise<number> {
+  const config = resolveLegacyBackendConfig(dependencies.env ?? process.env);
+  const fetchFn = dependencies.fetch ?? globalThis.fetch;
+  const res = await fetchFn(
+    `${config.url}/rest/v1/verify_records?select=runner_run_id&kit_version=eq.${encodeURIComponent(version)}&verified=is.true&limit=1`,
     {
       method: "GET",
       headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
+        apikey: config.anonKey,
+        Authorization: `Bearer ${config.anonKey}`,
         Prefer: "count=exact",
         Connection: "close", // Windows undici teardown (see telemetry.ts)
       },

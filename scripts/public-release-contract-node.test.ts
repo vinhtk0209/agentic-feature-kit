@@ -344,7 +344,7 @@ await test('current public-release authorities cover the exact planned index and
   assert.deepEqual(markerRegistry.markers.map((marker) => [marker.id, marker.expectedTotal]), [
     ['internal-company-token', 0],
     ['internal-hostname', 21],
-    ['live-supabase-project-ref', 11],
+    ['live-supabase-project-ref', 8],
     ['local-user-path', 1],
     ['workspace-target-authoring', 10],
     ['workspace-target-learning', 30],
@@ -368,8 +368,8 @@ await test('current public-release authorities cover the exact planned index and
   assert.equal(result.candidateStatus, 'blocked')
   assert.equal(result.includedPaths, expectedIncludedPaths)
   assert.equal(result.excludedPaths, expectedExcludedEntries.length)
-  assert.equal(result.classifiedOccurrences, 73)
-  assert.equal(result.blockers.length, 31)
+  assert.equal(result.classifiedOccurrences, 70)
+  assert.equal(result.blockers.length, 28)
   assert.deepEqual([...new Set(result.blockers.map((blocker) => blocker.code))], ['unresolved-marker-disposition'])
 })
 

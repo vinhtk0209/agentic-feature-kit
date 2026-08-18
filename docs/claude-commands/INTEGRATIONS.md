@@ -159,8 +159,9 @@ No PII is collected. `feature_name` is the spec title as typed by the user. `tok
 
 ### Security model
 
-- **Anon key is public by design.** The `SUPABASE_ANON_KEY` embedded in `telemetry.ts` can only call `verify_kit_token` and insert into log tables. Row-Level Security prevents it from reading any token data or other users' rows.
-- **Token stays on the client.** `KIT_TOKEN` is read from `process.env`; it is never echoed or logged. Set it in `.env` (gitignored) — see `.env.example`.
+- **Backend configuration is explicit.** `SUPABASE_URL` and `SUPABASE_ANON_KEY` are supplied at runtime as one required pair. No project endpoint or anonymous/publishable credential is embedded in the public candidate.
+- **Availability boundaries stay distinct.** Optional telemetry remains local-first and performs no fetch when the pair is unavailable. The workflow CLI and real sync verification remain fail-closed at their existing security boundaries.
+- **Token stays on the client.** `KIT_TOKEN` is read from `process.env`; it is never echoed or logged. Environment files stay gitignored and examples use placeholders only.
 
 ### Failure modes
 

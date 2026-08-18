@@ -339,14 +339,19 @@ async function main(): Promise<void> {
     }
   });
   await test('§5(c) countVerifiedRuns: empty verify_records (content-range */0) → 0 → guard refuses', async () => {
-    const realFetch = global.fetch;
-    global.fetch = (async () => ({
+    const fetchEmpty = (async () => ({
       ok: true, status: 200,
       headers: { get: (h: string) => (h.toLowerCase() === 'content-range' ? '*/0' : null) },
       text: async () => '[]',
     })) as unknown as typeof fetch;
-    try { const n = await countVerifiedRuns('3.22.0'); assert(n === 0, `empty table → 0, got ${n}`); }
-    finally { global.fetch = realFetch; }
+    const n = await countVerifiedRuns('3.22.0', {
+      env: {
+        SUPABASE_URL: 'https://control-plane.example.test',
+        SUPABASE_ANON_KEY: 'synthetic-public-key-0001',
+      },
+      fetch: fetchEmpty,
+    });
+    assert(n === 0, `empty table → 0, got ${n}`);
   });
 
   // ── §4 pre-commit hook staged-SCOPE validation (no feature-root guessing) ──
