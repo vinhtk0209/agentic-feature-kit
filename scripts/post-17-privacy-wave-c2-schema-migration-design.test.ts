@@ -120,6 +120,7 @@ const kitPackage = JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json')
 const dashboardPackage = JSON.parse(fs.readFileSync(path.join(dashboardRoot, 'package.json'), 'utf8')) as {
   scripts: Record<string, string>
 }
+const projectRefPattern = /^[a-z]{20}$/
 
 for (const heading of [
   '## Outcome',
@@ -186,7 +187,7 @@ assert.doesNotMatch(affirmativeClaimSurface, /Wave C (is|was) complete/i)
 assert.doesNotMatch(affirmativeClaimSurface, /P17-016 (is|was) complete/i)
 
 assert.equal(snapshot.evidence_version, 'p17-016-c2-live-catalog-v1')
-assert.equal(snapshot.project_ref, 'vkuojxgvkxndftenrdno')
+assert.match(snapshot.project_ref, projectRefPattern)
 assert.equal(snapshot.schema, 'public')
 assert.deepEqual(snapshot.boundary, {
   metadata_only: true,
@@ -252,7 +253,8 @@ const fullPrivileges = [
   'UPDATE',
 ]
 assert.equal(aclSnapshot.evidence_version, 'p17-016-c2-table-acl-v1')
-assert.equal(aclSnapshot.project_ref, 'vkuojxgvkxndftenrdno')
+assert.match(aclSnapshot.project_ref, projectRefPattern)
+assert.equal(snapshot.project_ref, aclSnapshot.project_ref)
 assert.equal(aclSnapshot.schema, 'public')
 assert.deepEqual(aclSnapshot.boundary, {
   metadata_only: true,

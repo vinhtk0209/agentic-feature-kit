@@ -104,31 +104,32 @@ test('three runtime adapters contain no embedded backend endpoint or credential'
   }
 })
 
-test('marker registry records only the eight deferred live-project occurrences', () => {
+test('marker registry preserves R4A removals within monotonic remediation ceilings', () => {
   const registry = JSON.parse(read('release/internal-marker-classification.json')) as { markers: Marker[] }
   const marker = registry.markers.find((candidate) => candidate.id === 'live-supabase-project-ref')
   assert.ok(marker)
-  assert.equal(marker.expectedTotal, 8)
-  assert.equal(marker.occurrences.length, 7)
-  assert.equal(marker.occurrences.reduce((sum, occurrence) => sum + occurrence.expectedCount, 0), 8)
+  assert.ok(marker.expectedTotal <= 8)
+  assert.ok(marker.occurrences.length <= 7)
+  assert.ok(marker.occurrences.reduce((sum, occurrence) => sum + occurrence.expectedCount, 0) <= 8)
   for (const relativePath of runtimePaths) {
     assert.equal(marker.occurrences.some((occurrence) => occurrence.path === relativePath), false)
   }
 
   const bindings = registry.markers.flatMap((candidate) => candidate.occurrences)
-  assert.equal(bindings.length, 28)
-  assert.equal(registry.markers.reduce((sum, candidate) => sum + candidate.expectedTotal, 0), 70)
+  const classifiedOccurrences = registry.markers.reduce((sum, candidate) => sum + candidate.expectedTotal, 0)
+  assert.ok(bindings.length <= 28)
+  assert.ok(classifiedOccurrences <= 70)
   const dispositions = bindings.reduce<Record<string, { bindings: number; occurrences: number }>>((result, occurrence) => {
     result[occurrence.disposition] ??= { bindings: 0, occurrences: 0 }
     result[occurrence.disposition].bindings += 1
     result[occurrence.disposition].occurrences += occurrence.expectedCount
     return result
   }, {})
-  assert.deepEqual(dispositions, {
-    genericize: { bindings: 16, occurrences: 40 },
-    'move-to-private-archive': { bindings: 6, occurrences: 6 },
-    'replace-with-synthetic-fixture': { bindings: 6, occurrences: 24 },
-  })
+  assert.deepEqual(dispositions.genericize, { bindings: 16, occurrences: 40 })
+  assert.deepEqual(dispositions['move-to-private-archive'], { bindings: 6, occurrences: 6 })
+  const syntheticFixtures = dispositions['replace-with-synthetic-fixture'] ?? { bindings: 0, occurrences: 0 }
+  assert.ok(syntheticFixtures.bindings <= 6)
+  assert.ok(syntheticFixtures.occurrences <= 24)
 })
 
 test('integration guide documents env-only and asymmetric failure boundaries', () => {
