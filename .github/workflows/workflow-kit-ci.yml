@@ -9,6 +9,9 @@ on:
   pull_request:
   push:
     branches: [develop, main]
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,8 +30,8 @@ jobs:
           - platform: windows
             os: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
@@ -46,7 +49,7 @@ jobs:
         run: npm run test:kit
       - name: Upload platform qualification
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: qualification-${{ matrix.platform }}
           path: artifacts/cross-platform/${{ matrix.platform }}.json
@@ -62,8 +65,8 @@ jobs:
     env:
       MATRIX_RESULT: ${{ needs.kit-verify.result }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
@@ -71,10 +74,24 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Download platform qualifications
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: qualification-*
           path: artifacts/cross-platform
           merge-multiple: true
       - name: Require the complete successful matrix
         run: npm run release:matrix-gate -- artifacts/cross-platform
+      - name: Publish qualification summary
+        if: always()
+        env:
+          QUALIFICATION_MATRIX_RESULT: ${{ needs.kit-verify.result }}
+          AGGREGATE_RESULT: ${{ job.status }}
+        shell: bash
+        run: |
+          {
+            printf '## Workflow Kit qualification\n\n'
+            printf -- '- Matrix result: `%s`\n' "$QUALIFICATION_MATRIX_RESULT"
+            printf -- '- Aggregate gate: `%s`\n' "$AGGREGATE_RESULT"
+            printf -- '- Platforms: Linux and Windows\n'
+            printf -- '- Repository permissions: read-only\n'
+          } >> "$GITHUB_STEP_SUMMARY"

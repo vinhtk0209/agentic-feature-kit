@@ -273,9 +273,9 @@ function assertReleaseManifest(): void {
   const manifest = parsePublicReleaseManifest(JSON.parse(read('release/public-release-manifest.json')))
   const byPath = new Map(manifest.entries.map((entry) => [entry.path, entry]))
   const hasEvidence = byPath.has(evidencePath)
-  const expectedCount = hasEvidence ? 624 : 623
-  assert.equal(manifest.entries.length, expectedCount)
-  assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, expectedCount)
+  assert.equal(hasEvidence, true, 'closed R4F evidence must remain in every successor manifest')
+  assert.ok(manifest.entries.length >= 624, 'successor manifest cannot remove the R4F path baseline')
+  assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, manifest.entries.length)
   assert.equal(manifest.entries.filter((entry) => entry.decision === 'exclude').length, 0)
   for (const relativePath of sourceManifest) {
     const entry = byPath.get(relativePath)
@@ -283,7 +283,7 @@ function assertReleaseManifest(): void {
     assert.equal(entry?.contentKind, 'text', `manifest content kind drift: ${relativePath}`)
     assert.equal(entry?.decision, 'include', `manifest decision drift: ${relativePath}`)
   }
-  assert.equal(byPath.get(evidencePath)?.decision, hasEvidence ? 'include' : undefined)
+  assert.equal(byPath.get(evidencePath)?.decision, 'include')
 }
 
 function assertCurrentCandidateTransition(): void {

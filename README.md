@@ -6,9 +6,10 @@ Agentic Feature Kit is an evidence-backed software delivery toolkit. It packages
 fail-closed workflow capabilities for Codex, Claude Code, and GitHub Copilot while keeping shared
 business rules in one provider-neutral core.
 
-> **Release status:** the source tree has a validated release manifest and provider distributions,
-> but it is not yet public-release eligible. Governance, marker remediation, supply-chain gates,
-> nightly qualification, and clean-clone evidence remain required before an external release.
+> **Release status:** the source tree has a validated release manifest, provider distributions,
+> governance, and zero unresolved internal markers, but it is not yet public-release eligible.
+> Nightly/manual qualification is wired with read-only controls; supply-chain gates, clean-clone
+> evidence, and separately authorized release operations remain required before an external release.
 
 ## Choose a provider
 
@@ -146,8 +147,8 @@ source-release readiness is separate from package distribution.
 - Provider bundles expose the shared capabilities listed here, not the entire legacy flagship.
 - Optional source connectors need their own configuration and are not required for local inputs.
 - Root package visibility remains private, and no package-distribution path is enabled.
-- Dependency-license inventory, SBOM, nightly CI, clean-clone timing, and unresolved internal-marker
-  dispositions remain outside this slice.
+- Dependency-license inventory, SBOM, clean-clone timing, and elapsed scheduled-run observation
+  remain outside this slice.
 
 ## Documentation map
 
@@ -166,5 +167,5 @@ root entry does not duplicate their install or API contracts.
 
 The repository now has bounded contribution, security, support, and community policies plus typed
 issue and pull request templates and one current unreleased-note owner. These routes do not make the
-candidate public-release eligible: marker remediation, supply-chain gates, nightly qualification,
-and clean-clone evidence remain required.
+candidate public-release eligible: supply-chain gates, clean-clone evidence, and separately
+authorized release operations remain required.

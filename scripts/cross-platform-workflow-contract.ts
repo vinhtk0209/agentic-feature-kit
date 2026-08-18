@@ -1,3 +1,5 @@
+import { REVIEWED_ACTION_PINS } from './nightly-workflow-contract';
+
 export interface WorkflowContractResult {
   passed: boolean;
   reasons: string[];
@@ -23,13 +25,17 @@ export function validateCrossPlatformWorkflow(source: string): WorkflowContractR
   requireText('QUALIFICATION_OUT: artifacts/cross-platform/${{ matrix.platform }}.json', 'matrix must bind the qualification artifact path');
   requireText('run: npm run test:cross-platform', 'matrix must run the platform smoke');
   requireText('run: npm run test:kit', 'matrix must run the full kit suite');
-  requireText('uses: actions/upload-artifact@v4', 'matrix must upload qualification evidence');
+  requireText(`uses: actions/checkout@${REVIEWED_ACTION_PINS['actions/checkout'].sha}`, 'jobs must use the reviewed checkout pin');
+  requireText(`uses: actions/setup-node@${REVIEWED_ACTION_PINS['actions/setup-node'].sha}`, 'jobs must use the reviewed setup-node pin');
+  requireText(`uses: actions/upload-artifact@${REVIEWED_ACTION_PINS['actions/upload-artifact'].sha}`, 'matrix must upload qualification evidence with the reviewed pin');
   requireText('if-no-files-found: error', 'missing qualification evidence must fail closed');
   requireText('release-gate:', 'workflow must define a release gate');
   requireText('if: always()', 'release gate must run after success or failure');
   requireText('needs: [kit-verify]', 'release gate must depend on the complete matrix');
-  requireText('MATRIX_RESULT: ${{ needs.kit-verify.result }}', 'release gate must consume the aggregate matrix result');
-  requireText('uses: actions/download-artifact@v4', 'release gate must download qualification evidence');
+  if (count(source, /^\s+MATRIX_RESULT: \$\{\{ needs\.kit-verify\.result \}\}\s*$/gm) !== 1) {
+    reasons.push('release gate must consume exactly one aggregate matrix result binding');
+  }
+  requireText(`uses: actions/download-artifact@${REVIEWED_ACTION_PINS['actions/download-artifact'].sha}`, 'release gate must download qualification evidence with the reviewed pin');
   requireText('continue-on-error: true', 'missing artifact download must defer to the fail-closed gate');
   requireText('merge-multiple: true', 'platform artifacts must be merged for validation');
   requireText('run: npm run release:matrix-gate -- artifacts/cross-platform', 'release gate must validate both platform artifacts');

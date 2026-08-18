@@ -2145,6 +2145,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-r5a-nightly-ci-safety-2026-08-18.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
@@ -2416,6 +2422,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r4f-historical-identity-aliases-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r5a-nightly-ci-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3316,6 +3328,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/nightly-workflow-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/nightly-workflow-contract.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/o2-capture-baseline.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3617,6 +3641,12 @@
     },
     {
       "path": "scripts/post-17-public-release-r4f-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-public-release-r5a-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
