@@ -9,9 +9,9 @@ import {
 } from './confluence-b0-intake';
 import { formatConfluenceRefetchEnvelope, buildConfluenceRefetchEnvelope } from './confluence-refetch-actor';
 
-const URL = 'https://insight.fsoft.com.vn/pages/830569842';
+const URL = 'https://wiki.example.test/pages/424242';
 const SOURCE = [
-  '# US-AD-095 Progress Reports',
+  '# Synthetic Progress Reports',
   '',
   '## Acceptance Criteria',
   '',
@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   const stagingDir = tempDir();
   const result = stageConfluenceB0FromActorOutput({ rawUrl: URL, actorOutput, stagingDir });
   assert.equal(fs.readFileSync(path.join(stagingDir, '.incoming-spec.md'), 'utf8'), SOURCE);
-  assert.equal(result.sourceRef, 'confluence:830569842');
+  assert.equal(result.sourceRef, 'confluence:424242');
   assert.equal(result.acceptanceCriteria, 2);
   const ir = JSON.parse(fs.readFileSync(path.join(stagingDir, '.incoming-spec.ir.json'), 'utf8'));
   assert.equal(ir.sourceSha256, result.sourceSha256);
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
     'ordinary output',
     '@@SPEC_REFETCH_RESULT@@ {not json}',
     `${actorOutput}\n${actorOutput}`,
-    '@@SPEC_REFETCH_RESULT@@ {"v":1,"sourceRef":"confluence:830569842","sourceSha256":"' + '0'.repeat(64) + '","sourceText":"forged"}',
+    '@@SPEC_REFETCH_RESULT@@ {"v":1,"sourceRef":"confluence:424242","sourceSha256":"' + '0'.repeat(64) + '","sourceText":"forged"}',
   ]) {
     const untouched = tempDir();
     assert.throws(

@@ -9,7 +9,7 @@ import {
   type ConfluenceHttpRequest,
 } from './confluence-http';
 
-const URL = 'https://insight.fsoft.com.vn/conf/rest/api/user/current';
+const URL = 'https://wiki.example.test/conf/rest/api/user/current';
 const AUTH = 'Bearer inert-$(whoami)-token';
 const VALID_EXECUTABLE = process.execPath;
 
@@ -18,8 +18,8 @@ async function main(): Promise<void> {
   assert.equal(isCloudflareManagedChallenge({ status: 403, headers: { 'CF-Mitigated': 'Challenge' } }), true);
   assert.equal(isCloudflareManagedChallenge({ status: 401, headers: { 'cf-mitigated': 'challenge' } }), false);
   assert.equal(isCloudflareManagedChallenge({ status: 403, headers: {} }), false);
-  assert.equal(isSameOriginUrl(URL, 'https://insight.fsoft.com.vn/conf/rest/api/content/830569842'), true);
-  assert.equal(isSameOriginUrl(URL, 'https://evil.example/conf/rest/api/user/current'), false);
+  assert.equal(isSameOriginUrl(URL, 'https://wiki.example.test/conf/rest/api/content/424242'), true);
+  assert.equal(isSameOriginUrl(URL, 'https://evil.example.test/conf/rest/api/user/current'), false);
   assert.equal(isSameOriginUrl(URL, 'not-a-url'), false);
 
   let browserCalls = 0;

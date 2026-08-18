@@ -99,7 +99,7 @@ check('canonical offline Confluence baseline conserves all 19 criteria and quote
   const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8')) as SemanticSourceInput
   const spec = normalizeSemanticSpec(baseline)
   assert.equal(spec.requirements.length, 19)
-  assert.equal(spec.sourceDocuments[0].sourceSha256, 'dd36b30b0c1c162bafac9f6b464105da6ad3310014a13ce81931f02d41c9ea93')
+  assert.equal(spec.sourceDocuments[0].sourceSha256, '0ad01bee97a2d662654b98aea6d6f4a260cfd8d011beab8bedc47b595a937efc')
   for (const [index, requirement] of spec.requirements.entries()) {
     const source = baseline.acceptanceCriteria[index]
     assert.equal(requirement.id, source.id)

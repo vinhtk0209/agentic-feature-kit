@@ -1,505 +1,505 @@
 {
-  "schemaVersion": 1,
-  "sourceKind": "raw-us",
-  "sourceRef": "confluence:830569842",
-  "sourceSha256": "dd36b30b0c1c162bafac9f6b464105da6ad3310014a13ce81931f02d41c9ea93",
-  "title": "[US-AD-095][ILT & vILT] [Class Mgnt] Class Details - Progress & Reports",
+  "schemaVersion": "1.0.0",
+  "sourceKind": "synthetic-fixture",
+  "sourceRef": "synthetic:progress-reports-v1",
+  "sourceSha256": "0ad01bee97a2d662654b98aea6d6f4a260cfd8d011beab8bedc47b595a937efc",
+  "title": "Synthetic Team Progress Reports",
   "paragraphs": [
     {
       "anchor": "line:1",
-      "text": "# [US-AD-095][ILT & vILT] [Class Mgnt] Class Details - Progress & Reports"
+      "text": "# Synthetic Team Progress Reports"
     },
     {
       "anchor": "line:2",
-      "text": "**Space:** iSuite 2026"
+      "text": "Context paragraph 2: Synthetic role-based access behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:3",
-      "text": "**Page ID:** 830569842"
+      "text": "Context paragraph 3: Synthetic report navigation behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:4",
-      "text": "**URL:** https://insight.fsoft.com.vn/conf/spaces/ISUITE2026/pages/830569842/US-AD-095+ILT+vILT+Class+Mgnt+Class+Details+-+Progress+Reports"
+      "text": "Context paragraph 4: Synthetic date filtering behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:5",
-      "text": "---"
+      "text": "Context paragraph 5: Synthetic status filtering behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:6",
-      "text": "| **Jira Ticket:** | [\\[ISUITE2026-514\\] \\[BA\\]\\[US-AD-095\\]\\[ILT & vILT Management\\] \\[Class Mgnt\\] Class Details - Progress & Reports - Define US - FI2.0](https://insight.fsoft.com.vn/jiradc/browse/ISUITE2026-514) |"
+      "text": "Context paragraph 6: Synthetic search input behavior uses deterministic inputs and no external service."
+    },
+    {
+      "anchor": "line:7",
+      "text": "Context paragraph 7: Synthetic summary metrics behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:8",
-      "text": "**Revision Tracking**"
+      "text": "Context paragraph 8: Synthetic trend visualization behavior uses deterministic inputs and no external service."
+    },
+    {
+      "anchor": "line:9",
+      "text": "Context paragraph 9: Synthetic distribution visualization behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:10",
-      "text": "| **Version** | **Description** | **Date** | **Author** | **Product Owner Approval** **Approved date (DD/MM/YYYY)** **Approver's comment** |"
+      "text": "Context paragraph 10: Synthetic detail-table sorting behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:11",
-      "text": "| V0.1 | Create new tab for Class Details - Progress & Reports | 20/Mar/26 | [Tuyen Nguyen Thuy Thanh](https://insight.fsoft.com.vn/conf/display/~TuyenNTT12) |  |"
+      "text": "Context paragraph 11: Synthetic detail-table pagination behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:12",
-      "text": "| V0.2 |  |  |  |  |"
+      "text": "Context paragraph 12: Synthetic empty-state handling behavior uses deterministic inputs and no external service."
+    },
+    {
+      "anchor": "line:13",
+      "text": "Context paragraph 13: Synthetic loading-state handling behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:14",
-      "text": "# **Document References**"
+      "text": "Context paragraph 14: Synthetic error recovery behavior uses deterministic inputs and no external service."
+    },
+    {
+      "anchor": "line:15",
+      "text": "Context paragraph 15: Synthetic keyboard navigation behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:16",
-      "text": "| **Document Name** | **Description** | **Document Provider** | **Version** | **Date** |"
+      "text": "Context paragraph 16: Synthetic accessible labeling behavior uses deterministic inputs and no external service."
     },
     {
       "anchor": "line:17",
-      "text": "| |  |  |  |  |"
+      "text": "Context paragraph 17: Synthetic role-based access behavior uses explicit state transitions and no external service."
+    },
+    {
+      "anchor": "line:18",
+      "text": "Context paragraph 18: Synthetic report navigation behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:19",
-      "text": "# **Functional Specifications Requirement**"
+      "text": "Context paragraph 19: Synthetic date filtering behavior uses explicit state transitions and no external service."
+    },
+    {
+      "anchor": "line:20",
+      "text": "Context paragraph 20: Synthetic status filtering behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:21",
-      "text": "## **Objective**"
+      "text": "Context paragraph 21: Synthetic search input behavior uses explicit state transitions and no external service."
+    },
+    {
+      "anchor": "line:22",
+      "text": "Context paragraph 22: Synthetic summary metrics behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:23",
-      "text": "| **#** | **Requirement** | **Notes** |"
+      "text": "Context paragraph 23: Synthetic trend visualization behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:24",
-      "text": "| **1** | Provide an overview dashboard showing **class‑level learning performance** | Focus on ILT/vILT class completion and attendance |"
+      "text": "Context paragraph 24: Synthetic distribution visualization behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:25",
-      "text": "| **2** | Display **Class Completion Rate** based on learners completing required learning sessions | Certification is granted when class learning is completed |"
+      "text": "Context paragraph 25: Synthetic detail-table sorting behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:26",
-      "text": "| **3** | Display **Attendance Rate** reflecting learners’ participation across all required sessions | Core KPI for ILT/vILT classes |"
+      "text": "Context paragraph 26: Synthetic detail-table pagination behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:27",
-      "text": "| **4** | Clearly distinguish **class‑level completion metrics** from **learner‑level completion metrics** | Learner‑level metric is named “Learner Completion (%)” |"
+      "text": "Context paragraph 27: Synthetic empty-state handling behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:28",
-      "text": "| **5** | Provide **Assessment Status Overview** to show exam participation and outcomes | Assessment does not affect class completion or certification |"
+      "text": "Context paragraph 28: Synthetic loading-state handling behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:29",
-      "text": "| **6** | Allow admins to **filter assessment analytics by specific exam** within the class | Prevent empty or misleading charts |"
+      "text": "Context paragraph 29: Synthetic error recovery behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:30",
-      "text": "| **7** | Visualize **Assessment Performance** using score distribution charts | Used for analytical and instructional insight only |"
+      "text": "Context paragraph 30: Synthetic keyboard navigation behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:31",
-      "text": "| **8** | Display **Assessment trend over time** based on selected assessment filter | Supports monitoring learner engagement with exams |"
+      "text": "Context paragraph 31: Synthetic accessible labeling behavior uses explicit state transitions and no external service."
     },
     {
       "anchor": "line:32",
-      "text": "| **9** | Identify and surface **At‑Risk Learners** based on attendance, completion, or assessment signals | Risk is informative, not a certification blocker |"
+      "text": "Context paragraph 32: Synthetic role-based access behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:33",
-      "text": "| **10** | Provide a **Learner Detail Table** summarizing completion, attendance, assessment status, and score | Supports sorting, scanning, and drill‑down |"
+      "text": "Context paragraph 33: Synthetic report navigation behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:34",
-      "text": "| **11** | Enable navigation from **Learner Name** to learner‑specific assessment details within the class | Context remains at class level |"
+      "text": "Context paragraph 34: Synthetic date filtering behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:35",
-      "text": "| **12** | Support **exportable reports (CSV, PDF)** reflecting current dashboard filters | Used for audit, review, and offline analysis |"
+      "text": "Context paragraph 35: Synthetic status filtering behavior uses bounded output and no external service."
+    },
+    {
+      "anchor": "line:36",
+      "text": "Context paragraph 36: Synthetic search input behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:37",
-      "text": "## **Overview Business Workflow & Processes**"
+      "text": "Context paragraph 37: Synthetic summary metrics behavior uses bounded output and no external service."
+    },
+    {
+      "anchor": "line:38",
+      "text": "Context paragraph 38: Synthetic trend visualization behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:39",
-      "text": "### **Overview and Scope of work**"
+      "text": "Context paragraph 39: Synthetic distribution visualization behavior uses bounded output and no external service."
+    },
+    {
+      "anchor": "line:40",
+      "text": "Context paragraph 40: Synthetic detail-table sorting behavior uses bounded output and no external service."
+    },
+    {
+      "anchor": "line:41",
+      "text": "Context paragraph 41: Synthetic detail-table pagination behavior uses bounded output and no external service."
+    },
+    {
+      "anchor": "line:42",
+      "text": "Context paragraph 42: Synthetic empty-state handling behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:43",
-      "text": "| **#** | **Scope Of Work** | **Detail Task Description** |"
+      "text": "Context paragraph 43: Synthetic loading-state handling behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:44",
-      "text": "| **1** | Class Performance Overview Dashboard | Provide an overview section showing **class‑level learning performance metrics**, including completion rate, attendance rate, assessment status, and at‑risk indicators for the class. |"
+      "text": "Context paragraph 44: Synthetic error recovery behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:45",
-      "text": "| **2** | Class Completion Rate Calculation & Display | Calculate and display **Class Completion Rate** based on learners who complete all required learning sessions within the class. Certification eligibility is derived solely from learning completion, not assessment results. |"
+      "text": "Context paragraph 45: Synthetic keyboard navigation behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:46",
-      "text": "| **3** | Attendance Rate Calculation & Visualization | Calculate overall **Attendance Rate** for the class across all required ILT/vILT sessions and visualize attendance trends over time to support monitoring learner participation. |"
+      "text": "Context paragraph 46: Synthetic accessible labeling behavior uses bounded output and no external service."
     },
     {
       "anchor": "line:47",
-      "text": "| **4** | Clear Distinction Between Class‑Level and Learner‑Level Metrics | Ensure clear differentiation between **Class Completion Rate** (overview KPI) and **Learner Completion (%)** displayed in the learner detail table to avoid metric confusion. |"
+      "text": "Context paragraph 47: Synthetic role-based access behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:48",
-      "text": "| **5** | Assessment Status Overview | Display assessment participation status (Passed, Incomplete, Not Attempted) for learners in the class for reporting and analytical purposes only, without impacting class completion or certification. |"
+      "text": "Context paragraph 48: Synthetic report navigation behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:49",
-      "text": "| **6** | Assessment Filtering by Exam | Provide a dedicated **assessment filter** allowing administrators to view performance data for a selected exam or all exams in the class, preventing empty or misleading charts when an exam has no data. |"
+      "text": "Context paragraph 49: Synthetic date filtering behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:50",
-      "text": "| **7** | Assessment Performance Analytics | Visualize assessment performance using score distribution charts based on selected assessment filters to evaluate learner exam performance and training effectiveness. |"
+      "text": "Context paragraph 50: Synthetic status filtering behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:51",
-      "text": "| **8** | Assessment Activity Trend Analysis | Display assessment activity or performance trends over time (e.g. number of submissions, average scores) based on the selected assessment filter. |"
+      "text": "Context paragraph 51: Synthetic search input behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:52",
-      "text": "| **9** | At‑Risk Learner Identification | Identify and display **At‑Risk Learners** based on attendance, learner completion progress, or assessment participation signals to support early intervention by instructors or admins. |"
+      "text": "Context paragraph 52: Synthetic summary metrics behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:53",
-      "text": "| 10 | Learner Detail Table | Provide a detailed learner table summarizing learner completion (%), attendance (%), assessment score, and assessment status to support class‑level monitoring and comparison. |"
+      "text": "Context paragraph 53: Synthetic trend visualization behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:54",
-      "text": "| **11** | Learner Assessment Drill‑down Navigation | Enable navigation from **Learner Name** to a learner‑specific assessment detail page within the same class context, showing assessment attempts, scores, and statuses. |"
+      "text": "Context paragraph 54: Synthetic distribution visualization behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:55",
-      "text": "| 12 | Report Export Functionality | Support exporting Progress & Reports data to **CSV and PDF formats**, reflecting current dashboard filters and selections for audit, review, and offline analysis purposes. |"
+      "text": "Context paragraph 55: Synthetic detail-table sorting behavior uses stable ordering and no external service."
+    },
+    {
+      "anchor": "line:56",
+      "text": "Context paragraph 56: Synthetic detail-table pagination behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:57",
-      "text": "### **Business Workflow & Processes**"
+      "text": "Context paragraph 57: Synthetic empty-state handling behavior uses stable ordering and no external service."
+    },
+    {
+      "anchor": "line:58",
+      "text": "Context paragraph 58: Synthetic loading-state handling behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:59",
-      "text": "\\[Business workflow image\\]"
+      "text": "Context paragraph 59: Synthetic error recovery behavior uses stable ordering and no external service."
+    },
+    {
+      "anchor": "line:60",
+      "text": "Context paragraph 60: Synthetic keyboard navigation behavior uses stable ordering and no external service."
     },
     {
       "anchor": "line:61",
-      "text": "![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-51-21.png?api=v2)"
+      "text": "Context paragraph 61: Synthetic accessible labeling behavior uses stable ordering and no external service."
+    },
+    {
+      "anchor": "line:62",
+      "text": "Context paragraph 62: Synthetic role-based access behavior uses offline verification and no external service."
     },
     {
       "anchor": "line:63",
-      "text": "**Assessment Filter Interaction**"
+      "text": "Context paragraph 63: Synthetic report navigation behavior uses offline verification and no external service."
+    },
+    {
+      "anchor": "line:64",
+      "text": "Context paragraph 64: Synthetic date filtering behavior uses offline verification and no external service."
     },
     {
       "anchor": "line:65",
-      "text": "![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-52-23.png?api=v2)"
+      "text": "Context paragraph 65: Synthetic status filtering behavior uses offline verification and no external service."
+    },
+    {
+      "anchor": "line:66",
+      "text": "Context paragraph 66: Synthetic search input behavior uses offline verification and no external service."
     },
     {
       "anchor": "line:67",
-      "text": "## **Functional Specification Detail**"
+      "text": "Context paragraph 67: Synthetic summary metrics behavior uses offline verification and no external service."
+    },
+    {
+      "anchor": "line:68",
+      "text": "Context paragraph 68: Synthetic trend visualization behavior uses offline verification and no external service."
     },
     {
       "anchor": "line:69",
-      "text": "### User story"
+      "text": "Context paragraph 69: Synthetic distribution visualization behavior uses offline verification and no external service."
+    },
+    {
+      "anchor": "line:70",
+      "text": "Context paragraph 70: Synthetic detail-table sorting behavior uses offline verification and no external service."
     },
     {
       "anchor": "line:71",
-      "text": "| **As** | **As an Admin** |"
+      "text": "Context paragraph 71: Synthetic detail-table pagination behavior uses offline verification and no external service."
     },
     {
       "anchor": "line:72",
-      "text": "| **I want to** | view class‑level progress, attendance, and assessment reports in a centralized **Progress & Reports** section |"
+      "text": "Context paragraph 72: Synthetic empty-state handling behavior uses offline verification and no external service."
     },
     {
       "anchor": "line:73",
-      "text": "| **So that** | I can monitor learner completion and attendance for certification purposes, analyze assessment outcomes, identify at‑risk learners early, and export reports for tracking, intervention, and audit needs |"
+      "text": "Context paragraph 73: Synthetic loading-state handling behavior uses offline verification and no external service."
+    },
+    {
+      "anchor": "line:74",
+      "text": "Context paragraph 74: Synthetic error recovery behavior uses offline verification and no external service."
+    },
+    {
+      "anchor": "line:75",
+      "text": "Context paragraph 75: Synthetic keyboard navigation behavior uses offline verification and no external service."
+    },
+    {
+      "anchor": "line:76",
+      "text": "Context paragraph 76: Synthetic accessible labeling behavior uses offline verification and no external service."
     },
     {
       "anchor": "line:77",
-      "text": "### Prototype"
+      "text": "AC-1: Given a report viewer has permission, when the progress view loads, then the summary and detail regions are visible."
+    },
+    {
+      "anchor": "line:78",
+      "text": "AC-2: Given a report viewer lacks permission, when the progress route is requested, then access is denied without revealing report data."
     },
     {
       "anchor": "line:79",
-      "text": "| Class Basic information |  |  |"
+      "text": "AC-3: Given progress data is available, when a bounded date range is selected, then every metric uses the same inclusive range."
     },
     {
       "anchor": "line:80",
-      "text": "| ![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_13-59-43.png?api=v2) |  |  |"
+      "text": "AC-4: Given a report contains multiple statuses, when a status filter changes, then summary charts and detail rows use the selected status."
+    },
+    {
+      "anchor": "line:81",
+      "text": "AC-5: Given learner records are available, when a case-insensitive search is submitted, then matching rows are shown in stable order."
+    },
+    {
+      "anchor": "line:82",
+      "text": "AC-6: Given no records match the active filters, when the report refreshes, then an actionable empty state replaces charts and rows."
+    },
+    {
+      "anchor": "line:83",
+      "text": "AC-7: Given a report request is pending, when the view renders, then a labeled loading state prevents stale values from being presented."
     },
     {
       "anchor": "line:84",
-      "text": "Component description"
+      "text": "AC-8: Given a report request fails, when the error response is received, then a bounded retry action is shown without exposing internals."
+    },
+    {
+      "anchor": "line:85",
+      "text": "AC-9: Given summary values are returned, when the dashboard renders, then counts and percentages use deterministic numeric formatting."
+    },
+    {
+      "anchor": "line:86",
+      "text": "AC-10: Given time-series points share a timestamp, when the trend chart is sorted, then points use ascending time and stable tie-breaking."
+    },
+    {
+      "anchor": "line:87",
+      "text": "AC-11: Given distribution buckets are configured, when scores are grouped, then each valid score appears in exactly one bucket."
     },
     {
       "anchor": "line:88",
-      "text": "| No | VN component | EN component | Component type | Editable | Mandatory | Description | Data mapping (suggestion) |"
+      "text": "AC-12: Given detail rows exceed one page, when the next page is requested, then page size and active filters remain unchanged."
     },
     {
       "anchor": "line:89",
-      "text": "| **1** | Tiêu đề bảng điều khiển | Dashboard Title | Display text | No | Yes | Displays page title **“Progress & Reports”** to indicate reporting and analytics view for the class. Static text, aligned with Class Details navigation. | — |"
+      "text": "AC-13: Given two detail rows share the sort key, when sorting is applied, then the stable secondary key produces deterministic order."
     },
     {
       "anchor": "line:90",
-      "text": "| **2** | Bộ lọc bài thi ![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-0-34.png?api=v2) | Assessment Filter | Dropdown | Yes | Conditional | Allows administrators and instructors to filter assessment‑related analytics by **specific exam** or view aggregated data across **All Exams** (default). **Business rules:** – The filter applies consistently to **Assessment Status, Assessment Performance, and Assessment Over Time charts**. – **Only published and assigned assessments** are displayed in the filter list. – When value changes → reload assessment dataset. **Edge cases:** – Class has no exam → show filter Empty State. – Selected exam has no submission → trigger Empty State. | [class.assessments.id](http://class.assessments.id) |"
+      "text": "AC-14: Given a keyboard user enters the report, when focus moves through controls, then focus order follows the visible workflow."
     },
     {
       "anchor": "line:91",
-      "text": "| **3** | Thông báo rỗng đánh giá | Assessment Empty State | Empty state message | No | Conditional | Displayed when the selected assessment has **no submission data available**. **Behavior:** – Related charts (status, distribution, over time) are hidden. – System displays a clear message (e.g. “No assessment data available for the selected exam”). – No placeholder or zero‑value charts are rendered to avoid misinterpretation. | assessment.submissions |"
+      "text": "AC-15: Given a chart communicates status by color, when the chart renders, then text labels expose the same status meaning."
     },
     {
       "anchor": "line:92",
-      "text": "| **4** | Phân bố điểm | Assessment Performance | Bar chart | No | Conditional | Displays score distribution for the selected assessment using predefined score buckets. **Formula / Logic:** – Group learner scores into predefined buckets (e.g. 0–5, 5–10, >10). – Bucket config follows assessment max score & grading setup. **Data source:** assessment submissions + scores. ![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-2-44.png?api=v2) **Business rules:** – Chart is rendered only when at least one valid score exists. – Buckets and score range follow assessment configuration. – Used to analyze assessment difficulty and learner performance trends, **not for certification decisions**. Data is refreshed dynamically when assessment filter changes. | assessment.scores |"
+      "text": "AC-16: Given a narrow viewport is used, when the report layout adapts, then controls and data remain reachable without overlap."
     },
     {
       "anchor": "line:93",
-      "text": "| **5** | Xu hướng đánh giá | Assessment Over Time | Line chart | No | Conditional | Visualizes assessment activity trends over time based on the selected assessment filter. ![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-3-48.png?api=v2) **Supported metrics (configured at class/system level):** – Number of submissions per day **Formula:** count(submissions grouped by submission\\_date). Once configured, the metric is consistent across the class to ensure data interpretation clarity. | assessment.submissions.created\\_at |"
+      "text": "AC-17: Given a filter value is invalid, when the report request is prepared, then validation fails before any transport boundary."
     },
     {
       "anchor": "line:94",
-      "text": "| **6** | Trạng thái đánh giá | Assessment Status | Donut / Pie chart | No | Conditional | Visualizes assessment participation status of learners within the class, categorized as **Passed, Incomplete, and Not Attempted**. ![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-4-38.png?api=v2) **Business rules:** – Assessment status is **informational and analytic only**. – Assessment results do **not impact class completion or certification**. – Status is derived from submission and grading data: • Passed: submitted and score ≥ passing score • Incomplete: submitted but score < passing score • Not Attempted: no submission record This component is displayed only when at least one assessment is available in the class. | assessment.submissions.status |"
+      "text": "AC-18: Given a retry succeeds after a transient failure, when fresh data is accepted, then the prior error state is cleared exactly once."
     },
     {
       "anchor": "line:95",
-      "text": "| **7** | Completion Rate (của học viên) | **Learner Completion Rate** | KPI Card | No | Yes | Displays the percentage of learners who have completed the class based **solely on learning session completion (ILT/vILT attendance)**. ![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-5-1.png?api=v2) **Business rules:** – A learner is considered “completed” when they meet the required attendance threshold or attend all mandatory sessions, depending on class configuration. – Assessment (exam) results **do not affect class completion or certification eligibility**. **Formula:** Completion Rate = (Number of completed learners / Total enrolled learners) × 100 **Rules:** – Completion determined by attendance threshold or mandatory sessions (class config). – Exam results are excluded. – total\\_enrolled = 0 → value = 0%. | class.learners.completed\\_count, class.learners.total |"
-    },
-    {
-      "anchor": "line:96",
-      "text": "| **8** | Attendance Rate | Attendance Rate | KPI Card | No | Yes | Displays the overall attendance rate across all required ILT/vILT sessions for the class. ![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-5-23.png?api=v2) **Formula:** attended\\_sessions / (total\\_sessions × total\\_learners) × 100. **Rules:** – Cancelled sessions excluded. – vILT attendance valid only if participation ≥ configured duration (default 80%). – Auto‑recalculated on attendance or session changes. | attendance.records |"
-    },
-    {
-      "anchor": "line:97",
-      "text": "| **9** | Nút xuất báo cáo | Export Reports | Button group | No | Conditional | Provides options to export dashboard data as **CSV** or **PDF**. Export reflects current filters (assessment filter, date range if applicable). Available only to authorized roles. | aggregated report data |"
-    },
-    {
-      "anchor": "line:98",
-      "text": "| 10 | Bảng chi tiết học viên | Learner Detail Table | Data table | No | Yes | Displays learner‑level summary metrics within the class, including **Learner Completion (%), Attendance (%), Score, and Assessment Status**. ![](https://insight.fsoft.com.vn/conf/download/attachments/embedded-page/ISUITE2026/%5BUS-AD-095%5D%5BILT%20&%20vILT%5D%20%5BClass%20Mgnt%5D%20Class%20Details%20-%20Progress%20&%20Reports/image-2026-4-17_14-5-56.png?api=v2) **Behavior:** – Data always reflects current Assessment Filter. – Supports pagination & sorting. – No edit capability. | learner.metrics |"
-    },
-    {
-      "anchor": "line:99",
-      "text": "| 11 | Tên học viên | Learner Name | Link | No | Yes | Each learner name is **clickable** and redirects to the **Learner Assessment Detail page** within the same class context. **Drill‑down behavior:** – System validates user permission (Admin / Instructor). – Opens a learner‑specific assessment view scoped strictly to the current class. – Displays exam list, attempt history, scores, and assessment status. – Navigation back to Progress & Reports preserves class context and filter state. Redirect does not navigate to global learner profile to prevent data scope leakage. | [learner.id](http://learner.id) |"
-    },
-    {
-      "anchor": "line:100",
-      "text": "| **12** | Hoàn thành của học viên | Learner Progress (%) | Number | No | Yes | Displays the individual learner’s completion percentage based on learning items or sessions completed within the class. **Business rules:** – Calculation logic is consistent with class‑level learning structure. – Tooltip explains formula and clarifies that this metric differs from class completion rate. | learner.progress |"
-    },
-    {
-      "anchor": "line:101",
-      "text": "| **13** | Điểm danh của học viên | Learner Attendance (%) | Number | No | Yes | Displays attendance percentage per learner across all required sessions. Value is used as one of the signals for at‑risk detection. | learner.attendance |"
-    },
-    {
-      "anchor": "line:102",
-      "text": "| **14** | Điểm bài thi | Score | Display text | No | Conditional | Displays learner’s score for the selected assessment with X (learner's actual score) / Y (Maximum score). Hidden or shown as “—” if learner has not attempted the exam. | assessment.score |"
-    },
-    {
-      "anchor": "line:103",
-      "text": "| **15** | Trạng thái bài thi | Assessment Status (learner) | Status text | No | Conditional | Displays learner’s assessment status for the selected exam as Completed, Incomplete, or Not Attempted. Status is derived strictly from submission and grading data and is **independent of learning completion status**. | assessment.submission.status |"
-    },
-    {
-      "anchor": "line:107",
-      "text": "Acceptance criteria"
-    },
-    {
-      "anchor": "line:111",
-      "text": "| AC# | Given | When | Then | Messages |"
-    },
-    {
-      "anchor": "line:112",
-      "text": "| **AC1** | Admin/Instructor is on the Class Details screen | The screen loads | The system displays the **Progress & Reports** tab | — |"
-    },
-    {
-      "anchor": "line:113",
-      "text": "| **AC2** | Admin/Instructor is on Class Details | The user clicks **Progress & Reports** tab | The Progress & Reports dashboard is displayed | — |"
-    },
-    {
-      "anchor": "line:114",
-      "text": "| **AC3** | The class has at least one **published and assigned assessment** | Progress & Reports loads | The system displays the **Assessment Filter** with default value **All Exams** | — |"
-    },
-    {
-      "anchor": "line:115",
-      "text": "| **AC4** | The class has **no published assessment** | Progress & Reports loads | Assessment Filter and all assessment‑related components are hidden | — |"
-    },
-    {
-      "anchor": "line:116",
-      "text": "| **AC5** | Assessment Filter is set to **All Exams** | Assessment section renders | Assessment Status, Performance, and Over Time charts show **aggregated data** | — |"
-    },
-    {
-      "anchor": "line:117",
-      "text": "| **AC6** | Admin selects a specific exam from Assessment Filter | The filter value changes | Assessment Status, Performance, and Over Time charts are reloaded based on the selected exam | — |"
-    },
-    {
-      "anchor": "line:118",
-      "text": "| **AC7** | The selected exam exists but has **no submissions** | Assessment charts attempt to render | All assessment charts are hidden and an empty state message is displayed | “No assessment data available for the selected exam.” |"
-    },
-    {
-      "anchor": "line:119",
-      "text": "| **AC8** | The selected exam has at least one valid score | Assessment Performance renders | The system displays score distribution using predefined score buckets | — |"
-    },
-    {
-      "anchor": "line:120",
-      "text": "| **AC9** | The selected exam has submission history | Assessment Over Time renders | The system displays submission trend per day using the configured metric | — |"
-    },
-    {
-      "anchor": "line:121",
-      "text": "| **AC10** | The class has enrolled learners | Progress & Reports loads | The system displays **Learner Completion Rate** based only on learning completion | — |"
-    },
-    {
-      "anchor": "line:122",
-      "text": "| **AC11** | The class has zero enrolled learners | Progress & Reports loads | Learner Completion Rate is displayed as **0%** | — |"
-    },
-    {
-      "anchor": "line:123",
-      "text": "| **AC12** | ILT/vILT sessions exist for the class | Progress & Reports loads | Attendance Rate is calculated using valid attendance records, excluding cancelled sessions | — |"
-    },
-    {
-      "anchor": "line:124",
-      "text": "| **AC13** | Attendance records or session schedules are updated | The user refreshes Progress & Reports | Attendance Rate reflects the latest data | — |"
-    },
-    {
-      "anchor": "line:125",
-      "text": "| **AC14** | Learner data exists in the class | Progress & Reports loads | The **Learner Detail Table** is displayed | — |"
-    },
-    {
-      "anchor": "line:126",
-      "text": "| **AC15** | Learner completion data exists | Learner Detail Table renders | **Learner Progress (%)** is displayed with correct calculation | — |"
-    },
-    {
-      "anchor": "line:127",
-      "text": "| **AC16** | Learner attendance data exists | Learner Detail Table renders | **Learner Attendance (%)** is displayed correctly | — |"
-    },
-    {
-      "anchor": "line:128",
-      "text": "| **AC17** | Admin/Instructor clicks a learner name | The system validates permission | The system navigates to **Learner Assessment Detail** scoped to the same class | — |"
-    },
-    {
-      "anchor": "line:129",
-      "text": "| **AC18** | Learner Assessment Detail page is loaded | The learner has assigned exams in this class | The system displays exam list, attempts, scores, and statuses | — |"
-    },
-    {
-      "anchor": "line:130",
-      "text": "| **AC19** | User is on Learner Assessment Detail page | The user navigates back | The system returns to Progress & Reports and preserves filter state | — |"
-    },
-    {
-      "anchor": "line:132",
-      "text": "> **Ticket id (for canonical folder):** `US-AD-095` → name the feature folder `US-AD-095-<FeatureName>`."
+      "text": "AC-19: Given the report view is closed, when temporary client state is released, then no credential or private report value is persisted."
     }
   ],
   "acceptanceCriteria": [
     {
       "id": "AC-1",
-      "text": "| **AC1** | Admin/Instructor is on the Class Details screen | The screen loads | The system displays the **Progress & Reports** tab | — |",
-      "sourceAnchor": "line:112",
-      "sourceQuote": "| **AC1** | Admin/Instructor is on the Class Details screen | The screen loads | The system displays the **Progress & Reports** tab | — |"
+      "text": "AC-1: Given a report viewer has permission, when the progress view loads, then the summary and detail regions are visible.",
+      "sourceAnchor": "line:77",
+      "sourceQuote": "AC-1: Given a report viewer has permission, when the progress view loads, then the summary and detail regions are visible."
     },
     {
       "id": "AC-2",
-      "text": "| **AC2** | Admin/Instructor is on Class Details | The user clicks **Progress & Reports** tab | The Progress & Reports dashboard is displayed | — |",
-      "sourceAnchor": "line:113",
-      "sourceQuote": "| **AC2** | Admin/Instructor is on Class Details | The user clicks **Progress & Reports** tab | The Progress & Reports dashboard is displayed | — |"
+      "text": "AC-2: Given a report viewer lacks permission, when the progress route is requested, then access is denied without revealing report data.",
+      "sourceAnchor": "line:78",
+      "sourceQuote": "AC-2: Given a report viewer lacks permission, when the progress route is requested, then access is denied without revealing report data."
     },
     {
       "id": "AC-3",
-      "text": "| **AC3** | The class has at least one **published and assigned assessment** | Progress & Reports loads | The system displays the **Assessment Filter** with default value **All Exams** | — |",
-      "sourceAnchor": "line:114",
-      "sourceQuote": "| **AC3** | The class has at least one **published and assigned assessment** | Progress & Reports loads | The system displays the **Assessment Filter** with default value **All Exams** | — |"
+      "text": "AC-3: Given progress data is available, when a bounded date range is selected, then every metric uses the same inclusive range.",
+      "sourceAnchor": "line:79",
+      "sourceQuote": "AC-3: Given progress data is available, when a bounded date range is selected, then every metric uses the same inclusive range."
     },
     {
       "id": "AC-4",
-      "text": "| **AC4** | The class has **no published assessment** | Progress & Reports loads | Assessment Filter and all assessment‑related components are hidden | — |",
-      "sourceAnchor": "line:115",
-      "sourceQuote": "| **AC4** | The class has **no published assessment** | Progress & Reports loads | Assessment Filter and all assessment‑related components are hidden | — |"
+      "text": "AC-4: Given a report contains multiple statuses, when a status filter changes, then summary charts and detail rows use the selected status.",
+      "sourceAnchor": "line:80",
+      "sourceQuote": "AC-4: Given a report contains multiple statuses, when a status filter changes, then summary charts and detail rows use the selected status."
     },
     {
       "id": "AC-5",
-      "text": "| **AC5** | Assessment Filter is set to **All Exams** | Assessment section renders | Assessment Status, Performance, and Over Time charts show **aggregated data** | — |",
-      "sourceAnchor": "line:116",
-      "sourceQuote": "| **AC5** | Assessment Filter is set to **All Exams** | Assessment section renders | Assessment Status, Performance, and Over Time charts show **aggregated data** | — |"
+      "text": "AC-5: Given learner records are available, when a case-insensitive search is submitted, then matching rows are shown in stable order.",
+      "sourceAnchor": "line:81",
+      "sourceQuote": "AC-5: Given learner records are available, when a case-insensitive search is submitted, then matching rows are shown in stable order."
     },
     {
       "id": "AC-6",
-      "text": "| **AC6** | Admin selects a specific exam from Assessment Filter | The filter value changes | Assessment Status, Performance, and Over Time charts are reloaded based on the selected exam | — |",
-      "sourceAnchor": "line:117",
-      "sourceQuote": "| **AC6** | Admin selects a specific exam from Assessment Filter | The filter value changes | Assessment Status, Performance, and Over Time charts are reloaded based on the selected exam | — |"
+      "text": "AC-6: Given no records match the active filters, when the report refreshes, then an actionable empty state replaces charts and rows.",
+      "sourceAnchor": "line:82",
+      "sourceQuote": "AC-6: Given no records match the active filters, when the report refreshes, then an actionable empty state replaces charts and rows."
     },
     {
       "id": "AC-7",
-      "text": "| **AC7** | The selected exam exists but has **no submissions** | Assessment charts attempt to render | All assessment charts are hidden and an empty state message is displayed | “No assessment data available for the selected exam.” |",
-      "sourceAnchor": "line:118",
-      "sourceQuote": "| **AC7** | The selected exam exists but has **no submissions** | Assessment charts attempt to render | All assessment charts are hidden and an empty state message is displayed | “No assessment data available for the selected exam.” |"
+      "text": "AC-7: Given a report request is pending, when the view renders, then a labeled loading state prevents stale values from being presented.",
+      "sourceAnchor": "line:83",
+      "sourceQuote": "AC-7: Given a report request is pending, when the view renders, then a labeled loading state prevents stale values from being presented."
     },
     {
       "id": "AC-8",
-      "text": "| **AC8** | The selected exam has at least one valid score | Assessment Performance renders | The system displays score distribution using predefined score buckets | — |",
-      "sourceAnchor": "line:119",
-      "sourceQuote": "| **AC8** | The selected exam has at least one valid score | Assessment Performance renders | The system displays score distribution using predefined score buckets | — |"
+      "text": "AC-8: Given a report request fails, when the error response is received, then a bounded retry action is shown without exposing internals.",
+      "sourceAnchor": "line:84",
+      "sourceQuote": "AC-8: Given a report request fails, when the error response is received, then a bounded retry action is shown without exposing internals."
     },
     {
       "id": "AC-9",
-      "text": "| **AC9** | The selected exam has submission history | Assessment Over Time renders | The system displays submission trend per day using the configured metric | — |",
-      "sourceAnchor": "line:120",
-      "sourceQuote": "| **AC9** | The selected exam has submission history | Assessment Over Time renders | The system displays submission trend per day using the configured metric | — |"
+      "text": "AC-9: Given summary values are returned, when the dashboard renders, then counts and percentages use deterministic numeric formatting.",
+      "sourceAnchor": "line:85",
+      "sourceQuote": "AC-9: Given summary values are returned, when the dashboard renders, then counts and percentages use deterministic numeric formatting."
     },
     {
       "id": "AC-10",
-      "text": "| **AC10** | The class has enrolled learners | Progress & Reports loads | The system displays **Learner Completion Rate** based only on learning completion | — |",
-      "sourceAnchor": "line:121",
-      "sourceQuote": "| **AC10** | The class has enrolled learners | Progress & Reports loads | The system displays **Learner Completion Rate** based only on learning completion | — |"
+      "text": "AC-10: Given time-series points share a timestamp, when the trend chart is sorted, then points use ascending time and stable tie-breaking.",
+      "sourceAnchor": "line:86",
+      "sourceQuote": "AC-10: Given time-series points share a timestamp, when the trend chart is sorted, then points use ascending time and stable tie-breaking."
     },
     {
       "id": "AC-11",
-      "text": "| **AC11** | The class has zero enrolled learners | Progress & Reports loads | Learner Completion Rate is displayed as **0%** | — |",
-      "sourceAnchor": "line:122",
-      "sourceQuote": "| **AC11** | The class has zero enrolled learners | Progress & Reports loads | Learner Completion Rate is displayed as **0%** | — |"
+      "text": "AC-11: Given distribution buckets are configured, when scores are grouped, then each valid score appears in exactly one bucket.",
+      "sourceAnchor": "line:87",
+      "sourceQuote": "AC-11: Given distribution buckets are configured, when scores are grouped, then each valid score appears in exactly one bucket."
     },
     {
       "id": "AC-12",
-      "text": "| **AC12** | ILT/vILT sessions exist for the class | Progress & Reports loads | Attendance Rate is calculated using valid attendance records, excluding cancelled sessions | — |",
-      "sourceAnchor": "line:123",
-      "sourceQuote": "| **AC12** | ILT/vILT sessions exist for the class | Progress & Reports loads | Attendance Rate is calculated using valid attendance records, excluding cancelled sessions | — |"
+      "text": "AC-12: Given detail rows exceed one page, when the next page is requested, then page size and active filters remain unchanged.",
+      "sourceAnchor": "line:88",
+      "sourceQuote": "AC-12: Given detail rows exceed one page, when the next page is requested, then page size and active filters remain unchanged."
     },
     {
       "id": "AC-13",
-      "text": "| **AC13** | Attendance records or session schedules are updated | The user refreshes Progress & Reports | Attendance Rate reflects the latest data | — |",
-      "sourceAnchor": "line:124",
-      "sourceQuote": "| **AC13** | Attendance records or session schedules are updated | The user refreshes Progress & Reports | Attendance Rate reflects the latest data | — |"
+      "text": "AC-13: Given two detail rows share the sort key, when sorting is applied, then the stable secondary key produces deterministic order.",
+      "sourceAnchor": "line:89",
+      "sourceQuote": "AC-13: Given two detail rows share the sort key, when sorting is applied, then the stable secondary key produces deterministic order."
     },
     {
       "id": "AC-14",
-      "text": "| **AC14** | Learner data exists in the class | Progress & Reports loads | The **Learner Detail Table** is displayed | — |",
-      "sourceAnchor": "line:125",
-      "sourceQuote": "| **AC14** | Learner data exists in the class | Progress & Reports loads | The **Learner Detail Table** is displayed | — |"
+      "text": "AC-14: Given a keyboard user enters the report, when focus moves through controls, then focus order follows the visible workflow.",
+      "sourceAnchor": "line:90",
+      "sourceQuote": "AC-14: Given a keyboard user enters the report, when focus moves through controls, then focus order follows the visible workflow."
     },
     {
       "id": "AC-15",
-      "text": "| **AC15** | Learner completion data exists | Learner Detail Table renders | **Learner Progress (%)** is displayed with correct calculation | — |",
-      "sourceAnchor": "line:126",
-      "sourceQuote": "| **AC15** | Learner completion data exists | Learner Detail Table renders | **Learner Progress (%)** is displayed with correct calculation | — |"
+      "text": "AC-15: Given a chart communicates status by color, when the chart renders, then text labels expose the same status meaning.",
+      "sourceAnchor": "line:91",
+      "sourceQuote": "AC-15: Given a chart communicates status by color, when the chart renders, then text labels expose the same status meaning."
     },
     {
       "id": "AC-16",
-      "text": "| **AC16** | Learner attendance data exists | Learner Detail Table renders | **Learner Attendance (%)** is displayed correctly | — |",
-      "sourceAnchor": "line:127",
-      "sourceQuote": "| **AC16** | Learner attendance data exists | Learner Detail Table renders | **Learner Attendance (%)** is displayed correctly | — |"
+      "text": "AC-16: Given a narrow viewport is used, when the report layout adapts, then controls and data remain reachable without overlap.",
+      "sourceAnchor": "line:92",
+      "sourceQuote": "AC-16: Given a narrow viewport is used, when the report layout adapts, then controls and data remain reachable without overlap."
     },
     {
       "id": "AC-17",
-      "text": "| **AC17** | Admin/Instructor clicks a learner name | The system validates permission | The system navigates to **Learner Assessment Detail** scoped to the same class | — |",
-      "sourceAnchor": "line:128",
-      "sourceQuote": "| **AC17** | Admin/Instructor clicks a learner name | The system validates permission | The system navigates to **Learner Assessment Detail** scoped to the same class | — |"
+      "text": "AC-17: Given a filter value is invalid, when the report request is prepared, then validation fails before any transport boundary.",
+      "sourceAnchor": "line:93",
+      "sourceQuote": "AC-17: Given a filter value is invalid, when the report request is prepared, then validation fails before any transport boundary."
     },
     {
       "id": "AC-18",
-      "text": "| **AC18** | Learner Assessment Detail page is loaded | The learner has assigned exams in this class | The system displays exam list, attempts, scores, and statuses | — |",
-      "sourceAnchor": "line:129",
-      "sourceQuote": "| **AC18** | Learner Assessment Detail page is loaded | The learner has assigned exams in this class | The system displays exam list, attempts, scores, and statuses | — |"
+      "text": "AC-18: Given a retry succeeds after a transient failure, when fresh data is accepted, then the prior error state is cleared exactly once.",
+      "sourceAnchor": "line:94",
+      "sourceQuote": "AC-18: Given a retry succeeds after a transient failure, when fresh data is accepted, then the prior error state is cleared exactly once."
     },
     {
       "id": "AC-19",
-      "text": "| **AC19** | User is on Learner Assessment Detail page | The user navigates back | The system returns to Progress & Reports and preserves filter state | — |",
-      "sourceAnchor": "line:130",
-      "sourceQuote": "| **AC19** | User is on Learner Assessment Detail page | The user navigates back | The system returns to Progress & Reports and preserves filter state | — |"
+      "text": "AC-19: Given the report view is closed, when temporary client state is released, then no credential or private report value is persisted.",
+      "sourceAnchor": "line:95",
+      "sourceQuote": "AC-19: Given the report view is closed, when temporary client state is released, then no credential or private report value is persisted."
     }
   ],
   "warnings": []

@@ -35,39 +35,14 @@
       "id": "internal-hostname",
       "detectorId": "hostname-v1",
       "fingerprintSha256": "49d59786804ea36cc1eaae2e270caf0e9df894eadcec92a110651f116c77d4cf",
-      "expectedTotal": 21,
-      "occurrences": [
-        {
-          "path": ".claude/assurance/baselines/us-ad-095-progress-reports.spec-ir.json",
-          "expectedCount": 13,
-          "disposition": "replace-with-synthetic-fixture",
-          "reasonCode": "internal-service-fixture"
-        },
-        {
-          "path": ".claude/integrations/confluence-b0-intake.test.ts",
-          "expectedCount": 1,
-          "disposition": "replace-with-synthetic-fixture",
-          "reasonCode": "internal-service-fixture"
-        },
-        {
-          "path": ".claude/integrations/confluence-refetch-actor.test.ts",
-          "expectedCount": 5,
-          "disposition": "replace-with-synthetic-fixture",
-          "reasonCode": "internal-service-fixture"
-        },
-        {
-          "path": ".claude/mcp-server/confluence-http.test.ts",
-          "expectedCount": 2,
-          "disposition": "replace-with-synthetic-fixture",
-          "reasonCode": "internal-service-fixture"
-        }
-      ]
+      "expectedTotal": 0,
+      "occurrences": []
     },
     {
       "id": "live-supabase-project-ref",
       "detectorId": "supabase-project-ref-v1",
       "fingerprintSha256": "d5b7bcc56029942d6f4e5274fec1b9f4dfe870943051dead0cb50e391bba8182",
-      "expectedTotal": 8,
+      "expectedTotal": 5,
       "occurrences": [
         {
           "path": "docs/evidence/i1-self-improvement-cycle-2026-08-12.json",
@@ -98,18 +73,6 @@
           "expectedCount": 1,
           "disposition": "genericize",
           "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "scripts/post-17-privacy-wave-c2-schema-migration-design.test.ts",
-          "expectedCount": 2,
-          "disposition": "replace-with-synthetic-fixture",
-          "reasonCode": "internal-service-fixture"
-        },
-        {
-          "path": "scripts/post-17-privacy-wave-c4d-disposable-verification.test.ts",
-          "expectedCount": 1,
-          "disposition": "replace-with-synthetic-fixture",
-          "reasonCode": "internal-service-fixture"
         }
       ]
     },

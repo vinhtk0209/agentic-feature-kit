@@ -12,6 +12,7 @@ const dashboardTestPath = 'tests/p17-016-c4d-disposable-verification.test.ts'
 const seedPath = 'scripts/fixtures/p17-016-c4d-foundation-seed.sql'
 const capabilityPath = '.claude/integrations/verification-writer-capability.ts'
 const recordPath = '.claude/integrations/record-verify.ts'
+const embeddedProjectRefPattern = /(?:https:\/\/[a-z]{20}\.supabase\.co\b|\bproject_ref\s*[:=]\s*['"]?[a-z]{20}\b)/
 
 assert.ok(
   fs.existsSync(path.join(kitRoot, 'docs', 'roadmap', 'p17-016-wave-c4-verification-sink-plan.md')),
@@ -43,7 +44,7 @@ for (const source of [runner, dashboardTest, seed]) {
   assert.doesNotMatch(source, /https?:\/\//)
   assert.doesNotMatch(source, /[A-Za-z0-9+/]{160,}={0,2}/)
 }
-for (const source of [runner, seed]) assert.doesNotMatch(source, /vkuojxgvkxndftenrdno/)
+for (const source of [runner, seed]) assert.doesNotMatch(source, embeddedProjectRefPattern)
 
 for (const token of [
   'postgres@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73',
