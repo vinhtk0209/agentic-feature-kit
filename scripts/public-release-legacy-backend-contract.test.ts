@@ -125,8 +125,15 @@ test('marker registry preserves R4A removals within monotonic remediation ceilin
     result[occurrence.disposition].occurrences += occurrence.expectedCount
     return result
   }, {})
-  assert.deepEqual(dispositions.genericize, { bindings: 16, occurrences: 40 })
-  assert.deepEqual(dispositions['move-to-private-archive'], { bindings: 6, occurrences: 6 })
+  assert.ok(Object.keys(dispositions).every((disposition) => [
+    'genericize',
+    'move-to-private-archive',
+    'replace-with-synthetic-fixture',
+  ].includes(disposition)))
+  assert.ok((dispositions.genericize?.bindings ?? 0) <= 16)
+  assert.ok((dispositions.genericize?.occurrences ?? 0) <= 40)
+  assert.ok((dispositions['move-to-private-archive']?.bindings ?? 0) <= 6)
+  assert.ok((dispositions['move-to-private-archive']?.occurrences ?? 0) <= 6)
   const syntheticFixtures = dispositions['replace-with-synthetic-fixture'] ?? { bindings: 0, occurrences: 0 }
   assert.ok(syntheticFixtures.bindings <= 6)
   assert.ok(syntheticFixtures.occurrences <= 24)

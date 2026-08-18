@@ -468,7 +468,7 @@ Net: 2/10 parity categories passed = **80% drift**. Reference and golden both pa
 
 **Trigger**: AnalyzeExamPerformance B11b first run — passing route `/course-dashboard/...` produced HTTP 200 (webpack serves SPA shell) but React body text = 0 chars and all `waitForSelector` calls timed out at 15s. Root cause: baseUrl is `http://localhost:1999` (no suffix); without the PUBLIC_PATH prefix, React Router could not match any routes and rendered nothing. Evidence: state 19 `navigate` (absolute URL with prefix) passed immediately — confirming router mismatch not auth or timing.
 
-**Initial fix (discarded)**: hardcode prefix in each invocation (`"/isu-elearner-learning/course-dashboard/..."`). Rejected because PUBLIC_PATH is app-specific (e.g. `/isu-elearner-learning/` for this MFE, `/authoring/` for Studio MFE) — callers shouldn't need to know or remember it.
+**Initial fix (discarded)**: hardcode prefix in each invocation (`"/example-learning-app/course-dashboard/..."`). Rejected because PUBLIC_PATH is app-specific (e.g. `/example-learning-app/` for this MFE, `/authoring/` for Studio MFE) — callers shouldn't need to know or remember it.
 
 **Final fix**: runner reads `process.env.PUBLIC_PATH` from `.env.playwright` and prepends it automatically. Guard prevents double-prefix if caller already included it. Users configure once per project, invocations use bare feature routes: `npx tsx .claude/integrations/playwright-runner.ts "/course-dashboard/..."`. `.env.playwright` template comment explains how to change for other MFEs.
 
@@ -479,7 +479,7 @@ Net: 2/10 parity categories passed = **80% drift**. Reference and golden both pa
 
 **Where**: `docs/specs/.feedback-history.md` pattern note; B11 ux-states.json authoring guide.
 
-**Trigger**: Same run — `navigate` action steps that used absolute URL (e.g. `http://localhost:1999/isu-elearner-learning/...`) worked; the initial route (path-only, no PUBLIC_PATH) did not. Consistent pattern: playwright `page.goto()` with a path-only string that starts with `/` resolves to `baseUrl + path` without the PUBLIC_PATH; only absolute URLs carry the full prefix reliably.
+**Trigger**: Same run — `navigate` action steps that used absolute URL (e.g. `http://localhost:1999/example-learning-app/...`) worked; the initial route (path-only, no PUBLIC_PATH) did not. Consistent pattern: playwright `page.goto()` with a path-only string that starts with `/` resolves to `baseUrl + path` without the PUBLIC_PATH; only absolute URLs carry the full prefix reliably.
 
 **Change**: ux-states.json authoring rule: `navigate` action `url` MUST be absolute (`http://...`) and MUST include the full PUBLIC_PATH. Path-only values are prohibited because the runner cannot reliably reconstruct the correct base.
 
@@ -947,7 +947,7 @@ curl check → if NOT 200/302:
 **Where**: `.claude/integrations/playwright-runner.ts` — `runFeatureVerification()` baseUrl read.
 
 **Trigger**: a `DEV_SERVER_URL` with a trailing slash (e.g. `http://localhost:3000/`) produced double-slash URLs
-(`http://localhost:3000//isu-elearner-learning/...`) that caused navigation failures with no obvious error.
+(`http://localhost:3000//example-learning-app/...`) that caused navigation failures with no obvious error.
 
 **Change**: `const baseUrl = (process.env.DEV_SERVER_URL ?? 'http://localhost:1999').replace(/\/$/, '');`
 
@@ -1128,7 +1128,7 @@ already built for the `design-to-ui` roadmap but explicitly marked "NOT wired in
 (Phase 2)" in its own header) into the flagship for the first time — a narrower, B2.5-only wiring than
 the full D0/`design-to-ui` roadmap those hooks were designed for.
 
-**Why**: a live run of the flagship on `isu-elearner-learning` (feature `US-LE-019-AttendanceCheckin`)
+**Why**: a live run of the flagship on `example-learning-app` (feature `US-LE-019-AttendanceCheckin`)
 built a `CourseHeader` component from a spec that included a Figma link, but B2.5 (as it existed before
 this change) has NO Figma-awareness at all — it only ever estimates tokens by having the model look at
 a flattened screenshot. Two independent, confirmed root causes produced a visibly wrong header once the
@@ -1155,13 +1155,13 @@ field=<name> prose=<value> figma=<value>`) rather than silently resolved, so a h
 spec document itself is stale. Falls back to the existing screenshot Process unchanged when no Figma URL
 is present or `FIGMA_TOKEN` is missing — this is additive, not a breaking change to the existing path.
 
-**Verified by**: the `isu-elearner-learning` worked example — re-fetched the same Figma node
+**Verified by**: the `example-learning-app` worked example — re-fetched the same Figma node
 (`QwSquTxduuodo0r4tIqiNq`, node `6713-66557`) via `figma-rest-source.ts`'s underlying REST calls,
 confirmed the exact gradient stops / font size / 3 additional accent colors, corrected
 `visual-properties.md` + the feature's `.scss` to match, and documented the full root-cause chain in that
-feature's `recovery.log` (`[B12-figma-audit]` entry, `isu-elearner-learning` repo, same date). NOT yet
+feature's `recovery.log` (`[B12-figma-audit]` entry, `example-learning-app` repo, same date). NOT yet
 run through the kit's own `test:integration` / `version:check` suite from this session — the target repo
-(`isu-elearner-learning`) does not carry `.claude/_content/*.md` as an editable copy (it's sync-only), so
+(`example-learning-app`) does not carry `.claude/_content/*.md` as an editable copy (it's sync-only), so
 this change lives only in the source-of-truth kit until the next `npm run sync`. **PROMPT_VERSION left
 at v3.19** — this change did not bump it, deferring to whoever finalizes the in-flight D-cross-2 (Change
 U.1) version bump above so the two don't collide; a maintainer should fold both into one version bump
@@ -1176,7 +1176,7 @@ U.1) version bump above so the two don't collide; a maintainer should fold both 
 **Where**: proposed amendment to `## HARD RULE 32` (contractStatus) and/or B10's checklist-per-file section
 in `.claude/commands/feature-from-confluence.md` — **not yet applied to the flagship command file this
 session** (see Verified-by / Status below for why). Concretely demonstrated in the target repo
-`isu-elearner-learning`: `src/data/services/course-dashboard/api.ts` (mapper bug fix),
+`example-learning-app`: `src/data/services/course-dashboard/api.ts` (mapper bug fix),
 `src/pages/course-dashboard/CourseTools.tsx` + `course-dashboard.scss` (icon chip), new
 `src/course-home/data/__factories__/courseDashboardOutline.factory.js` wired into the repo's existing
 `src/course-home/data/mockSetup.js` (`USE_MOCK_DATA` + `axios-mock-adapter` + rosie factory convention).
@@ -1225,11 +1225,11 @@ AND the spec has a Figma link or ≥1 UI_SCREENSHOT annotation, B10 (or a new co
      duration of its run, not rely on a human remembering to revert it (this session did revert manually,
      but the human user prompted for it — a future automated B11 run should not depend on that).
 
-**Verified by**: the `isu-elearner-learning` worked example — `npx tsc --noEmit` clean on all touched
+**Verified by**: the `example-learning-app` worked example — `npx tsc --noEmit` clean on all touched
 files, `courseMeta.test.ts` 13/13 still passing, and a live `playwright-runner.ts` screenshot with the
 mock flag on showed the meta bar/quick-info-panel/banner/sections/icon-chips all rendering with real data
 matching the Figma reference closely (compare
-`isu-elearner-learning:docs/specs/US-LE-019-AttendanceCheckin/images/verify-pass2-rich-mock.png` against
+`example-learning-app:docs/specs/US-LE-019-AttendanceCheckin/images/verify-pass2-rich-mock.png` against
 `...figma-source-full-page.png`). One generic `PLAYWRIGHT-004` "error alert visible" check false-positived
 on an unrelated, empty, hidden global `.toast-container` (`[role="alert"]` is too broad a selector for
 that check) — noted but not itself part of this lesson.
@@ -1252,7 +1252,7 @@ working tree for the user to commit/sync on their own timeline, alongside Change
 **Where**: proposed amendment to the B6.5 Design Review "Component Decomposition" section and/or the B10
 per-file checklist in `.claude/commands/feature-from-confluence.md` — **not yet applied**, worked-example
 lesson only (see Status below), same posture as Change V.2. Concretely demonstrated in
-`isu-elearner-learning`: `src/pages/course-dashboard/CourseHeader.tsx` (now accepts
+`example-learning-app`: `src/pages/course-dashboard/CourseHeader.tsx` (now accepts
 `tabs`/`activeTabKey`/`onTabSelect` and renders `CourseTabs` internally, nested inside its own `__main`
 column), `CourseDashboard.tsx` (no longer renders `CourseTabs` as a standalone sibling after
 `CourseHeader`), `course-dashboard.scss` (`.course-dashboard-tabs` restyled for a blue-background parent:
@@ -1286,11 +1286,11 @@ mechanical proxy: if two components in the same screen share a background color/
 are implemented as CSS-independent siblings (each with its own background rule) rather than one being
 visually contained by the other, that's a signal to re-check nesting against the design tree.
 
-**Verified by**: the `isu-elearner-learning` worked example — `npx tsc --noEmit` clean, `courseMeta.test.ts`
+**Verified by**: the `example-learning-app` worked example — `npx tsc --noEmit` clean, `courseMeta.test.ts`
 13/13 still passing, `eslint` clean on touched files, and a live `playwright-runner.ts` full-page
 screenshot confirming the tab bar now renders inside the blue hero, left-aligned, translucent-white/white
 text, matching the Figma reference (compare
-`isu-elearner-learning:docs/specs/US-LE-019-AttendanceCheckin/images/verify-pass3-tabs-in-header.png`
+`example-learning-app:docs/specs/US-LE-019-AttendanceCheckin/images/verify-pass3-tabs-in-header.png`
 against `...figma-source-full-page.png`).
 
 **Status — NOT applied to the flagship command file, NOT committed, NOT synced this session**: recorded as
@@ -1308,7 +1308,7 @@ Change V.1 and V.2 for the user to commit/sync on their own timeline.
 
 **Where**: `.claude/_content/images.md` — new **Step 0.5** inserted directly after Step 0 (Change V.1) in
 B2.5, applied in this session (unlike V.2/V.3 above, which are still worked-example-only proposals).
-Concretely demonstrated in `isu-elearner-learning`:
+Concretely demonstrated in `example-learning-app`:
 `src/pages/course-dashboard/{CourseHeader,CourseUnitRow,CourseTools,CourseDashboard,
 StartResumeBanner}.tsx` (5 icon swaps).
 
@@ -1371,7 +1371,7 @@ above. `npx tsc --noEmit` clean on all 5 touched files; existing `courseMeta.tes
 this, V.1, V.2, V.3, and the in-flight D-cross-2 Change U.1 should be folded into one v3.20 release bump
 together by a maintainer, rather than each incrementing separately. Kit repo still has the unrelated
 uncommitted `D-cross-2` work in the working tree; this entry sits alongside it pending that maintainer
-pass. `npm run sync` was run after this change to push `images.md` to `isu-elearner-learning` (see that
+pass. `npm run sync` was run after this change to push `images.md` to `example-learning-app` (see that
 repo's git history for the synced copy) — the flagship command file itself was not touched, so no
 functional risk to already-in-flight kit runs.
 
@@ -1426,7 +1426,7 @@ actually knows it just finished is simpler and matches how every other phase tra
 `US-LE-019-AttendanceCheckin | done | BASELINE | — | ✅ | 2026-07-10` instead of whatever stale phase
 was there before.
 
-**Status — applied to `feature-from-confluence.md` in both the kit and `isu-elearner-learning`
+**Status — applied to `feature-from-confluence.md` in both the kit and `example-learning-app`
 (surgical two-hunk copy, not a full `npm run sync`, for the same reason as Change V.4: the kit repo
 still has unrelated uncommitted `D-cross-2` work staged in the same file that must not leak to the
 target)**. `PROMPT_VERSION` left at v3.19 — same deferral as V.1/V.4, folds into the pending v3.20
@@ -1460,7 +1460,7 @@ ONE of those rows will, by construction, leave the others stale unless the fix s
 the UI table, same route/interaction in the Playwright table) and update them together in the same edit,
 with a short cross-reference note (`"see ACT-NN"`) rather than independently re-describing the same fact.
 
-**Verified by**: the `isu-elearner-learning` worked example — found and synced all 3 stale rows in one pass
+**Verified by**: the `example-learning-app` worked example — found and synced all 3 stale rows in one pass
 (2026-07-10), each cross-referencing the ACT-XX row that already proved the behavior live.
 
 <!-- @lesson id="L-2026-07-10-004" classification="prompt_rule" priority="high" root_cause="workflow_design_flaw" enforced_by="none" test_status="pending" -->
@@ -1496,14 +1496,14 @@ CHECK_IN_SUCCESS_TOAST_DELAY_MS)`. Live re-verified: toast text now captured exa
 
 **Status — NOT applied to `feature-from-confluence.md`/`CODING-CONVENTION.md` this session (worked-example
 lesson only, same posture as V.2/V.3)**. The one thing that WAS applied directly (not proposed) is the actual
-product-code fix in `isu-elearner-learning`, and the checklist row corrections from Change V.6a, both
+product-code fix in `example-learning-app`, and the checklist row corrections from Change V.6a, both
 documented in that repo's `recovery.log` (`[B12-postfix-recheck]`, 2026-07-10).
 
 ---
 
 ## 2026-07-10 — `save_confluence_images` silently dropped 27/37 images (hardcoded 10-image cap)
 
-**Source**: worked example `US-LE-031-CoursePlayerMultiFormat` (`isu-elearner-learning`). B2 image fetch
+**Source**: worked example `US-LE-031-CoursePlayerMultiFormat` (`example-learning-app`). B2 image fetch
 reported "Saved 10/10 image(s)" for a Confluence page that actually embeds 37 distinct images — the tool's
 own success message made the truncation invisible (100% of what it *tried* to save succeeded, so nothing
 looked wrong). The 27 dropped images included the 4 newest "Enhance UI/UX" (V.22 revision) screenshots —
@@ -1537,7 +1537,7 @@ was raised.
 Editing `.claude/mcp-server/index.ts` did **not** take effect on the next tool call — the MCP server is a
 long-running `npx tsx` subprocess spawned once per session, so an on-disk edit is invisible until the
 process actually restarts. A full Claude Code restart was required before `save_confluence_images` picked up
-the fix; even then, on `isu-elearner-learning` specifically the re-fetch *still* reported "10/10" post-restart
+the fix; even then, on `example-learning-app` specifically the re-fetch *still* reported "10/10" post-restart
 (cause unconfirmed — possibly a stale process reused across restart in that environment). The reliable
 fallback used to unblock the worked example: a standalone one-off script replicating `downloadPageImages()`'s
 attachment-map logic, run directly via `npx tsx`, bypassing the long-running MCP process entirely. **Any
@@ -1545,7 +1545,7 @@ future fix to a running MCP server's source file should be verified end-to-end (
 standalone-script bypass is a legitimate fallback when a restart doesn't visibly take effect.**
 
 **Status — APPLIED directly** (not proposed) to `.claude/mcp-server/index.ts` in this kit repo, mirroring the
-same one-line fix already applied in `isu-elearner-learning`'s local copy. `PROMPT_VERSION` left unchanged —
+same one-line fix already applied in `example-learning-app`'s local copy. `PROMPT_VERSION` left unchanged —
 this is an MCP server bugfix, not a `feature-from-confluence.md` prompt change, so it does not bump the kit's
 prompt version. Confirmed `sync.config.json`'s `syncPaths` includes `"mcp-server/index.ts"` — this fix
 reaches both target repos automatically on the next `npm run sync`, no extra step needed.
@@ -1565,7 +1565,7 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 
 **§5 fail-closed contract** (two opposite postures): wrapper exit ≠ 0 (note write failed / `assertNotKitRepo` fired / tier unspawnable) → **STOP, no B12, no success banner**; exit 0 + `verified:false` → route to rollback (B12 is gated on `verified === true`, never on "the record wrote"); the Supabase `pushVerifyRecord` stays **best-effort/fail-open** so a telemetry outage never fails a real run — but B11 then warns **sync is still BLOCKED** until the `verify_records` row lands (the guard that reads it is fail-CLOSED).
 
-**Also (Change W.2)**: `pre-commit-target.ts`'s target-side verify-gate messages now print the **literal** `record-verify.ts capture …` command per feature instead of the abstract "run the B11 wrapper" (`measurement-layer-b11-wire.md §4`); the "B11 wrapper" IS that CLI, no separate script. Target hooks installed in both `isu-elearner-learning` and `tempp/isu-elearner-authoring` (`.git/hooks/pre-commit` via `install-hooks.ts`) — the missing links the 2026-07-12 audit found absent.
+**Also (Change W.2)**: `pre-commit-target.ts`'s target-side verify-gate messages now print the **literal** `record-verify.ts capture …` command per feature instead of the abstract "run the B11 wrapper" (`measurement-layer-b11-wire.md §4`); the "B11 wrapper" IS that CLI, no separate script. Target hooks installed in both `example-learning-app` and `example-authoring-app` (`.git/hooks/pre-commit` via `install-hooks.ts`) — the missing links the 2026-07-12 audit found absent.
 
 **Verified by**: `version:check` ✅ (all stamps v3.21), `prompt-budget --gate` ✅ (exit 0), `test:record-verify` ✅ (15/15 — §5(a) note-write failure throws, §5(b) failing tier → verified=false, §5(c) push fail-open + guard fail-closed, A1.1 kit refusal, content_hash scope/rename, concrete-command hook message), `test:integration` ✅ (7/7). NOT synced — this is precisely the change whose first real B11 run produces the first `verified=true` row that unblocks sync.
 
@@ -1730,7 +1730,7 @@ reaches both target repos automatically on the next `npm run sync`, no extra ste
 <!-- @lesson id="L-2026-07-12-011" classification="automated_gate" priority="high" root_cause="missing_project_knowledge" enforced_by="none" test_status="pending" -->
 ### Change Z.3 — a real read-only probe DISPROVES the CORS hypothesis: `api.fpt-apps.com` explicitly allows `localhost:1999`; the failure is an unauthenticated 401 mislabeled as CORS
 
-**Where**: verified against the live backend + `.claude/integrations/playwright-runner.ts:297` (`injectAuthTokens` reads `PLAYWRIGHT_ACCESS_TOKEN`, returns false if absent) + `tempp/isu-elearner-authoring/.env.playwright` (has `PLAYWRIGHT_REFRESH_TOKEN` + `PLAYWRIGHT_TOKEN_EXPIRES_AT`, **NO `PLAYWRIGHT_ACCESS_TOKEN`**). **NOT fixed.**
+**Where**: verified against the live backend + `.claude/integrations/playwright-runner.ts:297` (`injectAuthTokens` reads `PLAYWRIGHT_ACCESS_TOKEN`, returns false if absent) + `example-authoring-app/.env.playwright` (has `PLAYWRIGHT_REFRESH_TOKEN` + `PLAYWRIGHT_TOKEN_EXPIRES_AT`, **NO `PLAYWRIGHT_ACCESS_TOKEN`**). **NOT fixed.**
 
 **Why (real probe, 2026-07-12, read-only, no auth)**: an OPTIONS CORS-preflight to
 `https://api.fpt-apps.com/isu-elearner/api/admin/v1/classes/1/grading/` with `Origin: http://localhost:1999`

@@ -200,7 +200,7 @@ function assertRemediationSafeR4ARegression(): void {
   assert.doesNotMatch(source, /assert\.equal\(classifiedOccurrences, 70\)/)
 }
 
-function assertR4BRegistryAuthority(): void {
+function assertR4BRegistryAuthorityIsMonotonic(): void {
   const registry = JSON.parse(read('release/internal-marker-classification.json')) as { markers: Marker[] }
   const internalHost = registry.markers.find((marker) => marker.id === 'internal-hostname')
   const liveProject = registry.markers.find((marker) => marker.id === 'live-supabase-project-ref')
@@ -208,31 +208,36 @@ function assertR4BRegistryAuthority(): void {
   assert.ok(liveProject)
   assert.equal(internalHost.expectedTotal, 0)
   assert.deepEqual(internalHost.occurrences, [])
-  assert.equal(liveProject.expectedTotal, 5)
-  assert.equal(liveProject.occurrences.length, 5)
+  assert.ok(liveProject.expectedTotal <= 5)
+  assert.ok(liveProject.occurrences.length <= 5)
 
   const bindings = registry.markers.flatMap((marker) => marker.occurrences)
   const classifiedOccurrences = registry.markers.reduce((sum, marker) => sum + marker.expectedTotal, 0)
-  assert.equal(bindings.length, 22)
-  assert.equal(classifiedOccurrences, 46)
+  assert.ok(bindings.length <= 22)
+  assert.ok(classifiedOccurrences <= 46)
+  assert.equal(bindings.some((occurrence) => occurrence.disposition === 'replace-with-synthetic-fixture'), false)
   const dispositions = bindings.reduce<Record<string, { bindings: number; occurrences: number }>>((result, occurrence) => {
     result[occurrence.disposition] ??= { bindings: 0, occurrences: 0 }
     result[occurrence.disposition].bindings += 1
     result[occurrence.disposition].occurrences += occurrence.expectedCount
     return result
   }, {})
-  assert.deepEqual(dispositions, {
-    genericize: { bindings: 16, occurrences: 40 },
-    'move-to-private-archive': { bindings: 6, occurrences: 6 },
-  })
+  assert.ok(Object.keys(dispositions).every((disposition) => [
+    'genericize',
+    'move-to-private-archive',
+  ].includes(disposition)))
+  assert.ok((dispositions.genericize?.bindings ?? 0) <= 16)
+  assert.ok((dispositions.genericize?.occurrences ?? 0) <= 40)
+  assert.ok((dispositions['move-to-private-archive']?.bindings ?? 0) <= 6)
+  assert.ok((dispositions['move-to-private-archive']?.occurrences ?? 0) <= 6)
 }
 
-function assertNodeAuthorityTracksR4B(): void {
+function assertNodeAuthorityRemainsFailClosed(): void {
   const source = read('scripts/public-release-contract-node.test.ts')
   assert.match(source, /\['internal-hostname', 0\]/)
-  assert.match(source, /\['live-supabase-project-ref', 5\]/)
-  assert.match(source, /assert\.equal\(result\.classifiedOccurrences, 46\)/)
-  assert.match(source, /assert\.equal\(result\.blockers\.length, 22\)/)
+  assert.match(source, /assert\.equal\(result\.contractValid, true/)
+  assert.match(source, /assert\.equal\(result\.candidateStatus, 'blocked'\)/)
+  assert.match(source, /\['unresolved-marker-disposition'\]/)
 }
 
 function assertReleaseManifestTracksR4B(): void {
@@ -335,8 +340,8 @@ current('synthetic semantic baseline', () => {
 current('reserved Confluence origins', assertReservedConfluenceOrigins)
 current('value-independent project refs', assertValueIndependentProjectRefs)
 current('remediation-safe R4A regression', assertRemediationSafeR4ARegression)
-current('R4B marker registry authority', assertR4BRegistryAuthority)
-current('R4B Node index authority', assertNodeAuthorityTracksR4B)
+current('monotonic R4B marker registry authority', assertR4BRegistryAuthorityIsMonotonic)
+current('fail-closed R4B Node index authority', assertNodeAuthorityRemainsFailClosed)
 current('R4B release-manifest paths', assertReleaseManifestTracksR4B)
 
 assert.deepEqual(currentGaps, [], `R4B synthetic-fixture current-tree gaps: ${currentGaps.join(', ')}`)

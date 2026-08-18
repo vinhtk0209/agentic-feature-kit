@@ -25,7 +25,7 @@
   },
   "markerRegistry": {
     "path": "release/internal-marker-classification.json",
-    "sha256": "94cb889012fd1fd1e7390cf670b1635129b33db1c154e3792abe84be1246c47e"
+    "sha256": "6ba601fa8d03ad5231d1f27898fc29236f03cb446baa62c4f69f89923b829309"
   },
   "requiredPaths": [
     ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -2139,6 +2139,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-r4c-prompt-history-aliases-2026-08-18.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
@@ -2386,6 +2392,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r4b-synthetic-fixtures-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r4c-prompt-history-genericization-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3562,6 +3574,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/post-17-public-release-r4c-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3629,6 +3647,12 @@
     },
     {
       "path": "scripts/public-release-legacy-backend-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/public-release-prompt-history-contract.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
