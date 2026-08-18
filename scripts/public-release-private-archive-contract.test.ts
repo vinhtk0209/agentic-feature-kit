@@ -17,6 +17,7 @@ type ArchiveReceipt = {
 
 const root = process.cwd()
 const receiptPath = 'release/private-archive-receipt.json'
+const evidencePath = 'docs/evidence/post-17-public-release-r4d-private-archive-boundary-2026-08-18.md'
 const archivedEvidencePaths = [
   'docs/evidence/i1-self-improvement-cycle-2026-08-12.json',
   'docs/evidence/i1-self-improvement-cycle-2026-08-12.md',
@@ -92,6 +93,49 @@ function trackedPaths(): Set<string> {
   return new Set(buffer.toString('utf8').split('\0').filter(Boolean))
 }
 
+type PublicManifest = {
+  entries: Array<{ path: string; decision: string; contentKind?: string; reasonCode?: string }>
+}
+function assertPublicManifestAuthority(manifest: PublicManifest, hasEvidence: boolean): void {
+  const expectedCount = hasEvidence ? 616 : 615
+  assert.equal(manifest.entries.length, expectedCount)
+  assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, expectedCount)
+  assert.equal(manifest.entries.filter((entry) => entry.decision === 'exclude').length, 0)
+  assert.equal(manifest.entries.some((entry) => archivedEvidencePaths.includes(entry.path as never)), false)
+  assert.equal(manifest.entries.find((entry) => entry.path === 'sync.config.json')?.decision, 'include')
+  for (const required of [
+    'docs/design/adr-006-private-source-public-export-boundary.md',
+    'docs/roadmap/p17-018-r4d-private-archive-boundary-plan.md',
+    receiptPath,
+    'scripts/post-17-public-release-r4d-plan.test.ts',
+    'scripts/public-release-private-archive-contract.test.ts',
+    'scripts/sync-config.test.ts',
+    'scripts/sync-config.ts',
+  ]) assert.ok(manifest.entries.some((entry) => entry.path === required && entry.decision === 'include'))
+  assert.equal(manifest.entries.find((entry) => entry.path === evidencePath)?.decision, hasEvidence ? 'include' : undefined)
+}
+
+const currentManifest = JSON.parse(read('release/public-release-manifest.json')) as PublicManifest
+const sourceFixture: PublicManifest = {
+  ...currentManifest,
+  entries: currentManifest.entries.filter((entry) => entry.path !== evidencePath),
+}
+const evidenceFixture: PublicManifest = {
+  ...sourceFixture,
+  entries: [...sourceFixture.entries, {
+    path: evidencePath,
+    decision: 'include',
+    contentKind: 'text',
+    reasonCode: 'public-source',
+  }].sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0),
+}
+assertPublicManifestAuthority(sourceFixture, false)
+console.log('PASS source manifest authority without evidence metadata')
+passed += 1
+assertPublicManifestAuthority(evidenceFixture, true)
+console.log('PASS evidence manifest authority with exact metadata row')
+passed += 1
+
 const currentGaps: string[] = []
 function current(name: string, body: () => void): void {
   try {
@@ -128,23 +172,8 @@ current('R4D marker registry authority', () => {
   }, {}), { genericize: { bindings: 14, occurrences: 15 } })
 })
 current('R4D public manifest authority', () => {
-  const manifest = JSON.parse(read('release/public-release-manifest.json')) as {
-    entries: Array<{ path: string; decision: string }>
-  }
-  assert.equal(manifest.entries.length, 615)
-  assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, 615)
-  assert.equal(manifest.entries.filter((entry) => entry.decision === 'exclude').length, 0)
-  assert.equal(manifest.entries.some((entry) => archivedEvidencePaths.includes(entry.path as never)), false)
-  assert.equal(manifest.entries.find((entry) => entry.path === 'sync.config.json')?.decision, 'include')
-  for (const required of [
-    'docs/design/adr-006-private-source-public-export-boundary.md',
-    'docs/roadmap/p17-018-r4d-private-archive-boundary-plan.md',
-    receiptPath,
-    'scripts/post-17-public-release-r4d-plan.test.ts',
-    'scripts/public-release-private-archive-contract.test.ts',
-    'scripts/sync-config.test.ts',
-    'scripts/sync-config.ts',
-  ]) assert.ok(manifest.entries.some((entry) => entry.path === required && entry.decision === 'include'))
+  const tracked = trackedPaths()
+  assertPublicManifestAuthority(currentManifest, tracked.has(evidencePath))
 })
 current('remediation-safe R4C authority', () => {
   const source = read('scripts/public-release-prompt-history-contract.test.ts')
@@ -154,11 +183,11 @@ current('remediation-safe R4C authority', () => {
 })
 current('R4D Node index authority', () => {
   const source = read('scripts/public-release-contract-node.test.ts')
-  assert.match(source, /assert\.equal\(result\.includedPaths, 615\)/)
+  assert.match(source, /assert\.equal\(result\.includedPaths, expectedPaths\.length\)/)
   assert.match(source, /assert\.equal\(result\.excludedPaths, 0\)/)
   assert.match(source, /assert\.equal\(result\.classifiedOccurrences, 15\)/)
   assert.match(source, /assert\.equal\(result\.blockers\.length, 14\)/)
 })
 
 assert.deepEqual(currentGaps, [], `R4D private-archive current-tree gaps: ${currentGaps.join(', ')}`)
-console.log(`public-release-private-archive-contract.test: ${passed} receipt assertions, 7 current surfaces`)
+console.log(`public-release-private-archive-contract.test: ${passed} contract assertions, 7 current surfaces`)

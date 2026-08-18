@@ -359,7 +359,7 @@ await test('current public-release authorities cover the exact planned index and
   const result = evaluatePublicReleaseCandidate({ manifestBytes, registryBytes, files, sha256: nodeSha256 })
   assert.equal(result.contractValid, true, JSON.stringify(result))
   assert.equal(result.candidateStatus, 'blocked')
-  assert.equal(result.includedPaths, 615)
+  assert.equal(result.includedPaths, expectedPaths.length)
   assert.equal(result.excludedPaths, 0)
   assert.equal(result.classifiedOccurrences, 15)
   assert.equal(result.blockers.length, 14)
