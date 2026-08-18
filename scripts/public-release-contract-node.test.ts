@@ -310,7 +310,7 @@ await test('CLI rejects an unclassified synthetic service reference and never em
   }
 })
 
-await test('current public-release authorities cover the exact planned index and report only unresolved dispositions', () => {
+await test('current public-release authorities cover the exact planned index with zero classified identities', () => {
   const listed = spawnSync('git', ['ls-files', '--stage', '-z'], {
     cwd: root,
     encoding: null,
@@ -338,10 +338,10 @@ await test('current public-release authorities cover the exact planned index and
   assert.deepEqual(markerRegistry.markers.map((marker) => [marker.id, marker.expectedTotal]), [
     ['internal-company-token', 0],
     ['internal-hostname', 0],
-    ['live-supabase-project-ref', 1],
-    ['local-user-path', 1],
-    ['workspace-target-authoring', 6],
-    ['workspace-target-learning', 2],
+    ['live-supabase-project-ref', 0],
+    ['local-user-path', 0],
+    ['workspace-target-authoring', 0],
+    ['workspace-target-learning', 0],
   ])
 
   const files: CandidateFile[] = manifest.entries.map((entry) => {
@@ -358,12 +358,11 @@ await test('current public-release authorities cover the exact planned index and
   })
   const result = evaluatePublicReleaseCandidate({ manifestBytes, registryBytes, files, sha256: nodeSha256 })
   assert.equal(result.contractValid, true, JSON.stringify(result))
-  assert.equal(result.candidateStatus, 'blocked')
+  assert.equal(result.candidateStatus, 'eligible-for-later-gates')
   assert.equal(result.includedPaths, expectedPaths.length)
   assert.equal(result.excludedPaths, 0)
-  assert.equal(result.classifiedOccurrences, 10)
-  assert.equal(result.blockers.length, 9)
-  assert.deepEqual([...new Set(result.blockers.map((blocker) => blocker.code))], ['unresolved-marker-disposition'])
+  assert.equal(result.classifiedOccurrences, 0)
+  assert.deepEqual(result.blockers, [])
 })
 
 console.log(`\npublic-release-contract-node.test: ${passed} passed, ${failed} failed`)

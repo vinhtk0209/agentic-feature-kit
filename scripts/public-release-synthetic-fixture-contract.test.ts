@@ -236,8 +236,11 @@ function assertNodeAuthorityRemainsFailClosed(): void {
   const source = read('scripts/public-release-contract-node.test.ts')
   assert.match(source, /\['internal-hostname', 0\]/)
   assert.match(source, /assert\.equal\(result\.contractValid, true/)
-  assert.match(source, /assert\.equal\(result\.candidateStatus, 'blocked'\)/)
-  assert.match(source, /\['unresolved-marker-disposition'\]/)
+  const unresolvedAuthority = /assert\.equal\(result\.candidateStatus, 'blocked'\)/.test(source)
+    && /\['unresolved-marker-disposition'\]/.test(source)
+  const resolvedAuthority = /assert\.equal\(result\.candidateStatus, 'eligible-for-later-gates'\)/.test(source)
+    && /assert\.deepEqual\(result\.blockers, \[\]\)/.test(source)
+  assert.ok(unresolvedAuthority || resolvedAuthority)
 }
 
 function assertReleaseManifestTracksR4B(): void {

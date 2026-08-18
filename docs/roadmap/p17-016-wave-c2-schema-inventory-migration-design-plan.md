@@ -23,7 +23,7 @@ No SQL execution and no sink are part of this scope. P17-016 remains `in_progres
 ## Authorized catalog boundary
 
 The operator's standing continuation authority allowed a read-only catalog query on Supabase
-project `vkuojxgvkxndftenrdno`. A separate SQL Editor snippet preserved the pre-existing operator
+project `<supabase-project-ref>`. A separate SQL Editor snippet preserved the pre-existing operator
 draft and executed one `WITH ... SELECT jsonb_pretty(...)` statement against schema `public`.
 
 The query collected relation, column, constraint, index, policy, grant, function-signature/hash,

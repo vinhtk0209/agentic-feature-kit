@@ -197,8 +197,8 @@ conflate them:
 3. Make `pre-commit-target.ts`'s "B11 wrapper" messages name the concrete `record-verify.ts capture`
    command (§4).
 4. Install the target-side hooks via `install-hooks.ts` (both targets currently missing them, per
-   07-12) — `isu-elearner-learning/.git/hooks/pre-commit` and
-   `tempp/isu-elearner-authoring/.git/hooks/pre-commit`.
+   07-12) — `example-learning-app/.git/hooks/pre-commit` and
+   `tempp/example-authoring-app/.git/hooks/pre-commit`.
 5. Bump v3.20 → v3.21 (all 4 stamps + package.json) and add tests proving the wire fires and fails
    closed on a write failure.
 

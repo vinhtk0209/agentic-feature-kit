@@ -14,7 +14,7 @@ All `file:line` citations are literal, read this session.
 
 ## 0. Grounding — the proven false row and the three defects
 
-Landed row (read-only query): `runner_run_id=run-1783868360863-827b5cdd`, `repo=isu-elearner-authoring`,
+Landed row (read-only query): `runner_run_id=run-1783868360863-827b5cdd`, `repo=example-authoring-app`,
 `feature=AssessmentGrading`, `verified=true`, `tier_a_exit=0`, **`tier_b_exit=0`**, `kit_version=3.18.0`
 — while the same run's b11-runner block reported `b11_b="fail"` (Playwright 0/1 routes).
 

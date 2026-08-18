@@ -25,7 +25,7 @@
   },
   "markerRegistry": {
     "path": "release/internal-marker-classification.json",
-    "sha256": "12d808b79237aeb2dafcaa51cab17836e567462ce81bf48615a1dd58d13567ea"
+    "sha256": "bc7cdb54acfccc08166f7facc1c5b8c412489025f18d381852e11d4a1d2d5712"
   },
   "requiredPaths": [
     ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -2409,6 +2409,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-018-r4f-historical-identity-aliases-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-021-distributed-control-panel-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3604,6 +3610,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/post-17-public-release-r4f-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3659,6 +3671,12 @@
     },
     {
       "path": "scripts/public-release-contract.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/public-release-historical-alias-contract.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
