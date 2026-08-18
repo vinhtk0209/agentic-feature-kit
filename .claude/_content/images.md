@@ -245,7 +245,7 @@ actually queried:
 best-effort from the screenshot/spec prose as before — this step has no fallback path of its own
 because it depends entirely on Step 0 already having resolved a Figma source.
 
-**Verified by**: the `isu-elearner-learning` worked example — re-fetched the same Figma node
+**Verified by**: the `example-learning-app` worked example — re-fetched the same Figma node
 (`QwSquTxduuodo0r4tIqiNq`, node `6713-66557`) via `figma-rest-source.ts`'s `fetchNodes`, found 60
 icon-shaped nodes (22 with a named ancestor instance, 38 without), image-exported the 38 unnamed
 ones via `GET /v1/images`, visually matched all of them, and corrected the 5 confirmed mismatches

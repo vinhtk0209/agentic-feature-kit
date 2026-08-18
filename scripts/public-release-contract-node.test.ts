@@ -340,8 +340,8 @@ await test('current public-release authorities cover the exact planned index and
     ['internal-hostname', 0],
     ['live-supabase-project-ref', 1],
     ['local-user-path', 1],
-    ['workspace-target-authoring', 7],
-    ['workspace-target-learning', 6],
+    ['workspace-target-authoring', 6],
+    ['workspace-target-learning', 2],
   ])
 
   const files: CandidateFile[] = manifest.entries.map((entry) => {
@@ -361,8 +361,8 @@ await test('current public-release authorities cover the exact planned index and
   assert.equal(result.candidateStatus, 'blocked')
   assert.equal(result.includedPaths, expectedPaths.length)
   assert.equal(result.excludedPaths, 0)
-  assert.equal(result.classifiedOccurrences, 15)
-  assert.equal(result.blockers.length, 14)
+  assert.equal(result.classifiedOccurrences, 10)
+  assert.equal(result.blockers.length, 9)
   assert.deepEqual([...new Set(result.blockers.map((blocker) => blocker.code))], ['unresolved-marker-disposition'])
 })
 

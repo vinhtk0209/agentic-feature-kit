@@ -70,14 +70,8 @@
       "id": "workspace-target-authoring",
       "detectorId": "known-token-v1",
       "fingerprintSha256": "dc8c0c3f495a30e7ae24ac811cd9c0a5cfa34689c6a8f46fdc2881a782c4418a",
-      "expectedTotal": 7,
+      "expectedTotal": 6,
       "occurrences": [
-        {
-          "path": ".gitignore",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
         {
           "path": "docs/design/_review/section-10-clean.md",
           "expectedCount": 1,
@@ -114,26 +108,8 @@
       "id": "workspace-target-learning",
       "detectorId": "known-token-v1",
       "fingerprintSha256": "e9b50f08930935c764e091eb6ae793f6d1305e0a4bd89f455237bff16acc7782",
-      "expectedTotal": 6,
+      "expectedTotal": 2,
       "occurrences": [
-        {
-          "path": ".claude/_content/images.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": ".gitignore",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "docs-site/pages/api-reference.mdx",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
         {
           "path": "docs/design/measurement-layer-b11-wire.md",
           "expectedCount": 1,
@@ -142,12 +118,6 @@
         },
         {
           "path": "docs/design/measurement-layer-v1.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "scripts/sync-to-targets.ts",
           "expectedCount": 1,
           "disposition": "genericize",
           "reasonCode": "workspace-identity"
