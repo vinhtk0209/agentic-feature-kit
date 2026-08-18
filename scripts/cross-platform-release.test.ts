@@ -204,15 +204,17 @@ await test('workflow contract requires equal Linux/Windows legs and aggregate re
   const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'workflow-kit-ci.yml'), 'utf8').replace(/\r\n/g, '\n');
   assert.ok(fs.existsSync(path.join(root, '.claude', 'mcp-server', 'package-lock.json')));
   assert.deepEqual(validateCrossPlatformWorkflow(workflow), { passed: true, reasons: [] });
-  const attacks = [
-    workflow.replace('          - platform: windows\n            os: windows-latest\n', ''),
-    workflow.replace('      fail-fast: false', '      fail-fast: true'),
-    workflow.replace('    needs: [kit-verify]\n', ''),
-    workflow.replace('      MATRIX_RESULT: ${{ needs.kit-verify.result }}', '      MATRIX_RESULT: success'),
-    workflow.replace('run: npm run test:kit', 'run: npm run test:post-17-roadmap'),
-    workflow.replace('      - name: Install Confluence MCP dependencies\n        working-directory: .claude/mcp-server\n        run: npm ci --ignore-scripts\n', ''),
+  const attacks: Array<[string, string]> = [
+    ['missing Windows leg', workflow.replace('          - platform: windows\n            os: windows-latest\n', '')],
+    ['fail-fast enabled', workflow.replace('      fail-fast: false', '      fail-fast: true')],
+    ['aggregate dependency missing', workflow.replace('    needs: [kit-verify]\n', '')],
+    ['forged matrix result', workflow.replace('      MATRIX_RESULT: ${{ needs.kit-verify.result }}', '      MATRIX_RESULT: success')],
+    ['full suite weakened', workflow.replace('run: npm run test:kit', 'run: npm run test:post-17-roadmap')],
+    ['nested MCP install missing', workflow.replace('      - name: Install Confluence MCP dependencies\n        working-directory: .claude/mcp-server\n        run: npm ci --ignore-scripts\n', '')],
   ];
-  for (const attacked of attacks) assert.equal(validateCrossPlatformWorkflow(attacked).passed, false);
+  for (const [name, attacked] of attacks) {
+    assert.equal(validateCrossPlatformWorkflow(attacked).passed, false, `${name} attack unexpectedly passed`);
+  }
 });
 
 await test('tracked TypeScript tests contain no Windows-only Gemini fixture root', () => {
