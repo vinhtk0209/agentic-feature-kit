@@ -332,7 +332,7 @@ and the verify note. It does not. The workspace splits them:
 - **`docs/specs/<Feature>/`** (spec artifacts: `checklist.md`, `ux-states.json`, context) lives in
   the **kit repo** (source of truth). This is what the frozen §3.4 chose to hash.
 - **`src/<Feature>/`** (the generated feature code + its `*.test.ts`) lives in a **target repo**
-  (`isu-elearner-learning` / `isu-elearner-authoring`). The kit repo has **no `src/` at all.**
+  (`example-learning-app` / `example-authoring-app`). The kit repo has **no `src/` at all.**
 - **Tier A/B actually EXECUTE in the target repo** during the B0–B12 command flow (dev server,
   browser, `src/<Feature>` are all there). **The real exit codes are born target-side**, so the
   trusted verdict is a target-repo fact, not a kit-repo fact.

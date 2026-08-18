@@ -57,7 +57,7 @@ compiler check.
 
 `scripts/evidence/p17-011-browser-fixture.ts` created a disposable linked-worktree-shaped root at:
 
-`C:\Users\vinht\AppData\Local\Temp\p17-011 linked worktree Ω xIW1Mb`
+`%TEMP%\agentic-feature-kit linked worktree Ω`
 
 The production adapter started its server from that exact real `cwd` with `shell: false`.
 Readiness and `/feature` returned HTTP 200 at `http://127.0.0.1:55440/feature`; the emitted

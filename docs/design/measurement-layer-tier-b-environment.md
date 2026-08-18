@@ -50,7 +50,7 @@ All `file:line` citations are literal, read this session. Read-only; no code cha
 ## 1. Layer 1 — CORS: does `--disable-web-security` faithfully mirror production?
 
 ### How production reaches the backend (grounded)
-- `tempp/isu-elearner-authoring/.env:16` `API_BASE_URL = 'https://api.fpt-apps.com/isu-elearner'` — a
+- `tempp/example-authoring-app/.env:16` `API_BASE_URL = 'https://api.fpt-apps.com/isu-elearner'` — a
   **direct absolute cross-origin URL**. Other targets too (`LMS_BASE_URL`, `STUDIO_BASE_URL='https://
   cms.fpt-apps.com'`, `.env:15/40`).
 - **No devServer proxy**: `webpack.dev.config.js` exists but no `proxy`/`devServer.proxy` block found;
@@ -473,7 +473,7 @@ well-formed row. The writer and the reader therefore address **different cells**
 not move the count.
 
 Measured on the live target checklist
-(`tempp/isu-elearner-authoring/docs/specs/US-AD-095-ProgressReports/checklist.md`) on 2026-07-20 by
+(`tempp/example-authoring-app/docs/specs/US-AD-095-ProgressReports/checklist.md`) on 2026-07-20 by
 replaying `finalCellVerified` verbatim: **ACT = 1, UI = 0 → 1/38 = 3%**. The single hit is
 `ACT-AC11` (`checklist.md:89`), whose evidence cell contains a literal embedded newline, splitting
 the row across two physical lines so that the *first* physical line terminates at the Status cell —

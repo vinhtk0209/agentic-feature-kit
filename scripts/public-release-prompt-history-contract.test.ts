@@ -162,8 +162,9 @@ function assertNodeAuthorityTracksR4C(): void {
   }
   const classified = source.match(/assert\.equal\(result\.classifiedOccurrences, (\d+)\)/)
   const blockers = source.match(/assert\.equal\(result\.blockers\.length, (\d+)\)/)
+  const explicitlyEmptyBlockers = /assert\.deepEqual\(result\.blockers, \[\]\)/.test(source)
   assert.ok(classified && Number(classified[1]) <= 21, 'Node classified authority exceeds R4C')
-  assert.ok(blockers && Number(blockers[1]) <= 20, 'Node blocker authority exceeds R4C')
+  assert.ok((blockers && Number(blockers[1]) <= 20) || explicitlyEmptyBlockers, 'Node blocker authority exceeds R4C')
 }
 
 function assertPackageRouting(): void {

@@ -42,87 +42,29 @@
       "id": "live-supabase-project-ref",
       "detectorId": "supabase-project-ref-v1",
       "fingerprintSha256": "d5b7bcc56029942d6f4e5274fec1b9f4dfe870943051dead0cb50e391bba8182",
-      "expectedTotal": 1,
-      "occurrences": [
-        {
-          "path": "docs/roadmap/p17-016-wave-c2-schema-inventory-migration-design-plan.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        }
-      ]
+      "expectedTotal": 0,
+      "occurrences": []
     },
     {
       "id": "local-user-path",
       "detectorId": "windows-user-path-v1",
       "fingerprintSha256": "0ac46f461df6235202015b30e55906d9c2c91479533465f0045fa161d44eb531",
-      "expectedTotal": 1,
-      "occurrences": [
-        {
-          "path": "docs/evidence/post-17-worktree-browser-verification.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "local-user-context"
-        }
-      ]
+      "expectedTotal": 0,
+      "occurrences": []
     },
     {
       "id": "workspace-target-authoring",
       "detectorId": "known-token-v1",
       "fingerprintSha256": "dc8c0c3f495a30e7ae24ac811cd9c0a5cfa34689c6a8f46fdc2881a782c4418a",
-      "expectedTotal": 6,
-      "occurrences": [
-        {
-          "path": "docs/design/_review/section-10-clean.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "docs/design/measurement-layer-b11-gate-and-version-bootstrap.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "docs/design/measurement-layer-b11-wire.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "docs/design/measurement-layer-tier-b-environment.md",
-          "expectedCount": 2,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "docs/design/measurement-layer-v1.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        }
-      ]
+      "expectedTotal": 0,
+      "occurrences": []
     },
     {
       "id": "workspace-target-learning",
       "detectorId": "known-token-v1",
       "fingerprintSha256": "e9b50f08930935c764e091eb6ae793f6d1305e0a4bd89f455237bff16acc7782",
-      "expectedTotal": 2,
-      "occurrences": [
-        {
-          "path": "docs/design/measurement-layer-b11-wire.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": "docs/design/measurement-layer-v1.md",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        }
-      ]
+      "expectedTotal": 0,
+      "occurrences": []
     }
   ]
 }

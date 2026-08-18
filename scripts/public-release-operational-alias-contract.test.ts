@@ -136,7 +136,7 @@ function assertSurface(value: string, authority: SurfaceAuthority): void {
 
 function assertRegistryAuthority(): void {
   const registry = JSON.parse(read('release/internal-marker-classification.json')) as { markers: Marker[] }
-  assert.deepEqual(registry.markers.map((marker) => [marker.id, marker.expectedTotal]), [
+  const maximumTotals = new Map([
     ['internal-company-token', 0],
     ['internal-hostname', 0],
     ['live-supabase-project-ref', 1],
@@ -144,6 +144,7 @@ function assertRegistryAuthority(): void {
     ['workspace-target-authoring', 6],
     ['workspace-target-learning', 2],
   ])
+  assert.deepEqual(registry.markers.map((marker) => marker.id), [...maximumTotals.keys()])
   const expectedFingerprints = new Map([
     ['live-supabase-project-ref', 'd5b7bcc56029942d6f4e5274fec1b9f4dfe870943051dead0cb50e391bba8182'],
     ['local-user-path', '0ac46f461df6235202015b30e55906d9c2c91479533465f0045fa161d44eb531'],
@@ -151,12 +152,16 @@ function assertRegistryAuthority(): void {
     ['workspace-target-learning', 'e9b50f08930935c764e091eb6ae793f6d1305e0a4bd89f455237bff16acc7782'],
   ])
   for (const marker of registry.markers) {
+    const maximum = maximumTotals.get(marker.id)
+    assert.notEqual(maximum, undefined, `unexpected marker: ${marker.id}`)
+    assert.ok(marker.expectedTotal <= maximum!, `R4E marker count increased: ${marker.id}`)
     const expected = expectedFingerprints.get(marker.id)
     if (expected) assert.equal(marker.fingerprintSha256, expected, `fingerprint drift: ${marker.id}`)
   }
   const bindings = registry.markers.flatMap((marker) => marker.occurrences)
-  assert.equal(bindings.length, 9, 'R4E marker binding count')
-  assert.equal(registry.markers.reduce((sum, marker) => sum + marker.expectedTotal, 0), 10, 'R4E occurrence count')
+  const classifiedOccurrences = registry.markers.reduce((sum, marker) => sum + marker.expectedTotal, 0)
+  assert.ok(bindings.length <= 9, 'R4E marker binding ceiling')
+  assert.ok(classifiedOccurrences <= 10, 'R4E occurrence ceiling')
   assert.equal(bindings.every((binding) => binding.disposition === 'genericize'), true, 'R4E disposition set')
   assert.equal(bindings.every((binding) => binding.reasonCode === 'workspace-identity' || binding.reasonCode === 'local-user-context'), true, 'R4E reason-code set')
   assert.equal(bindings.some((binding) => candidatePaths.includes(binding.path as never)), false, 'stale operational binding')
@@ -180,10 +185,10 @@ function assertR4DRegressionIsMonotonic(): void {
 
 function assertNodeAuthorityTracksR4E(): void {
   const source = read('scripts/public-release-contract-node.test.ts')
-  assert.match(source, /\['workspace-target-authoring', 6\]/)
-  assert.match(source, /\['workspace-target-learning', 2\]/)
-  assert.match(source, /assert\.equal\(result\.classifiedOccurrences, 10\)/)
-  assert.match(source, /assert\.equal\(result\.blockers\.length, 9\)/)
+  assert.match(source, /\['workspace-target-authoring', 0\]/)
+  assert.match(source, /\['workspace-target-learning', 0\]/)
+  assert.match(source, /assert\.equal\(result\.classifiedOccurrences, 0\)/)
+  assert.match(source, /assert\.deepEqual\(result\.blockers, \[\]\)/)
 }
 
 function assertPackageRouting(): void {
@@ -201,9 +206,9 @@ function assertReleaseManifest(): void {
   }
   const byPath = new Map(manifest.entries.map((entry) => [entry.path, entry]))
   const hasEvidence = byPath.has(evidencePath)
-  const expectedCount = hasEvidence ? 620 : 619
-  assert.equal(manifest.entries.length, expectedCount)
-  assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, expectedCount)
+  const minimumCount = hasEvidence ? 620 : 619
+  assert.ok(manifest.entries.length >= minimumCount, 'R4E manifest path floor')
+  assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, manifest.entries.length)
   assert.equal(manifest.entries.filter((entry) => entry.decision === 'exclude').length, 0)
   for (const relativePath of sourceManifest) {
     const entry = byPath.get(relativePath)

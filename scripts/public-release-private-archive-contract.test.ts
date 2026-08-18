@@ -191,8 +191,9 @@ current('R4D Node index authority', () => {
   assert.match(source, /assert\.equal\(result\.excludedPaths, 0\)/)
   const classified = source.match(/assert\.equal\(result\.classifiedOccurrences, (\d+)\)/)
   const blockers = source.match(/assert\.equal\(result\.blockers\.length, (\d+)\)/)
+  const explicitlyEmptyBlockers = /assert\.deepEqual\(result\.blockers, \[\]\)/.test(source)
   assert.ok(classified && Number(classified[1]) <= 15)
-  assert.ok(blockers && Number(blockers[1]) <= 14)
+  assert.ok((blockers && Number(blockers[1]) <= 14) || explicitlyEmptyBlockers)
 })
 
 assert.deepEqual(currentGaps, [], `R4D private-archive current-tree gaps: ${currentGaps.join(', ')}`)

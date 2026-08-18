@@ -22,7 +22,7 @@ well-formed row. The writer and the reader therefore address **different cells**
 not move the count.
 
 Measured on the live target checklist
-(`tempp/isu-elearner-authoring/docs/specs/US-AD-095-ProgressReports/checklist.md`) on 2026-07-20 by
+(`tempp/example-authoring-app/docs/specs/US-AD-095-ProgressReports/checklist.md`) on 2026-07-20 by
 replaying `finalCellVerified` verbatim: **ACT = 1, UI = 0 → 1/38 = 3%**. The single hit is
 `ACT-AC11` (`checklist.md:89`), whose evidence cell contains a literal embedded newline, splitting
 the row across two physical lines so that the *first* physical line terminates at the Status cell —
