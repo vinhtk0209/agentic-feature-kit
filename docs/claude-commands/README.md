@@ -22,7 +22,7 @@
 
 | Version | Date | Summary |
 |---------|------|---------|
-| **3.17** | 2026-06-13 | **Release hardening + standalone extraction (external-audit action pass).** Promotes the previously working-tree **Phase H** (feature-index → `INDEX.md`, feature-digest, section-overlap detection, **AUTONOMY** opt-in mode, ownership **Check 3**) to released. **Cross-edition machinery removed** — kit is now Claude Code only: deleted `parity-check*`, the **B12.7** parity step, the EDITION CONFIG cross-edition block, B12.6 Copilot cross-sync (HR16/17/18/24/25/26 rationale repaired). **CI** added (`.github/workflows/workflow-kit-ci.yml` runs `test:kit` on PR); `tsx`/`typescript` declared. **Core now tested**: `memory.test.ts` (resume + CRLF regression) + `regression-corpus.test.ts`; `memory.ts` parser deduped. **Version model**: `version-check.ts` makes `PROMPT_VERSION` the single source of truth (gated in `test:kit`); stamps bumped v3.16 → v3.17. **`.http` single-sourced** via `http-contract.template.md`. New `INTEGRATIONS.md` wiring map. `.env` untracked (rotate credential). Standalone kit extracted to `kit-standalone/`. Detail: [HARDENING-CHANGELOG.md](HARDENING-CHANGELOG.md) §9c. |
+| **3.17** | 2026-06-13 | **Release hardening + standalone extraction (external-audit action pass).** Promotes the previously working-tree **Phase H** (feature-index → `INDEX.md`, feature-digest, section-overlap detection, **AUTONOMY** opt-in mode, ownership **Check 3**) to released. **Cross-edition machinery removed** — kit is now Claude Code only: deleted `parity-check*`, the **B12.7** parity step, the EDITION CONFIG cross-edition block, B12.6 Copilot cross-sync (HR16/17/18/24/25/26 rationale repaired). **CI** added (`.github/workflows/workflow-kit-ci.yml` runs `test:kit` on PR); `tsx`/`typescript` declared. **Core now tested**: `memory.test.ts` (resume + CRLF regression) + `regression-corpus.test.ts`; `memory.ts` parser deduped. **Version model**: `version-check.ts` makes `PROMPT_VERSION` the single source of truth (gated in `test:kit`); stamps bumped v3.16 → v3.17. **`.http` single-sourced** via `http-contract.template.md`. New `INTEGRATIONS.md` wiring map. `.env` untracked (rotate credential). Standalone kit extracted to `kit-standalone/`. Detail: [CHANGELOG.md](../../CHANGELOG.md). |
 | **3.16** | 2026-06-11 | **Anti-rework / output-quality (Change S series)** — **HR32** contract-first (B4 asks REAL/PROVISIONAL/FE_ONLY backend-contract status); **HR33** `data/transform.ts` mapping layer (ban blind casts of raw responses to typed values — only `transform.ts` changes when the real API differs); **HR34** business rules become `utils/` fns + tests, not checklist prose; **HR35** B12 "done" shows true verified ratio + blocks claiming complete while >40% unverified; **new step B12.8** Contract Reconciliation (diff inferred ↔ real contract → `RECONCILE.md`). **HR36** full AC + description test coverage (unit + E2E) enforced by a new machine-checked gate `lint-feature.ts` at B11. PROGRESS DISPLAY redesigned (8 phases + 🛑 gate markers + step counter). `/drop-mock` + `/api-contract` made `transform.ts`-aware. |
 | **3.15** | 2026-06-11 | `PUBLIC_PATH` env var support in `playwright-runner.ts` — runner auto-prepends value from `.env.playwright` to every route; no more manual prefix in route arguments. HR27 amended. Fixes blank-page timeout on SPAs with non-root deploy path. |
 | **3.14** | 2026-05-20 | HR22 ceiling + anti-sub-element rule (ui_rows ∈ [12,22]); **HR31** `ux-states.json` non-optional at B10 (≥3 states required even when Playwright opted out); `task-type.md` structured evidence table; B5 checklist 5-section requirement. |
@@ -31,7 +31,7 @@
 | **3.11** | 2026-05-18 | HR23 `/api/admin/` override prevention; HR24 `## ACT —` header prefix; HR22 ACT floor (≥13); HR26 full path in `.full.http`; HR27 dev server public path (later amended v3.15). |
 | **3.10** | 2026-05-18 | HR23 URL family priority; HR24 checklist section header lock; HR25 ACCESS_GUIDE.md 6 exact sections; B2.5 design token extraction. |
 | **3.9** | 2026-05-19 | Content-determinism guardrails (Change M series) — **HARD RULE 20** URL convention lock (grep canonical `/api/v1/` prefix from `src/**/api.ts`, derive `{resource_id}` param from existing conventions), **HARD RULE 21** REQ row literalness (checklist Requirements 1-to-1 with spec Section 2.1), **HARD RULE 22** UI/ACT row granularity (1 row per spec Section 2.3.3 / 2.3.4 entry). Closes drift D10–D12 measured via same-spec re-run. |
-| **3.8** | 2026-05-19 | EDITION CONFIG block, HARD RULE 19 palette relaxation (3–7 colors), image classification i18n EN/VI/JP, `parity-check-semantic.ts`, golden fixture committed, npm scripts `parity-check` / `parity-check:semantic`, BASELINE backup 24h timeout, Copilot browser-use pre-check. See [PARITY_REPORT.md](../archive/PARITY_REPORT.md) for full audit. |
+| **3.8** | 2026-05-19 | EDITION CONFIG block, HARD RULE 19 palette relaxation (3–7 colors), image classification i18n EN/VI/JP, `parity-check-semantic.ts`, golden fixture committed, npm scripts `parity-check` / `parity-check:semantic`, BASELINE backup 24h timeout, Copilot browser-use pre-check. See [.claude/prompt-evolution.md](../../.claude/prompt-evolution.md) for the retained history. |
 | **3.7** | 2026-05-18 | Parity sync to Copilot v3.7 — Hard Rules 17→18, B0.5 Check 2 (Playwright warning), B11 MCP `verify_feature_route` primary path, **new step B12.7** (auto cross-edition parity check via `parity-check.ts`), `--out` flag added to `parity-check.ts` |
 | **3.6** | 2026-05-18 | Visual regression, per-AC verification, image-spec ambiguity scan, accessibility audit, design token extraction (B2.5), cross-edition parity locks |
 | **3.5** | 2026-05-17 | UI image context for B10 + Playwright interactions (mock-error, ux-states.json) + B11 sequential |
@@ -72,7 +72,7 @@
 
 Two new machine gates back the prose: **`contract-probe.ts`** structurally diffs the `.http` mock responses against `data/types.ts` (TS compiler API) + `api.ts` return types to catch field drift before `USE_MOCK` flips off; and B11 verdicts + `recoveries` are now **machine-sourced**, not self-reported. Supporting tooling: `friction-meter.ts` (per-run friction score in B12.5), `lesson-registry.ts`, `check-ownership.ts`, `kpi-report.ts` (`npm run workflow:kpis` / `workflow:dashboard`). The whole toolchain has its own self-test suite — `npm run test:kit`.
 
-Full detail (phase-by-phase, file inventory, CLI reference): [docs/claude-commands/HARDENING-CHANGELOG.md](HARDENING-CHANGELOG.md).
+Full release detail: [CHANGELOG.md](../../CHANGELOG.md).
 
 ---
 
@@ -84,7 +84,7 @@ Full detail (phase-by-phase, file inventory, CLI reference): [docs/claude-comman
 - `checklist.md` REQ rows: 3 (literal spec) vs 6 (decomposed UI controls into REQs)
 - `checklist.md` UI/ACT rows: 14/15 vs 11/10
 
-Net: 2/10 parity categories passed → **80% drift** despite identical schemas. Evidence + reports: [`impl-from-confluence/EVALUATION.md`](../../impl-from-confluence/EVALUATION.md).
+Net: 2/10 parity categories passed → **80% drift** despite identical schemas. The retained history is in [.claude/prompt-evolution.md](../../.claude/prompt-evolution.md).
 
 **Three new HARD RULES** to make content deterministic:
 
@@ -92,7 +92,7 @@ Net: 2/10 parity categories passed → **80% drift** despite identical schemas. 
 2. **HARD RULE 21 — REQ row literalness.** `checklist.md` Requirements MUST be 1-to-1 with spec Section 2.1 Objective (or Requirements) table — same count, same order, light paraphrase only. Tab nav, save buttons, format rules go to UI Verification or ACT, never to REQ. ASSERT `req_rows == spec_objective_count` at B6; mismatch STOPs the gate.
 3. **HARD RULE 22 — UI/ACT row granularity.** UI Verification = exactly 1 row per top-level entry in spec Section 2.3.3 Component description (header, tab bar, each named card, each named section, each popup). Sub-elements roll into parent row. ACT = 1 row per spec Section 2.3.4 AC item + 1 unit-test row per display/format rule.
 
-**Audit trail**: [PARITY_REPORT.md §4 D10–D12](../archive/PARITY_REPORT.md#4-drift-cụ-thể-đã-phát-hiện--cách-xử-lý-ở-v38) + [§8 Change M series](../archive/PARITY_REPORT.md#8-changelog-v38-cho-prompt-evolutionmd) + [.claude/prompt-evolution.md](../../.claude/prompt-evolution.md) "2026-05-19 — v3.8 → v3.9 Determinism guardrails" entry.
+**Audit trail**: [.claude/prompt-evolution.md](../../.claude/prompt-evolution.md), entry "2026-05-19 — v3.8 → v3.9 Determinism guardrails".
 
 ---
 

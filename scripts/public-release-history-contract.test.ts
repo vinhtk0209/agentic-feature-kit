@@ -109,15 +109,20 @@ function validateUnreleasedNote(text: string): string[] {
     'The repository remains private.',
     'The root npm package remains `private: true`.',
     'v3.25 has no numeric Git tag and no GitHub Release.',
-    '31 unresolved marker dispositions',
-    'dependency-license inventory and SBOM',
-    'nightly qualification',
-    'clean-clone qualification',
+    'Internal-marker and private-binary remediation are complete for the current source candidate',
+    'Nightly and manual qualification use the same read-only Linux/Windows matrix',
+    'Dependency license catalog: 616 unique packages across four lockfiles',
+    'Generate deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars',
+    'Run the final distribution-archive scanner',
+    'Complete clean-clone qualification',
     'No version bump is selected by this note.',
     '[changelog](../../CHANGELOG.md)',
     '[public-release readiness plan](../roadmap/p17-018-public-release-plan.md)',
   ] as const
   for (const value of required) if (!text.includes(value)) errors.push(`note-missing:${value}`)
+  if (text.includes('31 unresolved marker dispositions')) errors.push('stale-marker-disposition-gap')
+  if (text.includes('dependency-license inventory and SBOM')) errors.push('stale-license-inventory-gap')
+  if (/^- nightly qualification\s*$/im.test(text)) errors.push('stale-nightly-gap')
   if (/\b(?:release announcement|published release)\b/i.test(text.replace('Not a release announcement', ''))) errors.push('release-announcement-claim')
   return errors
 }
@@ -203,7 +208,9 @@ function validNote(): string {
     '',
     '## Changes after v3.25',
     '',
-    '- Candidate work.',
+    '- Internal-marker and private-binary remediation are complete for the current source candidate.',
+    '- Nightly and manual qualification use the same read-only Linux/Windows matrix.',
+    '- Dependency license catalog: 616 unique packages across four lockfiles.',
     '',
     '## Evidence boundaries',
     '',
@@ -211,10 +218,9 @@ function validNote(): string {
     '',
     '## Remaining release gates',
     '',
-    '- 31 unresolved marker dispositions',
-    '- dependency-license inventory and SBOM',
-    '- nightly qualification',
-    '- clean-clone qualification',
+    '- Generate deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars.',
+    '- Run the final distribution-archive scanner.',
+    '- Complete clean-clone qualification.',
     '',
     '## Compatibility and upgrade notes',
     '',
@@ -239,7 +245,9 @@ const noteFixture = validNote()
 assert.deepEqual(validateUnreleasedNote(noteFixture), [])
 assert.ok(validateUnreleasedNote(noteFixture.replace('`3.25.0`', '`4.0.0`')).some((error) => error.includes('3.25.0')))
 assert.ok(validateUnreleasedNote(noteFixture.replace('The repository remains private.', 'The repository is public-release ready.')).includes('public-ready-claim'))
-assert.ok(validateUnreleasedNote(noteFixture.replace('31 unresolved marker dispositions', 'marker work is complete')).some((error) => error.includes('31 unresolved')))
+assert.ok(validateUnreleasedNote(noteFixture.replace('Internal-marker and private-binary remediation are complete for the current source candidate.', 'Marker state omitted.')).some((error) => error.includes('Internal-marker')))
+assert.ok(validateUnreleasedNote(noteFixture.replace('Generate deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars.', 'SBOM state omitted.')).some((error) => error.includes('SPDX 2.3')))
+assert.ok(validateUnreleasedNote(noteFixture.replace('- Nightly and manual qualification use the same read-only Linux/Windows matrix.', '- nightly qualification')).includes('stale-nightly-gap'))
 const syntheticPrivateHost = ['preview', 'example', 'internal'].join('.')
 assert.ok(validateUnreleasedNote(`${noteFixture.slice(0, -1)}Preview: https://${syntheticPrivateHost}/\n`).includes('private-host'))
 const syntheticLocalPath = ['C:', 'Users', 'example', 'artifact'].join('\\')

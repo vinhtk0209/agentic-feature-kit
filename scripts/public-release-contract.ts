@@ -244,7 +244,7 @@ export function normalizeRepositoryPath(value: unknown, label = 'path'): string 
       throw new Error(`${label} contains a Windows reserved device name`)
     }
   }
-  if (/[ -]/u.test(value)) throw new Error(`${label} contains a control character`)
+  if (/[\u0000-\u001F\u007F]/u.test(value)) throw new Error(`${label} contains a control character`)
   return value
 }
 
@@ -407,7 +407,7 @@ function parseOccurrence(value: unknown, markerIndex: number, index: number): Ma
       typeof record.publicSafeRationale !== 'string'
       || record.publicSafeRationale.trim().length === 0
       || record.publicSafeRationale.length > 500
-      || /[ -]/u.test(record.publicSafeRationale)
+      || /[\u0000-\u001F\u007F]/u.test(record.publicSafeRationale)
     ) throw new Error(`${label}.publicSafeRationale must be non-empty public-safe text`)
   }
   return {

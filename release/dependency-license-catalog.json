@@ -1,0 +1,6299 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "agentic-feature-kit-dependency-license-catalog",
+  "packages": [
+    {
+      "id": "@antfu/install-pkg@1.1.0",
+      "name": "@antfu/install-pkg",
+      "version": "1.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@axe-core/playwright@4.11.3",
+      "name": "@axe-core/playwright",
+      "version": "4.11.3",
+      "license": "MPL-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@braintree/sanitize-url@7.1.2",
+      "name": "@braintree/sanitize-url",
+      "version": "7.1.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@chevrotain/types@11.1.2",
+      "name": "@chevrotain/types",
+      "version": "11.1.2",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/aix-ppc64@0.27.7",
+      "name": "@esbuild/aix-ppc64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/aix-ppc64@0.28.1",
+      "name": "@esbuild/aix-ppc64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/android-arm64@0.27.7",
+      "name": "@esbuild/android-arm64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/android-arm64@0.28.1",
+      "name": "@esbuild/android-arm64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/android-arm@0.27.7",
+      "name": "@esbuild/android-arm",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/android-arm@0.28.1",
+      "name": "@esbuild/android-arm",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/android-x64@0.27.7",
+      "name": "@esbuild/android-x64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/android-x64@0.28.1",
+      "name": "@esbuild/android-x64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/darwin-arm64@0.27.7",
+      "name": "@esbuild/darwin-arm64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/darwin-arm64@0.28.1",
+      "name": "@esbuild/darwin-arm64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/darwin-x64@0.27.7",
+      "name": "@esbuild/darwin-x64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/darwin-x64@0.28.1",
+      "name": "@esbuild/darwin-x64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/freebsd-arm64@0.27.7",
+      "name": "@esbuild/freebsd-arm64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/freebsd-arm64@0.28.1",
+      "name": "@esbuild/freebsd-arm64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/freebsd-x64@0.27.7",
+      "name": "@esbuild/freebsd-x64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/freebsd-x64@0.28.1",
+      "name": "@esbuild/freebsd-x64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-arm64@0.27.7",
+      "name": "@esbuild/linux-arm64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-arm64@0.28.1",
+      "name": "@esbuild/linux-arm64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-arm@0.27.7",
+      "name": "@esbuild/linux-arm",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-arm@0.28.1",
+      "name": "@esbuild/linux-arm",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-ia32@0.27.7",
+      "name": "@esbuild/linux-ia32",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-ia32@0.28.1",
+      "name": "@esbuild/linux-ia32",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-loong64@0.27.7",
+      "name": "@esbuild/linux-loong64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-loong64@0.28.1",
+      "name": "@esbuild/linux-loong64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-mips64el@0.27.7",
+      "name": "@esbuild/linux-mips64el",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-mips64el@0.28.1",
+      "name": "@esbuild/linux-mips64el",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-ppc64@0.27.7",
+      "name": "@esbuild/linux-ppc64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-ppc64@0.28.1",
+      "name": "@esbuild/linux-ppc64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-riscv64@0.27.7",
+      "name": "@esbuild/linux-riscv64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-riscv64@0.28.1",
+      "name": "@esbuild/linux-riscv64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-s390x@0.27.7",
+      "name": "@esbuild/linux-s390x",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-s390x@0.28.1",
+      "name": "@esbuild/linux-s390x",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-x64@0.27.7",
+      "name": "@esbuild/linux-x64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/linux-x64@0.28.1",
+      "name": "@esbuild/linux-x64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/netbsd-arm64@0.27.7",
+      "name": "@esbuild/netbsd-arm64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/netbsd-arm64@0.28.1",
+      "name": "@esbuild/netbsd-arm64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/netbsd-x64@0.27.7",
+      "name": "@esbuild/netbsd-x64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/netbsd-x64@0.28.1",
+      "name": "@esbuild/netbsd-x64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/openbsd-arm64@0.27.7",
+      "name": "@esbuild/openbsd-arm64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/openbsd-arm64@0.28.1",
+      "name": "@esbuild/openbsd-arm64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/openbsd-x64@0.27.7",
+      "name": "@esbuild/openbsd-x64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/openbsd-x64@0.28.1",
+      "name": "@esbuild/openbsd-x64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/openharmony-arm64@0.27.7",
+      "name": "@esbuild/openharmony-arm64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/openharmony-arm64@0.28.1",
+      "name": "@esbuild/openharmony-arm64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/sunos-x64@0.27.7",
+      "name": "@esbuild/sunos-x64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/sunos-x64@0.28.1",
+      "name": "@esbuild/sunos-x64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/win32-arm64@0.27.7",
+      "name": "@esbuild/win32-arm64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/win32-arm64@0.28.1",
+      "name": "@esbuild/win32-arm64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/win32-ia32@0.27.7",
+      "name": "@esbuild/win32-ia32",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/win32-ia32@0.28.1",
+      "name": "@esbuild/win32-ia32",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/win32-x64@0.27.7",
+      "name": "@esbuild/win32-x64",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@esbuild/win32-x64@0.28.1",
+      "name": "@esbuild/win32-x64",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@floating-ui/core@1.7.5",
+      "name": "@floating-ui/core",
+      "version": "1.7.5",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@floating-ui/dom@1.7.6",
+      "name": "@floating-ui/dom",
+      "version": "1.7.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@floating-ui/react-dom@2.1.8",
+      "name": "@floating-ui/react-dom",
+      "version": "2.1.8",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@floating-ui/react@0.26.28",
+      "name": "@floating-ui/react",
+      "version": "0.26.28",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@floating-ui/utils@0.2.11",
+      "name": "@floating-ui/utils",
+      "version": "0.2.11",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@formatjs/intl-localematcher@0.5.10",
+      "name": "@formatjs/intl-localematcher",
+      "version": "0.5.10",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@headlessui/react@2.2.10",
+      "name": "@headlessui/react",
+      "version": "2.2.10",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@hono/node-server@1.19.14",
+      "name": "@hono/node-server",
+      "version": "1.19.14",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@iconify/types@2.0.0",
+      "name": "@iconify/types",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@iconify/utils@3.1.3",
+      "name": "@iconify/utils",
+      "version": "3.1.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@internationalized/date@3.12.2",
+      "name": "@internationalized/date",
+      "version": "3.12.2",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@internationalized/number@3.6.7",
+      "name": "@internationalized/number",
+      "version": "3.6.7",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@internationalized/string@3.2.9",
+      "name": "@internationalized/string",
+      "version": "3.2.9",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@mdx-js/mdx@3.1.1",
+      "name": "@mdx-js/mdx",
+      "version": "3.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@mdx-js/react@3.1.1",
+      "name": "@mdx-js/react",
+      "version": "3.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@mermaid-js/parser@1.2.0",
+      "name": "@mermaid-js/parser",
+      "version": "1.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@mixmark-io/domino@2.2.0",
+      "name": "@mixmark-io/domino",
+      "version": "2.2.0",
+      "license": "BSD-2-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "@modelcontextprotocol/sdk@1.29.0",
+      "name": "@modelcontextprotocol/sdk",
+      "version": "1.29.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-android-arm-eabi@0.1.22",
+      "name": "@napi-rs/simple-git-android-arm-eabi",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-android-arm64@0.1.22",
+      "name": "@napi-rs/simple-git-android-arm64",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-darwin-arm64@0.1.22",
+      "name": "@napi-rs/simple-git-darwin-arm64",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-darwin-x64@0.1.22",
+      "name": "@napi-rs/simple-git-darwin-x64",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-freebsd-x64@0.1.22",
+      "name": "@napi-rs/simple-git-freebsd-x64",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-linux-arm-gnueabihf@0.1.22",
+      "name": "@napi-rs/simple-git-linux-arm-gnueabihf",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-linux-arm64-gnu@0.1.22",
+      "name": "@napi-rs/simple-git-linux-arm64-gnu",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-linux-arm64-musl@0.1.22",
+      "name": "@napi-rs/simple-git-linux-arm64-musl",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-linux-ppc64-gnu@0.1.22",
+      "name": "@napi-rs/simple-git-linux-ppc64-gnu",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-linux-s390x-gnu@0.1.22",
+      "name": "@napi-rs/simple-git-linux-s390x-gnu",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-linux-x64-gnu@0.1.22",
+      "name": "@napi-rs/simple-git-linux-x64-gnu",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-linux-x64-musl@0.1.22",
+      "name": "@napi-rs/simple-git-linux-x64-musl",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-win32-arm64-msvc@0.1.22",
+      "name": "@napi-rs/simple-git-win32-arm64-msvc",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-win32-ia32-msvc@0.1.22",
+      "name": "@napi-rs/simple-git-win32-ia32-msvc",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git-win32-x64-msvc@0.1.22",
+      "name": "@napi-rs/simple-git-win32-x64-msvc",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@napi-rs/simple-git@0.1.22",
+      "name": "@napi-rs/simple-git",
+      "version": "0.1.22",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/env@14.2.35",
+      "name": "@next/env",
+      "version": "14.2.35",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-darwin-arm64@14.2.33",
+      "name": "@next/swc-darwin-arm64",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-darwin-x64@14.2.33",
+      "name": "@next/swc-darwin-x64",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-linux-arm64-gnu@14.2.33",
+      "name": "@next/swc-linux-arm64-gnu",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-linux-arm64-musl@14.2.33",
+      "name": "@next/swc-linux-arm64-musl",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-linux-x64-gnu@14.2.33",
+      "name": "@next/swc-linux-x64-gnu",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-linux-x64-musl@14.2.33",
+      "name": "@next/swc-linux-x64-musl",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-win32-arm64-msvc@14.2.33",
+      "name": "@next/swc-win32-arm64-msvc",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-win32-ia32-msvc@14.2.33",
+      "name": "@next/swc-win32-ia32-msvc",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@next/swc-win32-x64-msvc@14.2.33",
+      "name": "@next/swc-win32-x64-msvc",
+      "version": "14.2.33",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@playwright/test@1.60.0",
+      "name": "@playwright/test",
+      "version": "1.60.0",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@react-aria/focus@3.22.1",
+      "name": "@react-aria/focus",
+      "version": "3.22.1",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@react-aria/interactions@3.28.1",
+      "name": "@react-aria/interactions",
+      "version": "3.28.1",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@react-types/shared@3.36.0",
+      "name": "@react-types/shared",
+      "version": "3.36.0",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@shikijs/core@1.29.2",
+      "name": "@shikijs/core",
+      "version": "1.29.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@shikijs/engine-javascript@1.29.2",
+      "name": "@shikijs/engine-javascript",
+      "version": "1.29.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@shikijs/engine-oniguruma@1.29.2",
+      "name": "@shikijs/engine-oniguruma",
+      "version": "1.29.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@shikijs/langs@1.29.2",
+      "name": "@shikijs/langs",
+      "version": "1.29.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@shikijs/themes@1.29.2",
+      "name": "@shikijs/themes",
+      "version": "1.29.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@shikijs/twoslash@1.29.2",
+      "name": "@shikijs/twoslash",
+      "version": "1.29.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@shikijs/types@1.29.2",
+      "name": "@shikijs/types",
+      "version": "1.29.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@shikijs/vscode-textmate@10.0.2",
+      "name": "@shikijs/vscode-textmate",
+      "version": "10.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@swc/counter@0.1.3",
+      "name": "@swc/counter",
+      "version": "0.1.3",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@swc/helpers@0.5.5",
+      "name": "@swc/helpers",
+      "version": "0.5.5",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@tanstack/react-virtual@3.14.4",
+      "name": "@tanstack/react-virtual",
+      "version": "3.14.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@tanstack/virtual-core@3.17.2",
+      "name": "@tanstack/virtual-core",
+      "version": "3.17.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@theguild/remark-mermaid@0.1.3",
+      "name": "@theguild/remark-mermaid",
+      "version": "0.1.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@theguild/remark-npm2yarn@0.3.3",
+      "name": "@theguild/remark-npm2yarn",
+      "version": "0.3.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-array@3.2.2",
+      "name": "@types/d3-array",
+      "version": "3.2.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-axis@3.0.6",
+      "name": "@types/d3-axis",
+      "version": "3.0.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-brush@3.0.6",
+      "name": "@types/d3-brush",
+      "version": "3.0.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-chord@3.0.6",
+      "name": "@types/d3-chord",
+      "version": "3.0.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-color@3.1.3",
+      "name": "@types/d3-color",
+      "version": "3.1.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-contour@3.0.6",
+      "name": "@types/d3-contour",
+      "version": "3.0.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-delaunay@6.0.4",
+      "name": "@types/d3-delaunay",
+      "version": "6.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-dispatch@3.0.7",
+      "name": "@types/d3-dispatch",
+      "version": "3.0.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-drag@3.0.7",
+      "name": "@types/d3-drag",
+      "version": "3.0.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-dsv@3.0.7",
+      "name": "@types/d3-dsv",
+      "version": "3.0.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-ease@3.0.2",
+      "name": "@types/d3-ease",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-fetch@3.0.7",
+      "name": "@types/d3-fetch",
+      "version": "3.0.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-force@3.0.10",
+      "name": "@types/d3-force",
+      "version": "3.0.10",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-format@3.0.4",
+      "name": "@types/d3-format",
+      "version": "3.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-geo@3.1.0",
+      "name": "@types/d3-geo",
+      "version": "3.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-hierarchy@3.1.7",
+      "name": "@types/d3-hierarchy",
+      "version": "3.1.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-interpolate@3.0.4",
+      "name": "@types/d3-interpolate",
+      "version": "3.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-path@3.1.1",
+      "name": "@types/d3-path",
+      "version": "3.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-polygon@3.0.2",
+      "name": "@types/d3-polygon",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-quadtree@3.0.6",
+      "name": "@types/d3-quadtree",
+      "version": "3.0.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-random@3.0.3",
+      "name": "@types/d3-random",
+      "version": "3.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-scale-chromatic@3.1.0",
+      "name": "@types/d3-scale-chromatic",
+      "version": "3.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-scale@4.0.9",
+      "name": "@types/d3-scale",
+      "version": "4.0.9",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-selection@3.0.11",
+      "name": "@types/d3-selection",
+      "version": "3.0.11",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-shape@3.1.8",
+      "name": "@types/d3-shape",
+      "version": "3.1.8",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-time-format@4.0.3",
+      "name": "@types/d3-time-format",
+      "version": "4.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-time@3.0.4",
+      "name": "@types/d3-time",
+      "version": "3.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-timer@3.0.2",
+      "name": "@types/d3-timer",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-transition@3.0.9",
+      "name": "@types/d3-transition",
+      "version": "3.0.9",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3-zoom@3.0.8",
+      "name": "@types/d3-zoom",
+      "version": "3.0.8",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/d3@7.4.3",
+      "name": "@types/d3",
+      "version": "7.4.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/debug@4.1.13",
+      "name": "@types/debug",
+      "version": "4.1.13",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/estree-jsx@1.0.5",
+      "name": "@types/estree-jsx",
+      "version": "1.0.5",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/estree@1.0.9",
+      "name": "@types/estree",
+      "version": "1.0.9",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/geojson@7946.0.16",
+      "name": "@types/geojson",
+      "version": "7946.0.16",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/hast@3.0.4",
+      "name": "@types/hast",
+      "version": "3.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/katex@0.16.8",
+      "name": "@types/katex",
+      "version": "0.16.8",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/mdast@4.0.4",
+      "name": "@types/mdast",
+      "version": "4.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/mdx@2.0.14",
+      "name": "@types/mdx",
+      "version": "2.0.14",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/ms@2.1.0",
+      "name": "@types/ms",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/nlcst@2.0.3",
+      "name": "@types/nlcst",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/node@20.19.43",
+      "name": "@types/node",
+      "version": "20.19.43",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/node@25.8.0",
+      "name": "@types/node",
+      "version": "25.8.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/node@26.1.0",
+      "name": "@types/node",
+      "version": "26.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/pixelmatch@5.2.6",
+      "name": "@types/pixelmatch",
+      "version": "5.2.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/pngjs@6.0.5",
+      "name": "@types/pngjs",
+      "version": "6.0.5",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/prop-types@15.7.15",
+      "name": "@types/prop-types",
+      "version": "15.7.15",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/react@18.3.31",
+      "name": "@types/react",
+      "version": "18.3.31",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/trusted-types@2.0.7",
+      "name": "@types/trusted-types",
+      "version": "2.0.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/turndown@5.0.6",
+      "name": "@types/turndown",
+      "version": "5.0.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/unist@2.0.11",
+      "name": "@types/unist",
+      "version": "2.0.11",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@types/unist@3.0.3",
+      "name": "@types/unist",
+      "version": "3.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@typescript/vfs@1.6.4",
+      "name": "@typescript/vfs",
+      "version": "1.6.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@ungap/structured-clone@1.3.2",
+      "name": "@ungap/structured-clone",
+      "version": "1.3.2",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@upsetjs/venn.js@2.0.0",
+      "name": "@upsetjs/venn.js",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "@xmldom/xmldom@0.9.10",
+      "name": "@xmldom/xmldom",
+      "version": "0.9.10",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "accepts@2.0.0",
+      "name": "accepts",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "acorn-jsx@5.3.2",
+      "name": "acorn-jsx",
+      "version": "5.3.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "acorn@8.17.0",
+      "name": "acorn",
+      "version": "8.17.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "ajv-formats@3.0.1",
+      "name": "ajv-formats",
+      "version": "3.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "ajv@8.20.0",
+      "name": "ajv",
+      "version": "8.20.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "arg@5.0.2",
+      "name": "arg",
+      "version": "5.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "argparse@1.0.10",
+      "name": "argparse",
+      "version": "1.0.10",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "aria-hidden@1.2.6",
+      "name": "aria-hidden",
+      "version": "1.2.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "array-iterate@2.0.1",
+      "name": "array-iterate",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "astring@1.9.0",
+      "name": "astring",
+      "version": "1.9.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "asynckit@0.4.0",
+      "name": "asynckit",
+      "version": "0.4.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "axe-core@4.11.4",
+      "name": "axe-core",
+      "version": "4.11.4",
+      "license": "MPL-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "axios@1.16.0",
+      "name": "axios",
+      "version": "1.16.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "bail@2.0.2",
+      "name": "bail",
+      "version": "2.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "better-react-mathjax@2.3.0",
+      "name": "better-react-mathjax",
+      "version": "2.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "body-parser@2.2.2",
+      "name": "body-parser",
+      "version": "2.2.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "busboy@1.6.0",
+      "name": "busboy",
+      "version": "1.6.0",
+      "license": "MIT",
+      "provenance": "registry-tarball-license",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "bytes@3.1.2",
+      "name": "bytes",
+      "version": "3.1.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "call-bind-apply-helpers@1.0.2",
+      "name": "call-bind-apply-helpers",
+      "version": "1.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "call-bound@1.0.4",
+      "name": "call-bound",
+      "version": "1.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "caniuse-lite@1.0.30001799",
+      "name": "caniuse-lite",
+      "version": "1.0.30001799",
+      "license": "CC-BY-4.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "ccount@2.0.1",
+      "name": "ccount",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "chalk@5.6.2",
+      "name": "chalk",
+      "version": "5.6.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "character-entities-html4@2.1.0",
+      "name": "character-entities-html4",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "character-entities-legacy@3.0.0",
+      "name": "character-entities-legacy",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "character-entities@2.0.2",
+      "name": "character-entities",
+      "version": "2.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "character-reference-invalid@2.0.1",
+      "name": "character-reference-invalid",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "client-only@0.0.1",
+      "name": "client-only",
+      "version": "0.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "clipboardy@4.0.0",
+      "name": "clipboardy",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "clsx@2.1.1",
+      "name": "clsx",
+      "version": "2.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "collapse-white-space@2.1.0",
+      "name": "collapse-white-space",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "combined-stream@1.0.8",
+      "name": "combined-stream",
+      "version": "1.0.8",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "comma-separated-tokens@2.0.3",
+      "name": "comma-separated-tokens",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "commander@13.1.0",
+      "name": "commander",
+      "version": "13.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "commander@7.2.0",
+      "name": "commander",
+      "version": "7.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "commander@8.3.0",
+      "name": "commander",
+      "version": "8.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "compute-scroll-into-view@3.1.1",
+      "name": "compute-scroll-into-view",
+      "version": "3.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "content-disposition@1.1.0",
+      "name": "content-disposition",
+      "version": "1.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "content-type@1.0.5",
+      "name": "content-type",
+      "version": "1.0.5",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "cookie-signature@1.2.2",
+      "name": "cookie-signature",
+      "version": "1.2.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "cookie@0.7.2",
+      "name": "cookie",
+      "version": "0.7.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "cors@2.8.6",
+      "name": "cors",
+      "version": "2.8.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "cose-base@1.0.3",
+      "name": "cose-base",
+      "version": "1.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "cose-base@2.2.0",
+      "name": "cose-base",
+      "version": "2.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "cross-spawn@7.0.6",
+      "name": "cross-spawn",
+      "version": "7.0.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "csstype@3.2.3",
+      "name": "csstype",
+      "version": "3.2.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "cytoscape-cose-bilkent@4.1.0",
+      "name": "cytoscape-cose-bilkent",
+      "version": "4.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "cytoscape-fcose@2.2.0",
+      "name": "cytoscape-fcose",
+      "version": "2.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "cytoscape@3.34.0",
+      "name": "cytoscape",
+      "version": "3.34.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-array@2.12.1",
+      "name": "d3-array",
+      "version": "2.12.1",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-array@3.2.4",
+      "name": "d3-array",
+      "version": "3.2.4",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-axis@3.0.0",
+      "name": "d3-axis",
+      "version": "3.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-brush@3.0.0",
+      "name": "d3-brush",
+      "version": "3.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-chord@3.0.1",
+      "name": "d3-chord",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-color@3.1.0",
+      "name": "d3-color",
+      "version": "3.1.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-contour@4.0.2",
+      "name": "d3-contour",
+      "version": "4.0.2",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-delaunay@6.0.4",
+      "name": "d3-delaunay",
+      "version": "6.0.4",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-dispatch@3.0.1",
+      "name": "d3-dispatch",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-drag@3.0.0",
+      "name": "d3-drag",
+      "version": "3.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-dsv@3.0.1",
+      "name": "d3-dsv",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-ease@3.0.1",
+      "name": "d3-ease",
+      "version": "3.0.1",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-fetch@3.0.1",
+      "name": "d3-fetch",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-force@3.0.0",
+      "name": "d3-force",
+      "version": "3.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-format@3.1.2",
+      "name": "d3-format",
+      "version": "3.1.2",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-geo@3.1.1",
+      "name": "d3-geo",
+      "version": "3.1.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-hierarchy@3.1.2",
+      "name": "d3-hierarchy",
+      "version": "3.1.2",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-interpolate@3.0.1",
+      "name": "d3-interpolate",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-path@1.0.9",
+      "name": "d3-path",
+      "version": "1.0.9",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-path@3.1.0",
+      "name": "d3-path",
+      "version": "3.1.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-polygon@3.0.1",
+      "name": "d3-polygon",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-quadtree@3.0.1",
+      "name": "d3-quadtree",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-random@3.0.1",
+      "name": "d3-random",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-sankey@0.12.3",
+      "name": "d3-sankey",
+      "version": "0.12.3",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-scale-chromatic@3.1.0",
+      "name": "d3-scale-chromatic",
+      "version": "3.1.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-scale@4.0.2",
+      "name": "d3-scale",
+      "version": "4.0.2",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-selection@3.0.0",
+      "name": "d3-selection",
+      "version": "3.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-shape@1.3.7",
+      "name": "d3-shape",
+      "version": "1.3.7",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-shape@3.2.0",
+      "name": "d3-shape",
+      "version": "3.2.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-time-format@4.1.0",
+      "name": "d3-time-format",
+      "version": "4.1.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-time@3.1.0",
+      "name": "d3-time",
+      "version": "3.1.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-timer@3.0.1",
+      "name": "d3-timer",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-transition@3.0.1",
+      "name": "d3-transition",
+      "version": "3.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3-zoom@3.0.0",
+      "name": "d3-zoom",
+      "version": "3.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "d3@7.9.0",
+      "name": "d3",
+      "version": "7.9.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "dagre-d3-es@7.0.14",
+      "name": "dagre-d3-es",
+      "version": "7.0.14",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "dayjs@1.11.21",
+      "name": "dayjs",
+      "version": "1.11.21",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "debug@4.4.3",
+      "name": "debug",
+      "version": "4.4.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "decode-named-character-reference@1.3.0",
+      "name": "decode-named-character-reference",
+      "version": "1.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "delaunator@5.1.0",
+      "name": "delaunator",
+      "version": "5.1.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "delayed-stream@1.0.0",
+      "name": "delayed-stream",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "depd@2.0.0",
+      "name": "depd",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "dequal@2.0.3",
+      "name": "dequal",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "devlop@1.1.0",
+      "name": "devlop",
+      "version": "1.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "dompurify@3.4.11",
+      "name": "dompurify",
+      "version": "3.4.11",
+      "license": "(MPL-2.0 OR Apache-2.0)",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "dotenv@16.6.1",
+      "name": "dotenv",
+      "version": "16.6.1",
+      "license": "BSD-2-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "dunder-proto@1.0.1",
+      "name": "dunder-proto",
+      "version": "1.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "ee-first@1.1.1",
+      "name": "ee-first",
+      "version": "1.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "emoji-regex-xs@1.0.0",
+      "name": "emoji-regex-xs",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "encodeurl@2.0.0",
+      "name": "encodeurl",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "entities@6.0.1",
+      "name": "entities",
+      "version": "6.0.1",
+      "license": "BSD-2-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "es-define-property@1.0.1",
+      "name": "es-define-property",
+      "version": "1.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "es-errors@1.3.0",
+      "name": "es-errors",
+      "version": "1.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "es-object-atoms@1.1.1",
+      "name": "es-object-atoms",
+      "version": "1.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "es-set-tostringtag@2.1.0",
+      "name": "es-set-tostringtag",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "es-toolkit@1.49.0",
+      "name": "es-toolkit",
+      "version": "1.49.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "esast-util-from-estree@2.0.0",
+      "name": "esast-util-from-estree",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "esast-util-from-js@2.0.1",
+      "name": "esast-util-from-js",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "esbuild@0.27.7",
+      "name": "esbuild",
+      "version": "0.27.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "esbuild@0.28.1",
+      "name": "esbuild",
+      "version": "0.28.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "escape-html@1.0.3",
+      "name": "escape-html",
+      "version": "1.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "escape-string-regexp@5.0.0",
+      "name": "escape-string-regexp",
+      "version": "5.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "esm@3.2.25",
+      "name": "esm",
+      "version": "3.2.25",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "esprima@4.0.1",
+      "name": "esprima",
+      "version": "4.0.1",
+      "license": "BSD-2-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "estree-util-attach-comments@3.0.0",
+      "name": "estree-util-attach-comments",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "estree-util-build-jsx@3.0.1",
+      "name": "estree-util-build-jsx",
+      "version": "3.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "estree-util-is-identifier-name@3.0.0",
+      "name": "estree-util-is-identifier-name",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "estree-util-scope@1.0.0",
+      "name": "estree-util-scope",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "estree-util-to-js@2.0.0",
+      "name": "estree-util-to-js",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "estree-util-value-to-estree@3.5.0",
+      "name": "estree-util-value-to-estree",
+      "version": "3.5.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "estree-util-visit@2.0.0",
+      "name": "estree-util-visit",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "estree-walker@3.0.3",
+      "name": "estree-walker",
+      "version": "3.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "etag@1.8.1",
+      "name": "etag",
+      "version": "1.8.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "eventsource-parser@3.0.8",
+      "name": "eventsource-parser",
+      "version": "3.0.8",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "eventsource@3.0.7",
+      "name": "eventsource",
+      "version": "3.0.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "execa@8.0.1",
+      "name": "execa",
+      "version": "8.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "express-rate-limit@8.5.0",
+      "name": "express-rate-limit",
+      "version": "8.5.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "express-rate-limit@8.5.1",
+      "name": "express-rate-limit",
+      "version": "8.5.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "express@5.2.1",
+      "name": "express",
+      "version": "5.2.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "extend-shallow@2.0.1",
+      "name": "extend-shallow",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "extend@3.0.2",
+      "name": "extend",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "fast-deep-equal@3.1.3",
+      "name": "fast-deep-equal",
+      "version": "3.1.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "fast-uri@3.1.2",
+      "name": "fast-uri",
+      "version": "3.1.2",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "fault@2.0.1",
+      "name": "fault",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "finalhandler@2.1.1",
+      "name": "finalhandler",
+      "version": "2.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "flexsearch@0.7.43",
+      "name": "flexsearch",
+      "version": "0.7.43",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "follow-redirects@1.16.0",
+      "name": "follow-redirects",
+      "version": "1.16.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "form-data@4.0.5",
+      "name": "form-data",
+      "version": "4.0.5",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "format@0.2.2",
+      "name": "format",
+      "version": "0.2.2",
+      "license": "MIT",
+      "provenance": "registry-tarball-readme",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "forwarded@0.2.0",
+      "name": "forwarded",
+      "version": "0.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "fresh@2.0.0",
+      "name": "fresh",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "fsevents@2.3.2",
+      "name": "fsevents",
+      "version": "2.3.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "fsevents@2.3.3",
+      "name": "fsevents",
+      "version": "2.3.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "function-bind@1.1.2",
+      "name": "function-bind",
+      "version": "1.1.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "get-intrinsic@1.3.0",
+      "name": "get-intrinsic",
+      "version": "1.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "get-proto@1.0.1",
+      "name": "get-proto",
+      "version": "1.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "get-stream@8.0.1",
+      "name": "get-stream",
+      "version": "8.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "get-tsconfig@4.14.0",
+      "name": "get-tsconfig",
+      "version": "4.14.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "github-slugger@2.0.0",
+      "name": "github-slugger",
+      "version": "2.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "gopd@1.2.0",
+      "name": "gopd",
+      "version": "1.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "graceful-fs@4.2.11",
+      "name": "graceful-fs",
+      "version": "4.2.11",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "gray-matter@4.0.3",
+      "name": "gray-matter",
+      "version": "4.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hachure-fill@0.5.2",
+      "name": "hachure-fill",
+      "version": "0.5.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "has-symbols@1.1.0",
+      "name": "has-symbols",
+      "version": "1.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "has-tostringtag@1.0.2",
+      "name": "has-tostringtag",
+      "version": "1.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "hasown@2.0.3",
+      "name": "hasown",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-from-dom@5.0.1",
+      "name": "hast-util-from-dom",
+      "version": "5.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-from-html-isomorphic@2.0.0",
+      "name": "hast-util-from-html-isomorphic",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-from-html@2.0.3",
+      "name": "hast-util-from-html",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-from-parse5@8.0.3",
+      "name": "hast-util-from-parse5",
+      "version": "8.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-is-element@3.0.0",
+      "name": "hast-util-is-element",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-parse-selector@4.0.0",
+      "name": "hast-util-parse-selector",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-raw@9.1.0",
+      "name": "hast-util-raw",
+      "version": "9.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-to-estree@3.1.3",
+      "name": "hast-util-to-estree",
+      "version": "3.1.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-to-html@9.0.5",
+      "name": "hast-util-to-html",
+      "version": "9.0.5",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-to-jsx-runtime@2.3.6",
+      "name": "hast-util-to-jsx-runtime",
+      "version": "2.3.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-to-parse5@8.0.1",
+      "name": "hast-util-to-parse5",
+      "version": "8.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-to-string@3.0.1",
+      "name": "hast-util-to-string",
+      "version": "3.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-to-text@4.0.2",
+      "name": "hast-util-to-text",
+      "version": "4.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hast-util-whitespace@3.0.0",
+      "name": "hast-util-whitespace",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hastscript@9.0.1",
+      "name": "hastscript",
+      "version": "9.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "hono@4.12.17",
+      "name": "hono",
+      "version": "4.12.17",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "hono@4.12.18",
+      "name": "hono",
+      "version": "4.12.18",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "html-void-elements@3.0.0",
+      "name": "html-void-elements",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "http-errors@2.0.1",
+      "name": "http-errors",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "human-signals@5.0.0",
+      "name": "human-signals",
+      "version": "5.0.0",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "iconv-lite@0.6.3",
+      "name": "iconv-lite",
+      "version": "0.6.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "iconv-lite@0.7.2",
+      "name": "iconv-lite",
+      "version": "0.7.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "import-meta-resolve@4.2.0",
+      "name": "import-meta-resolve",
+      "version": "4.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "inherits@2.0.4",
+      "name": "inherits",
+      "version": "2.0.4",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "inline-style-parser@0.2.7",
+      "name": "inline-style-parser",
+      "version": "0.2.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "internmap@1.0.1",
+      "name": "internmap",
+      "version": "1.0.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "internmap@2.0.3",
+      "name": "internmap",
+      "version": "2.0.3",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "ip-address@10.1.0",
+      "name": "ip-address",
+      "version": "10.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "ip-address@10.2.0",
+      "name": "ip-address",
+      "version": "10.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "ipaddr.js@1.9.1",
+      "name": "ipaddr.js",
+      "version": "1.9.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-alphabetical@2.0.1",
+      "name": "is-alphabetical",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-alphanumerical@2.0.1",
+      "name": "is-alphanumerical",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-decimal@2.0.1",
+      "name": "is-decimal",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-docker@3.0.0",
+      "name": "is-docker",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-extendable@0.1.1",
+      "name": "is-extendable",
+      "version": "0.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-hexadecimal@2.0.1",
+      "name": "is-hexadecimal",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-inside-container@1.0.0",
+      "name": "is-inside-container",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-plain-obj@4.1.0",
+      "name": "is-plain-obj",
+      "version": "4.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-promise@4.0.0",
+      "name": "is-promise",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-stream@3.0.0",
+      "name": "is-stream",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is-wsl@3.1.1",
+      "name": "is-wsl",
+      "version": "3.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "is64bit@2.0.0",
+      "name": "is64bit",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "isexe@2.0.0",
+      "name": "isexe",
+      "version": "2.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "jose@6.2.3",
+      "name": "jose",
+      "version": "6.2.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "js-tokens@4.0.0",
+      "name": "js-tokens",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "js-yaml@3.15.0",
+      "name": "js-yaml",
+      "version": "3.15.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "json-schema-traverse@1.0.0",
+      "name": "json-schema-traverse",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "json-schema-typed@8.0.2",
+      "name": "json-schema-typed",
+      "version": "8.0.2",
+      "license": "BSD-2-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "katex@0.16.47",
+      "name": "katex",
+      "version": "0.16.47",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "khroma@2.1.0",
+      "name": "khroma",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-tarball-license",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "kind-of@6.0.3",
+      "name": "kind-of",
+      "version": "6.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "layout-base@1.0.2",
+      "name": "layout-base",
+      "version": "1.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "layout-base@2.0.1",
+      "name": "layout-base",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "lodash-es@4.18.1",
+      "name": "lodash-es",
+      "version": "4.18.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "longest-streak@3.1.0",
+      "name": "longest-streak",
+      "version": "3.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "loose-envify@1.4.0",
+      "name": "loose-envify",
+      "version": "1.4.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "markdown-extensions@2.0.0",
+      "name": "markdown-extensions",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "markdown-table@3.0.4",
+      "name": "markdown-table",
+      "version": "3.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "marked@16.4.2",
+      "name": "marked",
+      "version": "16.4.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "math-intrinsics@1.1.0",
+      "name": "math-intrinsics",
+      "version": "1.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "mathjax-full@3.2.2",
+      "name": "mathjax-full",
+      "version": "3.2.2",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-find-and-replace@3.0.2",
+      "name": "mdast-util-find-and-replace",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-from-markdown@2.0.3",
+      "name": "mdast-util-from-markdown",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-frontmatter@2.0.1",
+      "name": "mdast-util-frontmatter",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-gfm-autolink-literal@2.0.1",
+      "name": "mdast-util-gfm-autolink-literal",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-gfm-footnote@2.1.0",
+      "name": "mdast-util-gfm-footnote",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-gfm-strikethrough@2.0.0",
+      "name": "mdast-util-gfm-strikethrough",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-gfm-table@2.0.0",
+      "name": "mdast-util-gfm-table",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-gfm-task-list-item@2.0.0",
+      "name": "mdast-util-gfm-task-list-item",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-gfm@3.1.0",
+      "name": "mdast-util-gfm",
+      "version": "3.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-math@3.0.0",
+      "name": "mdast-util-math",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-mdx-expression@2.0.1",
+      "name": "mdast-util-mdx-expression",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-mdx-jsx@3.2.0",
+      "name": "mdast-util-mdx-jsx",
+      "version": "3.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-mdx@3.0.0",
+      "name": "mdast-util-mdx",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-mdxjs-esm@2.0.1",
+      "name": "mdast-util-mdxjs-esm",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-phrasing@4.1.0",
+      "name": "mdast-util-phrasing",
+      "version": "4.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-to-hast@13.2.1",
+      "name": "mdast-util-to-hast",
+      "version": "13.2.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-to-markdown@2.1.2",
+      "name": "mdast-util-to-markdown",
+      "version": "2.1.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mdast-util-to-string@4.0.0",
+      "name": "mdast-util-to-string",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "media-typer@1.1.0",
+      "name": "media-typer",
+      "version": "1.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "merge-descriptors@2.0.0",
+      "name": "merge-descriptors",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "merge-stream@2.0.0",
+      "name": "merge-stream",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mermaid@11.16.0",
+      "name": "mermaid",
+      "version": "11.16.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mhchemparser@4.2.1",
+      "name": "mhchemparser",
+      "version": "4.2.1",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-core-commonmark@2.0.3",
+      "name": "micromark-core-commonmark",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-frontmatter@2.0.0",
+      "name": "micromark-extension-frontmatter",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-gfm-autolink-literal@2.1.0",
+      "name": "micromark-extension-gfm-autolink-literal",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-gfm-footnote@2.1.0",
+      "name": "micromark-extension-gfm-footnote",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-gfm-strikethrough@2.1.0",
+      "name": "micromark-extension-gfm-strikethrough",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-gfm-table@2.1.1",
+      "name": "micromark-extension-gfm-table",
+      "version": "2.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-gfm-tagfilter@2.0.0",
+      "name": "micromark-extension-gfm-tagfilter",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-gfm-task-list-item@2.1.0",
+      "name": "micromark-extension-gfm-task-list-item",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-gfm@3.0.0",
+      "name": "micromark-extension-gfm",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-math@3.1.0",
+      "name": "micromark-extension-math",
+      "version": "3.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-mdx-expression@3.0.1",
+      "name": "micromark-extension-mdx-expression",
+      "version": "3.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-mdx-jsx@3.0.2",
+      "name": "micromark-extension-mdx-jsx",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-mdx-md@2.0.0",
+      "name": "micromark-extension-mdx-md",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-mdxjs-esm@3.0.0",
+      "name": "micromark-extension-mdxjs-esm",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-extension-mdxjs@3.0.0",
+      "name": "micromark-extension-mdxjs",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-factory-destination@2.0.1",
+      "name": "micromark-factory-destination",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-factory-label@2.0.1",
+      "name": "micromark-factory-label",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-factory-mdx-expression@2.0.3",
+      "name": "micromark-factory-mdx-expression",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-factory-space@2.0.1",
+      "name": "micromark-factory-space",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-factory-title@2.0.1",
+      "name": "micromark-factory-title",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-factory-whitespace@2.0.1",
+      "name": "micromark-factory-whitespace",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-character@2.1.1",
+      "name": "micromark-util-character",
+      "version": "2.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-chunked@2.0.1",
+      "name": "micromark-util-chunked",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-classify-character@2.0.1",
+      "name": "micromark-util-classify-character",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-combine-extensions@2.0.1",
+      "name": "micromark-util-combine-extensions",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-decode-numeric-character-reference@2.0.2",
+      "name": "micromark-util-decode-numeric-character-reference",
+      "version": "2.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-decode-string@2.0.1",
+      "name": "micromark-util-decode-string",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-encode@2.0.1",
+      "name": "micromark-util-encode",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-events-to-acorn@2.0.3",
+      "name": "micromark-util-events-to-acorn",
+      "version": "2.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-html-tag-name@2.0.1",
+      "name": "micromark-util-html-tag-name",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-normalize-identifier@2.0.1",
+      "name": "micromark-util-normalize-identifier",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-resolve-all@2.0.1",
+      "name": "micromark-util-resolve-all",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-sanitize-uri@2.0.1",
+      "name": "micromark-util-sanitize-uri",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-subtokenize@2.1.0",
+      "name": "micromark-util-subtokenize",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-symbol@2.0.1",
+      "name": "micromark-util-symbol",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark-util-types@2.0.2",
+      "name": "micromark-util-types",
+      "version": "2.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "micromark@4.0.2",
+      "name": "micromark",
+      "version": "4.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mime-db@1.52.0",
+      "name": "mime-db",
+      "version": "1.52.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "mime-db@1.54.0",
+      "name": "mime-db",
+      "version": "1.54.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "mime-types@2.1.35",
+      "name": "mime-types",
+      "version": "2.1.35",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "mime-types@3.0.2",
+      "name": "mime-types",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "mimic-fn@4.0.0",
+      "name": "mimic-fn",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "mj-context-menu@0.6.1",
+      "name": "mj-context-menu",
+      "version": "0.6.1",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "ms@2.1.3",
+      "name": "ms",
+      "version": "2.1.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "nanoid@3.3.15",
+      "name": "nanoid",
+      "version": "3.3.15",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "negotiator@1.0.0",
+      "name": "negotiator",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "next-themes@0.4.6",
+      "name": "next-themes",
+      "version": "0.4.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "next@14.2.35",
+      "name": "next",
+      "version": "14.2.35",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "nextra-theme-docs@3.3.1",
+      "name": "nextra-theme-docs",
+      "version": "3.3.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "nextra@3.3.1",
+      "name": "nextra",
+      "version": "3.3.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "nlcst-to-string@4.0.0",
+      "name": "nlcst-to-string",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "npm-run-path@5.3.0",
+      "name": "npm-run-path",
+      "version": "5.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "npm-to-yarn@3.0.1",
+      "name": "npm-to-yarn",
+      "version": "3.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "object-assign@4.1.1",
+      "name": "object-assign",
+      "version": "4.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "object-inspect@1.13.4",
+      "name": "object-inspect",
+      "version": "1.13.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "on-finished@2.4.1",
+      "name": "on-finished",
+      "version": "2.4.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "once@1.4.0",
+      "name": "once",
+      "version": "1.4.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "onetime@6.0.0",
+      "name": "onetime",
+      "version": "6.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "oniguruma-to-es@2.3.0",
+      "name": "oniguruma-to-es",
+      "version": "2.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "p-limit@6.2.0",
+      "name": "p-limit",
+      "version": "6.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "package-manager-detector@1.6.0",
+      "name": "package-manager-detector",
+      "version": "1.6.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "parse-entities@4.0.2",
+      "name": "parse-entities",
+      "version": "4.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "parse-latin@7.0.0",
+      "name": "parse-latin",
+      "version": "7.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "parse-numeric-range@1.3.0",
+      "name": "parse-numeric-range",
+      "version": "1.3.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "parse5@7.3.0",
+      "name": "parse5",
+      "version": "7.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "parseurl@1.3.3",
+      "name": "parseurl",
+      "version": "1.3.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "path-data-parser@0.1.0",
+      "name": "path-data-parser",
+      "version": "0.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "path-key@3.1.1",
+      "name": "path-key",
+      "version": "3.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "path-key@4.0.0",
+      "name": "path-key",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "path-to-regexp@8.4.2",
+      "name": "path-to-regexp",
+      "version": "8.4.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "picocolors@1.1.1",
+      "name": "picocolors",
+      "version": "1.1.1",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "pixelmatch@6.0.0",
+      "name": "pixelmatch",
+      "version": "6.0.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "pixelmatch@7.2.0",
+      "name": "pixelmatch",
+      "version": "7.2.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "pkce-challenge@5.0.1",
+      "name": "pkce-challenge",
+      "version": "5.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "playwright-core@1.60.0",
+      "name": "playwright-core",
+      "version": "1.60.0",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "playwright@1.60.0",
+      "name": "playwright",
+      "version": "1.60.0",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "pngjs@7.0.0",
+      "name": "pngjs",
+      "version": "7.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "points-on-curve@0.2.0",
+      "name": "points-on-curve",
+      "version": "0.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "points-on-path@0.2.1",
+      "name": "points-on-path",
+      "version": "0.2.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "postcss@8.4.31",
+      "name": "postcss",
+      "version": "8.4.31",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "property-information@7.2.0",
+      "name": "property-information",
+      "version": "7.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "proxy-addr@2.0.7",
+      "name": "proxy-addr",
+      "version": "2.0.7",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "proxy-from-env@2.1.0",
+      "name": "proxy-from-env",
+      "version": "2.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "qs@6.15.1",
+      "name": "qs",
+      "version": "6.15.1",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "range-parser@1.2.1",
+      "name": "range-parser",
+      "version": "1.2.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "raw-body@3.0.2",
+      "name": "raw-body",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "react-aria@3.50.0",
+      "name": "react-aria",
+      "version": "3.50.0",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "react-dom@18.3.1",
+      "name": "react-dom",
+      "version": "18.3.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "react-medium-image-zoom@5.4.8",
+      "name": "react-medium-image-zoom",
+      "version": "5.4.8",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "react-stately@3.48.0",
+      "name": "react-stately",
+      "version": "3.48.0",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "react@18.3.1",
+      "name": "react",
+      "version": "18.3.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "reading-time@1.5.0",
+      "name": "reading-time",
+      "version": "1.5.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "recma-build-jsx@1.0.0",
+      "name": "recma-build-jsx",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "recma-jsx@1.0.1",
+      "name": "recma-jsx",
+      "version": "1.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "recma-parse@1.0.0",
+      "name": "recma-parse",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "recma-stringify@1.0.0",
+      "name": "recma-stringify",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "regex-recursion@5.1.1",
+      "name": "regex-recursion",
+      "version": "5.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "regex-utilities@2.3.0",
+      "name": "regex-utilities",
+      "version": "2.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "regex@5.1.1",
+      "name": "regex",
+      "version": "5.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "rehype-katex@7.0.1",
+      "name": "rehype-katex",
+      "version": "7.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "rehype-parse@9.0.1",
+      "name": "rehype-parse",
+      "version": "9.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "rehype-pretty-code@0.14.0",
+      "name": "rehype-pretty-code",
+      "version": "0.14.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "rehype-raw@7.0.0",
+      "name": "rehype-raw",
+      "version": "7.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "rehype-recma@1.0.0",
+      "name": "rehype-recma",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-frontmatter@5.0.0",
+      "name": "remark-frontmatter",
+      "version": "5.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-gfm@4.0.1",
+      "name": "remark-gfm",
+      "version": "4.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-math@6.0.0",
+      "name": "remark-math",
+      "version": "6.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-mdx@3.1.1",
+      "name": "remark-mdx",
+      "version": "3.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-parse@11.0.0",
+      "name": "remark-parse",
+      "version": "11.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-reading-time@2.1.0",
+      "name": "remark-reading-time",
+      "version": "2.1.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-rehype@11.1.2",
+      "name": "remark-rehype",
+      "version": "11.1.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-smartypants@3.0.2",
+      "name": "remark-smartypants",
+      "version": "3.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "remark-stringify@11.0.0",
+      "name": "remark-stringify",
+      "version": "11.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "require-from-string@2.0.2",
+      "name": "require-from-string",
+      "version": "2.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "resolve-pkg-maps@1.0.0",
+      "name": "resolve-pkg-maps",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "retext-latin@4.0.0",
+      "name": "retext-latin",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "retext-smartypants@6.2.0",
+      "name": "retext-smartypants",
+      "version": "6.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "retext-stringify@4.0.0",
+      "name": "retext-stringify",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "retext@9.0.0",
+      "name": "retext",
+      "version": "9.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "robust-predicates@3.0.3",
+      "name": "robust-predicates",
+      "version": "3.0.3",
+      "license": "Unlicense",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "roughjs@4.6.6",
+      "name": "roughjs",
+      "version": "4.6.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "router@2.2.0",
+      "name": "router",
+      "version": "2.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "rw@1.3.3",
+      "name": "rw",
+      "version": "1.3.3",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "safer-buffer@2.1.2",
+      "name": "safer-buffer",
+      "version": "2.1.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "scheduler@0.23.2",
+      "name": "scheduler",
+      "version": "0.23.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "scroll-into-view-if-needed@3.1.0",
+      "name": "scroll-into-view-if-needed",
+      "version": "3.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "section-matter@1.0.0",
+      "name": "section-matter",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "send@1.2.1",
+      "name": "send",
+      "version": "1.2.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "serve-static@2.2.1",
+      "name": "serve-static",
+      "version": "2.2.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "setprototypeof@1.2.0",
+      "name": "setprototypeof",
+      "version": "1.2.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "shebang-command@2.0.0",
+      "name": "shebang-command",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "shebang-regex@3.0.0",
+      "name": "shebang-regex",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "shiki@1.29.2",
+      "name": "shiki",
+      "version": "1.29.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "side-channel-list@1.0.1",
+      "name": "side-channel-list",
+      "version": "1.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "side-channel-map@1.0.1",
+      "name": "side-channel-map",
+      "version": "1.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "side-channel-weakmap@1.0.2",
+      "name": "side-channel-weakmap",
+      "version": "1.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "side-channel@1.1.0",
+      "name": "side-channel",
+      "version": "1.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "signal-exit@4.1.0",
+      "name": "signal-exit",
+      "version": "4.1.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "slash@5.1.0",
+      "name": "slash",
+      "version": "5.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "source-map-js@1.2.1",
+      "name": "source-map-js",
+      "version": "1.2.1",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "source-map@0.7.6",
+      "name": "source-map",
+      "version": "0.7.6",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "space-separated-tokens@2.0.2",
+      "name": "space-separated-tokens",
+      "version": "2.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "speech-rule-engine@4.1.4",
+      "name": "speech-rule-engine",
+      "version": "4.1.4",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "sprintf-js@1.0.3",
+      "name": "sprintf-js",
+      "version": "1.0.3",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "statuses@2.0.2",
+      "name": "statuses",
+      "version": "2.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "streamsearch@1.1.0",
+      "name": "streamsearch",
+      "version": "1.1.0",
+      "license": "MIT",
+      "provenance": "registry-tarball-license",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "stringify-entities@4.0.4",
+      "name": "stringify-entities",
+      "version": "4.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "strip-bom-string@1.0.0",
+      "name": "strip-bom-string",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "strip-final-newline@3.0.0",
+      "name": "strip-final-newline",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "style-to-js@1.1.21",
+      "name": "style-to-js",
+      "version": "1.1.21",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "style-to-object@1.0.14",
+      "name": "style-to-object",
+      "version": "1.0.14",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "styled-jsx@5.1.1",
+      "name": "styled-jsx",
+      "version": "5.1.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "stylis@4.4.0",
+      "name": "stylis",
+      "version": "4.4.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "system-architecture@0.1.0",
+      "name": "system-architecture",
+      "version": "0.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "tabbable@6.5.0",
+      "name": "tabbable",
+      "version": "6.5.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "tinyexec@1.2.4",
+      "name": "tinyexec",
+      "version": "1.2.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "title@4.0.1",
+      "name": "title",
+      "version": "4.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "toidentifier@1.0.1",
+      "name": "toidentifier",
+      "version": "1.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "trim-lines@3.0.1",
+      "name": "trim-lines",
+      "version": "3.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "trough@2.2.0",
+      "name": "trough",
+      "version": "2.2.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "ts-dedent@2.3.0",
+      "name": "ts-dedent",
+      "version": "2.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "tslib@2.8.1",
+      "name": "tslib",
+      "version": "2.8.1",
+      "license": "0BSD",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "tsx@4.21.0",
+      "name": "tsx",
+      "version": "4.21.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "tsx@4.22.4",
+      "name": "tsx",
+      "version": "4.22.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "turndown@7.2.4",
+      "name": "turndown",
+      "version": "7.2.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "twoslash-protocol@0.2.12",
+      "name": "twoslash-protocol",
+      "version": "0.2.12",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "twoslash@0.2.12",
+      "name": "twoslash",
+      "version": "0.2.12",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "type-is@2.0.1",
+      "name": "type-is",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "typescript@4.9.5",
+      "name": "typescript",
+      "version": "4.9.5",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "typescript@5.9.3",
+      "name": "typescript",
+      "version": "5.9.3",
+      "license": "Apache-2.0",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "undici-types@6.21.0",
+      "name": "undici-types",
+      "version": "6.21.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "undici-types@7.24.6",
+      "name": "undici-types",
+      "version": "7.24.6",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json"
+      ]
+    },
+    {
+      "id": "undici-types@8.3.0",
+      "name": "undici-types",
+      "version": "8.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "id": "unified@11.0.5",
+      "name": "unified",
+      "version": "11.0.5",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-find-after@5.0.0",
+      "name": "unist-util-find-after",
+      "version": "5.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-is@6.0.1",
+      "name": "unist-util-is",
+      "version": "6.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-modify-children@4.0.0",
+      "name": "unist-util-modify-children",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-position-from-estree@2.0.0",
+      "name": "unist-util-position-from-estree",
+      "version": "2.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-position@5.0.0",
+      "name": "unist-util-position",
+      "version": "5.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-remove-position@5.0.0",
+      "name": "unist-util-remove-position",
+      "version": "5.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-remove@4.0.0",
+      "name": "unist-util-remove",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-stringify-position@4.0.0",
+      "name": "unist-util-stringify-position",
+      "version": "4.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-visit-children@3.0.0",
+      "name": "unist-util-visit-children",
+      "version": "3.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-visit-parents@6.0.2",
+      "name": "unist-util-visit-parents",
+      "version": "6.0.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unist-util-visit@5.1.0",
+      "name": "unist-util-visit",
+      "version": "5.1.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "unpipe@1.0.0",
+      "name": "unpipe",
+      "version": "1.0.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "use-sync-external-store@1.6.0",
+      "name": "use-sync-external-store",
+      "version": "1.6.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "uuid@14.0.1",
+      "name": "uuid",
+      "version": "14.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "vary@1.1.2",
+      "name": "vary",
+      "version": "1.1.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "vfile-location@5.0.3",
+      "name": "vfile-location",
+      "version": "5.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "vfile-message@4.0.3",
+      "name": "vfile-message",
+      "version": "4.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "vfile@6.0.3",
+      "name": "vfile",
+      "version": "6.0.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "web-namespaces@2.0.1",
+      "name": "web-namespaces",
+      "version": "2.0.1",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "which@2.0.2",
+      "name": "which",
+      "version": "2.0.2",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json",
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "wicked-good-xpath@1.3.0",
+      "name": "wicked-good-xpath",
+      "version": "1.3.0",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "wrappy@1.0.2",
+      "name": "wrappy",
+      "version": "1.0.2",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "yaml@2.9.0",
+      "name": "yaml",
+      "version": "2.9.0",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "yocto-queue@1.2.2",
+      "name": "yocto-queue",
+      "version": "1.2.2",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "zod-to-json-schema@3.25.2",
+      "name": "zod-to-json-schema",
+      "version": "3.25.2",
+      "license": "ISC",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "zod-validation-error@3.5.4",
+      "name": "zod-validation-error",
+      "version": "3.5.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "zod@3.25.76",
+      "name": "zod",
+      "version": "3.25.76",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    },
+    {
+      "id": "zod@4.4.3",
+      "name": "zod",
+      "version": "4.4.3",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        ".claude/mcp-server/package-lock.json",
+        ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "zwitch@2.0.4",
+      "name": "zwitch",
+      "version": "2.0.4",
+      "license": "MIT",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "docs-site/package-lock.json"
+      ]
+    }
+  ]
+}

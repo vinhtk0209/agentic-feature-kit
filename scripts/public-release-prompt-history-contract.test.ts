@@ -231,8 +231,8 @@ attack('missing final newline', syntheticGood.slice(0, -1), /final newline/)
 assertPackageRouting()
 
 const currentAuthority: HistoryAuthority = {
-  sourceSha256: '28cca65197070069287da54c539f1ac63abd27a560b61587a7b99ce78b1fe1a9',
-  transformedSha256: '709873d9ebdb4571be12e17563c0e0493dee360b07f49cf2a5c51712841feb90',
+  sourceSha256: 'df96e5f38458c145955fff300db5442a69a467d6fa8ba37253bd8161b72cc366',
+  transformedSha256: '7b4623855b29d5bf048eefe1bb4f2e1b84c0ec4178f44f380aa5622d827f7a5f',
   lines: 1836,
   headings: 182,
   lessons: 60,
