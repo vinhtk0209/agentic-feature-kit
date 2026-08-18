@@ -43,6 +43,8 @@
     "packages/core/README.md",
     "providers/README.md",
     "providers/provider-bundles.json",
+    "release/dependency-license-catalog.json",
+    "release/dependency-license-policy.json",
     "release/internal-marker-classification.json",
     "release/public-release-manifest.json"
   ],
@@ -2445,6 +2447,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-018-r5c1-source-readiness-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "docs/roadmap/p17-021-distributed-control-panel-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3069,6 +3077,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "release/dependency-license-catalog.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "release/dependency-license-policy.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "release/internal-marker-classification.json",
       "decision": "include",
       "contentKind": "text",
@@ -3181,6 +3201,12 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/generate-dependency-license-catalog.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
     },
     {
       "path": "scripts/i2-codex-live-smoke.test.ts",
@@ -3549,6 +3575,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/post-17-public-release-r5c1-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3655,6 +3687,42 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/public-source-readiness-contract.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/public-source-readiness-docs.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/public-source-readiness-license.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/public-source-readiness-link.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/public-source-readiness-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/public-source-readiness-secret.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
     },
     {
       "path": "scripts/refresh-post17-orchestrator-boundary.test.ts",

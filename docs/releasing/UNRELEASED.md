@@ -13,6 +13,8 @@ These notes describe the current candidate for evaluators and maintainers. They 
 release number, promise availability, or replace immutable evidence attached to each implementation
 slice.
 
+This candidate does not authorize publication.
+
 ## Version authorities
 
 | Domain | Current authority | Scope |
@@ -36,6 +38,16 @@ claim, or qualification result for another.
 - Added contribution, security, support, conduct, issue, and pull request governance owners.
 - Added a Git-index-bound release manifest and a digest-bound, no-plaintext marker disposition
   registry. The candidate remains intentionally blocked rather than silently omitting known gaps.
+- Internal-marker and private-binary remediation are complete for the current source candidate;
+  private canonical history remains private and excluded material was not recreated.
+- Nightly and manual qualification use the same read-only Linux/Windows matrix, immutable action
+  pins, bounded artifacts, and a fail-closed aggregate gate.
+- Manifest-wide internal Markdown links: 48/48 valid after replacing 13 references to removed
+  private or historical files with retained public authority or non-link historical prose.
+- Dependency license catalog: 616 unique packages across four lockfiles, with six unconditional
+  permissive expressions, five exact reviewed exceptions, and four exact metadata overrides.
+- Manifest text secret scan: ten detector families, zero findings, strict UTF-8/NUL handling, bounded
+  output, and digest-only redaction.
 
 ## Evidence boundaries
 
@@ -48,11 +60,13 @@ claim, or qualification result for another.
 
 ## Remaining release gates
 
-- Resolve and requalify all 31 unresolved marker dispositions without hiding historical evidence.
-- Complete dependency-license inventory and SBOM generation.
-- Pin and verify supply-chain actions, archive contents, checksums, and provenance boundaries.
-- Add nightly qualification with bounded retention and failure ownership.
-- Complete clean-clone qualification for supported operating systems and provider packages.
+- Generate deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars for the exact source and provider
+  artifacts.
+- Run the final distribution-archive scanner for central-directory integrity, traversal, alias,
+  reparse/symlink, checksum, manifest, license, SBOM, and secret boundaries.
+- Complete clean-clone qualification for supported operating systems and provider packages, including
+  isolated double builds, extracted runtime smokes, and quickstart proof.
+- Bind checksums, final SBOMs, and provenance/attestation boundaries to an exact release candidate.
 - Select and validate a public version only after compatibility and migration policy are approved.
 - Separately authorize any tag, GitHub Release, package/plugin publication, or visibility change.
 

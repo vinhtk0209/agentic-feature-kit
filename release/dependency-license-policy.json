@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "agentic-feature-kit-dependency-license-policy",
+  "lockfiles": [
+    ".claude/mcp-server/package-lock.json",
+    ".claude/mcp-workflow/package-lock.json",
+    "docs-site/package-lock.json",
+    "package-lock.json"
+  ],
+  "allowedLicenses": [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT"
+  ],
+  "reviewedExceptions": [
+    {
+      "id": "@axe-core/playwright@4.11.3",
+      "license": "MPL-2.0",
+      "rationale": "Development-only accessibility test integration; not vendored in provider bundles."
+    },
+    {
+      "id": "axe-core@4.11.4",
+      "license": "MPL-2.0",
+      "rationale": "Development-only accessibility test engine; not vendored in provider bundles."
+    },
+    {
+      "id": "caniuse-lite@1.0.30001799",
+      "license": "CC-BY-4.0",
+      "rationale": "Browser-compatibility data consumed by the documentation build toolchain."
+    },
+    {
+      "id": "dompurify@3.4.11",
+      "license": "(MPL-2.0 OR Apache-2.0)",
+      "rationale": "Apache-2.0 is selected from the package's dual-license expression."
+    },
+    {
+      "id": "robust-predicates@3.0.3",
+      "license": "Unlicense",
+      "rationale": "Transitive geometric utility used by the documentation visualization toolchain."
+    }
+  ],
+  "metadataOverrides": [
+    {
+      "id": "busboy@1.6.0",
+      "license": "MIT",
+      "provenance": "registry-tarball-license",
+      "evidence": "The exact registry tarball contains the standard MIT permission grant in LICENSE."
+    },
+    {
+      "id": "format@0.2.2",
+      "license": "MIT",
+      "provenance": "registry-tarball-readme",
+      "evidence": "The exact registry tarball README declares the package under the MIT license."
+    },
+    {
+      "id": "khroma@2.1.0",
+      "license": "MIT",
+      "provenance": "registry-tarball-license",
+      "evidence": "The exact registry tarball includes an MIT license file naming the copyright holders."
+    },
+    {
+      "id": "streamsearch@1.1.0",
+      "license": "MIT",
+      "provenance": "registry-tarball-license",
+      "evidence": "The exact registry tarball contains the standard MIT permission grant in LICENSE."
+    }
+  ],
+  "packageRoots": [
+    {
+      "path": ".claude/mcp-server/package.json",
+      "name": "@agentic-feature-kit/confluence-mcp",
+      "version": "1.0.0",
+      "private": true,
+      "license": "Apache-2.0",
+      "description": "Confluence source adapter for Agentic Feature Kit.",
+      "node": ">=20"
+    },
+    {
+      "path": ".claude/mcp-workflow/package.json",
+      "name": "@agentic-feature-kit/workflow-mcp",
+      "version": "1.0.0",
+      "private": true,
+      "license": "Apache-2.0",
+      "description": "Workflow orchestration adapter for Agentic Feature Kit.",
+      "node": ">=20"
+    },
+    {
+      "path": "docs-site/package.json",
+      "name": "@agentic-feature-kit/docs",
+      "version": "0.1.0",
+      "private": true,
+      "license": "Apache-2.0",
+      "description": "Documentation site for Agentic Feature Kit.",
+      "node": ">=20"
+    },
+    {
+      "path": "package.json",
+      "name": "feature-from-confluence-kit",
+      "version": "3.25.0",
+      "private": true,
+      "license": "Apache-2.0",
+      "description": "Evidence-backed agentic software-delivery toolkit with deterministic bundles for Codex, Claude Code, and GitHub Copilot.",
+      "node": ">=20"
+    }
+  ]
+}

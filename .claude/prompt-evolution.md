@@ -347,7 +347,7 @@ Also updated PROGRESS DISPLAY ASCII boxes (both editions) + the step list (Claud
 
 ## 2026-05-19 — v3.8 → v3.9 Determinism guardrails (Change M series)
 
-**Source**: clean-room re-run of `/feature-from-confluence` on golden spec US-AD-037 (EvaluateAndReleaseResults). Reference output already existed unstaged in working tree (`src/class-member-grade-detail/` + `docs/components/EvaluateAndReleaseResults/`); ran v3.8 skill fresh in `.claude/worktrees/clean-room-us-ad-037` worktree off HEAD and compared. Results in [`impl-from-confluence/EVALUATION.md`](../impl-from-confluence/EVALUATION.md), drift reports in `impl-from-confluence/parity-*-vs-reference.md` and `parity-*-vs-golden.md`.
+**Source**: clean-room re-run of `/feature-from-confluence` on golden spec US-AD-037 (EvaluateAndReleaseResults). Reference output already existed unstaged in working tree (`src/class-member-grade-detail/` + `docs/components/EvaluateAndReleaseResults/`); ran v3.8 skill fresh in `.claude/worktrees/clean-room-us-ad-037` worktree off HEAD and compared. Results were recorded in the private clean-room evaluation archive; the relevant drift metrics are retained below.
 
 **Premise**: HARD RULES 15–19 lock artifact **schemas** but not artifact **content**. Within identical schemas, the model picks different URL conventions, decomposes spec requirements with different granularity, and disagrees on UI/ACT row count between runs. v3.8 parity infra (parity-check + parity-check-semantic + golden fixture) detects this drift but cannot prevent it. v3.9 adds content-level determinism rules.
 

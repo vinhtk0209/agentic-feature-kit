@@ -1,7 +1,13 @@
 {
-  "name": "feature-workflow-mcp",
+  "name": "@agentic-feature-kit/workflow-mcp",
   "version": "1.0.0",
+  "private": true,
+  "description": "Workflow orchestration adapter for Agentic Feature Kit.",
+  "license": "Apache-2.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "npx tsx index.ts"
   },
