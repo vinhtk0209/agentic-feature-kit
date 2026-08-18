@@ -94,14 +94,8 @@
       "id": "workspace-target-authoring",
       "detectorId": "known-token-v1",
       "fingerprintSha256": "dc8c0c3f495a30e7ae24ac811cd9c0a5cfa34689c6a8f46fdc2881a782c4418a",
-      "expectedTotal": 10,
+      "expectedTotal": 8,
       "occurrences": [
-        {
-          "path": ".claude/prompt-evolution.md",
-          "expectedCount": 2,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
         {
           "path": ".gitignore",
           "expectedCount": 1,
@@ -150,17 +144,11 @@
       "id": "workspace-target-learning",
       "detectorId": "known-token-v1",
       "fingerprintSha256": "e9b50f08930935c764e091eb6ae793f6d1305e0a4bd89f455237bff16acc7782",
-      "expectedTotal": 30,
+      "expectedTotal": 7,
       "occurrences": [
         {
           "path": ".claude/_content/images.md",
           "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "workspace-identity"
-        },
-        {
-          "path": ".claude/prompt-evolution.md",
-          "expectedCount": 23,
           "disposition": "genericize",
           "reasonCode": "workspace-identity"
         },
