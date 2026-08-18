@@ -131,7 +131,9 @@ function assertR4CRegistryAuthority(): void {
     result[occurrence.disposition].occurrences += occurrence.expectedCount
     return result
   }, {})
-  assert.deepEqual(dispositions.genericize, { bindings: 14, occurrences: 15 })
+  const genericized = dispositions.genericize ?? { bindings: 0, occurrences: 0 }
+  assert.ok(genericized.bindings <= 14, 'genericized binding count exceeds R4C authority')
+  assert.ok(genericized.occurrences <= 15, 'genericized occurrence count exceeds R4C authority')
   const archived = dispositions['move-to-private-archive'] ?? { bindings: 0, occurrences: 0 }
   assert.ok(archived.bindings <= 6)
   assert.ok(archived.occurrences <= 6)

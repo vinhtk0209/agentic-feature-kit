@@ -25,7 +25,7 @@
   },
   "markerRegistry": {
     "path": "release/internal-marker-classification.json",
-    "sha256": "db68f178a8c5db088c6de227f5bb755b26ff1da5d9276546ace9c48e2c1b1288"
+    "sha256": "12d808b79237aeb2dafcaa51cab17836e567462ce81bf48615a1dd58d13567ea"
   },
   "requiredPaths": [
     ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -2133,6 +2133,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-r4e-operational-aliases-2026-08-18.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
@@ -2392,6 +2398,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r4d-private-archive-boundary-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r4e-public-operational-aliases-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3586,6 +3598,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/post-17-public-release-r4e-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3653,6 +3671,12 @@
     },
     {
       "path": "scripts/public-release-legacy-backend-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/public-release-operational-alias-contract.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

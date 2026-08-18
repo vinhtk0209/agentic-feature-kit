@@ -26,7 +26,7 @@
  *   npm run sync -- --force-dirty   # override the git-clean guard (conscious opt-in)
  *   npm run sync -- --force-unverified "<reason>"   # override the A1.3 verify backstop (logged)
  *
- *   npm run sync:rollback -- --target ../isu-elearner-learning   # restore last snapshot
+ *   npm run sync:rollback -- --target ../example-learning-app   # restore last snapshot
  *   npm run sync:rollback -- --target <t> --snapshot <name>      # restore a specific one
  *   npm run sync:rollback -- --target <t> --list                 # list snapshots
  */
