@@ -176,7 +176,8 @@ function assertR4CRegressionIsMonotonic(): void {
 
 function assertR4DRegressionIsMonotonic(): void {
   const source = read('scripts/public-release-private-archive-contract.test.ts')
-  assert.match(source, /minimumCount/)
+  assert.match(source, /archivedEvidencePaths/)
+  assert.match(source, /assertPublicManifestAuthority/)
   assert.match(source, /classifiedOccurrences\s*<=\s*15/)
   assert.match(source, /bindings\.length\s*<=\s*14/)
   assert.match(source, /genericized\.bindings\s*<=\s*14/)
@@ -206,8 +207,6 @@ function assertReleaseManifest(): void {
   }
   const byPath = new Map(manifest.entries.map((entry) => [entry.path, entry]))
   const hasEvidence = byPath.has(evidencePath)
-  const minimumCount = hasEvidence ? 620 : 619
-  assert.ok(manifest.entries.length >= minimumCount, 'R4E manifest path floor')
   assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, manifest.entries.length)
   assert.equal(manifest.entries.filter((entry) => entry.decision === 'exclude').length, 0)
   for (const relativePath of sourceManifest) {

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactId": "agentic-feature-kit-public-binary-review",
+  "reviewedBinaries": [
+    {
+      "path": "docs/evidence/o2-continuous-assurance-pass-2026-08-11.jpg",
+      "mediaType": "image/jpeg",
+      "byteLength": 83215,
+      "sha256": "c84b5fe1a47426ff5d72b83dd222a9b685265a05471d768633c12a4435ed4eb0",
+      "decision": "retain-reviewed-operational-evidence"
+    },
+    {
+      "path": "docs/evidence/o2-continuous-assurance-progress-2026-08-11.jpg",
+      "mediaType": "image/jpeg",
+      "byteLength": 88081,
+      "sha256": "a50486cbcdaa884a7fd4c33f3fa90eaaae1b88f2d8d81db1cc992f24b6be1c4b",
+      "decision": "retain-reviewed-operational-evidence"
+    },
+    {
+      "path": "docs/evidence/o2-continuous-assurance-status-2026-08-11.jpg",
+      "mediaType": "image/jpeg",
+      "byteLength": 83617,
+      "sha256": "4973cda46645127c1fc9ef35858c2903ca833ec0e52eee3a4e5390f329330902",
+      "decision": "retain-reviewed-operational-evidence"
+    }
+  ]
+}

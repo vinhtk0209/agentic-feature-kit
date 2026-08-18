@@ -150,9 +150,9 @@ the O2 row as `done` / `pass`.
 
 Visual evidence:
 
-- `docs/evidence/o2-continuous-assurance-progress-2026-08-11.png` — 88,081 bytes, SHA-256
+- `docs/evidence/o2-continuous-assurance-progress-2026-08-11.jpg` — 88,081 bytes, SHA-256
   `a50486cbcdaa884a7fd4c33f3fa90eaaae1b88f2d8d81db1cc992f24b6be1c4b`
-- `docs/evidence/o2-continuous-assurance-pass-2026-08-11.png` — 83,215 bytes, SHA-256
+- `docs/evidence/o2-continuous-assurance-pass-2026-08-11.jpg` — 83,215 bytes, SHA-256
   `c84b5fe1a47426ff5d72b83dd222a9b685265a05471d768633c12a4435ed4eb0`
 
 ### Final regression evidence

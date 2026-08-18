@@ -1764,14 +1764,14 @@
       "reasonCode": "public-source"
     },
     {
-      "path": "docs/evidence/o2-continuous-assurance-pass-2026-08-11.png",
+      "path": "docs/evidence/o2-continuous-assurance-pass-2026-08-11.jpg",
       "decision": "include",
       "contentKind": "binary",
       "reasonCode": "public-source",
       "sha256": "c84b5fe1a47426ff5d72b83dd222a9b685265a05471d768633c12a4435ed4eb0"
     },
     {
-      "path": "docs/evidence/o2-continuous-assurance-progress-2026-08-11.png",
+      "path": "docs/evidence/o2-continuous-assurance-progress-2026-08-11.jpg",
       "decision": "include",
       "contentKind": "binary",
       "reasonCode": "public-source",
@@ -2151,6 +2151,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-r5b-binary-privacy-2026-08-18.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
@@ -2433,6 +2439,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-018-r5b-binary-privacy-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-021-distributed-control-panel-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -2551,139 +2563,6 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/image-2026-4-1_10-23-40.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "39bb9db7512f005b8895ea99490ae75234fdcf7c7b68e884422d038fcc0f6ea8"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/image-2026-4-1_10-23-9.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "9a92b7c2f9831d19d3960128bbc9e0b1bc96ae665870effb13c71377cb36afb9"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/image-2026-4-1_10-24-33.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "b564d02ac541eda0815c7d54849cff33c5958f65a5f52da3a46baf6b3fa57a33"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/image-2026-4-1_10-25-0.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "05b18cfac564c16154a50976ba622bec8ed2f657dda3347ef0149be8f8d1a2f2"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/image-2026-4-1_10-25-44.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "c6dcef8c3a06fece57a925e3ff47ace89b0a430da0b06a99add62932a9a66ce2"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/image-2026-5-19_13-59-27.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "409cfd726b82406b370b6a7e38516ff8fae699c8d4bc23d6ccadaceb1d970cf7"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/image-2026-5-19_13-59-7.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "409cfd726b82406b370b6a7e38516ff8fae699c8d4bc23d6ccadaceb1d970cf7"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-01.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "c896fb0494890435f2cf451805ce603396a251ab14f9239cd78c3ec47af37f4a"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-02-empty.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "49cfe8ff4730aa2314fc0bf06d1ec9410f25f6a3c1d6b9403f3226e1658a7bbb"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-02-loading.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "1cef12e832df8d1c87c4773f77e3d38c32e667559e4327616935cd99fbed3f41"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-02.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "276966e3c673dfe3d31f16daad0d20cd17a6141bb3b2a3044c75c5c6c0550264"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-03.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "409cfd726b82406b370b6a7e38516ff8fae699c8d4bc23d6ccadaceb1d970cf7"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-04.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "39bb9db7512f005b8895ea99490ae75234fdcf7c7b68e884422d038fcc0f6ea8"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-05.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "409cfd726b82406b370b6a7e38516ff8fae699c8d4bc23d6ccadaceb1d970cf7"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-06.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "b564d02ac541eda0815c7d54849cff33c5958f65a5f52da3a46baf6b3fa57a33"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-07.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "9a92b7c2f9831d19d3960128bbc9e0b1bc96ae665870effb13c71377cb36afb9"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-08.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "05b18cfac564c16154a50976ba622bec8ed2f657dda3347ef0149be8f8d1a2f2"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-09.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "c6dcef8c3a06fece57a925e3ff47ace89b0a430da0b06a99add62932a9a66ce2"
-    },
-    {
-      "path": "docs/specs/ClassDetailsModuleList/images/mcp-image-10.png",
-      "decision": "include",
-      "contentKind": "binary",
-      "reasonCode": "public-source",
-      "sha256": "1d43715099592e024d6c5f43bb8a2ab770037c06d8bb581ca840c690ea2320bd"
     },
     {
       "path": "docs/specs/INDEX.md",
@@ -3202,6 +3081,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "release/private-binary-archive-receipt.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "release/public-binary-review.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "release/public-release-manifest.json",
       "decision": "include",
       "contentKind": "text",
@@ -3652,6 +3543,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "scripts/post-17-public-release-r5b-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3674,6 +3571,12 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/public-binary-review-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
     },
     {
       "path": "scripts/public-entry-contract.test.ts",
