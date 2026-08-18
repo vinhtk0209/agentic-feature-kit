@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -36,6 +37,13 @@ const expectedSourcePaths = [
   'scripts/public-release-prompt-history-contract.test.ts',
   'scripts/public-release-synthetic-fixture-contract.test.ts',
 ] as const
+const expectedEvidencePaths = [
+  'docs/evidence/post-17-public-release-r4c-prompt-history-aliases-2026-08-18.md',
+  'release/public-release-manifest.json',
+] as const
+const evidenceManifestIdentity = createHash('sha256')
+  .update(`${expectedEvidencePaths.join('\n')}\n`, 'utf8')
+  .digest('hex')
 
 for (const heading of [
   '# P17-018 R4C — Prompt-History Alias Plan',
@@ -77,6 +85,11 @@ assert.match(r4bPlan, /R4B does not complete the remaining genericization/)
 for (const sourcePath of expectedSourcePaths) {
   assert.ok(plan.includes(`- \`${sourcePath}\``), `missing R4C source manifest path: ${sourcePath}`)
 }
+for (const evidencePath of expectedEvidencePaths) {
+  assert.ok(plan.includes(`- \`${evidencePath}\``), `missing R4C evidence manifest path: ${evidencePath}`)
+}
+assert.equal(evidenceManifestIdentity, '7f2646d0f2fc060c9d129bb4e0463d78ad38bbef59a09f6282baa4384a863cd0')
+assert.ok(plan.includes(`\`${evidenceManifestIdentity}\``), 'R4C evidence-manifest identity must match its exact LF-final paths')
 assert.doesNotMatch(normalized, /repository (?:is|was) public/i)
 assert.doesNotMatch(normalized, /(?:is|was) public[- ]release ready/i)
 assert.doesNotMatch(normalized, /(?:all|zero) (?:marker|release) blockers (?:are|remain)/i)

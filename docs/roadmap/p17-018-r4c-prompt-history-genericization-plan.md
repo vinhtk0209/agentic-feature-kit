@@ -184,7 +184,7 @@ The later evidence manifest contains exactly:
 - `release/public-release-manifest.json`
 
 The LF-final evidence-manifest identity is SHA-256
-`cfa9c5a4ad3e7d84226a35c7b0b1ee19b2e31148cee2c7cc2f8121fbef461009`.
+`7f2646d0f2fc060c9d129bb4e0463d78ad38bbef59a09f6282baa4384a863cd0`.
 
 No generated log, archive, environment file, dashboard snapshot, target path, local configuration,
 or raw classified value belongs to either commit.
