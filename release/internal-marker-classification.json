@@ -67,20 +67,8 @@
       "id": "live-supabase-project-ref",
       "detectorId": "supabase-project-ref-v1",
       "fingerprintSha256": "d5b7bcc56029942d6f4e5274fec1b9f4dfe870943051dead0cb50e391bba8182",
-      "expectedTotal": 11,
+      "expectedTotal": 8,
       "occurrences": [
-        {
-          "path": ".claude/integrations/telemetry.ts",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "live-service-default"
-        },
-        {
-          "path": "bin/lib/supabase.ts",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "live-service-default"
-        },
         {
           "path": "docs/evidence/i1-self-improvement-cycle-2026-08-12.json",
           "expectedCount": 1,
@@ -122,12 +110,6 @@
           "expectedCount": 1,
           "disposition": "replace-with-synthetic-fixture",
           "reasonCode": "internal-service-fixture"
-        },
-        {
-          "path": "scripts/sync-to-targets.ts",
-          "expectedCount": 1,
-          "disposition": "genericize",
-          "reasonCode": "live-service-default"
         }
       ]
     },

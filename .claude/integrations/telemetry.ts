@@ -2,9 +2,8 @@
 /**
  * telemetry.ts — Token verification + usage/error telemetry for the kit.
  *
- * Talks to a Supabase Postgres RPC backend. The anon key below is public by
- * design (Row-Level Security on the server prevents it from reading any token
- * data — it can only call the verify function and insert log/error rows).
+ * Talks to an optional legacy Supabase RPC backend. The backend URL and
+ * anonymous/publishable credential are supplied as a validated runtime pair.
  *
  * Reads the user's token from the KIT_TOKEN environment variable.
  *
@@ -13,22 +12,19 @@
  *   npx tsx telemetry.ts feature <FeatureName>        # log a built feature (B12)
  *   npx tsx telemetry.ts error <type> <phase> <msg>   # report an error
  *
- * Exit codes (verify): 0 = valid · 1 = invalid/expired/quota · 2 = network/config error
+ * Exit codes (verify): 0 = valid or optional backend unavailable · 1 = invalid/expired/quota
  */
 
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveLegacyBackendConfig } from "./core/legacy-backend-config";
 import { resolveCanonicalKitVersion } from "./kit-version";
 import {
   createBlockedRunVersionReceipt,
   resolveRunVersionCommandRunId,
 } from "./run-version-writer-adapter";
-
-const SUPABASE_URL = "https://vkuojxgvkxndftenrdno.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdW9qeGd2a3huZGZ0ZW5yZG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjgwMzMsImV4cCI6MjA5NzAwNDAzM30.MrTuIuN1kghxMXu0yyOW9MtmXVY7xH0-2HSCwTKo2cU";
 
 // Read version from the prompt file so each repo reports its actual installed version.
 // Missing, malformed, or duplicate authority is a startup error: emitting a guessed
@@ -76,16 +72,20 @@ function emitKitEvent(ev: Record<string, unknown>): void {
   }
 }
 
-const headers = {
-  "Content-Type": "application/json",
-  apikey: SUPABASE_ANON_KEY,
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-  // Tell the server to close the TCP connection after each response.
-  // Without this, undici keeps the socket open in a keep-alive pool and
-  // Windows libuv asserts (UV_HANDLE_CLOSING) when process.exit() races
-  // the in-flight socket close during event-loop teardown.
-  Connection: "close",
-};
+function requestContext(): { url: string; headers: Record<string, string> } {
+  const config = resolveLegacyBackendConfig(process.env);
+  return {
+    url: config.url,
+    headers: {
+      "Content-Type": "application/json",
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+      // Tell the server to close the TCP connection after each response.
+      // This avoids a Windows libuv teardown race in short-lived CLI processes.
+      Connection: "close",
+    },
+  };
+}
 
 function getToken(): string | null {
   if (process.env.KIT_TOKEN) return process.env.KIT_TOKEN;
@@ -110,9 +110,10 @@ function getToken(): string | null {
 
 /** Resolve the token_id for the current token (needed for log/error inserts). */
 async function rpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+  const backend = requestContext();
+  const res = await fetch(`${backend.url}/rest/v1/rpc/${fn}`, {
     method: "POST",
-    headers,
+    headers: backend.headers,
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`RPC ${fn} failed: ${res.status} ${await res.text()}`);
@@ -173,16 +174,22 @@ async function verify(runId: string): Promise<number> {
 }
 
 /** Best-effort insert into a telemetry table; never throws to the caller. */
-async function insert(table: string, row: Record<string, unknown>): Promise<void> {
+async function insert(table: string, row: Record<string, unknown>): Promise<boolean> {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    const backend = requestContext();
+    const res = await fetch(`${backend.url}/rest/v1/${table}`, {
       method: "POST",
-      headers: { ...headers, Prefer: "return=minimal" },
+      headers: { ...backend.headers, Prefer: "return=minimal" },
       body: JSON.stringify(row),
     });
-    if (!res.ok) console.error(`⚠️  telemetry ${table}: ${res.status}`);
+    if (!res.ok) {
+      console.error(`⚠️  telemetry ${table}: ${res.status}`);
+      return false;
+    }
+    return true;
   } catch (e) {
     console.error(`⚠️  telemetry ${table} skipped: ${(e as Error).message}`);
+    return false;
   }
 }
 
@@ -199,18 +206,18 @@ async function tokenId(): Promise<string | null> {
 
 async function logFeature(featureName: string): Promise<void> {
   const id = await tokenId();
-  await insert("usage_logs", {
+  const inserted = await insert("usage_logs", {
     token_id: id,
     event_type: "feature_built",
     kit_version: KIT_VERSION,
     feature_name: featureName,
   });
-  console.log(`📊 Logged feature: ${featureName}`);
+  console.log(inserted ? `📊 Logged feature: ${featureName}` : `📊 Feature telemetry skipped: ${featureName}`);
 }
 
 async function reportError(type: string, phase: string, message: string): Promise<void> {
   const id = await tokenId();
-  await insert("error_reports", {
+  const inserted = await insert("error_reports", {
     token_id: id,
     error_type: type,
     phase,
@@ -221,7 +228,7 @@ async function reportError(type: string, phase: string, message: string): Promis
   // scripted error call site, so it is reliably tied to the current run's stream — unlike the
   // error_reports row above, which is keyed by token_id and can't be joined back to one run.
   emitKitEvent({ type: "error", phase });
-  console.log(`📊 Reported error: ${type} @ ${phase}`);
+  console.log(inserted ? `📊 Reported error: ${type} @ ${phase}` : `📊 Error telemetry skipped: ${type} @ ${phase}`);
 }
 
 // ── CLI dispatch ────────────────────────────────────────────────────────────

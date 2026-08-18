@@ -8,7 +8,7 @@
     {
       "id": "kit.bin.platform-rpc",
       "sourcePath": "bin/lib/supabase.ts",
-      "sourceAnchor": "export async function rpc<T>(fn: string, body: Record<string, unknown>): Promise<T> {",
+      "sourceAnchor": "export async function rpc<T>(",
       "transport": "supabase_rpc",
       "dataFamilies": ["identity_control", "legacy_feature_event"],
       "currentPrivacyState": "legacy_raw",
@@ -44,7 +44,7 @@
     {
       "id": "kit.telemetry.central-insert",
       "sourcePath": ".claude/integrations/telemetry.ts",
-      "sourceAnchor": "async function insert(table: string, row: Record<string, unknown>): Promise<void> {",
+      "sourceAnchor": "async function insert(table: string, row: Record<string, unknown>): Promise<boolean> {",
       "transport": "supabase_rest",
       "dataFamilies": ["error_signal", "legacy_feature_event"],
       "currentPrivacyState": "legacy_raw",

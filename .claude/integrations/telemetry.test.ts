@@ -53,6 +53,8 @@ function runDirect(args: string[], env: Env = {}): SpawnSyncReturns<string> {
   return spawnSync(`npx tsx ${quoted}`, {
     env: buildEnv({
       KIT_TOKEN: undefined,
+      SUPABASE_URL: undefined,
+      SUPABASE_ANON_KEY: undefined,
       APPDATA: emptyHome,
       HOME: emptyHome,
       USERPROFILE: emptyHome,
@@ -68,7 +70,12 @@ function runDirect(args: string[], env: Env = {}): SpawnSyncReturns<string> {
 function runMocked(args: string[], env: Env = {}): SpawnSyncReturns<string> {
   const quoted = [MOCK_RUNNER, ...args].map((a) => `"${a}"`).join(' ');
   return spawnSync(`npx tsx ${quoted}`, {
-    env: buildEnv({ KIT_TOKEN: 'test-token', ...env }),
+    env: buildEnv({
+      KIT_TOKEN: 'test-token',
+      SUPABASE_URL: 'http://127.0.0.1:54321',
+      SUPABASE_ANON_KEY: 'synthetic-public-key-0001',
+      ...env,
+    }),
     encoding: 'utf8',
     shell: true,
     timeout: 30000,
@@ -98,7 +105,12 @@ function runBrokenVersionAuthority(promptSource: string): SpawnSyncReturns<strin
   fs.copyFileSync(TELEMETRY, path.join(integrationDir, 'telemetry.ts'));
   fs.copyFileSync(path.resolve(__dirname, 'kit-version.ts'), path.join(integrationDir, 'kit-version.ts'));
   fs.copyFileSync(path.resolve(__dirname, 'run-version-writer-adapter.ts'), path.join(integrationDir, 'run-version-writer-adapter.ts'));
-  for (const file of ['blocked-central-writer.ts', 'privacy-policy.ts', 'privacy-writer.ts']) {
+  for (const file of [
+    'blocked-central-writer.ts',
+    'legacy-backend-config.ts',
+    'privacy-policy.ts',
+    'privacy-writer.ts',
+  ]) {
     fs.copyFileSync(path.resolve(__dirname, 'core', file), path.join(coreDir, file));
   }
   fs.writeFileSync(path.join(commandDir, 'feature-from-confluence.md'), promptSource, 'utf8');
@@ -222,12 +234,41 @@ test('verify — infra/network failure → exits 0 (fail-open)', () => {
   assert(r.stderr.includes('⚠️'), 'stderr should show a warning for infra failures');
 });
 
+test('verify — missing backend pair exits 0 with zero fetch and no valid-auth markers', () => {
+  const r = runMocked(['verify'], { SUPABASE_URL: undefined, SUPABASE_ANON_KEY: undefined });
+  const kinds = mockFetchKinds(r.stdout);
+  assert(r.status === 0, `expected exit 0 (optional backend), got ${r.status}`);
+  assert(kinds.length === 0, `missing config reached fetch: ${kinds}`);
+  assert(r.stderr.includes('unavailable'), 'stderr should report bounded backend unavailability');
+  assert(!r.stdout.includes('Token valid'), 'missing config must not claim valid auth');
+  assert(!r.stdout.includes('"type":"meta"'), 'missing config must not emit the valid-auth meta marker');
+  assert(privacyReceipts(r.stdout).length === 0, 'missing config must not emit an auth-success receipt');
+});
+
+test('verify — partial backend pair exits 0 and fails before fetch', () => {
+  const r = runMocked(['verify'], { SUPABASE_ANON_KEY: undefined });
+  assert(r.status === 0, `expected exit 0 (optional backend), got ${r.status}`);
+  assert(mockFetchKinds(r.stdout).length === 0, 'partial config reached fetch');
+  assert(r.stderr.includes('unavailable'), 'partial config should report bounded unavailability');
+});
+
 // ── Tests: feature command dispatch ──────────────────────────────────────────
 
 test('feature <name> → exits 0 (best-effort)', () => {
   const r = runMocked(['feature', 'TestFeature']);
   assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
   assert(r.stdout.includes('📊'), 'stdout should log the feature telemetry event');
+});
+
+test('feature — missing backend pair stays local and reports a truthful skip', () => {
+  const r = runMocked(['feature', 'TestFeature'], {
+    SUPABASE_URL: undefined,
+    SUPABASE_ANON_KEY: undefined,
+  });
+  assert(r.status === 0, `expected exit 0, got ${r.status}`);
+  assert(mockFetchKinds(r.stdout).length === 0, 'missing config reached feature fetch');
+  assert(r.stdout.includes('skipped'), 'feature output must not claim a remote write');
+  assert(!r.stdout.includes('Logged feature'), 'feature output falsely claims a remote write');
 });
 
 test('feature missing arg → exits 2', () => {
@@ -243,6 +284,20 @@ test('error <type> <phase> <msg> → exits 0 (best-effort)', () => {
   assert(r.status === 0, `expected exit 0, got ${r.status}\nstderr: ${r.stderr}`);
   assert(r.stdout.includes('📊'), 'stdout should log the error telemetry event');
   assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"error","phase":"B11","runNonce":"${nonce}"}`), 'error marker must bind one canonical phase and nonce');
+});
+
+test('error — missing backend pair keeps the local sidecar marker with zero fetch', () => {
+  const nonce = 'f'.repeat(64);
+  const r = runMocked(['error', 'step_failure', 'B11', 'tests failed'], {
+    KIT_EVENT_NONCE: nonce,
+    SUPABASE_URL: undefined,
+    SUPABASE_ANON_KEY: undefined,
+  });
+  assert(r.status === 0, `expected exit 0, got ${r.status}`);
+  assert(mockFetchKinds(r.stdout).length === 0, 'missing config reached error fetch');
+  assert(r.stdout.includes(`@@KIT_EVENT@@ {"v":1,"type":"error","phase":"B11","runNonce":"${nonce}"}`), 'local error marker must survive backend absence');
+  assert(r.stdout.includes('skipped'), 'error output must report a truthful remote skip');
+  assert(!r.stdout.includes('Reported error'), 'error output falsely claims a remote write');
 });
 
 test('error accepts the exact canonical D-cross-2 phase token', () => {
