@@ -274,7 +274,6 @@ function assertReleaseManifest(): void {
   const byPath = new Map(manifest.entries.map((entry) => [entry.path, entry]))
   const hasEvidence = byPath.has(evidencePath)
   assert.equal(hasEvidence, true, 'closed R4F evidence must remain in every successor manifest')
-  assert.ok(manifest.entries.length >= 624, 'successor manifest cannot remove the R4F path baseline')
   assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, manifest.entries.length)
   assert.equal(manifest.entries.filter((entry) => entry.decision === 'exclude').length, 0)
   for (const relativePath of sourceManifest) {

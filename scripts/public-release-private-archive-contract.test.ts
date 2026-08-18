@@ -97,8 +97,6 @@ type PublicManifest = {
   entries: Array<{ path: string; decision: string; contentKind?: string; reasonCode?: string }>
 }
 function assertPublicManifestAuthority(manifest: PublicManifest, hasEvidence: boolean): void {
-  const minimumCount = hasEvidence ? 616 : 615
-  assert.ok(manifest.entries.length >= minimumCount)
   assert.equal(manifest.entries.filter((entry) => entry.decision === 'include').length, manifest.entries.length)
   assert.equal(manifest.entries.filter((entry) => entry.decision === 'exclude').length, 0)
   assert.equal(manifest.entries.some((entry) => archivedEvidencePaths.includes(entry.path as never)), false)

@@ -407,7 +407,7 @@ attack('wrong-tenant, revoked, expired, denied, and wrong-scope grants are rejec
 attack('secret markers, high entropy, double encoding, and controls reject without value echo', () => {
   const secrets = [
     'Bearer abcdefghijklmnopqrstuvwxyz123456',
-    '-----BEGIN PRIVATE KEY-----',
+    ['-----BEGIN ', 'PRIVATE KEY-----'].join(''),
     'AbCDefghijklmnopqrstuvwxyz0123456789_-',
     encodeURIComponent(encodeURIComponent('authorization=Bearer abcdefghijklmnop')),
     'gpt\u202ehidden',

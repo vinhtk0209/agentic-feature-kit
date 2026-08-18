@@ -1,8 +1,8 @@
 {
-  "name": "e-learning",
-  "lastModified": "2026-07-07T06:59:45Z",
-  "thumbnailUrl": "https://s3-alpha.figma.com/thumbnails/722ce19e-b97d-404f-837b-8662c90d3c02?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQ4GOSFWCZHCZBGZX%2F20260705%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20260705T120000Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=955c87574dad1d5900313b4b21b5eb24d2a8265502f412b7d7db6346518c38d1",
-  "version": "2373369052000474406",
+  "name": "sample-learning",
+  "lastModified": "2026-01-01T00:00:00Z",
+  "thumbnailUrl": "https://example.invalid/design/thumbnail.jpg",
+  "version": "1",
   "role": "viewer",
   "editorType": "figma",
   "linkAccess": "inherit",
