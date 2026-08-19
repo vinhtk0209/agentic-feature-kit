@@ -55,6 +55,11 @@ claim, or qualification result for another.
   proves 71 archived entries against local headers, CRC-32, bundle manifests, expanded directories,
   licenses, notices, SBOMs, checksums, bounds, and the ten-family secret policy, then promotes only
   one complete fail-clean candidate.
+- Committed-clone qualification runs the documented quickstart in two physical no-junction clones per platform.
+  Each clone receives a fresh `npm ci`, independent build, strict final admission, output-byte comparison,
+  and all 15 extracted runtime smokes before a redacted platform receipt can pass.
+- Only exact-head Linux/Windows receipts, aggregate parity, and exact-commit browser corroboration may qualify R5D.
+  Source presence or one local receipt does not pre-claim that external qualification.
 
 ## Evidence boundaries
 
@@ -67,8 +72,8 @@ claim, or qualification result for another.
 
 ## Remaining release gates
 
-- Complete clean-clone qualification for supported operating systems and provider packages, including
-  isolated double builds, extracted runtime smokes, and quickstart proof.
+- Preserve the R5D completion boundary: only exact-head Windows/Linux receipts, aggregate parity,
+  and exact-commit browser corroboration may support a clean-clone qualification claim.
 - Bind checksums, final SBOMs, and provenance/attestation boundaries to an exact release candidate.
 - Select and validate a public version only after compatibility and migration policy are approved.
 - Separately authorize any tag, GitHub Release, package/plugin publication, or visibility change.

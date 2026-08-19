@@ -6,6 +6,9 @@ node_modules/
 # Generated edition bundles (npm run build:copilot)
 dist/
 
+# Generated local/CI qualification receipts
+/artifacts/
+
 # Secrets — NEVER commit. Copy .env.example → .env and fill locally.
 .env
 .env.local

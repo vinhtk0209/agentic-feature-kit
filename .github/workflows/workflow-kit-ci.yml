@@ -31,6 +31,8 @@ jobs:
             os: windows-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
@@ -47,12 +49,21 @@ jobs:
         run: npm run test:cross-platform
       - name: Run workflow-kit self-test + drift gates
         run: npm run test:kit
+      - name: Run committed-clone release qualification
+        env:
+          CLEAN_CLONE_SOURCE: .
+          CLEAN_CLONE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          CLEAN_CLONE_PLATFORM: ${{ matrix.platform }}
+          CLEAN_CLONE_OUT: artifacts/public-release/r5d/${{ matrix.platform }}.json
+        run: npm run qualify:public-release-clean-clone
       - name: Upload platform qualification
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: qualification-${{ matrix.platform }}
-          path: artifacts/cross-platform/${{ matrix.platform }}.json
+          path: |
+            artifacts/cross-platform/${{ matrix.platform }}.json
+            artifacts/public-release/r5d/${{ matrix.platform }}.json
           if-no-files-found: error
           retention-days: 14
 
@@ -66,6 +77,8 @@ jobs:
       MATRIX_RESULT: ${{ needs.kit-verify.result }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
@@ -81,6 +94,8 @@ jobs:
           merge-multiple: true
       - name: Require the complete successful matrix
         run: npm run release:matrix-gate -- artifacts/cross-platform
+      - name: Require clean-clone Linux/Windows parity
+        run: npm run release:clean-clone-matrix-gate -- --dir artifacts/public-release/r5d
       - name: Publish qualification summary
         if: always()
         env:
@@ -92,6 +107,7 @@ jobs:
             printf '## Workflow Kit qualification\n\n'
             printf -- '- Matrix result: `%s`\n' "$QUALIFICATION_MATRIX_RESULT"
             printf -- '- Aggregate gate: `%s`\n' "$AGGREGATE_RESULT"
+            printf -- '- Committed-clone matrix: `%s`\n' "$AGGREGATE_RESULT"
             printf -- '- Platforms: Linux and Windows\n'
             printf -- '- Repository permissions: read-only\n'
           } >> "$GITHUB_STEP_SUMMARY"

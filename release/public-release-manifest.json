@@ -2483,6 +2483,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "docs/roadmap/p17-018-r5d-clean-clone-qualification-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "docs/roadmap/p17-021-distributed-control-panel-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3653,6 +3659,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "scripts/post-17-public-release-r5d-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3828,6 +3840,30 @@
     },
     {
       "path": "scripts/release-archive-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-clean-clone-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-clean-clone-contract.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-clean-clone-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-clean-clone-node.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "required-release-control"
