@@ -404,6 +404,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/live-cutover-preflight.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/privacy-policy.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2069,6 +2075,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-privacy-wave-c5b-preflight-snapshot-contract-2026-08-19.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-privacy-writer-wave-b1-2026-08-14.md",
       "decision": "include",
       "contentKind": "text",
@@ -2399,6 +2411,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-016-wave-c5b-preflight-snapshot-contract-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-018-public-release-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -2568,6 +2586,12 @@
     },
     {
       "path": "docs/schemas/orchestrator-phase-envelope.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/schemas/p17-016-c5b-preflight-snapshot.schema.json",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -2813,6 +2837,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/live-cutover-preflight.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/phase-model-router-cli.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2952,6 +2982,12 @@
     },
     {
       "path": "packages/core/test/legacy-backend-config.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/live-cutover-preflight.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3570,6 +3606,12 @@
     },
     {
       "path": "scripts/post-17-privacy-wave-c5-live-cutover-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-privacy-wave-c5b-preflight-snapshot-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
