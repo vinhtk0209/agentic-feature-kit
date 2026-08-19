@@ -26,6 +26,9 @@ export function validateCrossPlatformWorkflow(source: string): WorkflowContractR
   requireText('run: npm run test:cross-platform', 'matrix must run the platform smoke');
   requireText('run: npm run test:kit', 'matrix must run the full kit suite');
   requireText(`uses: actions/checkout@${REVIEWED_ACTION_PINS['actions/checkout'].sha}`, 'jobs must use the reviewed checkout pin');
+  if (count(source, /^\s+fetch-depth: 0\s*$/gm) !== REVIEWED_ACTION_PINS['actions/checkout'].uses) {
+    reasons.push('every checkout must fetch repository history for immutable baseline qualification');
+  }
   requireText(`uses: actions/setup-node@${REVIEWED_ACTION_PINS['actions/setup-node'].sha}`, 'jobs must use the reviewed setup-node pin');
   requireText(`uses: actions/upload-artifact@${REVIEWED_ACTION_PINS['actions/upload-artifact'].sha}`, 'matrix must upload qualification evidence with the reviewed pin');
   requireText('if-no-files-found: error', 'missing qualification evidence must fail closed');
