@@ -96,6 +96,7 @@ export function validateNightlyWorkflow(sourceText: string, readmeText: string):
     'CLEAN_CLONE_OUT: artifacts/public-release/r5d/${{ matrix.platform }}.json',
     'run: npm run qualify:public-release-clean-clone',
     '            artifacts/public-release/r5d/${{ matrix.platform }}.json\n',
+    '          pattern: qualification-*\n          path: artifacts\n          merge-multiple: true',
     '- name: Require clean-clone Linux/Windows parity',
     'run: npm run release:clean-clone-matrix-gate -- --dir artifacts/public-release/r5d',
   ]) if (!source.includes(required)) reasons.push(`missing R5D workflow contract: ${required}`);

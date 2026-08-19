@@ -67,6 +67,9 @@ configuration so npm 11 cannot reject or merge a double-loaded config authority.
 The admitted release root must also contain exactly the three expanded provider directories
 (`claude`, `codex`, and `copilot`); they remain archive-comparison inputs and are not added to the
 exact 12-file receipt output set.
+The aggregate download merges both platform artifacts at `artifacts/` so retained cross-platform
+receipts resolve at `artifacts/cross-platform/` and R5D receipts resolve independently at
+`artifacts/public-release/r5d/`; nesting either subtree twice fails the workflow contract.
 
 ### I1 — Use two physically isolated installs per platform
 

@@ -22,6 +22,7 @@ const attacks: Array<[string, string, string]> = [
   ['implicit merge-ref checkout', workflow.replace(/\n\s+with:\n\s+ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/, ''), readme],
   ['missing committed-clone qualification', workflow.replace(/\n\s+- name: Run committed-clone release qualification[\s\S]*?\n\s+- name: Upload platform qualification/, '\n      - name: Upload platform qualification'), readme],
   ['missing R5D artifact upload', workflow.replace('          artifacts/public-release/r5d/${{ matrix.platform }}.json\n', ''), readme],
+  ['nested merged artifact root', workflow.replace('          path: artifacts\n          merge-multiple: true', '          path: artifacts/cross-platform\n          merge-multiple: true'), readme],
   ['missing R5D aggregate gate', workflow.replace(/\n\s+- name: Require clean-clone Linux\/Windows parity\n\s+run: npm run release:clean-clone-matrix-gate -- --dir artifacts\/public-release\/r5d/, ''), readme],
   ['missing summary', workflow.replace('- name: Publish qualification summary', '- name: Hidden result'), readme],
   ['untrusted summary input', workflow.replace('Repository permissions: read-only', 'Repository permissions: read-only ${{ github.head_ref }}'), readme],
