@@ -27,6 +27,12 @@ dependency inventory without claiming runtime reachability. Provider documents c
 proven embedded by the current esbuild metafiles; the expected third-party runtime is
 `typescript@4.9.5`.
 
+Before promotion, the final admission gate parses every ZIP from one bounded central-directory
+authority, rejects unsupported ZIP features and unsafe/colliding names, verifies local-header,
+CRC-32, manifest, expanded-directory, license, notice, SBOM, checksum, and secret parity, and
+recaptures all source/output identities. A rejected stage is removed without replacing an existing
+qualified release directory.
+
 Each extracted bundle includes bundled Node 20+ launchers under `runtime/`; it does not need `tsx`,
 the monorepo, or repository `node_modules`. Validate `SHA256SUMS` before extraction, then follow the
 provider README. Building is local and offline after dependencies are installed; it never installs,
@@ -46,9 +52,9 @@ and push are not performed by repository validation.
 
 ## Validation
 
-Run `npm run test:provider-distribution` for deterministic archive and sidecar bytes, official-schema
-validation, 11-row checksum integrity, version-sync, and isolated runtime smoke coverage. Run the
-provider-specific manifest/skill validators documented
+Run `npm run test:provider-distribution` for strict final admission, deterministic archive and
+sidecar bytes, official-schema validation, 11-row checksum integrity, version-sync, and isolated
+runtime smoke coverage. Run the provider-specific manifest/skill validators documented
 in the evidence before release. Generated archives belong in ignored `dist/`; never edit generated
 artifacts as source.
 

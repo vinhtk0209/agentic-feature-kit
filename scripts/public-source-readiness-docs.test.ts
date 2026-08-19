@@ -14,7 +14,7 @@ for (const statement of [
   'Nightly and manual qualification use the same read-only Linux/Windows matrix',
   'Internal-marker and private-binary remediation are complete for the current source candidate',
   'Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates',
-  'Run the final distribution-archive scanner',
+  'Strict final archive admission now validates all three ZIP archives',
   'Complete clean-clone qualification',
 ]) assert.ok(notes.includes(statement), `missing UNRELEASED statement: ${statement}`);
 
@@ -22,6 +22,7 @@ for (const stale of [
   'Resolve and requalify all 31 unresolved marker dispositions',
   'Complete dependency-license inventory and SBOM generation',
   'Add nightly qualification with bounded retention and failure ownership',
+  'Run the final distribution-archive scanner',
 ]) assert.equal(notes.includes(stale), false, `stale UNRELEASED statement: ${stale}`);
 
 for (const statement of [

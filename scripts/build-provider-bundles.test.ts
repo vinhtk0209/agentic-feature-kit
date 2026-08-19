@@ -9,6 +9,8 @@ import { buildProviderBundles, validateBuiltBundle } from './build-provider-bund
 import { loadSchemaRegistry, validateSbomPairAgainstSchemas } from './release-sbom-node'
 import type { SbomPair } from './release-sbom-contract'
 import { scanTextSecrets } from './public-source-readiness-contract'
+import { parseStrictZip } from './release-archive-contract'
+import { validateFinalReleaseCandidate } from './release-archive-node'
 
 const repositoryRoot = path.resolve(__dirname, '..')
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'agentic-feature-kit-distribution-'))
@@ -31,28 +33,17 @@ function sha256Value(value: string): string {
 }
 
 function extractGeneratedZip(archive: string, destination: string): string {
-  const zip = fs.readFileSync(archive)
-  let offset = 0
-  while (offset + 4 <= zip.length && zip.readUInt32LE(offset) === 0x04034b50) {
-    const method = zip.readUInt16LE(offset + 8)
-    const compressedSize = zip.readUInt32LE(offset + 18)
-    const nameLength = zip.readUInt16LE(offset + 26)
-    const extraLength = zip.readUInt16LE(offset + 28)
-    const nameStart = offset + 30
-    const name = zip.subarray(nameStart, nameStart + nameLength).toString('utf8')
-    assert.match(name, /^agentic-feature-kit\/[A-Za-z0-9._/-]+$/)
-    assert.equal(name.includes('..'), false)
-    const contentStart = nameStart + nameLength + extraLength
-    const compressed = zip.subarray(contentStart, contentStart + compressedSize)
-    const content = method === 8 ? zlib.inflateRawSync(compressed) : compressed
-    const relative = name.slice('agentic-feature-kit/'.length)
+  const parsed = parseStrictZip(fs.readFileSync(archive), {
+    archiveRoot: 'agentic-feature-kit',
+    inflateRaw: (compressed, maxOutputBytes) => zlib.inflateRawSync(Buffer.from(compressed), { maxOutputLength: maxOutputBytes }),
+  })
+  for (const entry of parsed.entries) {
+    const relative = entry.name.slice('agentic-feature-kit/'.length)
     const target = path.resolve(destination, 'agentic-feature-kit', ...relative.split('/'))
     assert.equal(target.startsWith(`${path.resolve(destination)}${path.sep}`), true)
     fs.mkdirSync(path.dirname(target), { recursive: true })
-    fs.writeFileSync(target, content)
-    offset = contentStart + compressedSize
+    fs.writeFileSync(target, entry.content)
   }
-  assert.equal(zip.readUInt32LE(offset), 0x02014b50)
   return path.join(destination, 'agentic-feature-kit')
 }
 
@@ -219,6 +210,28 @@ async function main(): Promise<void> {
 
     const firstRelease = path.join(scratch, 'first', '0.5.0')
     const secondRelease = path.join(scratch, 'second', '0.5.0')
+    const admissionOptions = (releaseRoot: string) => ({
+      repositoryRoot,
+      releaseRoot,
+      sourceDateEpoch: 1_754_000_000,
+      providerIds: ['codex', 'claude', 'copilot'],
+      bundleVersion: '0.5.0',
+      sharedCoreVersion: '1.3.0',
+      sourceVersion: '3.25.0',
+    })
+    const firstAdmission = validateFinalReleaseCandidate(admissionOptions(firstRelease))
+    const secondAdmission = validateFinalReleaseCandidate(admissionOptions(secondRelease))
+    assert.deepEqual(
+      { ...firstAdmission, elapsedMilliseconds: 0 },
+      { ...secondAdmission, elapsedMilliseconds: 0 },
+      'both deterministic roots must have semantic admission parity',
+    )
+    assert.equal(firstAdmission.archives, 3)
+    assert.equal(firstAdmission.archiveEntries, 71)
+    assert.equal(firstAdmission.sidecars, 8)
+    assert.equal(firstAdmission.checksums, 11)
+    assert.equal(firstAdmission.textFiles, 79)
+    assert.equal(firstAdmission.secretDetectorFamilies, 10)
     const expectedChecksumNames = [
       'agentic-feature-kit-claude-0.5.0.cdx.json',
       'agentic-feature-kit-claude-0.5.0.spdx.json',
@@ -321,7 +334,7 @@ async function main(): Promise<void> {
     fs.writeFileSync(manifestPath, JSON.stringify(driftedManifest))
     assert.throws(() => validateBuiltBundle(drifted, { provider: 'copilot', bundleVersion: '0.5.0', sharedCoreVersion: '1.3.0' }), /version mismatch/)
 
-    console.log('build-provider-bundles.test: PASS (3 deterministic archives, 8 deterministic schema-valid/secret-clean sidecars, 11 checksums, 15 clean runtime smokes, shared-core/version/content integrity, 4 attacks)')
+    console.log('build-provider-bundles.test: PASS (3 strict-admitted deterministic archives, 71 entries, 8 schema-valid/secret-clean sidecars, 11 checksums, 79 text scans, 15 clean runtime smokes, shared-core/version/content integrity, 4 attacks)')
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true })
   }
