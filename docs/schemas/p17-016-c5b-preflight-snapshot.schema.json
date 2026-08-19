@@ -1,0 +1,420 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentic-feature-kit.invalid/schemas/p17-016-c5b-preflight-snapshot.schema.json",
+  "title": "P17-016 C5B preflight and snapshot receipts",
+  "description": "Language-neutral, metadata-only contract for the local C5B preflight state machine.",
+  "oneOf": [
+    { "$ref": "#/$defs/packet" },
+    { "$ref": "#/$defs/operationReceipt" },
+    { "$ref": "#/$defs/completionReceipt" }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "closedId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,63}$"
+    },
+    "environmentClass": {
+      "type": "string",
+      "enum": ["managed_nonproduction", "managed_production"]
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "attest_project",
+        "probe_catalog_acl",
+        "freeze_writers",
+        "create_provider_recovery_point",
+        "create_encrypted_logical_backup",
+        "restore_isolated_backup",
+        "verify_restored_state",
+        "cleanup_isolated_restore",
+        "complete_preflight"
+      ]
+    },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "invalid_packet",
+        "invalid_receipt",
+        "operation_sequence_invalid",
+        "operation_refused",
+        "project_mismatch",
+        "freeze_window_invalid",
+        "writer_activity_detected",
+        "recovery_point_unavailable",
+        "logical_backup_invalid",
+        "restore_invalid",
+        "restored_state_mismatch",
+        "cleanup_incomplete",
+        "integrity_mismatch",
+        "provider_operation_refused"
+      ]
+    },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "migration0018Sha256",
+        "migration0019Sha256",
+        "rollback0018Sha256",
+        "rollback0019Sha256"
+      ],
+      "properties": {
+        "migration0018Sha256": { "$ref": "#/$defs/sha256" },
+        "migration0019Sha256": { "$ref": "#/$defs/sha256" },
+        "rollback0018Sha256": { "$ref": "#/$defs/sha256" },
+        "rollback0019Sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "recoveryRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "providerRecoveryPoint",
+        "encryptedLogicalBackup",
+        "isolatedRestore",
+        "metadataOnlyEvidence"
+      ],
+      "properties": {
+        "providerRecoveryPoint": { "const": true },
+        "encryptedLogicalBackup": { "const": true },
+        "isolatedRestore": { "const": true },
+        "metadataOnlyEvidence": { "const": true }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxStepDurationMs", "maxBackupBytes", "maxObjectCount"],
+      "properties": {
+        "maxStepDurationMs": { "type": "integer", "minimum": 1000, "maximum": 900000 },
+        "maxBackupBytes": { "type": "integer", "minimum": 1, "maximum": 10000000000000 },
+        "maxObjectCount": { "type": "integer", "minimum": 1, "maximum": 1000000 }
+      }
+    },
+    "packet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "policyVersion",
+        "attemptId",
+        "approvalRef",
+        "environmentClass",
+        "freezeStartsAt",
+        "freezeExpiresAt",
+        "destinationCapabilityId",
+        "source",
+        "requirements",
+        "limits",
+        "sourceBindingHash",
+        "packetHash"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-c5b-v1" },
+        "attemptId": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+        "approvalRef": { "$ref": "#/$defs/closedId" },
+        "environmentClass": { "$ref": "#/$defs/environmentClass" },
+        "freezeStartsAt": { "$ref": "#/$defs/timestamp" },
+        "freezeExpiresAt": { "$ref": "#/$defs/timestamp" },
+        "destinationCapabilityId": { "$ref": "#/$defs/closedId" },
+        "source": { "$ref": "#/$defs/sourceBinding" },
+        "requirements": { "$ref": "#/$defs/recoveryRequirements" },
+        "limits": { "$ref": "#/$defs/limits" },
+        "sourceBindingHash": { "$ref": "#/$defs/sha256" },
+        "packetHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "projectEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectMatch", "environmentClass"],
+      "properties": {
+        "projectMatch": { "type": "boolean" },
+        "environmentClass": { "$ref": "#/$defs/environmentClass" }
+      }
+    },
+    "catalogEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalogHash",
+        "aclHash",
+        "rpcHash",
+        "policyHash",
+        "extensionHash",
+        "migrationObjectCount",
+        "writerActivityCount"
+      ],
+      "properties": {
+        "catalogHash": { "$ref": "#/$defs/sha256" },
+        "aclHash": { "$ref": "#/$defs/sha256" },
+        "rpcHash": { "$ref": "#/$defs/sha256" },
+        "policyHash": { "$ref": "#/$defs/sha256" },
+        "extensionHash": { "$ref": "#/$defs/sha256" },
+        "migrationObjectCount": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "writerActivityCount": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+      }
+    },
+    "freezeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["freezeConfirmed", "activeWriterCount"],
+      "properties": {
+        "freezeConfirmed": { "type": "boolean" },
+        "activeWriterCount": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+      }
+    },
+    "recoveryEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recoveryPointCreated", "recoveryPointMetadataHash", "expiresAt"],
+      "properties": {
+        "recoveryPointCreated": { "type": "boolean" },
+        "recoveryPointMetadataHash": { "$ref": "#/$defs/sha256" },
+        "expiresAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "backupEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encrypted", "byteCount", "backupSha256", "manifestSha256", "expiresAt"],
+      "properties": {
+        "encrypted": { "type": "boolean" },
+        "byteCount": { "type": "integer", "minimum": 0, "maximum": 10000000000000 },
+        "backupSha256": { "$ref": "#/$defs/sha256" },
+        "manifestSha256": { "$ref": "#/$defs/sha256" },
+        "expiresAt": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "restoreEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["restored", "isolated", "sourceBackupSha256", "restoreManifestSha256"],
+      "properties": {
+        "restored": { "type": "boolean" },
+        "isolated": { "type": "boolean" },
+        "sourceBackupSha256": { "$ref": "#/$defs/sha256" },
+        "restoreManifestSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "verifyEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalogHash", "aclHash", "sourceBindingHash", "sourceParity", "rollbackSuitePassed"],
+      "properties": {
+        "catalogHash": { "$ref": "#/$defs/sha256" },
+        "aclHash": { "$ref": "#/$defs/sha256" },
+        "sourceBindingHash": { "$ref": "#/$defs/sha256" },
+        "sourceParity": { "type": "boolean" },
+        "rollbackSuitePassed": { "type": "boolean" }
+      }
+    },
+    "cleanupEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cleanupConfirmed", "residualResourceCount"],
+      "properties": {
+        "cleanupConfirmed": { "type": "boolean" },
+        "residualResourceCount": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+      }
+    },
+    "completeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allStepsPassed", "completionHash"],
+      "properties": {
+        "allStepsPassed": { "type": "boolean" },
+        "completionHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "operationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "policyVersion",
+        "attemptId",
+        "packetHash",
+        "sequence",
+        "operation",
+        "status",
+        "reasonCode",
+        "startedAt",
+        "completedAt",
+        "durationMs",
+        "evidence",
+        "receiptHash"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-c5b-v1" },
+        "attemptId": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+        "packetHash": { "$ref": "#/$defs/sha256" },
+        "sequence": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "attest_project",
+            "probe_catalog_acl",
+            "freeze_writers",
+            "create_provider_recovery_point",
+            "create_encrypted_logical_backup",
+            "restore_isolated_backup",
+            "verify_restored_state",
+            "cleanup_isolated_restore",
+            "complete_preflight"
+          ]
+        },
+        "status": { "type": "string", "enum": ["passed", "refused"] },
+        "reasonCode": {
+          "anyOf": [
+            { "$ref": "#/$defs/reasonCode" },
+            { "type": "null" }
+          ]
+        },
+        "startedAt": { "$ref": "#/$defs/timestamp" },
+        "completedAt": { "$ref": "#/$defs/timestamp" },
+        "durationMs": { "type": "integer", "minimum": 0, "maximum": 900000 },
+        "evidence": {
+          "anyOf": [
+            { "$ref": "#/$defs/projectEvidence" },
+            { "$ref": "#/$defs/catalogEvidence" },
+            { "$ref": "#/$defs/freezeEvidence" },
+            { "$ref": "#/$defs/recoveryEvidence" },
+            { "$ref": "#/$defs/backupEvidence" },
+            { "$ref": "#/$defs/restoreEvidence" },
+            { "$ref": "#/$defs/verifyEvidence" },
+            { "$ref": "#/$defs/cleanupEvidence" },
+            { "$ref": "#/$defs/completeEvidence" },
+            { "type": "null" }
+          ]
+        },
+        "receiptHash": { "$ref": "#/$defs/sha256" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "required": ["status"],
+            "properties": { "status": { "const": "passed" } }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "reasonCode": { "type": "null" },
+              "evidence": { "not": { "type": "null" } }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "required": ["status"],
+            "properties": { "status": { "const": "refused" } }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "reasonCode": { "$ref": "#/$defs/reasonCode" },
+              "evidence": { "type": "null" }
+            }
+          }
+        },
+        {
+          "oneOf": [
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "attest_project" }, "sequence": { "const": 0 } } },
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "probe_catalog_acl" }, "sequence": { "const": 1 } } },
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "freeze_writers" }, "sequence": { "const": 2 } } },
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "create_provider_recovery_point" }, "sequence": { "const": 3 } } },
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "create_encrypted_logical_backup" }, "sequence": { "const": 4 } } },
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "restore_isolated_backup" }, "sequence": { "const": 5 } } },
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "verify_restored_state" }, "sequence": { "const": 6 } } },
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "cleanup_isolated_restore" }, "sequence": { "const": 7 } } },
+            { "type": "object", "required": ["operation", "sequence"], "properties": { "operation": { "const": "complete_preflight" }, "sequence": { "const": 8 } } }
+          ]
+        },
+        {
+          "if": {
+            "type": "object",
+            "required": ["status"],
+            "properties": { "status": { "const": "passed" } }
+          },
+          "then": {
+            "oneOf": [
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "attest_project" }, "evidence": { "$ref": "#/$defs/projectEvidence" } } },
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "probe_catalog_acl" }, "evidence": { "$ref": "#/$defs/catalogEvidence" } } },
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "freeze_writers" }, "evidence": { "$ref": "#/$defs/freezeEvidence" } } },
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "create_provider_recovery_point" }, "evidence": { "$ref": "#/$defs/recoveryEvidence" } } },
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "create_encrypted_logical_backup" }, "evidence": { "$ref": "#/$defs/backupEvidence" } } },
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "restore_isolated_backup" }, "evidence": { "$ref": "#/$defs/restoreEvidence" } } },
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "verify_restored_state" }, "evidence": { "$ref": "#/$defs/verifyEvidence" } } },
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "cleanup_isolated_restore" }, "evidence": { "$ref": "#/$defs/cleanupEvidence" } } },
+              { "type": "object", "required": ["operation", "evidence"], "properties": { "operation": { "const": "complete_preflight" }, "evidence": { "$ref": "#/$defs/completeEvidence" } } }
+            ]
+          }
+        }
+      ]
+    },
+    "completionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "policyVersion",
+        "attemptId",
+        "packetHash",
+        "environmentClass",
+        "sourceBindingHash",
+        "catalogHash",
+        "aclHash",
+        "recoveryPointMetadataHash",
+        "backupSha256",
+        "restoreManifestSha256",
+        "freezeExpiresAt",
+        "artifactsExpireAt",
+        "completedAt",
+        "residualResourceCount",
+        "completionHash",
+        "receiptHash"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "policyVersion": { "const": "p17-016-c5b-v1" },
+        "attemptId": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+        "packetHash": { "$ref": "#/$defs/sha256" },
+        "environmentClass": { "$ref": "#/$defs/environmentClass" },
+        "sourceBindingHash": { "$ref": "#/$defs/sha256" },
+        "catalogHash": { "$ref": "#/$defs/sha256" },
+        "aclHash": { "$ref": "#/$defs/sha256" },
+        "recoveryPointMetadataHash": { "$ref": "#/$defs/sha256" },
+        "backupSha256": { "$ref": "#/$defs/sha256" },
+        "restoreManifestSha256": { "$ref": "#/$defs/sha256" },
+        "freezeExpiresAt": { "$ref": "#/$defs/timestamp" },
+        "artifactsExpireAt": { "$ref": "#/$defs/timestamp" },
+        "completedAt": { "$ref": "#/$defs/timestamp" },
+        "residualResourceCount": { "const": 0 },
+        "completionHash": { "$ref": "#/$defs/sha256" },
+        "receiptHash": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}
