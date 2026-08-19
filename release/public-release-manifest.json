@@ -2165,6 +2165,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-r5c2a-deterministic-sbom-2026-08-19.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
