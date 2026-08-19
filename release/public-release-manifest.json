@@ -2075,6 +2075,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-privacy-wave-c5b-preflight-snapshot-contract-2026-08-19.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-privacy-writer-wave-b1-2026-08-14.md",
       "decision": "include",
       "contentKind": "text",
