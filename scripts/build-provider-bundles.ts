@@ -5,6 +5,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
 import { build, type Plugin } from 'esbuild'
+import { canonicalJson, type SbomBuildInput } from './release-sbom-contract'
+import {
+  captureSourceSbomInput,
+  generateSourceSbomSidecars,
+  loadSchemaRegistry,
+  resolveEmbeddedComponents,
+  writeValidatedSbomPair,
+  type SbomOutputFile,
+} from './release-sbom-node'
 
 export const PROVIDER_BUNDLE_RESULT_SENTINEL = '@@PROVIDER_BUNDLE_RESULT@@' as const
 
@@ -62,6 +71,7 @@ export interface ProviderBuildResult {
   archivePath: string
   archiveSha256: string
   manifestHash: string
+  sidecars: SbomOutputFile[]
 }
 
 const SOURCE_ALLOWED = [
@@ -219,7 +229,7 @@ function copyCommonFiles(repositoryRoot: string, targetRoot: string): void {
   fs.copyFileSync(typescriptLicense, licenseTarget)
 }
 
-async function buildRuntime(repositoryRoot: string, runtimeRoot: string): Promise<void> {
+async function buildRuntime(repositoryRoot: string, runtimeRoot: string): Promise<string[]> {
   fs.mkdirSync(runtimeRoot, { recursive: true })
   const shared = {
     bundle: true,
@@ -229,28 +239,34 @@ async function buildRuntime(repositoryRoot: string, runtimeRoot: string): Promis
     legalComments: 'none' as const,
     logLevel: 'silent' as const,
     sourcemap: false,
+    metafile: true,
   }
-  await build({ ...shared, entryPoints: [path.join(repositoryRoot, 'packages/core/src/project-intelligence.ts')], outfile: path.join(runtimeRoot, 'project-intelligence.cjs') })
+  const metafileInputs = new Set<string>()
+  const run = async (options: Parameters<typeof build>[0]): Promise<void> => {
+    const result = await build({ ...shared, ...options })
+    if (!result.metafile) throw new Error('esbuild did not return the required runtime metafile')
+    for (const input of Object.keys(result.metafile.inputs)) metafileInputs.add(input.split(path.sep).join('/'))
+  }
+  await run({ entryPoints: [path.join(repositoryRoot, 'packages/core/src/project-intelligence.ts')], outfile: path.join(runtimeRoot, 'project-intelligence.cjs') })
   const externalProjectIntelligence: Plugin = {
     name: 'shared-project-intelligence-runtime',
     setup(context) {
       context.onResolve({ filter: /^\.\/project-intelligence$/ }, () => ({ path: './project-intelligence.cjs', external: true }))
     },
   }
-  await build({
-    ...shared,
+  await run({
     entryPoints: [path.join(repositoryRoot, 'packages/core/src/stack-portability.ts')],
     outfile: path.join(runtimeRoot, 'stack-portability.cjs'),
     plugins: [externalProjectIntelligence],
   })
-  await build({
-    ...shared,
+  await run({
     entryPoints: [path.join(repositoryRoot, 'packages/core/src/conditional-quality-gates.ts')],
     outfile: path.join(runtimeRoot, 'conditional-quality-gates.cjs'),
     plugins: [externalProjectIntelligence],
   })
-  await build({ ...shared, entryPoints: [path.join(repositoryRoot, 'packages/core/src/workflow-orchestrator-cli.ts')], outfile: path.join(runtimeRoot, 'workflow-orchestrator.cjs') })
-  await build({ ...shared, entryPoints: [path.join(repositoryRoot, 'packages/core/src/phase-model-router-cli.ts')], outfile: path.join(runtimeRoot, 'phase-model-router.cjs') })
+  await run({ entryPoints: [path.join(repositoryRoot, 'packages/core/src/workflow-orchestrator-cli.ts')], outfile: path.join(runtimeRoot, 'workflow-orchestrator.cjs') })
+  await run({ entryPoints: [path.join(repositoryRoot, 'packages/core/src/phase-model-router-cli.ts')], outfile: path.join(runtimeRoot, 'phase-model-router.cjs') })
+  return [...metafileInputs].sort(compareText)
 }
 
 function manifestPayload(manifest: Omit<DistributionManifest, 'manifestHash'>): string {
@@ -387,7 +403,7 @@ function createDeterministicZip(sourceRoot: string, archivePath: string, archive
   fs.writeFileSync(archivePath, Buffer.concat([...localParts, centralDirectory, end]))
 }
 
-export async function buildProviderBundles(options: { repositoryRoot?: string; outputRoot?: string } = {}): Promise<ProviderBuildResult[]> {
+export async function buildProviderBundles(options: { repositoryRoot?: string; outputRoot?: string; sourceDateEpoch?: number } = {}): Promise<ProviderBuildResult[]> {
   const repositoryRoot = path.resolve(options.repositoryRoot ?? path.join(__dirname, '..'))
   const outputRoot = path.resolve(options.outputRoot ?? path.join(repositoryRoot, 'dist', 'provider-bundles'))
   const registry = validateRegistry(readJson(path.join(repositoryRoot, 'providers', 'provider-bundles.json')), repositoryRoot)
@@ -399,8 +415,20 @@ export async function buildProviderBundles(options: { repositoryRoot?: string; o
   fs.rmSync(stageRoot, { recursive: true, force: true })
   fs.mkdirSync(stageRoot, { recursive: true })
   try {
+    const sourceSbom = generateSourceSbomSidecars({
+      repoRoot: repositoryRoot,
+      outputDir: stageRoot,
+      sourceDateEpoch: options.sourceDateEpoch,
+      expectedWorkspaceRoots: 4,
+      expectedDependencies: 617,
+    })
     const runtimeRoot = path.join(stageRoot, '.shared-runtime')
-    await buildRuntime(repositoryRoot, runtimeRoot)
+    const runtimeInputs = await buildRuntime(repositoryRoot, runtimeRoot)
+    const embeddedComponents = resolveEmbeddedComponents(repositoryRoot, runtimeInputs)
+    if (JSON.stringify(embeddedComponents.map(({ name, version }) => `${name}@${version}`)) !== JSON.stringify(['typescript@4.9.5'])) {
+      throw new Error(`provider embedded package inventory drift: ${embeddedComponents.map(({ name, version }) => `${name}@${version}`).join(', ')}`)
+    }
+    const schemaRegistry = loadSchemaRegistry(repositoryRoot)
     const results: ProviderBuildResult[] = []
     for (const provider of registry.providers) {
       const packageName = `agentic-feature-kit-${provider.id}-${registry.bundleVersion}`
@@ -412,10 +440,51 @@ export async function buildProviderBundles(options: { repositoryRoot?: string; o
       validateBuiltBundle(bundleRoot, { provider: provider.id, bundleVersion: registry.bundleVersion, sharedCoreVersion: registry.sharedCoreVersion })
       const archivePath = path.join(stageRoot, `${packageName}.zip`)
       createDeterministicZip(bundleRoot, archivePath, 'agentic-feature-kit')
-      results.push({ provider: provider.id, bundleRoot, archivePath, archiveSha256: sha256(fs.readFileSync(archivePath)), manifestHash: manifest.manifestHash })
+      const archiveSha256 = sha256(fs.readFileSync(archivePath))
+      const sbomInput: SbomBuildInput = {
+        artifact: {
+          kind: 'provider',
+          targetId: provider.id,
+          name: `agentic-feature-kit-${provider.id}`,
+          version: registry.bundleVersion,
+          purl: `pkg:generic/${packageName}@${registry.bundleVersion}`,
+          identitySha256: sha256(canonicalJson({ archiveSha256, manifestHash: manifest.manifestHash })),
+          manifestSha256: manifest.manifestHash,
+          artifactSha256: archiveSha256,
+          createdEpochSeconds: sourceSbom.sourceDateEpoch,
+        },
+        components: embeddedComponents,
+      }
+      const sidecars = writeValidatedSbomPair(repositoryRoot, stageRoot, sbomInput, schemaRegistry).files
+      results.push({ provider: provider.id, bundleRoot, archivePath, archiveSha256, manifestHash: manifest.manifestHash, sidecars })
     }
     fs.rmSync(runtimeRoot, { recursive: true, force: true })
-    const sums = results.map((entry) => `${entry.archiveSha256}  ${path.basename(entry.archivePath)}`).sort(compareText)
+    const recapturedSource = captureSourceSbomInput(repositoryRoot, sourceSbom.sourceDateEpoch, 4, 617)
+    if (canonicalJson(recapturedSource.input) !== canonicalJson(sourceSbom.input)) {
+      throw new Error('provider release source input drifted during build')
+    }
+    const checksumFiles = [
+      ...sourceSbom.files,
+      ...results.flatMap(({ sidecars }) => sidecars),
+      ...results.map((entry) => ({ name: path.basename(entry.archivePath), bytes: fs.statSync(entry.archivePath).size, sha256: entry.archiveSha256 })),
+    ].sort((left, right) => compareText(left.name, right.name))
+    const expectedChecksumNames = [
+      'agentic-feature-kit-claude-0.5.0.cdx.json',
+      'agentic-feature-kit-claude-0.5.0.spdx.json',
+      'agentic-feature-kit-claude-0.5.0.zip',
+      'agentic-feature-kit-codex-0.5.0.cdx.json',
+      'agentic-feature-kit-codex-0.5.0.spdx.json',
+      'agentic-feature-kit-codex-0.5.0.zip',
+      'agentic-feature-kit-copilot-0.5.0.cdx.json',
+      'agentic-feature-kit-copilot-0.5.0.spdx.json',
+      'agentic-feature-kit-copilot-0.5.0.zip',
+      'agentic-feature-kit-source-3.25.0.cdx.json',
+      'agentic-feature-kit-source-3.25.0.spdx.json',
+    ]
+    if (JSON.stringify(checksumFiles.map(({ name }) => name)) !== JSON.stringify(expectedChecksumNames)) {
+      throw new Error(`provider release checksum set drift: ${checksumFiles.map(({ name }) => name).join(', ')}`)
+    }
+    const sums = checksumFiles.map((entry) => `${entry.sha256}  ${entry.name}`)
     fs.writeFileSync(path.join(stageRoot, 'SHA256SUMS'), `${sums.join('\n')}\n`, 'utf8')
     fs.rmSync(releaseRoot, { recursive: true, force: true })
     fs.renameSync(stageRoot, releaseRoot)

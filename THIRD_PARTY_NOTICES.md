@@ -19,7 +19,7 @@ configuration safely without requiring a separate installation.
 The public source workspace has four committed npm lockfile authorities. Their deterministic inventory
 is recorded in `release/dependency-license-catalog.json`; the fail-closed allow/review rules and exact
 metadata provenance overrides are recorded in `release/dependency-license-policy.json`. Together they
-cover 616 unique name@version packages and 749 lockfile occurrences.
+cover 617 unique name@version packages and 754 lockfile occurrences.
 
 The unconditional engineering allowlist is 0BSD, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, and MIT.
 The following exact packages have a separate reviewed decision:
@@ -33,5 +33,20 @@ The following exact packages have a separate reviewed decision:
 The provider source bundles do not vendor `node_modules`.
 This catalog is an engineering control, not legal advice or a claim that every future distribution
 contains the same dependency surface.
-R5C2 must re-evaluate the exact final archive contents, embedded source, license files, notices, and
+R5C2B must re-evaluate the exact final archive contents, embedded source, license files, notices, and
 SBOM sidecars before any release candidate can be qualified.
+
+## Vendored SBOM validation schemas
+
+Release qualification vendors four machine-readable JSON Schema documents so SPDX and CycloneDX
+sidecars can be validated offline. The exact upstream release refs, source URLs, schema identifiers,
+and SHA-256 digests are bound in `release/sbom-schema-sources.json`.
+
+- SPDX 2.3 JSON Schema from the SPDX specification release tag `v2.3`, licensed under
+  CC-BY-3.0. Copyright and attribution remain with the SPDX contributors.
+- CycloneDX 1.6 JSON Schema, SPDX-license enumeration schema, and JSF 0.82 signature schema from
+  the CycloneDX specification patch release tag `1.6.1`, licensed under Apache-2.0. Copyright
+  remains with the OWASP Foundation and CycloneDX contributors.
+
+These schemas are validation inputs. Their inclusion does not imply endorsement by SPDX, OWASP,
+CycloneDX, or any provider.

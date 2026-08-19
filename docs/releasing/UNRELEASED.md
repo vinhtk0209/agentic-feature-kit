@@ -44,10 +44,13 @@ claim, or qualification result for another.
   pins, bounded artifacts, and a fail-closed aggregate gate.
 - Manifest-wide internal Markdown links: 48/48 valid after replacing 13 references to removed
   private or historical files with retained public authority or non-link historical prose.
-- Dependency license catalog: 616 unique packages across four lockfiles, with six unconditional
+- Dependency license catalog: 617 unique packages and 754 occurrences across four lockfiles, with six unconditional
   permissive expressions, five exact reviewed exceptions, and four exact metadata overrides.
 - Manifest text secret scan: ten detector families, zero findings, strict UTF-8/NUL handling, bounded
   output, and digest-only redaction.
+- Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates,
+  validate offline against pinned official schemas, and bind the 617-package source
+  catalog or exact embedded `typescript@4.9.5` provider runtime as appropriate.
 
 ## Evidence boundaries
 
@@ -60,10 +63,9 @@ claim, or qualification result for another.
 
 ## Remaining release gates
 
-- Generate deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars for the exact source and provider
-  artifacts.
 - Run the final distribution-archive scanner for central-directory integrity, traversal, alias,
-  reparse/symlink, checksum, manifest, license, SBOM, and secret boundaries.
+  reparse/symlink, checksum, manifest, license, SBOM, and secret boundaries, including revalidation
+  of every generated sidecar and its archive binding.
 - Complete clean-clone qualification for supported operating systems and provider packages, including
   isolated double builds, extracted runtime smokes, and quickstart proof.
 - Bind checksums, final SBOMs, and provenance/attestation boundaries to an exact release candidate.

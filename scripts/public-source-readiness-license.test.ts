@@ -245,8 +245,8 @@ async function main(): Promise<void> {
     const result = evaluateDependencyLicenseContract({ lockfiles, catalog, policy, packageRoots });
     assert.deepEqual(result.findings, [], JSON.stringify(result.findings, null, 2));
     assert.equal(result.lockfiles, 4);
-    assert.equal(result.occurrences, 749);
-    assert.equal(result.uniquePackages, 616);
+    assert.equal(result.occurrences, 754);
+    assert.equal(result.uniquePackages, 617);
     assert.equal(result.reviewedPackages, 5);
     assert.equal(result.metadataOverrides, 4);
     assert.deepEqual(result.licenseCounts, {
@@ -254,7 +254,7 @@ async function main(): Promise<void> {
       '(MPL-2.0 OR Apache-2.0)': 1,
       'Apache-2.0': 22,
       'BSD-2-Clause': 5,
-      'BSD-3-Clause': 12,
+      'BSD-3-Clause': 13,
       'CC-BY-4.0': 1,
       ISC: 51,
       MIT: 520,

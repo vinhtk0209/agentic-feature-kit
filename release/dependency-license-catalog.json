@@ -1821,7 +1821,8 @@
       "provenance": "registry-manifest",
       "authorities": [
         ".claude/mcp-server/package-lock.json",
-        ".claude/mcp-workflow/package-lock.json"
+        ".claude/mcp-workflow/package-lock.json",
+        "package-lock.json"
       ]
     },
     {
@@ -3109,7 +3110,8 @@
       "provenance": "registry-manifest",
       "authorities": [
         ".claude/mcp-server/package-lock.json",
-        ".claude/mcp-workflow/package-lock.json"
+        ".claude/mcp-workflow/package-lock.json",
+        "package-lock.json"
       ]
     },
     {
@@ -3121,6 +3123,16 @@
       "authorities": [
         ".claude/mcp-server/package-lock.json",
         ".claude/mcp-workflow/package-lock.json"
+      ]
+    },
+    {
+      "id": "fast-uri@3.1.5",
+      "name": "fast-uri",
+      "version": "3.1.5",
+      "license": "BSD-3-Clause",
+      "provenance": "registry-manifest",
+      "authorities": [
+        "package-lock.json"
       ]
     },
     {
@@ -3841,7 +3853,8 @@
       "provenance": "registry-manifest",
       "authorities": [
         ".claude/mcp-server/package-lock.json",
-        ".claude/mcp-workflow/package-lock.json"
+        ".claude/mcp-workflow/package-lock.json",
+        "package-lock.json"
       ]
     },
     {
@@ -5376,7 +5389,8 @@
       "provenance": "registry-manifest",
       "authorities": [
         ".claude/mcp-server/package-lock.json",
-        ".claude/mcp-workflow/package-lock.json"
+        ".claude/mcp-workflow/package-lock.json",
+        "package-lock.json"
       ]
     },
     {
