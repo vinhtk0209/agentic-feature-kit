@@ -111,8 +111,8 @@ function validateUnreleasedNote(text: string): string[] {
     'v3.25 has no numeric Git tag and no GitHub Release.',
     'Internal-marker and private-binary remediation are complete for the current source candidate',
     'Nightly and manual qualification use the same read-only Linux/Windows matrix',
-    'Dependency license catalog: 616 unique packages across four lockfiles',
-    'Generate deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars',
+    'Dependency license catalog: 617 unique packages and 754 occurrences across four lockfiles',
+    'Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates',
     'Run the final distribution-archive scanner',
     'Complete clean-clone qualification',
     'No version bump is selected by this note.',
@@ -210,7 +210,8 @@ function validNote(): string {
     '',
     '- Internal-marker and private-binary remediation are complete for the current source candidate.',
     '- Nightly and manual qualification use the same read-only Linux/Windows matrix.',
-    '- Dependency license catalog: 616 unique packages across four lockfiles.',
+    '- Dependency license catalog: 617 unique packages and 754 occurrences across four lockfiles.',
+    '- Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates.',
     '',
     '## Evidence boundaries',
     '',
@@ -218,7 +219,6 @@ function validNote(): string {
     '',
     '## Remaining release gates',
     '',
-    '- Generate deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars.',
     '- Run the final distribution-archive scanner.',
     '- Complete clean-clone qualification.',
     '',
@@ -246,7 +246,7 @@ assert.deepEqual(validateUnreleasedNote(noteFixture), [])
 assert.ok(validateUnreleasedNote(noteFixture.replace('`3.25.0`', '`4.0.0`')).some((error) => error.includes('3.25.0')))
 assert.ok(validateUnreleasedNote(noteFixture.replace('The repository remains private.', 'The repository is public-release ready.')).includes('public-ready-claim'))
 assert.ok(validateUnreleasedNote(noteFixture.replace('Internal-marker and private-binary remediation are complete for the current source candidate.', 'Marker state omitted.')).some((error) => error.includes('Internal-marker')))
-assert.ok(validateUnreleasedNote(noteFixture.replace('Generate deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars.', 'SBOM state omitted.')).some((error) => error.includes('SPDX 2.3')))
+assert.ok(validateUnreleasedNote(noteFixture.replace('Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates.', 'SBOM state omitted.')).some((error) => error.includes('SPDX 2.3')))
 assert.ok(validateUnreleasedNote(noteFixture.replace('- Nightly and manual qualification use the same read-only Linux/Windows matrix.', '- nightly qualification')).includes('stale-nightly-gap'))
 const syntheticPrivateHost = ['preview', 'example', 'internal'].join('.')
 assert.ok(validateUnreleasedNote(`${noteFixture.slice(0, -1)}Preview: https://${syntheticPrivateHost}/\n`).includes('private-host'))

@@ -2459,6 +2459,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "docs/roadmap/p17-018-r5c2a-deterministic-sbom-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "docs/roadmap/p17-021-distributed-control-panel-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3125,6 +3131,36 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "release/sbom-schema-sources.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "release/schemas/cyclonedx/bom-1.6.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "release/schemas/cyclonedx/jsf-0.82.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "release/schemas/cyclonedx/spdx.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "release/schemas/spdx/spdx-2.3.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "scripts/build-copilot-edition.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3587,6 +3623,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "scripts/post-17-public-release-r5c2a-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3747,6 +3789,30 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/release-sbom-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-sbom-contract.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-sbom-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-sbom-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
     },
     {
       "path": "scripts/setup-env.ps1",

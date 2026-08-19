@@ -6,6 +6,9 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import zlib from 'node:zlib'
 import { buildProviderBundles, validateBuiltBundle } from './build-provider-bundles'
+import { loadSchemaRegistry, validateSbomPairAgainstSchemas } from './release-sbom-node'
+import type { SbomPair } from './release-sbom-contract'
+import { scanTextSecrets } from './public-source-readiness-contract'
 
 const repositoryRoot = path.resolve(__dirname, '..')
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'agentic-feature-kit-distribution-'))
@@ -176,8 +179,8 @@ function runCleanSmoke(bundleRoot: string, fixture: string): void {
 
 async function main(): Promise<void> {
   try {
-    const first = await buildProviderBundles({ repositoryRoot, outputRoot: path.join(scratch, 'first') })
-    const second = await buildProviderBundles({ repositoryRoot, outputRoot: path.join(scratch, 'second') })
+    const first = await buildProviderBundles({ repositoryRoot, outputRoot: path.join(scratch, 'first'), sourceDateEpoch: 1_754_000_000 })
+    const second = await buildProviderBundles({ repositoryRoot, outputRoot: path.join(scratch, 'second'), sourceDateEpoch: 1_754_000_000 })
     assert.deepEqual(first.map((entry) => entry.provider), ['codex', 'claude', 'copilot'])
     assert.deepEqual(first.map((entry) => entry.archiveSha256), second.map((entry) => entry.archiveSha256))
 
@@ -214,9 +217,91 @@ async function main(): Promise<void> {
     }
     for (const hashes of runtimeHashes.values()) assert.equal(hashes.size, 1)
 
-    const sums = fs.readFileSync(path.join(scratch, 'first', '0.5.0', 'SHA256SUMS'), 'utf8').trim().split(/\r?\n/)
-    assert.equal(sums.length, 3)
+    const firstRelease = path.join(scratch, 'first', '0.5.0')
+    const secondRelease = path.join(scratch, 'second', '0.5.0')
+    const expectedChecksumNames = [
+      'agentic-feature-kit-claude-0.5.0.cdx.json',
+      'agentic-feature-kit-claude-0.5.0.spdx.json',
+      'agentic-feature-kit-claude-0.5.0.zip',
+      'agentic-feature-kit-codex-0.5.0.cdx.json',
+      'agentic-feature-kit-codex-0.5.0.spdx.json',
+      'agentic-feature-kit-codex-0.5.0.zip',
+      'agentic-feature-kit-copilot-0.5.0.cdx.json',
+      'agentic-feature-kit-copilot-0.5.0.spdx.json',
+      'agentic-feature-kit-copilot-0.5.0.zip',
+      'agentic-feature-kit-source-3.25.0.cdx.json',
+      'agentic-feature-kit-source-3.25.0.spdx.json',
+    ]
+    const sums = fs.readFileSync(path.join(firstRelease, 'SHA256SUMS'), 'utf8').trim().split(/\r?\n/)
+    assert.equal(sums.length, 11)
+    const checksumRows = sums.map((line) => {
+      const match = /^([0-9a-f]{64})  ([a-z0-9][a-z0-9.-]*)$/.exec(line)
+      assert.ok(match, `invalid checksum row: ${line}`)
+      return { sha256: match[1], name: match[2] }
+    })
+    assert.deepEqual(checksumRows.map(({ name }) => name), expectedChecksumNames)
     for (const entry of first) assert.ok(sums.includes(`${entry.archiveSha256}  ${path.basename(entry.archivePath)}`))
+    for (const row of checksumRows) {
+      assert.equal(sha256(path.join(firstRelease, row.name)), row.sha256)
+      assert.equal(fs.readFileSync(path.join(firstRelease, row.name)).equals(fs.readFileSync(path.join(secondRelease, row.name))), true, `${row.name} must be byte-identical`)
+    }
+    assert.equal(fs.readFileSync(path.join(firstRelease, 'SHA256SUMS')).equals(fs.readFileSync(path.join(secondRelease, 'SHA256SUMS'))), true)
+
+    const schemaRegistry = loadSchemaRegistry(repositoryRoot)
+    const readPair = (target: string, version: string): SbomPair => {
+      const prefix = `agentic-feature-kit-${target}-${version}`
+      const spdxText = fs.readFileSync(path.join(firstRelease, `${prefix}.spdx.json`), 'utf8')
+      const cycloneDxText = fs.readFileSync(path.join(firstRelease, `${prefix}.cdx.json`), 'utf8')
+      return {
+        spdx: JSON.parse(spdxText),
+        cycloneDx: JSON.parse(cycloneDxText),
+        spdxText,
+        cycloneDxText,
+      } as SbomPair
+    }
+    const sourcePair = readPair('source', '3.25.0')
+    assert.deepEqual(validateSbomPairAgainstSchemas(sourcePair, schemaRegistry), [])
+    assert.equal(sourcePair.spdx.packages.length, 622)
+    assert.equal(sourcePair.cycloneDx.components.length, 621)
+    assert.equal(sourcePair.cycloneDx.dependencies[0].dependsOn.length, 0)
+    for (const entry of first) {
+      const pair = readPair(entry.provider, '0.5.0')
+      assert.deepEqual(validateSbomPairAgainstSchemas(pair, schemaRegistry), [])
+      assert.equal(pair.spdx.packages.length, 2)
+      assert.equal(pair.cycloneDx.components.length, 1)
+      assert.equal(pair.cycloneDx.components[0].name, 'typescript')
+      assert.equal(pair.cycloneDx.components[0].version, '4.9.5')
+      assert.deepEqual(pair.cycloneDx.dependencies[0].dependsOn, ['pkg:npm/typescript@4.9.5'])
+      assert.equal(pair.cycloneDx.metadata.component.hashes?.[0].content, entry.archiveSha256)
+    }
+    const sidecarText = expectedChecksumNames
+      .filter((name) => name.endsWith('.json'))
+      .map((name) => fs.readFileSync(path.join(firstRelease, name), 'utf8'))
+      .join('\n')
+    assert.doesNotMatch(sidecarText, /(?:[A-Za-z]:\\|\\Users\\|localhost|token=|password=|processId)/i)
+    const sidecarSecretScan = scanTextSecrets({
+      files: expectedChecksumNames
+        .filter((name) => name.endsWith('.json'))
+        .map((name) => ({ path: name, contentKind: 'text' as const, bytes: fs.readFileSync(path.join(firstRelease, name)) })),
+      sha256: (bytes) => crypto.createHash('sha256').update(bytes).digest('hex'),
+      maxFileBytes: 2 * 1024 * 1024,
+      maxFindingsPerFile: 4,
+      maxFindings: 16,
+    })
+    assert.equal(sidecarSecretScan.textFiles, 8)
+    assert.equal(sidecarSecretScan.detectorFamilies, 10)
+    assert.deepEqual(sidecarSecretScan.findings, [])
+
+    const failedOutput = path.join(scratch, 'failed-output')
+    await assert.rejects(
+      buildProviderBundles({ repositoryRoot, outputRoot: failedOutput, sourceDateEpoch: -1 }),
+      /sourceDateEpoch/,
+    )
+    assert.equal(
+      fs.existsSync(failedOutput) ? fs.readdirSync(failedOutput).length : 0,
+      0,
+      'failed build must leave no stage, release, sidecar, or checksum residue',
+    )
 
     const tampered = path.join(scratch, 'tampered')
     fs.cpSync(first[0].bundleRoot, tampered, { recursive: true })
@@ -236,7 +321,7 @@ async function main(): Promise<void> {
     fs.writeFileSync(manifestPath, JSON.stringify(driftedManifest))
     assert.throws(() => validateBuiltBundle(drifted, { provider: 'copilot', bundleVersion: '0.5.0', sharedCoreVersion: '1.3.0' }), /version mismatch/)
 
-    console.log('build-provider-bundles.test: PASS (3 deterministic archives, 15 clean runtime smokes, shared-core/version/content integrity, 3 attacks)')
+    console.log('build-provider-bundles.test: PASS (3 deterministic archives, 8 deterministic schema-valid/secret-clean sidecars, 11 checksums, 15 clean runtime smokes, shared-core/version/content integrity, 4 attacks)')
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true })
   }

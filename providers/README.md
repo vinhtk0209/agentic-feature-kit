@@ -18,7 +18,14 @@ Version `0.5.0` contains Project Intelligence, fingerprint-bound Stack Portabili
 Project-Derived Conditional Quality Gates, the Workflow Orchestrator, and fail-closed Phase Model
 Routing over shared core `1.3.0`. Run
 `npm run build:providers` to create three self-contained directories, deterministic ZIP archives,
-per-bundle content manifests, and `SHA256SUMS` under `dist/provider-bundles/0.5.0/`.
+per-bundle content manifests, two source SBOM sidecars, six provider SBOM sidecars, and an exact
+11-row `SHA256SUMS` under `dist/provider-bundles/0.5.0/`.
+
+The sidecars use SPDX 2.3 and CycloneDX 1.6, validate offline against the pinned official schemas,
+and share one explicit source-date epoch. Source documents describe the reviewed workspace roots and
+dependency inventory without claiming runtime reachability. Provider documents contain only packages
+proven embedded by the current esbuild metafiles; the expected third-party runtime is
+`typescript@4.9.5`.
 
 Each extracted bundle includes bundled Node 20+ launchers under `runtime/`; it does not need `tsx`,
 the monorepo, or repository `node_modules`. Validate `SHA256SUMS` before extraction, then follow the
@@ -39,8 +46,9 @@ and push are not performed by repository validation.
 
 ## Validation
 
-Run `npm run test:provider-distribution` for deterministic archive, content-integrity, version-sync,
-and isolated runtime smoke coverage. Run the provider-specific manifest/skill validators documented
+Run `npm run test:provider-distribution` for deterministic archive and sidecar bytes, official-schema
+validation, 11-row checksum integrity, version-sync, and isolated runtime smoke coverage. Run the
+provider-specific manifest/skill validators documented
 in the evidence before release. Generated archives belong in ignored `dist/`; never edit generated
 artifacts as source.
 
