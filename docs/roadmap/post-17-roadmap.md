@@ -75,7 +75,7 @@ When complete:
 | P17-015 | P2 | 4 | done | Detailed cross-machine progress tracking | Links each task to the exact machine-safe run, retry lineage, and evidence hash. |
 | P17-016 | P1 | 3 | in_progress | Privacy-safe specification and usage data criteria | Prevents private specs, secrets, or cross-tenant data from leaking into learning data. |
 | P17-017 | P2 | 5 | backlog | Provider-neutral build harness with optional RAG | Keeps repository facts authoritative while measuring any retrieval benefit safely. |
-| P17-018 | P2 | 4 | ready | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
+| P17-018 | P2 | 4 | done | Public-release and GitHub adoption readiness | Adds clean-clone onboarding, governance, nightly CI, and a deliberate release boundary. |
 | P17-019 | P2 | 4 | backlog | Credential lifecycle adapter | Handles token expiry only through an explicit project auth capability. |
 | P17-020 | P2 | 4 | backlog | Self-improvement drift, bias, and evolution tracking | Prevents one feature cluster from overfitting prompt evolution and adds golden rollback. |
 | P17-021 | P1 | 5 | backlog | Distributed Control Panel UI and Remote Operations Console | Proves authorized machine/task operations through a real Control Plane, remote worker, execution, evidence, and browser-visible terminal state. |
@@ -107,8 +107,9 @@ deterministic artifact safely, the roadmap should prepare and test it before req
 - **P17-018 (`A1/L1`):** target external software-delivery engineers, evaluators, maintainers,
   contributors, and security researchers; retain Apache-2.0 for repository source and provider
   bundles. The repository remains private and the package remains `private: true` until separately
-  authorized. P17-018 is ready because P17-009 now has accepted Linux/Windows/aggregate evidence;
-  P17-018 implementation and release evidence remain incomplete.
+  authorized. P17-018 is done because R1–R6 now provide admitted source, governance, privacy,
+  supply-chain, archive, clean-clone, cross-platform, visual, final-readiness, and dashboard evidence.
+  No repository, package, plugin, tag, or release was published by this status transition.
 
 ## Wave order
 

@@ -2183,6 +2183,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-readiness.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
@@ -2490,6 +2496,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r5d-clean-clone-qualification-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r6-final-readiness-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "required-release-control"
@@ -3671,6 +3683,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "scripts/post-17-public-release-r6-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3771,6 +3789,18 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/public-release-readiness-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/public-release-readiness-contract.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
     },
     {
       "path": "scripts/public-release-synthetic-fixture-contract.test.ts",

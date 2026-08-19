@@ -2,7 +2,7 @@
   "schemaVersion": "1.0.0",
   "roadmapId": "post-17",
   "title": "Post-17 Roadmap",
-  "updatedAt": "2026-08-14",
+  "updatedAt": "2026-08-19",
   "baseline": {
     "originalRoadmap": "17/17 complete",
     "kitAuditCommit": "5656532",
@@ -424,7 +424,7 @@
       "initiative": "P17-I3",
       "wave": 4,
       "priority": "P2",
-      "status": "ready",
+      "status": "done",
       "dependencies": ["P17-008", "P17-009", "P17-013"],
       "backlogRefs": ["11", "feedback: private repository release gaps", "feedback: no nightly"],
       "problem": "A private internal repository lacks the documentation, governance, CI cadence, and adoption surface expected for wider distribution.",

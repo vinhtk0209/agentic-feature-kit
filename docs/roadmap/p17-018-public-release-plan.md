@@ -1,6 +1,6 @@
 # P17-018 Public Release and GitHub Adoption Plan
 
-**Input status:** Locked (`A1/L1`); implementation is dependency-unblocked and ready
+**Input status:** Locked (`A1/L1`); implementation and final readiness evidence complete under R6
 **Date:** 2026-08-14
 **Task:** P17-018
 
@@ -301,9 +301,10 @@ Implementation may now start because P17-009 provides accepted remote Windows/Li
 
 ## Completion boundary
 
-P17-018 readiness is complete because `A1/L1` are locked, and its P17-009 dependency is complete.
-P17-018 is therefore `ready`, but remains incomplete until the implementation/evidence ladder above
-passes. “Public-ready” means an
+P17-018 readiness is complete because `A1/L1` are locked, all dependencies remain done, the R1–R5D
+implementation ladder is durable, and R6 admits the final evidence at
+`docs/evidence/post-17-public-release-readiness.md` together with dashboard reconciliation. P17-018
+is therefore `done`. “Public-ready” means an
 authorized operator can publish the exact proven commit without discovering an undocumented
 audience, license, security, packaging, privacy, or onboarding decision; it does not mean any
 artifact or repository has already been made public.
