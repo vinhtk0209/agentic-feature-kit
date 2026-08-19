@@ -2177,6 +2177,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-r5d-clean-clone-qualification-2026-08-19.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
@@ -2478,6 +2484,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r5c2b-strict-archive-gate-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r5d-clean-clone-qualification-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "required-release-control"
@@ -3653,6 +3665,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "scripts/post-17-public-release-r5d-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3828,6 +3846,30 @@
     },
     {
       "path": "scripts/release-archive-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-clean-clone-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-clean-clone-contract.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-clean-clone-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-clean-clone-node.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "required-release-control"

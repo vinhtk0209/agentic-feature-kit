@@ -114,7 +114,8 @@ function validateUnreleasedNote(text: string): string[] {
     'Dependency license catalog: 617 unique packages and 754 occurrences across four lockfiles',
     'Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates',
     'Strict final archive admission now validates all three ZIP archives',
-    'Complete clean-clone qualification',
+    'Committed-clone qualification runs the documented quickstart in two physical no-junction clones per platform',
+    'Only exact-head Linux/Windows receipts, aggregate parity, and exact-commit browser corroboration may qualify R5D',
     'No version bump is selected by this note.',
     '[changelog](../../CHANGELOG.md)',
     '[public-release readiness plan](../roadmap/p17-018-public-release-plan.md)',
@@ -123,6 +124,7 @@ function validateUnreleasedNote(text: string): string[] {
   if (text.includes('31 unresolved marker dispositions')) errors.push('stale-marker-disposition-gap')
   if (text.includes('dependency-license inventory and SBOM')) errors.push('stale-license-inventory-gap')
   if (text.includes('Run the final distribution-archive scanner')) errors.push('stale-final-archive-gap')
+  if (text.includes('Complete clean-clone qualification')) errors.push('stale-clean-clone-gap')
   if (/^- nightly qualification\s*$/im.test(text)) errors.push('stale-nightly-gap')
   if (/\b(?:release announcement|published release)\b/i.test(text.replace('Not a release announcement', ''))) errors.push('release-announcement-claim')
   return errors
@@ -214,6 +216,8 @@ function validNote(): string {
     '- Dependency license catalog: 617 unique packages and 754 occurrences across four lockfiles.',
     '- Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates.',
     '- Strict final archive admission now validates all three ZIP archives.',
+    '- Committed-clone qualification runs the documented quickstart in two physical no-junction clones per platform.',
+    '- Only exact-head Linux/Windows receipts, aggregate parity, and exact-commit browser corroboration may qualify R5D.',
     '',
     '## Evidence boundaries',
     '',
@@ -221,7 +225,7 @@ function validNote(): string {
     '',
     '## Remaining release gates',
     '',
-    '- Complete clean-clone qualification.',
+    '- Preserve separately gated release decisions.',
     '',
     '## Compatibility and upgrade notes',
     '',
@@ -249,6 +253,8 @@ assert.ok(validateUnreleasedNote(noteFixture.replace('The repository remains pri
 assert.ok(validateUnreleasedNote(noteFixture.replace('Internal-marker and private-binary remediation are complete for the current source candidate.', 'Marker state omitted.')).some((error) => error.includes('Internal-marker')))
 assert.ok(validateUnreleasedNote(noteFixture.replace('Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates.', 'SBOM state omitted.')).some((error) => error.includes('SPDX 2.3')))
 assert.ok(validateUnreleasedNote(noteFixture.replace('- Strict final archive admission now validates all three ZIP archives.', '- Archive state omitted.')).some((error) => error.includes('Strict final archive admission')))
+assert.ok(validateUnreleasedNote(noteFixture.replace('- Committed-clone qualification runs the documented quickstart in two physical no-junction clones per platform.', '- Clean-clone state omitted.')).some((error) => error.includes('Committed-clone qualification')))
+assert.ok(validateUnreleasedNote(`${noteFixture.slice(0, -1)}- Complete clean-clone qualification.\n`).includes('stale-clean-clone-gap'))
 assert.ok(validateUnreleasedNote(noteFixture.replace('- Nightly and manual qualification use the same read-only Linux/Windows matrix.', '- nightly qualification')).includes('stale-nightly-gap'))
 const syntheticPrivateHost = ['preview', 'example', 'internal'].join('.')
 assert.ok(validateUnreleasedNote(`${noteFixture.slice(0, -1)}Preview: https://${syntheticPrivateHost}/\n`).includes('private-host'))

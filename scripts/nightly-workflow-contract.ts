@@ -50,6 +50,7 @@ export function validateNightlyWorkflow(sourceText: string, readmeText: string):
   const source = sourceText.replace(/\r\n/g, '\n');
   const readme = readmeText.replace(/\r\n/g, '\n');
   const reasons: string[] = [];
+  const exactHead = '${{ github.event.pull_request.head.sha || github.sha }}';
 
   if (count(source, new RegExp(`^\\s*- cron: '${escapeRegExp(NIGHTLY_CRON)}'\\s*$`, 'gm')) !== 1) {
     reasons.push('workflow must define exactly one reviewed nightly schedule');
@@ -83,6 +84,23 @@ export function validateNightlyWorkflow(sourceText: string, readmeText: string):
   if ([...uses].sort().join('\n') !== expectedUses.sort().join('\n')) {
     reasons.push('workflow action uses must match only the reviewed first-party allowlist');
   }
+  if (count(source, new RegExp(`^\\s+ref: ${escapeRegExp(exactHead)}\\s*$`, 'gm')) !== 2) {
+    reasons.push('both jobs must checkout the exact PR head or push SHA');
+  }
+
+  for (const required of [
+    '- name: Run committed-clone release qualification',
+    'CLEAN_CLONE_SOURCE: .',
+    `CLEAN_CLONE_COMMIT: ${exactHead}`,
+    'CLEAN_CLONE_PLATFORM: ${{ matrix.platform }}',
+    'CLEAN_CLONE_OUT: artifacts/public-release/r5d/${{ matrix.platform }}.json',
+    'run: npm run qualify:public-release-clean-clone',
+    '            artifacts/public-release/r5d/${{ matrix.platform }}.json\n',
+    '          pattern: qualification-*\n          path: artifacts\n          merge-multiple: true',
+    '- name: Require clean-clone Linux/Windows parity',
+    'CLEAN_CLONE_MATRIX_DIR: artifacts/public-release/r5d',
+    'run: npm run release:clean-clone-matrix-gate',
+  ]) if (!source.includes(required)) reasons.push(`missing R5D workflow contract: ${required}`);
 
   const commands = runBodies(source).join('\n');
   const forbiddenCommands: Array<[RegExp, string]> = [
@@ -105,12 +123,25 @@ export function validateNightlyWorkflow(sourceText: string, readmeText: string):
     '## Workflow Kit qualification',
     'Matrix result:',
     'Aggregate gate:',
+    'Committed-clone matrix:',
     'Platforms: Linux and Windows',
     'Repository permissions: read-only',
   ]) if (!source.includes(required)) reasons.push(`missing stable job-summary contract: ${required}`);
 
   if (/github\.(?:head_ref|ref_name|event\.pull_request\.title|event\.head_commit\.message)|inputs\./.test(source)) {
     reasons.push('job summary must not interpolate untrusted branch, message, title, or dispatch input text');
+  }
+
+  const fullKitAt = source.indexOf('run: npm run test:kit');
+  const cleanCloneAt = source.indexOf('- name: Run committed-clone release qualification');
+  const uploadAt = source.indexOf('- name: Upload platform qualification');
+  const legacyGateAt = source.indexOf('run: npm run release:matrix-gate -- artifacts/cross-platform');
+  const cleanCloneGateAt = source.indexOf('run: npm run release:clean-clone-matrix-gate');
+  if (!(fullKitAt >= 0 && fullKitAt < cleanCloneAt && cleanCloneAt < uploadAt)) {
+    reasons.push('R5D platform qualification must run after the complete kit and before artifact upload');
+  }
+  if (!(legacyGateAt >= 0 && legacyGateAt < cleanCloneGateAt)) {
+    reasons.push('aggregate R5D parity must run after the existing platform matrix gate');
   }
 
   const badge = 'https://github.com/vinhtk0209/agentic-feature-kit/actions/workflows/workflow-kit-ci.yml/badge.svg';

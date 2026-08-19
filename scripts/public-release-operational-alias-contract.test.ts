@@ -66,9 +66,9 @@ const surfaceAuthorities: SurfaceAuthority[] = [
   },
   {
     path: '.gitignore',
-    sourceSha256: 'c11d7b239ca25f1480d848187c2e8203faa9ee273289dd22208d6c17bd0c2790',
-    transformedSha256: '03042f82c599e1627837a359698361ae7831c29260a830709637c7b509a6a384',
-    lines: 52,
+    sourceSha256: 'fb8c1351ae5b70d297c1a5380293af6f5940ce1568264e493b39262123fbb6f6',
+    transformedSha256: '295449b5d4f7fbf5bebe364e66669d1d5538ea1fb14ae5baeff09db647a38752',
+    lines: 55,
     learningAliases: 1,
     authoringAliases: 1,
   },

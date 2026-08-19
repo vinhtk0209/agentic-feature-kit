@@ -58,4 +58,11 @@ runtime smoke coverage. Run the provider-specific manifest/skill validators docu
 in the evidence before release. Generated archives belong in ignored `dist/`; never edit generated
 artifacts as source.
 
+The R5D committed-clone qualifier runs the documented root quickstart in two physical clones on one
+native platform, installs each clone with a fresh `npm ci`, rejects junction/shared install trees,
+and requires byte-identical admitted output plus all 15 extracted runtime smokes. Its receipt is a
+qualification artifact, not a plugin installation, provider execution, endorsement, or publication.
+Only exact-head Linux and Windows receipts accepted by the aggregate gate establish the supported-OS
+source qualification boundary.
+
 All packages are licensed under Apache-2.0; see the repository root `LICENSE`.

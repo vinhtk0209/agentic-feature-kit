@@ -51,8 +51,10 @@ npm run test:provider-distribution
 After dependency installation, the build creates three ignored local archives and SHA-256
 checksums under `dist/provider-bundles/0.5.0/`. The distribution test extracts every archive into
 an isolated directory and runs all shared capabilities without the source checkout or repository
-`node_modules`. A later release slice will measure the complete quickstart on clean Linux and
-Windows clones; this README does not claim that timing yet.
+`node_modules`. The R5D qualifier runs this exact sequence in two physical no-junction clones per
+platform and accepts results only when the outputs are byte-identical, strictly admitted, and all
+15 extracted runtime smokes pass. Supported-OS qualification still requires exact-head Linux and
+Windows receipts plus the aggregate gate; this README does not pre-claim that external evidence.
 
 These commands do not install into a real user directory, invoke a provider, load credentials, or
 perform an external write.
