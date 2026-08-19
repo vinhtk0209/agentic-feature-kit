@@ -95,7 +95,9 @@ jobs:
       - name: Require the complete successful matrix
         run: npm run release:matrix-gate -- artifacts/cross-platform
       - name: Require clean-clone Linux/Windows parity
-        run: npm run release:clean-clone-matrix-gate -- --dir artifacts/public-release/r5d
+        env:
+          CLEAN_CLONE_MATRIX_DIR: artifacts/public-release/r5d
+        run: npm run release:clean-clone-matrix-gate
       - name: Publish qualification summary
         if: always()
         env:

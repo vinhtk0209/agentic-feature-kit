@@ -70,6 +70,8 @@ exact 12-file receipt output set.
 The aggregate download merges both platform artifacts at `artifacts/` so retained cross-platform
 receipts resolve at `artifacts/cross-platform/` and R5D receipts resolve independently at
 `artifacts/public-release/r5d/`; nesting either subtree twice fails the workflow contract.
+The npm aggregate route uses exact non-secret `CLEAN_CLONE_MATRIX_DIR` with no forwarded flags;
+direct Node diagnostics retain explicit `matrix --dir <path>` mode.
 
 ### I1 — Use two physically isolated installs per platform
 

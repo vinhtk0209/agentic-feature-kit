@@ -98,7 +98,8 @@ export function validateNightlyWorkflow(sourceText: string, readmeText: string):
     '            artifacts/public-release/r5d/${{ matrix.platform }}.json\n',
     '          pattern: qualification-*\n          path: artifacts\n          merge-multiple: true',
     '- name: Require clean-clone Linux/Windows parity',
-    'run: npm run release:clean-clone-matrix-gate -- --dir artifacts/public-release/r5d',
+    'CLEAN_CLONE_MATRIX_DIR: artifacts/public-release/r5d',
+    'run: npm run release:clean-clone-matrix-gate',
   ]) if (!source.includes(required)) reasons.push(`missing R5D workflow contract: ${required}`);
 
   const commands = runBodies(source).join('\n');
@@ -135,7 +136,7 @@ export function validateNightlyWorkflow(sourceText: string, readmeText: string):
   const cleanCloneAt = source.indexOf('- name: Run committed-clone release qualification');
   const uploadAt = source.indexOf('- name: Upload platform qualification');
   const legacyGateAt = source.indexOf('run: npm run release:matrix-gate -- artifacts/cross-platform');
-  const cleanCloneGateAt = source.indexOf('run: npm run release:clean-clone-matrix-gate -- --dir artifacts/public-release/r5d');
+  const cleanCloneGateAt = source.indexOf('run: npm run release:clean-clone-matrix-gate');
   if (!(fullKitAt >= 0 && fullKitAt < cleanCloneAt && cleanCloneAt < uploadAt)) {
     reasons.push('R5D platform qualification must run after the complete kit and before artifact upload');
   }

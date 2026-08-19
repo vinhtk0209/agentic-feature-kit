@@ -603,8 +603,11 @@ export function parseCleanCloneCliArgs(
     }
   }
   if (mode === 'matrix') {
-    const values = exactFlagMap(args, ['--dir'])
-    return { mode, directory: values['--dir'] }
+    const directory = args.length === 0
+      ? environment.CLEAN_CLONE_MATRIX_DIR
+      : exactFlagMap(args, ['--dir'])['--dir']
+    if (typeof directory !== 'string' || directory.length === 0) fail('cli-matrix-environment')
+    return { mode, directory }
   }
   fail('cli-mode')
 }

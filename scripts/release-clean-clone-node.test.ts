@@ -165,6 +165,9 @@ assert.deepEqual(parseCleanCloneCliArgs(['qualify'], {
   CLEAN_CLONE_OUT: 'receipt.json',
 }), { mode: 'qualify', sourceRoot: '.', commit: COMMIT, platform: 'windows', outPath: 'receipt.json' })
 assert.deepEqual(parseCleanCloneCliArgs(['matrix', '--dir', 'receipts']), { mode: 'matrix', directory: 'receipts' })
+assert.deepEqual(parseCleanCloneCliArgs(['matrix'], {
+  CLEAN_CLONE_MATRIX_DIR: 'receipts',
+}), { mode: 'matrix', directory: 'receipts' })
 for (const argv of [
   [],
   ['qualify'],
