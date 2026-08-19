@@ -210,6 +210,7 @@ await test('workflow contract requires equal Linux/Windows legs and aggregate re
     ['aggregate dependency missing', workflow.replace('    needs: [kit-verify]\n', '')],
     ['forged matrix result', workflow.replace('      MATRIX_RESULT: ${{ needs.kit-verify.result }}', '      MATRIX_RESULT: success')],
     ['full suite weakened', workflow.replace('run: npm run test:kit', 'run: npm run test:post-17-roadmap')],
+    ['one shallow checkout', workflow.replace('          fetch-depth: 0\n', '')],
     ['nested MCP install missing', workflow.replace('      - name: Install Confluence MCP dependencies\n        working-directory: .claude/mcp-server\n        run: npm ci --ignore-scripts\n', '')],
   ];
   for (const [name, attacked] of attacks) {

@@ -8,15 +8,17 @@
 #     hard-errors if cwd is the kit repo per A1.1, so such a note can never exist on kit HEAD)
 #   - no `lint-feature --gate`                (that lints src/<Feature>; the kit has no src/)
 #
-# Invoke the LOCAL tsx binary directly rather than `npx tsx`: npx re-resolves the package on every
-# commit (~3.0s here) whereas the already-installed local bin runs in ~1.2s. A slow pre-commit
+# Invoke the installed tsx module directly through Node rather than the POSIX `.bin/tsx` shim or
+# `npx tsx`: npx re-resolves the package on every commit (~3.0s here), while the shim depends on
+# sed/dirname/uname being present in PATH. Managed Windows hook environments may omit those tools.
+# The direct Node module route is shell-tool independent and runs in ~1.2s. A slow pre-commit
 # trains people to reach for --no-verify, which is itself a design failure (§3.1). Fall back to npx
 # only if the local bin is missing (e.g. a fresh clone before `npm install`).
 #
 # Enable with: npm run git-hooks:install  (sets core.hooksPath=.githooks). DORMANT until then —
 # core.hooksPath is currently unset in this clone, so this hook does not fire yet. No husky.
-if [ -x node_modules/.bin/tsx ]; then
-  exec node_modules/.bin/tsx scripts/pre-commit.ts
+if [ -f node_modules/tsx/dist/cli.mjs ]; then
+  exec node node_modules/tsx/dist/cli.mjs scripts/pre-commit.ts
 else
   exec npx tsx scripts/pre-commit.ts
 fi

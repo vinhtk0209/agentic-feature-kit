@@ -8,6 +8,7 @@ const roadmapPath = path.join(root, 'docs', 'roadmap', 'post-17-roadmap.json')
 const packagingPath = path.join(root, 'docs', 'roadmap', 'post-17-provider-packaging.json')
 const licensePath = path.join(root, 'LICENSE')
 const packagePath = path.join(root, 'package.json')
+const finalEvidencePath = path.join(root, 'docs', 'evidence', 'post-17-public-release-readiness.md')
 const plan = fs.readFileSync(planPath, 'utf8')
 const normalizedPlan = plan.replace(/\s+/g, ' ')
 const roadmap = JSON.parse(fs.readFileSync(roadmapPath, 'utf8')) as { tasks: Array<Record<string, any>> }
@@ -37,7 +38,7 @@ for (const heading of [
 
 const task = roadmap.tasks.find((entry) => entry.id === 'P17-018')
 assert.ok(task)
-assert.equal(task.status, 'ready', 'P17-018 is ready after dependencies pass but cannot be done before implementation evidence')
+assert.equal(task.status, 'done', 'P17-018 closes only with admitted final implementation evidence')
 assert.equal(task.readiness.complete, true, 'A1/L1 must close the only named P17-018 input gap')
 assert.deepEqual(task.readiness.missing, [])
 assert.deepEqual(task.dependencies, ['P17-008', 'P17-009', 'P17-013'])
@@ -47,6 +48,7 @@ assert.ok(task.readiness.inputs.includes('LICENSE (Apache-2.0)'))
 assert.match(fs.readFileSync(licensePath, 'utf8'), /Apache License\s+Version 2\.0, January 2004/)
 assert.equal(packaging.distributionBoundary.licenseBoundary.includes('Apache-2.0'), true)
 assert.equal(packageJson.private, true, 'public repository readiness must not silently enable npm publication')
+assert.equal(fs.existsSync(finalEvidencePath), true, 'P17-018 done requires its canonical final evidence')
 
 for (const phrase of [
   'Canonical public display name: **Agentic Feature Kit**.',
@@ -76,6 +78,6 @@ assert.match(plan, /fresh `git clone --no-hardlinks`/)
 assert.match(plan, /paths with spaces or Unicode; CRLF/i)
 assert.match(plan, /archive traversal, symlink\/reparse entries, duplicate\/case-colliding names/i)
 assert.match(plan, /No sync, push, tag, release, visibility change, npm publish, marketplace submission/i)
-assert.doesNotMatch(plan, /implementation (is|was) complete/i)
+assert.ok(normalizedPlan.includes('docs/evidence/post-17-public-release-readiness.md'))
 
-console.log('post-17-public-release-plan.test: PASS (18 sections, A1/L1 locked, P17-018 input-complete and ready)')
+console.log('post-17-public-release-plan.test: PASS (18 sections, A1/L1 locked, P17-018 done with final evidence)')

@@ -100,11 +100,12 @@ assert.equal((crossPlatformRelease.readiness as Record<string, unknown>).complet
 assert.deepEqual((crossPlatformRelease.readiness as Record<string, unknown>).missing, [])
 
 const publicRelease = tasks.find((task) => task.id === 'P17-018')!
-assert.equal(publicRelease.status, 'ready', 'P17-018 becomes ready after P17-009 remote qualification')
+assert.equal(publicRelease.status, 'done', 'P17-018 closes after admitted R1-R6 implementation evidence')
 assert.equal((publicRelease.readiness as Record<string, unknown>).complete, true)
 assert.deepEqual((publicRelease.readiness as Record<string, unknown>).missing, [])
 assert.ok(((publicRelease.readiness as Record<string, unknown>).inputs as string[]).includes('docs/roadmap/p17-018-public-release-plan.md'))
 assert.ok(fs.existsSync(path.join(root, 'docs', 'roadmap', 'p17-018-public-release-plan.md')))
+assert.ok(fs.existsSync(path.join(root, 'docs', 'evidence', 'post-17-public-release-readiness.md')))
 
 const markdown = fs.readFileSync(markdownPath, 'utf8')
 assert.match(markdown, /No implementation task starts until its `readiness\.complete` value is `true`/)
