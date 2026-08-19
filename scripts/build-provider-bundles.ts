@@ -14,6 +14,7 @@ import {
   writeValidatedSbomPair,
   type SbomOutputFile,
 } from './release-sbom-node'
+import { promoteAdmittedReleaseCandidate } from './release-archive-node'
 
 export const PROVIDER_BUNDLE_RESULT_SENTINEL = '@@PROVIDER_BUNDLE_RESULT@@' as const
 
@@ -486,8 +487,17 @@ export async function buildProviderBundles(options: { repositoryRoot?: string; o
     }
     const sums = checksumFiles.map((entry) => `${entry.sha256}  ${entry.name}`)
     fs.writeFileSync(path.join(stageRoot, 'SHA256SUMS'), `${sums.join('\n')}\n`, 'utf8')
-    fs.rmSync(releaseRoot, { recursive: true, force: true })
-    fs.renameSync(stageRoot, releaseRoot)
+    promoteAdmittedReleaseCandidate({
+      repositoryRoot,
+      outputRoot,
+      stageRoot,
+      releaseRoot,
+      sourceDateEpoch: sourceSbom.sourceDateEpoch,
+      providerIds: registry.providers.map(({ id }) => id),
+      bundleVersion: registry.bundleVersion,
+      sharedCoreVersion: registry.sharedCoreVersion,
+      sourceVersion: '3.25.0',
+    })
     return results.map((entry) => ({
       ...entry,
       bundleRoot: entry.bundleRoot.replace(stageRoot, releaseRoot),

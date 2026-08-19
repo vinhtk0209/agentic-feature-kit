@@ -113,7 +113,7 @@ function validateUnreleasedNote(text: string): string[] {
     'Nightly and manual qualification use the same read-only Linux/Windows matrix',
     'Dependency license catalog: 617 unique packages and 754 occurrences across four lockfiles',
     'Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates',
-    'Run the final distribution-archive scanner',
+    'Strict final archive admission now validates all three ZIP archives',
     'Complete clean-clone qualification',
     'No version bump is selected by this note.',
     '[changelog](../../CHANGELOG.md)',
@@ -122,6 +122,7 @@ function validateUnreleasedNote(text: string): string[] {
   for (const value of required) if (!text.includes(value)) errors.push(`note-missing:${value}`)
   if (text.includes('31 unresolved marker dispositions')) errors.push('stale-marker-disposition-gap')
   if (text.includes('dependency-license inventory and SBOM')) errors.push('stale-license-inventory-gap')
+  if (text.includes('Run the final distribution-archive scanner')) errors.push('stale-final-archive-gap')
   if (/^- nightly qualification\s*$/im.test(text)) errors.push('stale-nightly-gap')
   if (/\b(?:release announcement|published release)\b/i.test(text.replace('Not a release announcement', ''))) errors.push('release-announcement-claim')
   return errors
@@ -212,6 +213,7 @@ function validNote(): string {
     '- Nightly and manual qualification use the same read-only Linux/Windows matrix.',
     '- Dependency license catalog: 617 unique packages and 754 occurrences across four lockfiles.',
     '- Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates.',
+    '- Strict final archive admission now validates all three ZIP archives.',
     '',
     '## Evidence boundaries',
     '',
@@ -219,7 +221,6 @@ function validNote(): string {
     '',
     '## Remaining release gates',
     '',
-    '- Run the final distribution-archive scanner.',
     '- Complete clean-clone qualification.',
     '',
     '## Compatibility and upgrade notes',
@@ -247,6 +248,7 @@ assert.ok(validateUnreleasedNote(noteFixture.replace('`3.25.0`', '`4.0.0`')).som
 assert.ok(validateUnreleasedNote(noteFixture.replace('The repository remains private.', 'The repository is public-release ready.')).includes('public-ready-claim'))
 assert.ok(validateUnreleasedNote(noteFixture.replace('Internal-marker and private-binary remediation are complete for the current source candidate.', 'Marker state omitted.')).some((error) => error.includes('Internal-marker')))
 assert.ok(validateUnreleasedNote(noteFixture.replace('Deterministic SPDX 2.3 and CycloneDX 1.6 SBOM sidecars now cover the exact source and provider candidates.', 'SBOM state omitted.')).some((error) => error.includes('SPDX 2.3')))
+assert.ok(validateUnreleasedNote(noteFixture.replace('- Strict final archive admission now validates all three ZIP archives.', '- Archive state omitted.')).some((error) => error.includes('Strict final archive admission')))
 assert.ok(validateUnreleasedNote(noteFixture.replace('- Nightly and manual qualification use the same read-only Linux/Windows matrix.', '- nightly qualification')).includes('stale-nightly-gap'))
 const syntheticPrivateHost = ['preview', 'example', 'internal'].join('.')
 assert.ok(validateUnreleasedNote(`${noteFixture.slice(0, -1)}Preview: https://${syntheticPrivateHost}/\n`).includes('private-host'))

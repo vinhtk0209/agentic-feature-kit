@@ -2171,6 +2171,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-public-release-r5c2b-strict-archive-gate-2026-08-19.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-semantic-spec-model.md",
       "decision": "include",
       "contentKind": "text",
@@ -2466,6 +2472,12 @@
     },
     {
       "path": "docs/roadmap/p17-018-r5c2a-deterministic-sbom-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "docs/roadmap/p17-018-r5c2b-strict-archive-gate-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "required-release-control"
@@ -3635,6 +3647,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "scripts/post-17-public-release-r5c2b-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
       "path": "scripts/post-17-roadmap.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3789,6 +3807,30 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/release-archive-contract.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-archive-contract.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-archive-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
+    },
+    {
+      "path": "scripts/release-archive-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "required-release-control"
     },
     {
       "path": "scripts/release-matrix-gate.ts",
