@@ -428,6 +428,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/live-cutover-isolated-restore-cleanup-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/live-cutover-logical-backup-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2153,6 +2159,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-privacy-wave-c5b-isolated-restore-cleanup-capability-2026-08-20.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-privacy-wave-c5b-logical-backup-adapter-2026-08-20.md",
       "decision": "include",
       "contentKind": "text",
@@ -2538,6 +2550,12 @@
     },
     {
       "path": "docs/roadmap/p17-016-wave-c5b-executable-capability-qualification-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-016-wave-c5b-isolated-restore-cleanup-capability-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3029,6 +3047,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/live-cutover-isolated-restore-cleanup-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/live-cutover-logical-backup-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3228,6 +3252,12 @@
     },
     {
       "path": "packages/core/test/live-cutover-executable-qualification-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/live-cutover-isolated-restore-cleanup-node.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3906,6 +3936,12 @@
     },
     {
       "path": "scripts/post-17-privacy-wave-c5b-executable-capability-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-privacy-wave-c5b-isolated-restore-cleanup-capability-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

@@ -10,6 +10,7 @@ export const SYNCED_CORE_FILES = [
   'live-cutover-catalog-acl-transcript.ts',
   'live-cutover-connection-material-qualification-node.ts',
   'live-cutover-executable-qualification-node.ts',
+  'live-cutover-isolated-restore-cleanup-node.ts',
   'live-cutover-logical-backup-node.ts',
   'live-cutover-preflight.ts',
   'live-cutover-preflight-operator.ts',
