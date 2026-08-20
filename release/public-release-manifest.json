@@ -446,6 +446,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/live-cutover-provider-recovery-point-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/live-cutover-writer-freeze-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2537,6 +2543,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-016-wave-c5b-provider-recovery-point-capability-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-016-wave-c5b-writer-freeze-capability-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3005,6 +3017,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/live-cutover-provider-recovery-point-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/live-cutover-writer-freeze-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3192,6 +3210,12 @@
     },
     {
       "path": "packages/core/test/live-cutover-project-attestation-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/live-cutover-provider-recovery-point-node.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3858,6 +3882,12 @@
     },
     {
       "path": "scripts/post-17-privacy-wave-c5b-project-attestation-capability-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-privacy-wave-c5b-provider-recovery-point-capability-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
