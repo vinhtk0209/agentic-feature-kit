@@ -21,7 +21,10 @@ const root = path.resolve(__dirname, '..', '..', '..')
 const source = path.join(root, 'packages', 'core', 'src', 'phase-model-router-cli.ts')
 const tsxCli = path.join(root, 'node_modules', 'tsx', 'dist', 'cli.mjs')
 const matrix = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'roadmap', 'post-17-phase-capability-matrix.json'), 'utf8')) as PhaseCapabilityMatrix
-const fixedNow = '2026-08-14T12:00:00.000Z'
+const testStartedMs = Date.now()
+const fixedNow = new Date(testStartedMs).toISOString()
+const evidenceObservedAt = new Date(testStartedMs - 60_000).toISOString()
+const evidenceExpiresAt = new Date(testStartedMs + 60 * 60_000).toISOString()
 const digest = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
 const phase = matrix.phases.find((entry) => entry.id === 'B0')!
@@ -40,8 +43,8 @@ const candidate: PhaseModelCandidate = {
   documentation: {
     sourceUrl: 'https://docs.example.com/model-cli',
     sourceSha256: digest('docs'),
-    fetchedAt: '2026-08-13T12:00:00.000Z',
-    expiresAt: '2026-08-20T12:00:00.000Z',
+    fetchedAt: evidenceObservedAt,
+    expiresAt: evidenceExpiresAt,
   },
   configurationCatalogSha256: digest('config'),
   runtimeEntitlement: {
@@ -52,13 +55,13 @@ const candidate: PhaseModelCandidate = {
     resolvedModelId: 'model-cli',
     adapterCapabilitySha256: digest('adapter'),
     evidenceSha256: digest('entitlement'),
-    observedAt: '2026-08-13T12:00:00.000Z',
-    expiresAt: '2026-08-20T12:00:00.000Z',
+    observedAt: evidenceObservedAt,
+    expiresAt: evidenceExpiresAt,
   },
   availability: {
     status: 'available',
-    observedAt: '2026-08-13T12:00:00.000Z',
-    expiresAt: '2026-08-20T12:00:00.000Z',
+    observedAt: evidenceObservedAt,
+    expiresAt: evidenceExpiresAt,
   },
   phaseQualification: {
     phaseId: 'B0',
@@ -67,8 +70,8 @@ const candidate: PhaseModelCandidate = {
     fixtureSha256: digest('fixture'),
     verdict: 'pass',
     evidenceSha256: digest('qualification'),
-    observedAt: '2026-08-13T12:00:00.000Z',
-    expiresAt: '2026-09-12T12:00:00.000Z',
+    observedAt: evidenceObservedAt,
+    expiresAt: evidenceExpiresAt,
   },
   observations: [],
 }
