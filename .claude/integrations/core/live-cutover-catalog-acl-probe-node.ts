@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto'
 import {
   evaluateC5BPreflightPrefix,
   validateC5BPreflightPacket,
@@ -7,12 +6,25 @@ import {
   type C5BReasonCode,
 } from './live-cutover-preflight'
 import type { C5BOperatorContext, C5BPortDecision } from './live-cutover-preflight-operator'
+import {
+  canonicalizeC5BCatalogAclRows,
+  createC5BCatalogAclTranscriptBudget,
+  hashC5BCatalogAclDomain,
+  isC5BCatalogAclServerVersion,
+  sameC5BCatalogAclHash,
+  type C5BCatalogAclHashDomain,
+  type C5BCatalogAclProbeRow,
+  type C5BCatalogAclProbeScalar,
+} from './live-cutover-catalog-acl-transcript'
 
-export const C5B_CATALOG_ACL_PROBE_SCHEMA_VERSION = 1 as const
-export const C5B_CATALOG_ACL_PROBE_POLICY_VERSION = 'p17-016-c5b-catalog-acl-probe-v1' as const
-
-export type C5BCatalogAclProbeScalar = string | number | boolean | null
-export type C5BCatalogAclProbeRow = Readonly<Record<string, C5BCatalogAclProbeScalar>>
+export {
+  C5B_CATALOG_ACL_PROBE_POLICY_VERSION,
+  C5B_CATALOG_ACL_PROBE_SCHEMA_VERSION,
+} from './live-cutover-catalog-acl-transcript'
+export type {
+  C5BCatalogAclProbeRow,
+  C5BCatalogAclProbeScalar,
+} from './live-cutover-catalog-acl-transcript'
 
 export interface C5BCatalogAclProbeObservation {
   readonly serverVersionNum: number
@@ -60,8 +72,6 @@ export interface C5BCatalogAclProbeNodePorts {
   readonly probeCatalogAcl: (context: C5BOperatorContext) => Promise<C5BPortDecision>
 }
 
-type HashDomain = 'catalog' | 'acl' | 'rpc' | 'policy' | 'extension'
-
 interface ValidatedFactory {
   readonly expected: C5BCatalogAclProbeExpectations
   readonly maxRowsPerDomain: number
@@ -76,7 +86,7 @@ interface ValidatedFactory {
 
 interface ParsedObservation {
   readonly serverVersionNum: number
-  readonly canonical: Readonly<Record<HashDomain, readonly string[]>>
+  readonly canonical: Readonly<Record<C5BCatalogAclHashDomain, readonly string[]>>
   readonly migrationObjectCount: number
   readonly writerActivityCount: number
 }
@@ -95,16 +105,11 @@ const OBSERVATION_KEYS = [
 ] as const
 const HASH_DOMAINS = ['catalog', 'acl', 'rpc', 'policy', 'extension'] as const
 const COUNT_DOMAINS = ['migrationObject', 'writerActivity'] as const
-const ROW_KEY = /^[a-z][a-z0-9_]{0,63}$/
 const HASH = /^[0-9a-f]{64}$/
-const CONTROL = /[\u0000-\u001f\u007f]/
-const MAX_SERVER_VERSION_NUM = 999_999
-const MIN_SERVER_VERSION_NUM = 100_000
 const MAX_ROWS_PER_DOMAIN = 1_000_000
 const MAX_ROW_BYTES = 65_536
 const MAX_TOTAL_BYTES = 16 * 1024 * 1024
 const MAX_TIMEOUT_MS = 300_000
-const MAX_FIELDS_PER_ROW = 64
 
 class C5BCatalogAclProbeConfigurationError extends Error {
   constructor() {
@@ -152,9 +157,7 @@ function positiveSafeInteger(value: unknown, maximum: number): value is number {
 }
 
 function serverVersion(value: unknown): value is number {
-  return Number.isSafeInteger(value)
-    && (value as number) >= MIN_SERVER_VERSION_NUM
-    && (value as number) <= MAX_SERVER_VERSION_NUM
+  return isC5BCatalogAclServerVersion(value)
 }
 
 function sha256(value: unknown): value is string {
@@ -223,86 +226,6 @@ function validateFactory(
   }
 }
 
-function exactArray(value: unknown, maximumLength: number): value is unknown[] {
-  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return false
-  const length = value.length
-  if (!Number.isSafeInteger(length) || length > maximumLength) return false
-  const ownKeys = Reflect.ownKeys(value)
-  if (ownKeys.some((key) => typeof key !== 'string')) return false
-  const expected = Array.from({ length }, (_, index) => String(index)).concat('length').sort()
-  const actual = (ownKeys as string[]).sort()
-  if (actual.length !== expected.length || !actual.every((key, index) => key === expected[index])) return false
-  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length')
-  if (!lengthDescriptor || !('value' in lengthDescriptor) || lengthDescriptor.enumerable) return false
-  return Array.from({ length }, (_, index) => String(index)).every((key) => {
-    const descriptor = Object.getOwnPropertyDescriptor(value, key)
-    return !!descriptor && 'value' in descriptor && descriptor.enumerable === true
-  })
-}
-
-function scalar(value: unknown): value is C5BCatalogAclProbeScalar {
-  if (value === null || typeof value === 'boolean') return true
-  if (typeof value === 'number') return Number.isSafeInteger(value) && !Object.is(value, -0)
-  if (typeof value !== 'string') return false
-  return value.normalize('NFC') === value && !CONTROL.test(value)
-}
-
-function canonicalRow(value: unknown, maxRowBytes: number): { text: string; bytes: Buffer } {
-  if (!isRecord(value)) throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-  const ownKeys = Reflect.ownKeys(value)
-  if (ownKeys.length === 0 || ownKeys.length > MAX_FIELDS_PER_ROW
-    || ownKeys.some((key) => typeof key !== 'string' || !ROW_KEY.test(key))) {
-    throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-  }
-  const keys = (ownKeys as string[]).sort()
-  const canonical: Record<string, C5BCatalogAclProbeScalar> = {}
-  for (const key of keys) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, key)
-    if (!descriptor || !('value' in descriptor) || descriptor.enumerable !== true || !scalar(descriptor.value)) {
-      throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-    }
-    if (typeof descriptor.value === 'string'
-      && (descriptor.value.length > maxRowBytes || Buffer.byteLength(descriptor.value, 'utf8') > maxRowBytes)) {
-      throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-    }
-    canonical[key] = descriptor.value
-  }
-  const text = JSON.stringify(canonical)
-  if (text.length > maxRowBytes || Buffer.byteLength(text, 'utf8') > maxRowBytes) {
-    throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-  }
-  const bytes = Buffer.from(text, 'utf8')
-  return { text, bytes }
-}
-
-function canonicalRows(
-  value: unknown,
-  maximumRows: number,
-  maxRowBytes: number,
-  total: { bytes: number },
-  maxTotalBytes: number,
-): readonly string[] {
-  if (!exactArray(value, maximumRows)) {
-    throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-  }
-  const rows: Array<{ text: string; bytes: Buffer }> = []
-  total.bytes += 2
-  if (total.bytes > maxTotalBytes) throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-  for (let index = 0; index < value.length; index += 1) {
-    const row = canonicalRow(value[index], maxRowBytes)
-    total.bytes += row.bytes.byteLength + (index === 0 ? 0 : 1)
-    if (total.bytes > maxTotalBytes) throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-    rows.push(row)
-  }
-  rows.sort((left, right) => Buffer.compare(left.bytes, right.bytes))
-  for (let index = 1; index < rows.length; index += 1) {
-    if (rows[index - 1].text === rows[index].text) {
-      throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
-    }
-  }
-  return Object.freeze(rows.map((row) => row.text))
-}
-
 function parseObservation(
   value: unknown,
   factory: ValidatedFactory,
@@ -315,27 +238,25 @@ function parseObservation(
   if (!serverVersion(observedServerVersion)) {
     throw new C5BCatalogAclProbeBoundaryError('provider_operation_refused')
   }
-  const total = { bytes: 0 }
+  const total = createC5BCatalogAclTranscriptBudget(factory.maxTotalBytes)
   const maxRows = Math.min(factory.maxRowsPerDomain, packet.limits.maxObjectCount)
-  const canonical = {} as Record<HashDomain, readonly string[]>
+  const canonical = {} as Record<C5BCatalogAclHashDomain, readonly string[]>
   for (const domain of HASH_DOMAINS) {
-    canonical[domain] = canonicalRows(
-      ownDataValue(value, domain), maxRows, factory.maxRowBytes, total, factory.maxTotalBytes,
+    canonical[domain] = canonicalizeC5BCatalogAclRows(
+      ownDataValue(value, domain), maxRows, factory.maxRowBytes, total,
     )
   }
-  const migrationRows = canonicalRows(
+  const migrationRows = canonicalizeC5BCatalogAclRows(
     ownDataValue(value, COUNT_DOMAINS[0]),
     Math.min(factory.maxMigrationObjects, packet.limits.maxObjectCount),
     factory.maxRowBytes,
     total,
-    factory.maxTotalBytes,
   )
-  const writerRows = canonicalRows(
+  const writerRows = canonicalizeC5BCatalogAclRows(
     ownDataValue(value, COUNT_DOMAINS[1]),
     Math.min(factory.maxWriterActivities, packet.limits.maxObjectCount),
     factory.maxRowBytes,
     total,
-    factory.maxTotalBytes,
   )
   return Object.freeze({
     serverVersionNum: observedServerVersion,
@@ -343,29 +264,6 @@ function parseObservation(
     migrationObjectCount: migrationRows.length,
     writerActivityCount: writerRows.length,
   })
-}
-
-function domainHash(domain: HashDomain, rows: readonly string[], serverVersionNum: number): string {
-  const parsedRows = rows.map((row) => JSON.parse(row) as C5BCatalogAclProbeRow)
-  const transcript = domain === 'catalog'
-    ? {
-      schemaVersion: C5B_CATALOG_ACL_PROBE_SCHEMA_VERSION,
-      policyVersion: C5B_CATALOG_ACL_PROBE_POLICY_VERSION,
-      domain,
-      serverVersionNum,
-      rows: parsedRows,
-    }
-    : {
-      schemaVersion: C5B_CATALOG_ACL_PROBE_SCHEMA_VERSION,
-      policyVersion: C5B_CATALOG_ACL_PROBE_POLICY_VERSION,
-      domain,
-      rows: parsedRows,
-    }
-  return createHash('sha256').update(JSON.stringify(transcript), 'utf8').digest('hex')
-}
-
-function sameHash(left: string, right: string): boolean {
-  return timingSafeEqual(Buffer.from(left, 'hex'), Buffer.from(right, 'hex'))
 }
 
 function expectedPacket(value: unknown): C5BPreflightPacket | null {
@@ -388,7 +286,7 @@ function validInstant(value: unknown): value is string {
   return Number.isFinite(parsed) && new Date(parsed).toISOString() === value
 }
 
-function passed(parsed: ParsedObservation, hashes: Record<HashDomain, string>): C5BPortDecision {
+function passed(parsed: ParsedObservation, hashes: Record<C5BCatalogAclHashDomain, string>): C5BPortDecision {
   return Object.freeze({
     status: 'passed',
     evidence: Object.freeze({
@@ -461,15 +359,15 @@ export function createC5BCatalogAclProbeNodePorts(
         })))
         const parsed = parseObservation(raw, factory, packet)
         if (parsed.serverVersionNum !== factory.expected.serverVersionNum) return refused('integrity_mismatch')
-        const hashes = {} as Record<HashDomain, string>
+        const hashes = {} as Record<C5BCatalogAclHashDomain, string>
         for (const domain of HASH_DOMAINS) {
-          hashes[domain] = domainHash(domain, parsed.canonical[domain], parsed.serverVersionNum)
+          hashes[domain] = hashC5BCatalogAclDomain(domain, parsed.canonical[domain], parsed.serverVersionNum)
         }
-        if (!sameHash(hashes.catalog, factory.expected.catalogHash)
-          || !sameHash(hashes.acl, factory.expected.aclHash)
-          || !sameHash(hashes.rpc, factory.expected.rpcHash)
-          || !sameHash(hashes.policy, factory.expected.policyHash)
-          || !sameHash(hashes.extension, factory.expected.extensionHash)) {
+        if (!sameC5BCatalogAclHash(hashes.catalog, factory.expected.catalogHash)
+          || !sameC5BCatalogAclHash(hashes.acl, factory.expected.aclHash)
+          || !sameC5BCatalogAclHash(hashes.rpc, factory.expected.rpcHash)
+          || !sameC5BCatalogAclHash(hashes.policy, factory.expected.policyHash)
+          || !sameC5BCatalogAclHash(hashes.extension, factory.expected.extensionHash)) {
           return refused('integrity_mismatch')
         }
         let completedAt: string
