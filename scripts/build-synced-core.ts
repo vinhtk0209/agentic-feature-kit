@@ -7,6 +7,7 @@ export const SYNCED_CORE_FILES = [
   'blocked-central-writer.ts',
   'legacy-backend-config.ts',
   'live-cutover-preflight.ts',
+  'live-cutover-preflight-operator.ts',
   'privacy-policy.ts',
   'privacy-writer.ts',
   'project-intelligence.ts',

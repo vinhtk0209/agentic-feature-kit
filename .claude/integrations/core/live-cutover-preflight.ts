@@ -118,6 +118,32 @@ export type C5BCompletionResult =
   | { ok: true; statusCode: 'completed'; reasonCode: null; ruleId: null; receipt: C5BCompletionReceipt }
   | { ok: false; statusCode: 'blocked'; reasonCode: C5BReasonCode; ruleId: string; receipt: null }
 
+export type C5BPrefixResult =
+  | {
+    ok: true
+    statusCode: 'continue'
+    reasonCode: null
+    ruleId: null
+    nextOperation: C5BOperation
+    receipt: null
+  }
+  | {
+    ok: true
+    statusCode: 'completed'
+    reasonCode: null
+    ruleId: null
+    nextOperation: null
+    receipt: C5BCompletionReceipt
+  }
+  | {
+    ok: false
+    statusCode: 'blocked'
+    reasonCode: C5BReasonCode
+    ruleId: string
+    nextOperation: null
+    receipt: null
+  }
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const HASH = /^[0-9a-f]{64}$/
 const CLOSED_ID = /^[a-z][a-z0-9_]{2,63}$/
@@ -157,6 +183,17 @@ function refuse(reasonCode: C5BReasonCode, ruleId: string): never {
 
 function blocked(reasonCode: C5BReasonCode, ruleId: string): C5BCompletionResult {
   return Object.freeze({ ok: false, statusCode: 'blocked', reasonCode, ruleId, receipt: null })
+}
+
+function prefixBlocked(reasonCode: C5BReasonCode, ruleId: string): C5BPrefixResult {
+  return Object.freeze({
+    ok: false,
+    statusCode: 'blocked',
+    reasonCode,
+    ruleId,
+    nextOperation: null,
+    receipt: null,
+  })
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -483,15 +520,12 @@ function buildCompletionReceipt(packet: C5BPreflightPacket, receipts: C5BOperati
   return deepFreeze({ ...withoutReceiptHash, receiptHash: sha256(withoutReceiptHash) })
 }
 
-export function evaluateC5BPreflight(packetValue: unknown, receiptValues: unknown): C5BCompletionResult {
-  let packet: C5BPreflightPacket
-  try {
-    packet = validateC5BPreflightPacket(packetValue)
-  } catch (error) {
-    return blocked(error instanceof C5BBoundaryError ? error.reasonCode : 'invalid_packet', 'c5b.completion.packet_refused')
-  }
-  if (!Array.isArray(receiptValues) || receiptValues.length !== C5B_OPERATIONS.length) {
-    return blocked('operation_sequence_invalid', 'c5b.completion.receipt_count')
+function validateC5BReceiptPrefix(
+  packet: C5BPreflightPacket,
+  receiptValues: unknown[],
+): C5BOperationReceipt[] | C5BPrefixResult {
+  if (receiptValues.length > C5B_OPERATIONS.length) {
+    return prefixBlocked('operation_sequence_invalid', 'c5b.completion.receipt_count')
   }
 
   const receipts: C5BOperationReceipt[] = []
@@ -501,75 +535,137 @@ export function evaluateC5BPreflight(packetValue: unknown, receiptValues: unknow
     try {
       receipt = validateC5BOperationReceipt(receiptValues[index], packet)
     } catch (error) {
-      return blocked(error instanceof C5BBoundaryError ? error.reasonCode : 'invalid_receipt', `c5b.completion.receipt_${index}`)
+      return prefixBlocked(
+        error instanceof C5BBoundaryError ? error.reasonCode : 'invalid_receipt',
+        `c5b.completion.receipt_${index}`,
+      )
     }
     if (receipt.sequence !== index || receipt.operation !== C5B_OPERATIONS[index]) {
-      return blocked('operation_sequence_invalid', `c5b.completion.operation_${index}`)
+      return prefixBlocked('operation_sequence_invalid', `c5b.completion.operation_${index}`)
     }
-    if (receipt.status !== 'passed') return blocked(receipt.reasonCode ?? 'operation_refused', `c5b.completion.refused_${index}`)
+    if (receipt.status !== 'passed') {
+      return prefixBlocked(receipt.reasonCode ?? 'operation_refused', `c5b.completion.refused_${index}`)
+    }
     if (Date.parse(receipt.startedAt) < Date.parse(packet.freezeStartsAt)
       || Date.parse(receipt.completedAt) > Date.parse(packet.freezeExpiresAt)
       || (previousCompletedAt !== null && Date.parse(receipt.startedAt) < Date.parse(previousCompletedAt))) {
-      return blocked('freeze_window_invalid', `c5b.completion.window_${index}`)
+      return prefixBlocked('freeze_window_invalid', `c5b.completion.window_${index}`)
     }
     receipts.push(receipt)
     previousCompletedAt = receipt.completedAt
   }
 
-  const project = evidence(receipts[0])
-  if (project.projectMatch !== true || project.environmentClass !== packet.environmentClass) {
-    return blocked('project_mismatch', 'c5b.completion.project_match')
+  if (receipts.length >= 1) {
+    const project = evidence(receipts[0])
+    if (project.projectMatch !== true || project.environmentClass !== packet.environmentClass) {
+      return prefixBlocked('project_mismatch', 'c5b.completion.project_match')
+    }
   }
-  const probe = evidence(receipts[1])
-  if ((probe.migrationObjectCount as number) > packet.limits.maxObjectCount) {
-    return blocked('restored_state_mismatch', 'c5b.completion.object_bound')
+  if (receipts.length >= 2) {
+    const probe = evidence(receipts[1])
+    if ((probe.migrationObjectCount as number) > packet.limits.maxObjectCount) {
+      return prefixBlocked('restored_state_mismatch', 'c5b.completion.object_bound')
+    }
   }
-  const freeze = evidence(receipts[2])
-  if (freeze.freezeConfirmed !== true || freeze.activeWriterCount !== 0) {
-    return blocked('writer_activity_detected', 'c5b.completion.writer_freeze')
+  if (receipts.length >= 3) {
+    const freeze = evidence(receipts[2])
+    if (freeze.freezeConfirmed !== true || freeze.activeWriterCount !== 0) {
+      return prefixBlocked('writer_activity_detected', 'c5b.completion.writer_freeze')
+    }
   }
-  const recovery = evidence(receipts[3])
-  if (recovery.recoveryPointCreated !== true || Date.parse(asString(recovery.expiresAt)) <= Date.parse(receipts[8].completedAt)) {
-    return blocked('recovery_point_unavailable', 'c5b.completion.recovery_point')
+  const observedAt = receipts.at(-1)?.completedAt ?? packet.freezeStartsAt
+  if (receipts.length >= 4) {
+    const recovery = evidence(receipts[3])
+    if (recovery.recoveryPointCreated !== true || Date.parse(asString(recovery.expiresAt)) <= Date.parse(observedAt)) {
+      return prefixBlocked('recovery_point_unavailable', 'c5b.completion.recovery_point')
+    }
   }
-  const backup = evidence(receipts[4])
-  if (backup.encrypted !== true || typeof backup.byteCount !== 'number' || backup.byteCount <= 0
-    || backup.byteCount > packet.limits.maxBackupBytes
-    || Date.parse(asString(backup.expiresAt)) <= Date.parse(receipts[8].completedAt)) {
-    return blocked('logical_backup_invalid', 'c5b.completion.logical_backup')
+  if (receipts.length >= 5) {
+    const backup = evidence(receipts[4])
+    if (backup.encrypted !== true || typeof backup.byteCount !== 'number' || backup.byteCount <= 0
+      || backup.byteCount > packet.limits.maxBackupBytes
+      || Date.parse(asString(backup.expiresAt)) <= Date.parse(observedAt)) {
+      return prefixBlocked('logical_backup_invalid', 'c5b.completion.logical_backup')
+    }
   }
-  const restore = evidence(receipts[5])
-  if (restore.restored !== true || restore.isolated !== true
-    || restore.sourceBackupSha256 !== backup.backupSha256
-    || restore.restoreManifestSha256 !== backup.manifestSha256) {
-    return blocked('restore_invalid', 'c5b.completion.restore')
+  if (receipts.length >= 6) {
+    const backup = evidence(receipts[4])
+    const restore = evidence(receipts[5])
+    if (restore.restored !== true || restore.isolated !== true
+      || restore.sourceBackupSha256 !== backup.backupSha256
+      || restore.restoreManifestSha256 !== backup.manifestSha256) {
+      return prefixBlocked('restore_invalid', 'c5b.completion.restore')
+    }
   }
-  const verify = evidence(receipts[6])
-  if (verify.catalogHash !== probe.catalogHash || verify.aclHash !== probe.aclHash
-    || verify.sourceBindingHash !== packet.sourceBindingHash
-    || verify.sourceParity !== true || verify.rollbackSuitePassed !== true) {
-    return blocked('restored_state_mismatch', 'c5b.completion.restored_state')
+  if (receipts.length >= 7) {
+    const probe = evidence(receipts[1])
+    const verify = evidence(receipts[6])
+    if (verify.catalogHash !== probe.catalogHash || verify.aclHash !== probe.aclHash
+      || verify.sourceBindingHash !== packet.sourceBindingHash
+      || verify.sourceParity !== true || verify.rollbackSuitePassed !== true) {
+      return prefixBlocked('restored_state_mismatch', 'c5b.completion.restored_state')
+    }
   }
-  const cleanup = evidence(receipts[7])
-  if (cleanup.cleanupConfirmed !== true || cleanup.residualResourceCount !== 0) {
-    return blocked('cleanup_incomplete', 'c5b.completion.cleanup')
+  if (receipts.length >= 8) {
+    const cleanup = evidence(receipts[7])
+    if (cleanup.cleanupConfirmed !== true || cleanup.residualResourceCount !== 0) {
+      return prefixBlocked('cleanup_incomplete', 'c5b.completion.cleanup')
+    }
   }
-  let expectedCompletionHash: string
+  if (receipts.length === C5B_OPERATIONS.length) {
+    let expectedCompletionHash: string
+    try {
+      expectedCompletionHash = computeC5BCompletionHash(packet, receipts.slice(0, 8))
+    } catch {
+      return prefixBlocked('integrity_mismatch', 'c5b.completion.hash_input')
+    }
+    const finalEvidence = evidence(receipts[8])
+    if (finalEvidence.allStepsPassed !== true || finalEvidence.completionHash !== expectedCompletionHash) {
+      return prefixBlocked('integrity_mismatch', 'c5b.completion.final_hash')
+    }
+  }
+  return receipts
+}
+
+export function evaluateC5BPreflightPrefix(packetValue: unknown, receiptValues: unknown): C5BPrefixResult {
+  let packet: C5BPreflightPacket
   try {
-    expectedCompletionHash = computeC5BCompletionHash(packet, receipts.slice(0, 8))
-  } catch {
-    return blocked('integrity_mismatch', 'c5b.completion.hash_input')
+    packet = validateC5BPreflightPacket(packetValue)
+  } catch (error) {
+    return prefixBlocked(
+      error instanceof C5BBoundaryError ? error.reasonCode : 'invalid_packet',
+      'c5b.completion.packet_refused',
+    )
   }
-  const finalEvidence = evidence(receipts[8])
-  if (finalEvidence.allStepsPassed !== true || finalEvidence.completionHash !== expectedCompletionHash) {
-    return blocked('integrity_mismatch', 'c5b.completion.final_hash')
+  if (!Array.isArray(receiptValues)) {
+    return prefixBlocked('operation_sequence_invalid', 'c5b.completion.receipt_count')
   }
 
+  const reduced = validateC5BReceiptPrefix(packet, receiptValues)
+  if (!Array.isArray(reduced)) return reduced
+  if (reduced.length < C5B_OPERATIONS.length) {
+    return Object.freeze({
+      ok: true,
+      statusCode: 'continue',
+      reasonCode: null,
+      ruleId: null,
+      nextOperation: C5B_OPERATIONS[reduced.length],
+      receipt: null,
+    })
+  }
   return Object.freeze({
     ok: true,
     statusCode: 'completed',
     reasonCode: null,
     ruleId: null,
-    receipt: buildCompletionReceipt(packet, receipts),
+    nextOperation: null,
+    receipt: buildCompletionReceipt(packet, reduced),
   })
+}
+
+export function evaluateC5BPreflight(packetValue: unknown, receiptValues: unknown): C5BCompletionResult {
+  const result = evaluateC5BPreflightPrefix(packetValue, receiptValues)
+  if (!result.ok) return blocked(result.reasonCode, result.ruleId)
+  if (result.statusCode !== 'completed') return blocked('operation_sequence_invalid', 'c5b.completion.receipt_count')
+  return Object.freeze({ ok: true, statusCode: 'completed', reasonCode: null, ruleId: null, receipt: result.receipt })
 }

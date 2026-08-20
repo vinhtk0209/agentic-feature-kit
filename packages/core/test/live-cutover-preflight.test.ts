@@ -11,6 +11,7 @@ import {
   createC5BOperationReceipt,
   createC5BPreflightPacket,
   evaluateC5BPreflight,
+  evaluateC5BPreflightPrefix,
   validateC5BOperationReceipt,
   validateC5BPreflightPacket,
   type C5BOperationReceipt,
@@ -162,6 +163,57 @@ test('canonical packet, nine receipts, and completion receipt are immutable and 
   for (const candidate of [value, ...receipts, result.receipt]) {
     assert.equal(validate(candidate), true, JSON.stringify(validate.errors))
   }
+})
+
+test('incremental prefix gate owns next-step semantics and is equivalent at completion', () => {
+  const value = packet()
+  const receipts = canonicalReceipts(value)
+  const empty = evaluateC5BPreflightPrefix(value, [])
+  assert.equal(empty.ok, true)
+  assert.equal(empty.statusCode, 'continue')
+  assert.equal(empty.nextOperation, C5B_OPERATIONS[0])
+  assert.equal(empty.receipt, null)
+
+  for (let length = 1; length < C5B_OPERATIONS.length; length += 1) {
+    const result = evaluateC5BPreflightPrefix(value, receipts.slice(0, length))
+    assert.equal(result.ok, true, `canonical prefix ${length} blocked`)
+    assert.equal(result.statusCode, 'continue')
+    assert.equal(result.nextOperation, C5B_OPERATIONS[length])
+    assert.equal(result.receipt, null)
+  }
+
+  const prefix = evaluateC5BPreflightPrefix(value, receipts)
+  const completion = evaluateC5BPreflight(value, receipts)
+  assert.deepEqual(prefix, {
+    ok: true,
+    statusCode: 'completed',
+    reasonCode: null,
+    ruleId: null,
+    nextOperation: null,
+    receipt: completion.ok ? completion.receipt : null,
+  })
+
+  const mismatch = replaceReceipt(value, receipts, 0, {
+    projectMatch: false,
+    environmentClass: value.environmentClass,
+  })
+  const blocked = evaluateC5BPreflightPrefix(value, mismatch.slice(0, 1))
+  assert.equal(blocked.ok, false)
+  assert.equal(blocked.reasonCode, 'project_mismatch')
+  assert.equal(blocked.nextOperation, null)
+  assert.equal(blocked.receipt, null)
+
+  const refused = [...receipts]
+  refused[2] = createC5BOperationReceipt(value, {
+    operation: 'freeze_writers',
+    status: 'refused',
+    reasonCode: 'writer_activity_detected',
+    startedAt: receipts[2].startedAt,
+    completedAt: receipts[2].completedAt,
+    evidence: null,
+  })
+  assert.equal(evaluateC5BPreflightPrefix(value, refused.slice(0, 3)).reasonCode, 'writer_activity_detected')
+  assert.equal(evaluateC5BPreflightPrefix(value, [...receipts, receipts[8]]).reasonCode, 'operation_sequence_invalid')
 })
 
 test('schema rejects status, reason, sequence, operation, and evidence mismatches', () => {
