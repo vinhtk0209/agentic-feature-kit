@@ -12,6 +12,11 @@ import {
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import {
+  isC5BExecutableQualificationBound,
+  isC5BExecutableQualificationCurrent,
+  type C5BExecutableQualification,
+} from './live-cutover-executable-qualification-node'
+import {
   evaluateC5BPreflightPrefix,
   validateC5BPreflightPacket,
   type C5BPreflightPacket,
@@ -89,6 +94,7 @@ export interface C5BLogicalBackupNodeConfig {
   readonly pgDumpExecutable: string
   readonly pgRestoreExecutable: string
   readonly ageExecutable: string
+  readonly executableQualification: C5BExecutableQualification
   readonly recipientsFile: string
   readonly identityFile: string
   readonly retentionMs: number
@@ -171,6 +177,11 @@ function validateConfig(value: C5BLogicalBackupNodeConfig): ValidatedConfig {
     || !absolutePath(value.pgDumpExecutable)
     || !absolutePath(value.pgRestoreExecutable)
     || !absolutePath(value.ageExecutable)
+    || !isC5BExecutableQualificationBound(value.executableQualification, {
+      pgDumpExecutable: value.pgDumpExecutable,
+      pgRestoreExecutable: value.pgRestoreExecutable,
+      ageExecutable: value.ageExecutable,
+    })
     || !absolutePath(value.recipientsFile)
     || !absolutePath(value.identityFile)
     || isInsideOrEqual(destination, recipients)
@@ -182,6 +193,19 @@ function validateConfig(value: C5BLogicalBackupNodeConfig): ValidatedConfig {
     || !positiveSafeInteger(value.maxOutputBytes)
     || typeof value.now !== 'function') configurationRefused()
   return Object.freeze({ ...value, destinationDirectory: destination })
+}
+
+async function executableQualificationCurrent(config: ValidatedConfig): Promise<boolean> {
+  try {
+    return await isC5BExecutableQualificationCurrent(config.executableQualification, {
+      pgDumpExecutable: config.pgDumpExecutable,
+      pgRestoreExecutable: config.pgRestoreExecutable,
+      ageExecutable: config.ageExecutable,
+      observedAt: config.now(),
+    })
+  } catch {
+    return false
+  }
 }
 
 function validateProcess(processValue: C5BPipelineProcess): boolean {
@@ -532,6 +556,9 @@ export function createC5BLogicalBackupNodePorts(
         || bindings.has(validated.packet.packetHash) || inFlight.has(validated.packet.packetHash)) {
         return frozenDecision('refused', 'logical_backup_invalid')
       }
+      if (!await executableQualificationCurrent(config)) {
+        return frozenDecision('refused', 'logical_backup_invalid')
+      }
       const paths = immediateArtifactPaths(config, validated.packet.attemptId)
       const expiresAt = boundedExpiry(config)
       if (!paths || !expiresAt) return frozenDecision('refused', 'logical_backup_invalid')
@@ -625,6 +652,9 @@ export function createC5BLogicalBackupNodePorts(
     async restoreIsolatedBackup(contextValue: C5BOperatorContext): Promise<C5BPortDecision> {
       const validated = expectedContext(contextValue, 'restore_isolated_backup')
       if (!validated || validated.packet.destinationCapabilityId !== config.destinationCapabilityId) {
+        return frozenDecision('refused', 'restore_invalid')
+      }
+      if (!await executableQualificationCurrent(config)) {
         return frozenDecision('refused', 'restore_invalid')
       }
       const binding = bindings.get(validated.packet.packetHash)
