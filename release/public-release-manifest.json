@@ -446,6 +446,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/live-cutover-writer-freeze-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/privacy-policy.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2525,6 +2531,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-016-wave-c5b-writer-freeze-capability-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-018-public-release-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -2987,6 +2999,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/live-cutover-writer-freeze-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/phase-model-router-cli.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3168,6 +3186,12 @@
     },
     {
       "path": "packages/core/test/live-cutover-project-attestation-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/live-cutover-writer-freeze-node.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3828,6 +3852,12 @@
     },
     {
       "path": "scripts/post-17-privacy-wave-c5b-project-attestation-capability-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-privacy-wave-c5b-writer-freeze-capability-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
