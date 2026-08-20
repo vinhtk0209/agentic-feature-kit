@@ -186,7 +186,8 @@ async function test(name: string, fn: () => void | Promise<void>): Promise<void>
 }
 
 async function main(): Promise<void> {
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'c5b-logical-backup-'))
+const canonicalTempRoot = fs.realpathSync.native(os.tmpdir())
+const scratch = fs.mkdtempSync(path.join(canonicalTempRoot, 'c5b-logical-backup-'))
 
 await test('configuration is closed, path-safe, secret-free, and rejects capability ambiguity', () => {
   for (const override of [
