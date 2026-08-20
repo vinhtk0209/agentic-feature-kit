@@ -17,6 +17,12 @@ import {
   type C5BExecutableQualification,
 } from './live-cutover-executable-qualification-node'
 import {
+  getC5BConnectionMaterialProcessEnvironments,
+  isC5BConnectionMaterialQualificationBound,
+  type C5BConnectionMaterialProcessEnvironments,
+  type C5BConnectionMaterialQualification,
+} from './live-cutover-connection-material-qualification-node'
+import {
   evaluateC5BPreflightPrefix,
   validateC5BPreflightPacket,
   type C5BPreflightPacket,
@@ -29,6 +35,7 @@ import type {
 export interface C5BPipelineProcess {
   readonly executable: string
   readonly args: readonly string[]
+  readonly environment: Readonly<NodeJS.ProcessEnv>
 }
 
 export type C5BPipelineSourceInput =
@@ -77,6 +84,7 @@ export type C5BSpawnFactory = (
     readonly windowsHide: true
     readonly detached: boolean
     readonly stdio: ['pipe', 'pipe', 'pipe']
+    readonly env: NodeJS.ProcessEnv
   },
 ) => ChildProcessWithoutNullStreams
 
@@ -95,6 +103,9 @@ export interface C5BLogicalBackupNodeConfig {
   readonly pgRestoreExecutable: string
   readonly ageExecutable: string
   readonly executableQualification: C5BExecutableQualification
+  readonly pgServiceFile: string
+  readonly pgPassFile: string
+  readonly connectionMaterialQualification: C5BConnectionMaterialQualification
   readonly recipientsFile: string
   readonly identityFile: string
   readonly retentionMs: number
@@ -165,6 +176,8 @@ function isInsideOrEqual(parent: string, child: string): boolean {
 
 function validateConfig(value: C5BLogicalBackupNodeConfig): ValidatedConfig {
   const destination = absolutePath(value?.destinationDirectory) ? path.resolve(value.destinationDirectory) : ''
+  const pgService = absolutePath(value?.pgServiceFile) ? path.resolve(value.pgServiceFile) : ''
+  const pgPass = absolutePath(value?.pgPassFile) ? path.resolve(value.pgPassFile) : ''
   const recipients = absolutePath(value?.recipientsFile) ? path.resolve(value.recipientsFile) : ''
   const identity = absolutePath(value?.identityFile) ? path.resolve(value.identityFile) : ''
   if (!value || typeof value !== 'object'
@@ -182,10 +195,24 @@ function validateConfig(value: C5BLogicalBackupNodeConfig): ValidatedConfig {
       pgRestoreExecutable: value.pgRestoreExecutable,
       ageExecutable: value.ageExecutable,
     })
+    || !absolutePath(value.pgServiceFile)
+    || !absolutePath(value.pgPassFile)
     || !absolutePath(value.recipientsFile)
     || !absolutePath(value.identityFile)
+    || isInsideOrEqual(destination, pgService)
+    || isInsideOrEqual(destination, pgPass)
     || isInsideOrEqual(destination, recipients)
     || isInsideOrEqual(destination, identity)
+    || !isC5BConnectionMaterialQualificationBound(value.connectionMaterialQualification, {
+      destinationCapabilityId: value.destinationCapabilityId,
+      destinationDirectory: value.destinationDirectory,
+      sourceServiceCapability: value.sourceServiceCapability,
+      isolatedServiceCapability: value.isolatedServiceCapability,
+      pgServiceFile: value.pgServiceFile,
+      pgPassFile: value.pgPassFile,
+      recipientsFile: value.recipientsFile,
+      identityFile: value.identityFile,
+    })
     || !positiveSafeInteger(value.retentionMs)
     || !positiveSafeInteger(value.maxRetentionMs)
     || value.retentionMs > value.maxRetentionMs
@@ -193,6 +220,26 @@ function validateConfig(value: C5BLogicalBackupNodeConfig): ValidatedConfig {
     || !positiveSafeInteger(value.maxOutputBytes)
     || typeof value.now !== 'function') configurationRefused()
   return Object.freeze({ ...value, destinationDirectory: destination })
+}
+
+async function connectionMaterialEnvironments(
+  config: ValidatedConfig,
+): Promise<C5BConnectionMaterialProcessEnvironments | null> {
+  try {
+    return await getC5BConnectionMaterialProcessEnvironments(config.connectionMaterialQualification, {
+      destinationCapabilityId: config.destinationCapabilityId,
+      destinationDirectory: config.destinationDirectory,
+      sourceServiceCapability: config.sourceServiceCapability,
+      isolatedServiceCapability: config.isolatedServiceCapability,
+      pgServiceFile: config.pgServiceFile,
+      pgPassFile: config.pgPassFile,
+      recipientsFile: config.recipientsFile,
+      identityFile: config.identityFile,
+      observedAt: config.now(),
+    })
+  } catch {
+    return null
+  }
 }
 
 async function executableQualificationCurrent(config: ValidatedConfig): Promise<boolean> {
@@ -210,7 +257,28 @@ async function executableQualificationCurrent(config: ValidatedConfig): Promise<
 
 function validateProcess(processValue: C5BPipelineProcess): boolean {
   return !!processValue && absolutePath(processValue.executable) && Array.isArray(processValue.args)
-    && processValue.args.every(nonBlank)
+    && processValue.args.every(nonBlank) && validProcessEnvironment(processValue.environment)
+}
+
+function validProcessEnvironment(value: unknown): value is Readonly<NodeJS.ProcessEnv> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Object.prototype) return false
+  const environment = value as Record<string, unknown>
+  const allowed = new Set([
+    'LANG', 'LC_ALL', 'SystemRoot', 'WINDIR', 'PGSERVICEFILE', 'PGPASSFILE', 'PGCONNECT_TIMEOUT',
+  ])
+  if (Object.keys(environment).some((key) => !allowed.has(key))
+    || environment.LANG !== 'C' || environment.LC_ALL !== 'C'
+    || Object.values(environment).some((item) => !nonBlank(item))) return false
+  const pgKeys = ['PGSERVICEFILE', 'PGPASSFILE', 'PGCONNECT_TIMEOUT'] as const
+  const pgCount = pgKeys.filter((key) => key in environment).length
+  if (pgCount !== 0 && pgCount !== pgKeys.length) return false
+  if (pgCount === pgKeys.length) {
+    if (!absolutePath(environment.PGSERVICEFILE) || !absolutePath(environment.PGPASSFILE)) return false
+    const timeout = Number(environment.PGCONNECT_TIMEOUT)
+    if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 60) return false
+  }
+  return true
 }
 
 function validateExecutionRequest(value: C5BPipelineExecutionRequest): boolean {
@@ -242,9 +310,21 @@ function emptyExecution(overrides: Partial<C5BPipelineExecution> = {}): C5BPipel
   })
 }
 
+function taskkillEnvironment(): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = { LANG: 'C', LC_ALL: 'C' }
+  if (nonBlank(process.env.SystemRoot)) environment.SystemRoot = process.env.SystemRoot
+  if (nonBlank(process.env.WINDIR)) environment.WINDIR = process.env.WINDIR
+  return environment
+}
+
 function defaultTerminateTree(child: ChildProcessWithoutNullStreams, platform: NodeJS.Platform): void {
   if (platform === 'win32' && child.pid) {
-    const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { shell: false, stdio: 'ignore', windowsHide: true })
+    const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+      shell: false,
+      stdio: 'ignore',
+      windowsHide: true,
+      env: taskkillEnvironment(),
+    })
     killer.unref()
     return
   }
@@ -284,8 +364,14 @@ export function createNodeC5BPipelineExecutor(
             detached: platform !== 'win32',
             stdio: ['pipe', 'pipe', 'pipe'] as ['pipe', 'pipe', 'pipe'],
           }
-          source = spawnFactory(request.source.executable, request.source.args, processOptions)
-          sink = spawnFactory(request.sink.executable, request.sink.args, processOptions)
+          source = spawnFactory(request.source.executable, request.source.args, {
+            ...processOptions,
+            env: { ...request.source.environment },
+          })
+          sink = spawnFactory(request.sink.executable, request.sink.args, {
+            ...processOptions,
+            env: { ...request.sink.environment },
+          })
         } catch {
           if (source) {
             try { terminateTree(source, platform) } catch { /* closed result only */ }
@@ -556,6 +642,8 @@ export function createC5BLogicalBackupNodePorts(
         || bindings.has(validated.packet.packetHash) || inFlight.has(validated.packet.packetHash)) {
         return frozenDecision('refused', 'logical_backup_invalid')
       }
+      const materialEnvironments = await connectionMaterialEnvironments(config)
+      if (!materialEnvironments) return frozenDecision('refused', 'logical_backup_invalid')
       if (!await executableQualificationCurrent(config)) {
         return frozenDecision('refused', 'logical_backup_invalid')
       }
@@ -576,10 +664,12 @@ export function createC5BLogicalBackupNodePorts(
           source: {
             executable: config.pgDumpExecutable,
             args: [`--dbname=service=${config.sourceServiceCapability}`, '--format=custom', '--no-password'],
+            environment: materialEnvironments.sourcePostgresql,
           },
           sink: {
             executable: config.ageExecutable,
             args: ['--encrypt', '--recipients-file', config.recipientsFile],
+            environment: materialEnvironments.age,
           },
           sourceInput: { kind: 'none' },
           output: { kind: 'file', path: paths.temporary, mode: 0o600 },
@@ -603,8 +693,13 @@ export function createC5BLogicalBackupNodePorts(
           source: {
             executable: config.ageExecutable,
             args: ['--decrypt', '--identity', config.identityFile],
+            environment: materialEnvironments.age,
           },
-          sink: { executable: config.pgRestoreExecutable, args: ['--list'] },
+          sink: {
+            executable: config.pgRestoreExecutable,
+            args: ['--list'],
+            environment: materialEnvironments.isolatedPostgresql,
+          },
           sourceInput: { kind: 'file', path: paths.temporary },
           output: { kind: 'capture' },
           cwd: config.destinationDirectory,
@@ -654,6 +749,8 @@ export function createC5BLogicalBackupNodePorts(
       if (!validated || validated.packet.destinationCapabilityId !== config.destinationCapabilityId) {
         return frozenDecision('refused', 'restore_invalid')
       }
+      const materialEnvironments = await connectionMaterialEnvironments(config)
+      if (!materialEnvironments) return frozenDecision('refused', 'restore_invalid')
       if (!await executableQualificationCurrent(config)) {
         return frozenDecision('refused', 'restore_invalid')
       }
@@ -676,6 +773,7 @@ export function createC5BLogicalBackupNodePorts(
           source: {
             executable: config.ageExecutable,
             args: ['--decrypt', '--identity', config.identityFile],
+            environment: materialEnvironments.age,
           },
           sink: {
             executable: config.pgRestoreExecutable,
@@ -685,6 +783,7 @@ export function createC5BLogicalBackupNodePorts(
               '--single-transaction',
               '--no-password',
             ],
+            environment: materialEnvironments.isolatedPostgresql,
           },
           sourceInput: { kind: 'file', path: binding.path },
           output: { kind: 'capture' },

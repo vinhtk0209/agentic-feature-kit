@@ -23,6 +23,10 @@ import {
   type C5BExecutableQualification,
 } from '../src/live-cutover-executable-qualification-node'
 import {
+  qualifyC5BConnectionMaterial,
+  type C5BConnectionMaterialQualification,
+} from '../src/live-cutover-connection-material-qualification-node'
+import {
   createC5BLogicalBackupNodePorts,
   createNodeC5BPipelineExecutor,
   type C5BLogicalBackupNodeConfig,
@@ -44,6 +48,15 @@ interface QualifiedToolFixture {
   readonly postgresReceipt: string
   readonly ageReceipt: string
   readonly capability: C5BExecutableQualification
+}
+
+interface QualifiedConnectionFixture {
+  readonly pgServiceFile: string
+  readonly pgPassFile: string
+  readonly recipientsFile: string
+  readonly identityFile: string
+  readonly destinationDirectory: string
+  readonly capability: C5BConnectionMaterialQualification
 }
 
 let qualifiedToolFixture: QualifiedToolFixture
@@ -207,6 +220,64 @@ async function createQualifiedToolFixture(root: string): Promise<QualifiedToolFi
   return { pgDump, pgRestore, age, postgresReceipt, ageReceipt, capability: result.capability }
 }
 
+async function createQualifiedConnectionFixture(root: string): Promise<QualifiedConnectionFixture> {
+  const material = path.join(root, 'secrets')
+  const destinationDirectory = path.join(root, 'protected')
+  fs.mkdirSync(material, { recursive: true, mode: 0o700 })
+  fs.mkdirSync(destinationDirectory, { recursive: true, mode: 0o700 })
+  const pgServiceFile = path.join(material, 'pg_service.conf')
+  const pgPassFile = path.join(material, 'pgpass.conf')
+  const recipientsFile = path.join(material, 'recipients.txt')
+  const identityFile = path.join(material, 'identity.txt')
+  const recipient = `age1${'q'.repeat(58)}`
+  const identity = `${['AGE', 'SECRET', 'KEY', '1'].join('-')}${'Q'.repeat(58)}`
+  fs.writeFileSync(pgServiceFile, [
+    '[source_db]', 'host=source.example.invalid', 'port=5432', 'dbname=postgres', 'user=backup_user',
+    'sslmode=verify-full', 'sslrootcert=system', 'connect_timeout=5', '',
+    '[restore_db]', 'host=127.0.0.1', 'port=55432', 'dbname=restore', 'user=restore_user',
+    'sslmode=verify-full', 'sslrootcert=system', 'connect_timeout=5', '',
+  ].join('\n'), { mode: 0o600 })
+  fs.writeFileSync(pgPassFile, [
+    'source.example.invalid:5432:postgres:backup_user:synthetic-source-password',
+    '127.0.0.1:55432:restore:restore_user:synthetic-restore-password',
+    '',
+  ].join('\n'), { mode: 0o600 })
+  fs.writeFileSync(recipientsFile, `${recipient}\n`, { mode: 0o600 })
+  fs.writeFileSync(identityFile, `# synthetic fixture\n${identity}\n`, { mode: 0o600 })
+  if (process.platform !== 'win32') {
+    for (const file of [pgServiceFile, pgPassFile, recipientsFile, identityFile]) fs.chmodSync(file, 0o600)
+    fs.chmodSync(destinationDirectory, 0o700)
+  }
+  const expectation = (filePath: string) => ({
+    path: filePath,
+    sha256: sha256(fs.readFileSync(filePath)),
+    maxBytes: 64 * 1024,
+  })
+  const result = await qualifyC5BConnectionMaterial({
+    destinationCapabilityId: 'protected_backup',
+    destinationDirectory,
+    sourceServiceCapability: 'source_db',
+    isolatedServiceCapability: 'restore_db',
+    pgServiceFile: expectation(pgServiceFile),
+    pgPassFile: expectation(pgPassFile),
+    recipientsFile: expectation(recipientsFile),
+    identityFile: expectation(identityFile),
+    qualificationTtlMs: 3_600_000,
+    maxQualificationTtlMs: 7_200_000,
+    now: () => '2026-08-20T01:00:00.000Z',
+    platform: process.platform,
+    environmentSource: {
+      SystemRoot: process.env.SystemRoot,
+      WINDIR: process.env.WINDIR,
+      PATH: rawSecretControl,
+      PGPASSWORD: rawSecretControl,
+      PGSERVICEFILE: rawSecretControl,
+    },
+  })
+  if (result.status !== 'qualified') throw new Error('test connection-material qualification refused')
+  return { pgServiceFile, pgPassFile, recipientsFile, identityFile, destinationDirectory, capability: result.capability }
+}
+
 function config(root: string, overrides: Partial<C5BLogicalBackupNodeConfig> = {}): C5BLogicalBackupNodeConfig {
   return {
     destinationCapabilityId: 'protected_backup',
@@ -217,6 +288,11 @@ function config(root: string, overrides: Partial<C5BLogicalBackupNodeConfig> = {
     pgRestoreExecutable: qualifiedToolFixture.pgRestore,
     ageExecutable: qualifiedToolFixture.age,
     executableQualification: qualifiedToolFixture.capability,
+    pgServiceFile: path.join(root, 'secrets', 'pg_service.conf'),
+    pgPassFile: path.join(root, 'secrets', 'pgpass.conf'),
+    connectionMaterialQualification: {
+      kind: 'c5b-connection-material-qualification', receiptHash: '0'.repeat(64),
+    } as C5BConnectionMaterialQualification,
     recipientsFile: path.join(root, 'secrets', 'recipients.txt'),
     identityFile: path.join(root, 'secrets', 'identity.txt'),
     retentionMs: 86_400_000,
@@ -228,10 +304,20 @@ function config(root: string, overrides: Partial<C5BLogicalBackupNodeConfig> = {
   }
 }
 
-function preparedConfig(root: string, overrides: Partial<C5BLogicalBackupNodeConfig> = {}): C5BLogicalBackupNodeConfig {
-  const value = config(root, overrides)
-  fs.mkdirSync(value.destinationDirectory, { recursive: true, mode: 0o700 })
-  return value
+async function preparedConfig(
+  root: string,
+  overrides: Partial<C5BLogicalBackupNodeConfig> = {},
+): Promise<C5BLogicalBackupNodeConfig> {
+  const material = await createQualifiedConnectionFixture(root)
+  return config(root, {
+    destinationDirectory: material.destinationDirectory,
+    pgServiceFile: material.pgServiceFile,
+    pgPassFile: material.pgPassFile,
+    recipientsFile: material.recipientsFile,
+    identityFile: material.identityFile,
+    connectionMaterialQualification: material.capability,
+    ...overrides,
+  })
 }
 
 function assertRefused(decision: C5BPortDecision, reasonCode: string): void {
@@ -258,20 +344,21 @@ const canonicalTempRoot = fs.realpathSync.native(os.tmpdir())
 const scratch = fs.mkdtempSync(path.join(canonicalTempRoot, 'c5b-logical-backup-'))
 qualifiedToolFixture = await createQualifiedToolFixture(path.join(scratch, 'qualified-tools'))
 
-await test('configuration is closed, path-safe, secret-free, and rejects capability ambiguity', () => {
+await test('configuration is closed, path-safe, secret-free, and rejects capability ambiguity', async () => {
+  const valid = await preparedConfig(path.join(scratch, 'valid-config'))
   for (const override of [
     { destinationCapabilityId: 'bad;capability' },
     { sourceServiceCapability: 'same_db', isolatedServiceCapability: 'same_db' },
     { destinationDirectory: 'relative-path' },
     { destinationDirectory: path.parse(scratch).root },
-    { identityFile: path.join(config(scratch).destinationDirectory, 'identity.txt') },
-    { recipientsFile: path.join(config(scratch).destinationDirectory, 'recipients.txt') },
+    { identityFile: path.join(valid.destinationDirectory, 'identity.txt') },
+    { recipientsFile: path.join(valid.destinationDirectory, 'recipients.txt') },
     { sourceServiceCapability: `source_db\n${rawSecretControl}` },
     { timeoutMs: 0 },
     { retentionMs: 700_000_000 },
   ] satisfies Array<Partial<C5BLogicalBackupNodeConfig>>) {
     let message = ''
-    try { createC5BLogicalBackupNodePorts(config(scratch, override), new FakeExecutor()) } catch (error) { message = String(error) }
+    try { createC5BLogicalBackupNodePorts({ ...valid, ...override }, new FakeExecutor()) } catch (error) { message = String(error) }
     assert.match(message, /C5B logical-backup adapter configuration refused/)
     assert.equal(message.includes(rawSecretControl), false)
   }
@@ -279,7 +366,7 @@ await test('configuration is closed, path-safe, secret-free, and rejects capabil
 
 await test('invalid context, destination mismatch, and wrong prefix stop before any process', async () => {
   const executor = new FakeExecutor()
-  const ports = createC5BLogicalBackupNodePorts(config(scratch), executor)
+  const ports = createC5BLogicalBackupNodePorts(await preparedConfig(path.join(scratch, 'invalid-context')), executor)
   assertRefused(await ports.createEncryptedLogicalBackup({ packet: packet(), receipts: [] }), 'logical_backup_invalid')
   const mismatch = packet({ destinationCapabilityId: 'other_backup' })
   assertRefused(await ports.createEncryptedLogicalBackup(context(4, mismatch)), 'logical_backup_invalid')
@@ -288,14 +375,15 @@ await test('invalid context, destination mismatch, and wrong prefix stop before 
 })
 
 await test('forged or stale executable capability stops both parent ports before any pipeline', async () => {
-  assert.throws(() => createC5BLogicalBackupNodePorts(config(scratch, {
+  const valid = await preparedConfig(path.join(scratch, 'forged-executable'))
+  assert.throws(() => createC5BLogicalBackupNodePorts({ ...valid,
     executableQualification: { ...qualifiedToolFixture.capability },
-  }), new FakeExecutor()), /C5B logical-backup adapter configuration refused/)
+  }, new FakeExecutor()), /C5B logical-backup adapter configuration refused/)
 
   const backupRoot = path.join(scratch, 'stale-before-backup')
   const backupTools = await createQualifiedToolFixture(path.join(backupRoot, 'tools'))
   const backupExecutor = new FakeExecutor()
-  const backupPorts = createC5BLogicalBackupNodePorts(preparedConfig(backupRoot, {
+  const backupPorts = createC5BLogicalBackupNodePorts(await preparedConfig(backupRoot, {
     pgDumpExecutable: backupTools.pgDump,
     pgRestoreExecutable: backupTools.pgRestore,
     ageExecutable: backupTools.age,
@@ -312,7 +400,7 @@ await test('forged or stale executable capability stops both parent ports before
     successExecution({ byteCount: encryptedFixture.length, sha256: sha256(encryptedFixture), capturedOutput: null }),
     successExecution({ byteCount: Buffer.byteLength(manifestFixture), sha256: sha256(manifestFixture), capturedOutput: manifestFixture }),
   )
-  const restorePorts = createC5BLogicalBackupNodePorts(preparedConfig(restoreRoot, {
+  const restorePorts = createC5BLogicalBackupNodePorts(await preparedConfig(restoreRoot, {
     pgDumpExecutable: restoreTools.pgDump,
     pgRestoreExecutable: restoreTools.pgRestore,
     ageExecutable: restoreTools.age,
@@ -326,6 +414,37 @@ await test('forged or stale executable capability stops both parent ports before
   assert.equal(restoreExecutor.calls.length, 2)
 })
 
+await test('forged or stale connection-material capability stops both parent ports before any pipeline', async () => {
+  const forgedConfig = await preparedConfig(path.join(scratch, 'forged-connection'))
+  assert.throws(() => createC5BLogicalBackupNodePorts({
+    ...forgedConfig,
+    connectionMaterialQualification: { ...forgedConfig.connectionMaterialQualification },
+  }, new FakeExecutor()), /C5B logical-backup adapter configuration refused/)
+
+  const backupRoot = path.join(scratch, 'stale-connection-before-backup')
+  const backupConfig = await preparedConfig(backupRoot)
+  const backupExecutor = new FakeExecutor()
+  const backupPorts = createC5BLogicalBackupNodePorts(backupConfig, backupExecutor)
+  fs.writeFileSync(backupConfig.pgPassFile, `${rawSecretControl}\n`)
+  assertRefused(await backupPorts.createEncryptedLogicalBackup(context(4)), 'logical_backup_invalid')
+  assert.equal(backupExecutor.calls.length, 0)
+
+  const restoreRoot = path.join(scratch, 'stale-connection-before-restore')
+  const restoreConfig = await preparedConfig(restoreRoot)
+  const restoreExecutor = new FakeExecutor()
+  restoreExecutor.queue.push(
+    successExecution({ byteCount: encryptedFixture.length, sha256: sha256(encryptedFixture), capturedOutput: null }),
+    successExecution({ byteCount: Buffer.byteLength(manifestFixture), sha256: sha256(manifestFixture), capturedOutput: manifestFixture }),
+  )
+  const restorePorts = createC5BLogicalBackupNodePorts(restoreConfig, restoreExecutor)
+  const backupDecision = await restorePorts.createEncryptedLogicalBackup(context(4))
+  assert.equal(backupDecision.status, 'passed')
+  if (backupDecision.status !== 'passed') return
+  fs.writeFileSync(restoreConfig.identityFile, `${rawSecretControl}\n`)
+  assertRefused(await restorePorts.restoreIsolatedBackup(context(5, packet(), backupDecision.evidence)), 'restore_invalid')
+  assert.equal(restoreExecutor.calls.length, 2)
+})
+
 await test('backup uses exact dump-to-age and decrypt-to-manifest pipelines and publishes closed metadata', async () => {
   const root = path.join(scratch, 'success')
   const executor = new FakeExecutor()
@@ -333,7 +452,8 @@ await test('backup uses exact dump-to-age and decrypt-to-manifest pipelines and 
     successExecution({ byteCount: encryptedFixture.length, sha256: sha256(encryptedFixture), capturedOutput: null }),
     successExecution({ byteCount: Buffer.byteLength(manifestFixture), sha256: sha256(manifestFixture), capturedOutput: manifestFixture }),
   )
-  const ports = createC5BLogicalBackupNodePorts(preparedConfig(root), executor)
+  const prepared = await preparedConfig(root)
+  const ports = createC5BLogicalBackupNodePorts(prepared, executor)
   const decision = await ports.createEncryptedLogicalBackup(context(4))
   assert.equal(decision.status, 'passed')
   if (decision.status !== 'passed') return
@@ -350,10 +470,23 @@ await test('backup uses exact dump-to-age and decrypt-to-manifest pipelines and 
   assert.equal(dump.shell, false)
   assert.deepEqual(dump.source.args, ['--dbname=service=source_db', '--format=custom', '--no-password'])
   assert.deepEqual(dump.sink.args, ['--encrypt', '--recipients-file', config(root).recipientsFile])
+  const windowsBase = process.platform === 'win32'
+    ? Object.fromEntries(Object.entries({ SystemRoot: process.env.SystemRoot, WINDIR: process.env.WINDIR })
+      .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0))
+    : {}
+  const sourcePostgresql = {
+    LANG: 'C', LC_ALL: 'C', ...windowsBase,
+    PGSERVICEFILE: prepared.pgServiceFile, PGPASSFILE: prepared.pgPassFile, PGCONNECT_TIMEOUT: '5',
+  }
+  const ageEnvironment = { LANG: 'C', LC_ALL: 'C', ...windowsBase }
+  assert.deepEqual(dump.source.environment, sourcePostgresql)
+  assert.deepEqual(dump.sink.environment, ageEnvironment)
   assert.deepEqual(dump.sourceInput, { kind: 'none' })
   assert.equal(dump.output.kind, 'file')
   assert.deepEqual(manifest.source.args, ['--decrypt', '--identity', config(root).identityFile])
   assert.deepEqual(manifest.sink.args, ['--list'])
+  assert.deepEqual(manifest.source.environment, ageEnvironment)
+  assert.deepEqual(manifest.sink.environment, sourcePostgresql)
   assert.equal(manifest.sourceInput.kind, 'file')
   assert.deepEqual(manifest.output, { kind: 'capture' })
   const files = fs.readdirSync(config(root).destinationDirectory)
@@ -373,7 +506,7 @@ await test('backup failures, caps, collisions, and partial artifacts fail closed
     const root = path.join(scratch, `failure-${index}`)
     const executor = new FakeExecutor()
     executor.queue.push(failures[index])
-    const ports = createC5BLogicalBackupNodePorts(preparedConfig(root), executor)
+    const ports = createC5BLogicalBackupNodePorts(await preparedConfig(root), executor)
     assertRefused(await ports.createEncryptedLogicalBackup(context(4)), 'logical_backup_invalid')
     const destination = config(root).destinationDirectory
     assert.deepEqual(fs.existsSync(destination) ? fs.readdirSync(destination) : [], [])
@@ -383,7 +516,7 @@ await test('backup failures, caps, collisions, and partial artifacts fail closed
   fs.mkdirSync(config(collisionRoot).destinationDirectory, { recursive: true })
   fs.writeFileSync(path.join(config(collisionRoot).destinationDirectory, '123e4567-e89b-42d3-a456-426614174000.dump.age'), 'existing')
   const collisionExecutor = new FakeExecutor()
-  const collisionPorts = createC5BLogicalBackupNodePorts(config(collisionRoot), collisionExecutor)
+  const collisionPorts = createC5BLogicalBackupNodePorts(await preparedConfig(collisionRoot), collisionExecutor)
   assertRefused(await collisionPorts.createEncryptedLogicalBackup(context(4)), 'logical_backup_invalid')
   assert.equal(collisionExecutor.calls.length, 0)
 })
@@ -395,7 +528,7 @@ await test('manifest failure removes temporary artifact and repeated backup neve
     successExecution({ byteCount: encryptedFixture.length, sha256: sha256(encryptedFixture), capturedOutput: null }),
     successExecution({ ok: false, sinkExitCode: 1 }),
   )
-  const manifestPorts = createC5BLogicalBackupNodePorts(preparedConfig(manifestRoot), manifestExecutor)
+  const manifestPorts = createC5BLogicalBackupNodePorts(await preparedConfig(manifestRoot), manifestExecutor)
   assertRefused(await manifestPorts.createEncryptedLogicalBackup(context(4)), 'logical_backup_invalid')
   assert.deepEqual(fs.readdirSync(config(manifestRoot).destinationDirectory), [])
 
@@ -405,7 +538,7 @@ await test('manifest failure removes temporary artifact and repeated backup neve
     successExecution({ byteCount: encryptedFixture.length, sha256: sha256(encryptedFixture), capturedOutput: null }),
     successExecution({ byteCount: Buffer.byteLength(manifestFixture), sha256: sha256(manifestFixture), capturedOutput: manifestFixture }),
   )
-  const repeatPorts = createC5BLogicalBackupNodePorts(preparedConfig(repeatRoot), repeatExecutor)
+  const repeatPorts = createC5BLogicalBackupNodePorts(await preparedConfig(repeatRoot), repeatExecutor)
   assert.equal((await repeatPorts.createEncryptedLogicalBackup(context(4))).status, 'passed')
   assertRefused(await repeatPorts.createEncryptedLogicalBackup(context(4)), 'logical_backup_invalid')
   assert.equal(repeatExecutor.calls.length, 2)
@@ -419,7 +552,8 @@ await test('restore is exact-bound, metadata-only, and at-most-once', async () =
     successExecution({ byteCount: Buffer.byteLength(manifestFixture), sha256: sha256(manifestFixture), capturedOutput: manifestFixture }),
     successExecution(),
   )
-  const ports = createC5BLogicalBackupNodePorts(preparedConfig(root), executor)
+  const prepared = await preparedConfig(root)
+  const ports = createC5BLogicalBackupNodePorts(prepared, executor)
   const backup = await ports.createEncryptedLogicalBackup(context(4))
   assert.equal(backup.status, 'passed')
   if (backup.status !== 'passed') return
@@ -440,6 +574,15 @@ await test('restore is exact-bound, metadata-only, and at-most-once', async () =
   assert.deepEqual(restoreCall.sink.args, [
     '--dbname=service=restore_db', '--exit-on-error', '--single-transaction', '--no-password',
   ])
+  const windowsBase = process.platform === 'win32'
+    ? Object.fromEntries(Object.entries({ SystemRoot: process.env.SystemRoot, WINDIR: process.env.WINDIR })
+      .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0))
+    : {}
+  assert.deepEqual(restoreCall.source.environment, { LANG: 'C', LC_ALL: 'C', ...windowsBase })
+  assert.deepEqual(restoreCall.sink.environment, {
+    LANG: 'C', LC_ALL: 'C', ...windowsBase,
+    PGSERVICEFILE: prepared.pgServiceFile, PGPASSFILE: prepared.pgPassFile, PGCONNECT_TIMEOUT: '5',
+  })
   assert.equal(restoreCall.sourceInput.kind, 'file')
   assert.deepEqual(restoreCall.output, { kind: 'capture' })
   assertRefused(await ports.restoreIsolatedBackup(restoreContext), 'restore_invalid')
@@ -454,7 +597,7 @@ await test('forged, cross-attempt, and mismatched restore bindings stop before d
     successExecution({ byteCount: encryptedFixture.length, sha256: sha256(encryptedFixture), capturedOutput: null }),
     successExecution({ byteCount: Buffer.byteLength(manifestFixture), sha256: sha256(manifestFixture), capturedOutput: manifestFixture }),
   )
-  const ports = createC5BLogicalBackupNodePorts(preparedConfig(root), executor)
+  const ports = createC5BLogicalBackupNodePorts(await preparedConfig(root), executor)
   const backup = await ports.createEncryptedLogicalBackup(context(4))
   assert.equal(backup.status, 'passed')
   if (backup.status !== 'passed') return
@@ -521,8 +664,8 @@ function scriptedSpawn(output: Buffer, hang = false): { factory: C5BSpawnFactory
 
 function request(root: string, output: C5BPipelineExecutionRequest['output'], overrides: Partial<C5BPipelineExecutionRequest> = {}): C5BPipelineExecutionRequest {
   return {
-    source: { executable: path.join(root, 'source'), args: ['--source'] },
-    sink: { executable: path.join(root, 'sink'), args: ['--sink'] },
+    source: { executable: path.join(root, 'source'), args: ['--source'], environment: { LANG: 'C', LC_ALL: 'C' } },
+    sink: { executable: path.join(root, 'sink'), args: ['--sink'], environment: { LANG: 'C', LC_ALL: 'C' } },
     sourceInput: { kind: 'none' },
     output,
     cwd: root,
@@ -543,7 +686,14 @@ await test('Node pipeline executor enforces direct spawn, closed output, timeout
   assert.equal(JSON.stringify(captured).includes(rawSecretControl), false)
   assert.equal(captureScript.calls.length, 2)
   for (const call of captureScript.calls) {
-    assert.deepEqual(call.options, { cwd: scratch, shell: false, windowsHide: true, detached: false, stdio: ['pipe', 'pipe', 'pipe'] })
+    assert.deepEqual(call.options, {
+      cwd: scratch,
+      shell: false,
+      windowsHide: true,
+      detached: false,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { LANG: 'C', LC_ALL: 'C' },
+    })
   }
 
   const filePath = path.join(scratch, 'executor-output.age')
