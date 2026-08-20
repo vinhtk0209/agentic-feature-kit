@@ -4,9 +4,11 @@
 
 **Scope:** Local Node infrastructure adapter only
 
-**Source commit:** `f28fef55f4243a0b98c1527e610df6e6a109294e`
+**Initial implementation commit:** `f28fef55f4243a0b98c1527e610df6e6a109294e`
 
-**Qualified source tree:** `709a0eb39a969812642d063a5bb7077ab5c10099`
+**Cross-platform repair commit:** `e83759807323fbc7bd0ed2223deeef46cf9571ab`
+
+**Qualified source tree:** `74e15faa4d6c851cc54e03379c4df35c272ac9b6`
 
 ## Outcome
 
@@ -88,6 +90,11 @@ key material, process stderr, or provider exception is returned in a decision.
    unsafe destination/reference shape and rename could overwrite a colliding final artifact on some
    platforms. Pre-provisioning, native real-path equality, and exclusive hard-link publication closed
    those paths.
+6. The first exact-head remote qualification was a valid Windows RED: four happy-path groups returned
+   the closed refusal while five refusal, executor, and static groups passed. The fixture created its
+   protected destination below raw `os.tmpdir()`, which can be a non-canonical alias on the hosted
+   Windows runner. Canonicalizing only the fixture temp root before `mkdtemp` restored `9/9` locally
+   without changing the production adapter or weakening the native real-path guard.
 
 No assertion, static denial, timeout, output cap, or public-source gate was weakened to obtain GREEN.
 
@@ -125,8 +132,8 @@ explicit deployment packet and independent operational qualification.
 
 ## Full-kit qualification
 
-Native `npm test` completed with exit code `0` in `356.1` seconds and produced `2,245` output lines on
-the exact qualified source tree. Final checks retained:
+Native `npm test` completed with exit code `0` in `379.8` seconds and produced `2,245` output lines on
+the corrected exact qualified source tree. Final checks retained:
 
 - package and prompt version `v3.25`;
 - prompt size `163,206` bytes within budget; and
@@ -134,9 +141,24 @@ the exact qualified source tree. Final checks retained:
 
 The only warnings were the existing malformed lesson-fixture warnings used by negative tests.
 
+## Initial remote qualification receipt
+
+Workflow Kit CI run `32337417273` was bound to exact pre-repair head
+`8a1ad976ff33827342f72bad151375b9d9d7eb61` and terminated as expected after the Windows RED:
+
+- Linux job `96329544594` succeeded;
+- Windows job `96329544447` failed at the C5B adapter test with four refused happy paths;
+- aggregate job `96330341220` failed closed; and
+- qualification artifacts remained bound as Linux `9395206995` /
+  `sha256:f65d24305d5deb27d2c2b143750db8a2189109e87dd827484c730f1f1d91fb69` and Windows
+  `9395178703` / `sha256:83a258cf22e708464f100d3626f8090b2cd4ac47c9868df8d3a2a04470415386`.
+
+The pull request remained Draft. This failed run is retained as cross-platform evidence and is not
+reclassified as GREEN. A fresh exact-head run on the repaired tree is required before Ready or merge.
+
 ## Exact source manifest
 
-The source commit contains exactly:
+The qualified implementation spans exactly:
 
 - `.claude/integrations/core/live-cutover-logical-backup-node.ts`;
 - `docs/roadmap/p17-016-wave-c5b-logical-backup-adapter-plan.md`;
