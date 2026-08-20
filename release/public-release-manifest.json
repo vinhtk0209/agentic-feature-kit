@@ -410,6 +410,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/live-cutover-catalog-acl-transcript.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/live-cutover-connection-material-qualification-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -447,6 +453,12 @@
     },
     {
       "path": ".claude/integrations/core/live-cutover-provider-recovery-point-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/core/live-cutover-restored-state-verification-node.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -2555,6 +2567,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-016-wave-c5b-restored-state-verification-capability-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-016-wave-c5b-writer-freeze-capability-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -2987,6 +3005,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/live-cutover-catalog-acl-transcript.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/live-cutover-connection-material-qualification-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3024,6 +3048,12 @@
     },
     {
       "path": "packages/core/src/live-cutover-provider-recovery-point-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/src/live-cutover-restored-state-verification-node.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3222,6 +3252,12 @@
     },
     {
       "path": "packages/core/test/live-cutover-provider-recovery-point-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/live-cutover-restored-state-verification-node.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3894,6 +3930,12 @@
     },
     {
       "path": "scripts/post-17-privacy-wave-c5b-provider-recovery-point-capability-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-privacy-wave-c5b-restored-state-verification-capability-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
