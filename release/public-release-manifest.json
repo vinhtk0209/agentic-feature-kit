@@ -404,6 +404,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/live-cutover-catalog-acl-probe-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/live-cutover-connection-material-qualification-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2471,6 +2477,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-016-wave-c5b-catalog-acl-probe-capability-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-016-wave-c5b-connection-material-capability-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -2927,6 +2939,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/live-cutover-catalog-acl-probe-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/live-cutover-connection-material-qualification-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3102,6 +3120,12 @@
     },
     {
       "path": "packages/core/test/legacy-backend-config.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/live-cutover-catalog-acl-probe-node.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3756,6 +3780,12 @@
     },
     {
       "path": "scripts/post-17-privacy-wave-c5-live-cutover-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-privacy-wave-c5b-catalog-acl-probe-capability-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

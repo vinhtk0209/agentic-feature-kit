@@ -6,6 +6,7 @@ import path from 'node:path'
 export const SYNCED_CORE_FILES = [
   'blocked-central-writer.ts',
   'legacy-backend-config.ts',
+  'live-cutover-catalog-acl-probe-node.ts',
   'live-cutover-connection-material-qualification-node.ts',
   'live-cutover-executable-qualification-node.ts',
   'live-cutover-logical-backup-node.ts',
