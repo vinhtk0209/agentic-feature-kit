@@ -94,7 +94,9 @@ function packet(overrides: Partial<Parameters<typeof createC5BPreflightPacket>[0
 
 function evidence(operation: Exclude<C5BOperation, 'complete_preflight'>, value: C5BPreflightPacket): Record<string, unknown> {
   switch (operation) {
-    case 'attest_project': return { projectMatch: true, environmentClass: value.environmentClass }
+    case 'attest_project': return {
+      projectMatch: true, environmentClass: value.environmentClass, attestedAt: '2026-08-20T01:00:00.250Z',
+    }
     case 'probe_catalog_acl': return {
       catalogHash: hashes[4], aclHash: hashes[5], rpcHash: hashes[6], policyHash: hashes[7],
       extensionHash: hashes[8], migrationObjectCount: 4, writerActivityCount: 0,

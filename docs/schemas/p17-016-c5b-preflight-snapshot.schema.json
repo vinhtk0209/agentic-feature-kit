@@ -140,10 +140,11 @@
     "projectEvidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["projectMatch", "environmentClass"],
+      "required": ["projectMatch", "environmentClass", "attestedAt"],
       "properties": {
         "projectMatch": { "type": "boolean" },
-        "environmentClass": { "$ref": "#/$defs/environmentClass" }
+        "environmentClass": { "$ref": "#/$defs/environmentClass" },
+        "attestedAt": { "$ref": "#/$defs/timestamp" }
       }
     },
     "catalogEvidence": {

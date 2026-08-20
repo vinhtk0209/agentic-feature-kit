@@ -77,7 +77,7 @@ function timestamp(sequence: number, offsetSeconds = 0): string {
 function evidence(operation: (typeof C5B_OPERATIONS)[number], value: C5BPreflightPacket): Record<string, unknown> {
   switch (operation) {
     case 'attest_project':
-      return { projectMatch: true, environmentClass: value.environmentClass }
+      return { projectMatch: true, environmentClass: value.environmentClass, attestedAt: timestamp(0, 2) }
     case 'probe_catalog_acl':
       return {
         catalogHash: hashes[4], aclHash: hashes[5], rpcHash: hashes[6], policyHash: hashes[7],
@@ -196,6 +196,7 @@ test('incremental prefix gate owns next-step semantics and is equivalent at comp
   const mismatch = replaceReceipt(value, receipts, 0, {
     projectMatch: false,
     environmentClass: value.environmentClass,
+    attestedAt: timestamp(0, 2),
   })
   const blocked = evaluateC5BPreflightPrefix(value, mismatch.slice(0, 1))
   assert.equal(blocked.ok, false)
@@ -229,6 +230,8 @@ test('schema rejects status, reason, sequence, operation, and evidence mismatche
     { ...clone(first), status: 'refused', reasonCode: 'provider_operation_refused' },
     { ...clone(first), sequence: 1 },
     { ...clone(first), operation: 'probe_catalog_acl' },
+    { ...clone(first), evidence: { projectMatch: true, environmentClass: value.environmentClass } },
+    { ...clone(first), evidence: { ...first.evidence, attestedAt: 'not-a-time' } },
   ]
   for (const attacked of attacks) {
     assert.equal(validate(attacked), false, `schema accepted ${JSON.stringify(attacked)}`)
@@ -265,7 +268,12 @@ test('ordering, identity, freeze, recovery, restore, parity, cleanup, and integr
     ['missing operation', receipts.slice(0, -1)],
     ['duplicate operation', [...receipts.slice(0, 2), receipts[1], ...receipts.slice(3)]],
     ['wrong operation order', [receipts[1], receipts[0], ...receipts.slice(2)]],
-    ['project mismatch', replaceReceipt(value, receipts, 0, { projectMatch: false, environmentClass: value.environmentClass })],
+    ['project mismatch', replaceReceipt(value, receipts, 0, {
+      projectMatch: false, environmentClass: value.environmentClass, attestedAt: timestamp(0, 2),
+    })],
+    ['forged attestedAt', replaceReceipt(value, receipts, 0, {
+      projectMatch: true, environmentClass: value.environmentClass, attestedAt: timestamp(0, 6),
+    })],
     ['active writer', replaceReceipt(value, receipts, 2, { freezeConfirmed: true, activeWriterCount: 1 })],
     ['missing provider recovery point', replaceReceipt(value, receipts, 3, { recoveryPointCreated: false, recoveryPointMetadataHash: hashes[9], expiresAt: '2026-08-21T02:00:00.000Z' })],
     ['unencrypted logical backup', replaceReceipt(value, receipts, 4, { ...evidence('create_encrypted_logical_backup', value), encrypted: false })],

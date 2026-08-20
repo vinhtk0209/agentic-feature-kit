@@ -11,6 +11,7 @@ export const SYNCED_CORE_FILES = [
   'live-cutover-logical-backup-node.ts',
   'live-cutover-preflight.ts',
   'live-cutover-preflight-operator.ts',
+  'live-cutover-project-attestation-node.ts',
   'privacy-policy.ts',
   'privacy-writer.ts',
   'project-intelligence.ts',
