@@ -124,15 +124,26 @@ assert.ok(result.gaps.includes('final-evidence-path'))
 assert.doesNotMatch(JSON.stringify(result), /operator|token-value|C:\//)
 
 const root = process.cwd()
+const completionMerge = 'df2c9ea16079f83c0c16ff16a95d8bfe14df9923'
 const startingCatalog = JSON.parse(execFileSync(
   'git',
   ['show', 'c8e81bbe5ed5f21a166bae14a7849fe8dd57be3e:docs/roadmap/post-17-roadmap.json'],
   { cwd: root, encoding: 'utf8', maxBuffer: 1024 * 1024 },
 )) as { baseline: { reopened: boolean }; tasks: PublicReleaseReadinessInput['beforeTasks'] }
-const candidateCatalog = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'roadmap', 'post-17-roadmap.json'), 'utf8')) as {
+const completionCatalog = JSON.parse(execFileSync(
+  'git',
+  ['show', `${completionMerge}:docs/roadmap/post-17-roadmap.json`],
+  { cwd: root, encoding: 'utf8', maxBuffer: 1024 * 1024 },
+)) as {
   baseline: { reopened: boolean }
   tasks: PublicReleaseReadinessInput['afterTasks']
 }
+const currentCatalog = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'roadmap', 'post-17-roadmap.json'), 'utf8')) as {
+  tasks: PublicReleaseReadinessInput['afterTasks']
+}
+const completionTarget = completionCatalog.tasks.find((task) => task.id === 'P17-018')
+const currentTarget = currentCatalog.tasks.find((task) => task.id === 'P17-018')
+assert.deepEqual(currentTarget, completionTarget, 'the current roadmap must preserve the accepted P17-018 closure')
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'release', 'public-release-manifest.json'), 'utf8')) as {
   entries: Array<{ path: string; decision: string }>
 }
@@ -144,10 +155,10 @@ const finalEvidenceStats = finalEvidenceExists ? fs.lstatSync(finalEvidenceAbsol
 const repositoryInput: PublicReleaseReadinessInput = {
   baseline: {
     beforeReopened: startingCatalog.baseline.reopened,
-    afterReopened: candidateCatalog.baseline.reopened,
+    afterReopened: completionCatalog.baseline.reopened,
   },
   beforeTasks: startingCatalog.tasks.map(({ id, status, dependencies, readiness, evidence }) => ({ id, status, dependencies, readiness, evidence })),
-  afterTasks: candidateCatalog.tasks.map(({ id, status, dependencies, readiness, evidence }) => ({ id, status, dependencies, readiness, evidence })),
+  afterTasks: completionCatalog.tasks.map(({ id, status, dependencies, readiness, evidence }) => ({ id, status, dependencies, readiness, evidence })),
   finalEvidence: {
     path: FINAL_EVIDENCE_PATH,
     exists: finalEvidenceExists,
