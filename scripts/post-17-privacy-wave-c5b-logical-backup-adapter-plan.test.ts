@@ -17,7 +17,7 @@ if (!fs.existsSync(parentPlanPath)) gaps.push('C5B operator parent plan')
 if (packageJson.scripts[planCommand] !== 'npx tsx scripts/post-17-privacy-wave-c5b-logical-backup-adapter-plan.test.ts') {
   gaps.push('focused plan registration')
 }
-if (packageJson.scripts[runtimeCommand] !== 'npm run test:post-17-privacy-wave-c5b-executable-capability-plan && npm run test:privacy-c5b-executable-capability-node && npx tsx packages/core/test/live-cutover-logical-backup-node.test.ts') {
+if (packageJson.scripts[runtimeCommand] !== 'npm run test:post-17-privacy-wave-c5b-executable-capability-plan && npm run test:privacy-c5b-executable-capability-node && npm run test:post-17-privacy-wave-c5b-connection-material-capability-plan && npm run test:privacy-c5b-connection-material-capability-node && npx tsx packages/core/test/live-cutover-logical-backup-node.test.ts') {
   gaps.push('focused runtime registration')
 }
 if (!packageJson.scripts['test:kit']?.includes(`npm run ${planCommand}`)) gaps.push('full kit plan registration')
