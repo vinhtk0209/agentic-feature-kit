@@ -1,0 +1,61 @@
+{
+  "fixtureVersion": 1,
+  "sourceKind": "azure-devops",
+  "sourceRef": "ADO-SYNTH-202",
+  "baseUrl": "https://azure-devops.example.invalid",
+  "payload": {
+    "id": 202,
+    "rev": 3,
+    "fields": {
+      "System.Title": "Export progress report",
+      "System.Description": "<p>A signed-in user can export a progress report.</p>",
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<p>Given a report is ready, when the user exports it, then a CSV file downloads.</p><p>Given export fails, when the operation ends, then a retry-safe error is shown.</p>",
+      "Custom.SyntheticRisk": "Medium"
+    },
+    "url": "https://azure-devops.example.invalid/synthetic/_apis/wit/workitems/202"
+  },
+  "mapping": {
+    "titleField": "System.Title",
+    "paragraphFields": [
+      "System.Description",
+      "Microsoft.VSTS.Common.AcceptanceCriteria"
+    ],
+    "unsupportedFields": [
+      "Custom.SyntheticRisk"
+    ]
+  },
+  "expected": {
+    "title": "Export progress report",
+    "paragraphs": [
+      {
+        "anchor": "azure-devops:System.Description:paragraph:1",
+        "text": "A signed-in user can export a progress report."
+      },
+      {
+        "anchor": "azure-devops:Microsoft.VSTS.Common.AcceptanceCriteria:paragraph:1",
+        "text": "Given a report is ready, when the user exports it, then a CSV file downloads."
+      },
+      {
+        "anchor": "azure-devops:Microsoft.VSTS.Common.AcceptanceCriteria:paragraph:2",
+        "text": "Given export fails, when the operation ends, then a retry-safe error is shown."
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "id": "AC-1",
+        "text": "Given a report is ready, when the user exports it, then a CSV file downloads.",
+        "sourceAnchor": "azure-devops:Microsoft.VSTS.Common.AcceptanceCriteria:paragraph:1",
+        "sourceQuote": "Given a report is ready, when the user exports it, then a CSV file downloads."
+      },
+      {
+        "id": "AC-2",
+        "text": "Given export fails, when the operation ends, then a retry-safe error is shown.",
+        "sourceAnchor": "azure-devops:Microsoft.VSTS.Common.AcceptanceCriteria:paragraph:2",
+        "sourceQuote": "Given export fails, when the operation ends, then a retry-safe error is shown."
+      }
+    ],
+    "unsupportedFields": [
+      "Custom.SyntheticRisk"
+    ]
+  }
+}

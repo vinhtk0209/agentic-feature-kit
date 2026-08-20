@@ -2333,6 +2333,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-spec-adapter-input-lock-2026-08-21.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-wave-0-2026-08-13.md",
       "decision": "include",
       "contentKind": "text",
@@ -2364,6 +2370,24 @@
     },
     {
       "path": "docs/releasing/UNRELEASED.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/fixtures/p17-004-azure-devops-minimal.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/fixtures/p17-004-jira-minimal.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-004-a1-spec-adapter-input-lock-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4104,6 +4128,12 @@
     },
     {
       "path": "scripts/post-17-roadmap.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-spec-adapter-input-lock.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

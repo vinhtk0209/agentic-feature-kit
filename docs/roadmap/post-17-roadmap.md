@@ -61,7 +61,7 @@ When complete:
 | P17-001 | P0 | 1 | done | Project Intelligence skill and agent contract | Prevents wrong-framework, fake-i18n, wrong-router, and target-specific fallback scaffolding. |
 | P17-002 | P0 | 1 | done | Workflow Orchestrator decomposition contract | Replaces the monolith with bounded phases that can resume from verified evidence. |
 | P17-003 | P1 | 2 | done | Provider-neutral semantic specification model | Makes equivalent Confluence/Jira/file requirements normalize to the same intent. |
-| P17-004 | P1 | 2 | backlog | Provider-neutral specification adapters | Removes operational dependence on one Confluence source or instance. |
+| P17-004 | P1 | 2 | in_progress | Provider-neutral specification adapters | Removes operational dependence on one Confluence source or instance. |
 | P17-005 | P1 | 2 | done | Project-derived conditional quality gates | Adds relevant i18n/router/style checks without false framework assumptions. |
 | P17-006 | P1 | 3 | done | Phase-aware model selection and routing | Allows explicit quality/cost/latency routing without silent provider substitution. |
 | P17-007 | P1 | 4 | backlog | Normalized same-input provider parity | Separates action smoke from real planning/implementation parity. |
@@ -82,7 +82,6 @@ When complete:
 
 ## Inputs still required before their implementation
 
-- **P17-004:** privacy-safe minimal Jira and Azure DevOps source fixtures.
 - **P17-007:** a golden cross-provider fixture and explicit approval for bounded provider runs.
 - **P17-017:** a measurable RAG benefit benchmark and approved indexing/privacy boundary.
 - **P17-019:** a project-specific refresh capability fixture and security approval.
@@ -94,6 +93,10 @@ deterministic artifact safely, the roadmap should prepare and test it before req
 
 ## Locked input decisions
 
+- **P17-004 (`S1/F1/P1/M1/U1/C1/D1/R1/E1/N1`):** the P17-003 `SemanticSourceInput` remains
+  canonical; approved Jira/Azure DevOps inputs are synthetic reserved-host exports with exact
+  provider anchors, complete mapped-or-unsupported field ownership, and zero tenant/person data.
+  Readiness is complete and P17-004 is `in_progress`; runtime adapters remain a separate A2 slice.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness
