@@ -336,11 +336,12 @@ function evidenceObject(value: unknown, expected: readonly string[], ruleId: str
 function validateEvidence(operation: C5BOperation, value: unknown): Record<string, unknown> {
   switch (operation) {
     case 'attest_project': {
-      const evidence = evidenceObject(value, ['projectMatch', 'environmentClass'], 'c5b.evidence.project')
+      const evidence = evidenceObject(value, ['projectMatch', 'environmentClass', 'attestedAt'], 'c5b.evidence.project')
       boolean(evidence.projectMatch, 'invalid_receipt', 'c5b.evidence.project_match')
       if (typeof evidence.environmentClass !== 'string' || !ENVIRONMENTS.has(evidence.environmentClass as C5BEnvironmentClass)) {
         refuse('invalid_receipt', 'c5b.evidence.environment_class')
       }
+      timestamp(evidence.attestedAt, 'invalid_receipt', 'c5b.evidence.attested_at')
       return evidence
     }
     case 'probe_catalog_acl': {
@@ -559,6 +560,13 @@ function validateC5BReceiptPrefix(
     const project = evidence(receipts[0])
     if (project.projectMatch !== true || project.environmentClass !== packet.environmentClass) {
       return prefixBlocked('project_mismatch', 'c5b.completion.project_match')
+    }
+    const attestedAt = Date.parse(asString(project.attestedAt))
+    if (attestedAt < Date.parse(receipts[0].startedAt)
+      || attestedAt > Date.parse(receipts[0].completedAt)
+      || attestedAt < Date.parse(packet.freezeStartsAt)
+      || attestedAt > Date.parse(packet.freezeExpiresAt)) {
+      return prefixBlocked('freeze_window_invalid', 'c5b.completion.project_attested_at')
     }
   }
   if (receipts.length >= 2) {

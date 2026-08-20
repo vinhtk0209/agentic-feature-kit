@@ -50,7 +50,7 @@ function packet(): C5BPreflightPacket {
 function evidence(operation: Exclude<C5BOperation, 'complete_preflight'>, value: C5BPreflightPacket): Record<string, unknown> {
   switch (operation) {
     case 'attest_project':
-      return { projectMatch: true, environmentClass: value.environmentClass }
+      return { projectMatch: true, environmentClass: value.environmentClass, attestedAt: '2026-08-20T01:00:00.500Z' }
     case 'probe_catalog_acl':
       return {
         catalogHash: hashes[4], aclHash: hashes[5], rpcHash: hashes[6], policyHash: hashes[7],
@@ -171,7 +171,9 @@ async function main(): Promise<void> {
     assert.deepEqual(invalidPorts.calls, [])
 
     const mismatchPorts = new FakePorts()
-    mismatchPorts.overrides.set('attest_project', { projectMatch: false, environmentClass: 'managed_nonproduction' })
+    mismatchPorts.overrides.set('attest_project', {
+      projectMatch: false, environmentClass: 'managed_nonproduction', attestedAt: '2026-08-20T01:00:00.500Z',
+    })
     const mismatch = await runC5BPreflightOperator(packet(), { clock: mismatchPorts.clock, ports: mismatchPorts })
     assert.equal(mismatch.ok, false)
     assert.equal(mismatch.reasonCode, 'project_mismatch')

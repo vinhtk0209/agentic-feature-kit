@@ -434,6 +434,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/live-cutover-project-attestation-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/privacy-policy.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2489,6 +2495,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-016-wave-c5b-project-attestation-capability-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-018-public-release-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -2939,6 +2951,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/live-cutover-project-attestation-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/phase-model-router-cli.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3108,6 +3126,12 @@
     },
     {
       "path": "packages/core/test/live-cutover-preflight.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/live-cutover-project-attestation-node.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3756,6 +3780,12 @@
     },
     {
       "path": "scripts/post-17-privacy-wave-c5b-preflight-snapshot-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-privacy-wave-c5b-project-attestation-capability-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
