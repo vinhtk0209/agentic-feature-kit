@@ -16,6 +16,13 @@ import {
 } from '../src/live-cutover-preflight'
 import type { C5BOperatorContext, C5BPortDecision } from '../src/live-cutover-preflight-operator'
 import {
+  qualifyC5BExecutableCapabilities,
+  type C5BExecutableProbeExecution,
+  type C5BExecutableProbeExecutor,
+  type C5BExecutableProbeRequest,
+  type C5BExecutableQualification,
+} from '../src/live-cutover-executable-qualification-node'
+import {
   createC5BLogicalBackupNodePorts,
   createNodeC5BPipelineExecutor,
   type C5BLogicalBackupNodeConfig,
@@ -29,6 +36,17 @@ const hashes = Array.from({ length: 16 }, (_, index) => (index + 1).toString(16)
 const encryptedFixture = Buffer.from('age-encrypted-fixture')
 const manifestFixture = 'manifest-entry\n'
 const rawSecretControl = 'raw-process-secret-must-not-escape'
+
+interface QualifiedToolFixture {
+  readonly pgDump: string
+  readonly pgRestore: string
+  readonly age: string
+  readonly postgresReceipt: string
+  readonly ageReceipt: string
+  readonly capability: C5BExecutableQualification
+}
+
+let qualifiedToolFixture: QualifiedToolFixture
 
 function sha256(value: Buffer | string): string {
   return createHash('sha256').update(value).digest('hex')
@@ -140,15 +158,65 @@ class FakeExecutor implements C5BPipelineExecutor {
   }
 }
 
+class QualificationProbeExecutor implements C5BExecutableProbeExecutor {
+  async probe(request: C5BExecutableProbeRequest): Promise<C5BExecutableProbeExecution> {
+    const stdout = request.role === 'pg_dump'
+      ? 'pg_dump (PostgreSQL) 17.11\n'
+      : request.role === 'pg_restore'
+        ? 'pg_restore (PostgreSQL) 17.11\n'
+        : 'v1.2.1\n'
+    return { ok: true, exitCode: 0, signal: null, timedOut: false, outputCapped: false, stdout, stderr: '' }
+  }
+}
+
+async function createQualifiedToolFixture(root: string): Promise<QualifiedToolFixture> {
+  const bin = path.join(root, 'bin')
+  const receipts = path.join(root, 'receipts')
+  fs.mkdirSync(bin, { recursive: true })
+  fs.mkdirSync(receipts, { recursive: true })
+  const pgDump = path.join(bin, process.platform === 'win32' ? 'pg_dump.exe' : 'pg_dump')
+  const pgRestore = path.join(bin, process.platform === 'win32' ? 'pg_restore.exe' : 'pg_restore')
+  const age = path.join(bin, process.platform === 'win32' ? 'age.exe' : 'age')
+  const postgresReceipt = path.join(receipts, 'postgres.receipt')
+  const ageReceipt = path.join(receipts, 'age.receipt')
+  fs.writeFileSync(pgDump, 'qualified-pg-dump-bytes')
+  fs.writeFileSync(pgRestore, 'qualified-pg-restore-bytes')
+  fs.writeFileSync(age, 'qualified-age-bytes')
+  fs.writeFileSync(postgresReceipt, 'externally-verified-postgres-receipt')
+  fs.writeFileSync(ageReceipt, 'externally-verified-age-receipt')
+  const expectation = (executablePath: string, provenanceReceiptPath: string, expectedVersion: string) => ({
+    executablePath,
+    executableSha256: sha256(fs.readFileSync(executablePath)),
+    provenanceReceiptPath,
+    provenanceReceiptSha256: sha256(fs.readFileSync(provenanceReceiptPath)),
+    expectedVersion,
+  })
+  const result = await qualifyC5BExecutableCapabilities({
+    pgDump: expectation(pgDump, postgresReceipt, '17.11'),
+    pgRestore: expectation(pgRestore, postgresReceipt, '17.11'),
+    age: expectation(age, ageReceipt, '1.2.1'),
+    qualificationTtlMs: 3_600_000,
+    maxQualificationTtlMs: 7_200_000,
+    maxExecutableBytes: 1_000_000,
+    maxProvenanceBytes: 1_000_000,
+    timeoutMs: 5_000,
+    maxOutputBytes: 4_096,
+    now: () => '2026-08-20T01:00:00.000Z',
+  }, new QualificationProbeExecutor())
+  if (result.status !== 'qualified') throw new Error('test executable qualification refused')
+  return { pgDump, pgRestore, age, postgresReceipt, ageReceipt, capability: result.capability }
+}
+
 function config(root: string, overrides: Partial<C5BLogicalBackupNodeConfig> = {}): C5BLogicalBackupNodeConfig {
   return {
     destinationCapabilityId: 'protected_backup',
     destinationDirectory: path.join(root, 'protected'),
     sourceServiceCapability: 'source_db',
     isolatedServiceCapability: 'restore_db',
-    pgDumpExecutable: path.join(root, 'bin', 'pg_dump'),
-    pgRestoreExecutable: path.join(root, 'bin', 'pg_restore'),
-    ageExecutable: path.join(root, 'bin', 'age'),
+    pgDumpExecutable: qualifiedToolFixture.pgDump,
+    pgRestoreExecutable: qualifiedToolFixture.pgRestore,
+    ageExecutable: qualifiedToolFixture.age,
+    executableQualification: qualifiedToolFixture.capability,
     recipientsFile: path.join(root, 'secrets', 'recipients.txt'),
     identityFile: path.join(root, 'secrets', 'identity.txt'),
     retentionMs: 86_400_000,
@@ -188,6 +256,7 @@ async function test(name: string, fn: () => void | Promise<void>): Promise<void>
 async function main(): Promise<void> {
 const canonicalTempRoot = fs.realpathSync.native(os.tmpdir())
 const scratch = fs.mkdtempSync(path.join(canonicalTempRoot, 'c5b-logical-backup-'))
+qualifiedToolFixture = await createQualifiedToolFixture(path.join(scratch, 'qualified-tools'))
 
 await test('configuration is closed, path-safe, secret-free, and rejects capability ambiguity', () => {
   for (const override of [
@@ -216,6 +285,45 @@ await test('invalid context, destination mismatch, and wrong prefix stop before 
   assertRefused(await ports.createEncryptedLogicalBackup(context(4, mismatch)), 'logical_backup_invalid')
   assertRefused(await ports.restoreIsolatedBackup(context(4)), 'restore_invalid')
   assert.equal(executor.calls.length, 0)
+})
+
+await test('forged or stale executable capability stops both parent ports before any pipeline', async () => {
+  assert.throws(() => createC5BLogicalBackupNodePorts(config(scratch, {
+    executableQualification: { ...qualifiedToolFixture.capability },
+  }), new FakeExecutor()), /C5B logical-backup adapter configuration refused/)
+
+  const backupRoot = path.join(scratch, 'stale-before-backup')
+  const backupTools = await createQualifiedToolFixture(path.join(backupRoot, 'tools'))
+  const backupExecutor = new FakeExecutor()
+  const backupPorts = createC5BLogicalBackupNodePorts(preparedConfig(backupRoot, {
+    pgDumpExecutable: backupTools.pgDump,
+    pgRestoreExecutable: backupTools.pgRestore,
+    ageExecutable: backupTools.age,
+    executableQualification: backupTools.capability,
+  }), backupExecutor)
+  fs.writeFileSync(backupTools.age, 'replaced-after-qualification')
+  assertRefused(await backupPorts.createEncryptedLogicalBackup(context(4)), 'logical_backup_invalid')
+  assert.equal(backupExecutor.calls.length, 0)
+
+  const restoreRoot = path.join(scratch, 'stale-before-restore')
+  const restoreTools = await createQualifiedToolFixture(path.join(restoreRoot, 'tools'))
+  const restoreExecutor = new FakeExecutor()
+  restoreExecutor.queue.push(
+    successExecution({ byteCount: encryptedFixture.length, sha256: sha256(encryptedFixture), capturedOutput: null }),
+    successExecution({ byteCount: Buffer.byteLength(manifestFixture), sha256: sha256(manifestFixture), capturedOutput: manifestFixture }),
+  )
+  const restorePorts = createC5BLogicalBackupNodePorts(preparedConfig(restoreRoot, {
+    pgDumpExecutable: restoreTools.pgDump,
+    pgRestoreExecutable: restoreTools.pgRestore,
+    ageExecutable: restoreTools.age,
+    executableQualification: restoreTools.capability,
+  }), restoreExecutor)
+  const backupDecision = await restorePorts.createEncryptedLogicalBackup(context(4))
+  assert.equal(backupDecision.status, 'passed')
+  if (backupDecision.status !== 'passed') return
+  fs.writeFileSync(restoreTools.ageReceipt, 'replaced-provenance-after-qualification')
+  assertRefused(await restorePorts.restoreIsolatedBackup(context(5, packet(), backupDecision.evidence)), 'restore_invalid')
+  assert.equal(restoreExecutor.calls.length, 2)
 })
 
 await test('backup uses exact dump-to-age and decrypt-to-manifest pipelines and publishes closed metadata', async () => {
