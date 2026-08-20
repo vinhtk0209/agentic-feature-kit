@@ -2183,6 +2183,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-privacy-wave-c5b-restored-state-verification-capability-2026-08-20.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-privacy-wave-c5b-writer-freeze-capability-2026-08-20.md",
       "decision": "include",
       "contentKind": "text",
