@@ -1106,6 +1106,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/provider-parity-candidate-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/provider-parity-candidate-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/provider-parity-fixture-node.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2628,6 +2640,12 @@
     },
     {
       "path": "docs/roadmap/p17-007-a3b2a-fixture-lifecycle-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-007-a3b2b-candidate-verifier-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4386,6 +4404,12 @@
     },
     {
       "path": "scripts/post-17-privacy-writer-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-provider-parity-candidate-verifier-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

@@ -323,3 +323,24 @@ This boundary does not run the golden test or any child/provider/model process. 
 the post-provider candidate independently, enforce locked/allowed paths and the closed violation
 set, and run exactly one trusted test through A3B1. A3B3 must bind those results into a metadata-only
 A2 receipt and attest or isolate managed policy/hooks before external parity execution may qualify.
+
+## §13. Provider-neutral candidate verifier and trusted-test boundary
+
+P17-007 A3B2B adds the provider-neutral candidate verifier above the A3B2A lifecycle and behind its
+own structural process port. It admits only the exact immutable lifecycle receipt, opens and pins the
+candidate root without following aliases, independently hashes the complete regular-file tree, and
+derives locked-path, undeclared-path, dependency, disclosure, and permission-widening flags from
+observed bytes and metadata rather than provider claims.
+
+Only a candidate with zero pre-test violations reaches the process port. The verifier constructs the
+single fixed `node --test test/report.test.js` request with empty stdin, the admitted root, `shell:false`,
+and the A1 timeout/output caps. The supplied absolute Node executable and port are ephemeral
+capabilities; the verifier never discovers a command, reads `PATH`, inherits an environment, or
+spawns directly. Raw stdout/stderr are inspected only in memory and are never returned.
+
+After the test settles, the verifier repeats the root-identity and full-inventory checks. Any test-
+time byte, path, node-kind, permission, or root replacement fails closed even if exit code is zero.
+The verifier closes only its read-only identity handle; A3B2A remains the sole cleanup owner. A3B3
+must still compose these metadata with cleanup and managed-policy/hook evidence into an A2 receipt.
+No provider/model execution, credential/session access, receipt assembly, persistence, sync, or
+release authority is added by this boundary.

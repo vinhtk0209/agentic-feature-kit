@@ -130,9 +130,12 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   isolated fixture lifecycle: exact A1-golden admission, one owned direct-child root, exclusive
   ordinal seed writes, immutable hash-bound inventories, a live directory-handle identity pin,
   alias-safe zero-residue cleanup, one-use state, and metadata-only local receipts. It launches no
-  child and runs no trusted test. Independent
-  candidate-tree/trusted-test verification, metadata-only A2 receipt assembly, managed-policy/hook
-  attestation, A4 fresh three-provider receipts, and dashboard/evidence closeout remain required
+  child and runs no trusted test. A3B2B adds independent candidate inventory and trusted-test execution:
+  exact A3B2A receipt admission, pinned no-follow tree inspection, locked/allowed-path enforcement,
+  dependency/privacy/permission flags, one fixed bounded Node test through an injected process port,
+  and post-test mutation rejection with metadata-only output. It performs no provider/model call and
+  does not own cleanup. Metadata-only A2 receipt assembly, managed-policy/hook attestation, A4 fresh
+  three-provider receipts, and dashboard/evidence closeout remain required
   before P17-007 can become `done`.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
