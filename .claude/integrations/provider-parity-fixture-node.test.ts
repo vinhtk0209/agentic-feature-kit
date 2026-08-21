@@ -49,7 +49,8 @@ function removeTreeNoFollow(target: string): void {
 }
 
 function withTempDirectory<T>(prefix: string, action: (directory: string) => T): T {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  const canonicalTempRoot = fs.realpathSync.native(os.tmpdir());
+  const directory = fs.mkdtempSync(path.join(canonicalTempRoot, prefix));
   try {
     return action(directory);
   } finally {
@@ -307,6 +308,8 @@ test('source boundary imports no process, environment, network, package, or test
   const source = fs.readFileSync(modulePath, 'utf8');
   assert.ok(source.includes('fs.constants.O_EXCL'), 'production lifecycle must retain exclusive file creation');
   assert.ok(source.includes('fs.lstatSync'), 'production lifecycle must retain no-follow inspection');
+  assert.ok(source.includes('fs.fstatSync'), 'cleanup must compare the live owned-root handle identity');
+  assert.ok(source.includes('fs.closeSync'), 'every lifecycle terminal path must close the owned-root handle');
   for (const forbidden of [
     "from 'node:child_process'",
     'process.env',

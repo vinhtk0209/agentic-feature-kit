@@ -67,8 +67,9 @@ evidence=E1, runtime=T1, scope=N1`.
   overwrite, merge, fallback root, or partial-success receipt exists.
 - **I1:** read back only regular files without following aliases, recompute every content hash and
   the exact A1 tree hash, then freeze cloned locked/allowed path inventories bound by one digest.
-- **C1:** inspect with `lstat`; unlink symbolic links and junctions as links, recurse only through
-  real directories whose canonical path remains inside the owned root, and prove root absence.
+- **C1:** pin the created root with one live directory handle, compare its `fstat` identity to each
+  root `lstat`, unlink symbolic links and junctions as links, recurse only through real directories
+  whose canonical path remains inside the owned root, close the handle, and prove root absence.
 - **L1:** allow `materialize` once and `cleanup` once; invalid transitions fail with fixed codes.
 - **E1:** return counts, hashes, state, and the ephemeral run-root capability only; never return
   fixture contents or interpolate attacker input, absolute paths, usernames, or OS diagnostics.
@@ -93,12 +94,16 @@ walk refuses aliases and non-regular nodes, hashes bytes, and must reproduce the
 Cleanup starts only from the internally retained owned root. At every node it uses `lstat` before
 deciding whether to unlink or recurse. A symbolic link or junction is unlinked without resolving its
 target. A real directory is canonicalized and must remain within the canonical owned root before its
-children are visited. Root replacement with a link therefore deletes only the link.
+children are visited. The original root directory stays pinned by an open read-only handle until the
+lifecycle reaches a terminal state; cleanup compares the handle's live `fstat` identity with the
+root's `lstat` identity. This prevents rapid delete/recreate attacks from passing through inode reuse.
+Root replacement with a link therefore deletes only the link.
 
 After removal, an `lstat` readback must report absence. Missing or externally replaced nodes,
-unsafe node kinds, containment drift, or I/O failures become fixed opaque error codes. The lifecycle
-does not include exception text or supplied paths in errors or receipts. Failure cleanup is attempted
-best-effort with the same no-follow algorithm, but no success receipt is fabricated.
+unsafe node kinds, handle/root identity drift, containment drift, or I/O failures become fixed opaque
+error codes. The lifecycle does not include exception text or supplied paths in errors or receipts.
+Failure cleanup is attempted best-effort with the same no-follow algorithm, the pinned handle is
+closed on every terminal path, and no success receipt is fabricated.
 
 ## Attack and evidence ladder
 
@@ -115,8 +120,10 @@ best-effort with the same no-follow algorithm, but no success receipt is fabrica
 7. Assert errors contain none of the injected path, secret, username, or OS diagnostic markers.
 8. Run 100 complete real-filesystem cycles; record time, RSS delta, zero residues, and zero child,
    provider, model, credential, network, package, database, dashboard, target, or sync calls.
-9. Run focused tests, strict TypeScript, provider/public gates, and the complete native kit suite.
-10. Commit source first, then bind a separate metadata-only evidence document to the exact source SHA.
+9. Canonicalize the platform temporary parent before positive lifecycle tests; hosted Windows may
+   expose `os.tmpdir()` through a junction, while the dedicated alias-parent attack must still fail.
+10. Run focused tests, strict TypeScript, provider/public gates, and the complete native kit suite.
+11. Commit source first, then bind a separate metadata-only evidence document to the exact source SHA.
 
 The required A3B2A registration crossed Windows' command-line ceiling in the pre-existing monolithic
 `test:kit` value before any product test could start. Keep the same 192 unique commands and order, but

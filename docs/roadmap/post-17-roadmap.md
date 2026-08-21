@@ -128,8 +128,9 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   environment, exact isolated-root binding, bounded byte capture, and cross-platform process-tree
   cleanup, qualified only with fake children and zero provider calls. A3B2A adds the provider-neutral
   isolated fixture lifecycle: exact A1-golden admission, one owned direct-child root, exclusive
-  ordinal seed writes, immutable hash-bound inventories, alias-safe zero-residue cleanup, one-use
-  state, and metadata-only local receipts. It launches no child and runs no trusted test. Independent
+  ordinal seed writes, immutable hash-bound inventories, a live directory-handle identity pin,
+  alias-safe zero-residue cleanup, one-use state, and metadata-only local receipts. It launches no
+  child and runs no trusted test. Independent
   candidate-tree/trusted-test verification, metadata-only A2 receipt assembly, managed-policy/hook
   attestation, A4 fresh three-provider receipts, and dashboard/evidence closeout remain required
   before P17-007 can become `done`.

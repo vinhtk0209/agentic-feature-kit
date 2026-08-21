@@ -397,6 +397,15 @@ function directoryIdentity(directory: string): RootIdentity {
   return { dev: stat.dev, ino: stat.ino };
 }
 
+function directoryHandleIdentity(
+  handle: number,
+  failureCode: 'materialization-failed' | 'cleanup-failed',
+): RootIdentity {
+  const stat = fs.fstatSync(handle, { bigint: true });
+  if (!stat.isDirectory()) fail(failureCode);
+  return { dev: stat.dev, ino: stat.ino };
+}
+
 function sameIdentity(left: RootIdentity, right: RootIdentity): boolean {
   return left.dev === right.dev && left.ino === right.ino;
 }
@@ -480,6 +489,7 @@ export class ProviderParityFixtureLifecycle {
   private isolatedRoot: string | undefined;
   private canonicalIsolatedRoot: string | undefined;
   private isolatedRootIdentity: RootIdentity | undefined;
+  private isolatedRootHandle: number | undefined;
   private materializedTreeSha256: string | undefined;
 
   constructor(options: ProviderParityFixtureLifecycleOptions) {
@@ -504,11 +514,16 @@ export class ProviderParityFixtureLifecycle {
       const isolatedRoot = fs.mkdtempSync(path.join(this.parentRoot, 'p17-007-'));
       if (!samePath(path.dirname(isolatedRoot), this.parentRoot)) fail('materialization-failed');
       this.isolatedRoot = isolatedRoot;
-      this.isolatedRootIdentity = directoryIdentity(isolatedRoot);
       this.canonicalIsolatedRoot = isolatedRoot;
       this.canonicalIsolatedRoot = fs.realpathSync.native(isolatedRoot);
       if (!isWithinOrEqual(this.canonicalParentRoot, this.canonicalIsolatedRoot) ||
           samePath(this.canonicalParentRoot, this.canonicalIsolatedRoot)) fail('materialization-failed');
+      const directoryFlags = fs.constants.O_RDONLY |
+        (typeof fs.constants.O_NOFOLLOW === 'number' ? fs.constants.O_NOFOLLOW : 0) |
+        (typeof fs.constants.O_DIRECTORY === 'number' ? fs.constants.O_DIRECTORY : 0);
+      this.isolatedRootHandle = fs.openSync(isolatedRoot, directoryFlags);
+      this.isolatedRootIdentity = directoryHandleIdentity(this.isolatedRootHandle, 'materialization-failed');
+      if (!sameIdentity(directoryIdentity(isolatedRoot), this.isolatedRootIdentity)) fail('materialization-failed');
 
       const directories = new Set<string>();
       for (const file of this.golden.files) {
@@ -570,15 +585,19 @@ export class ProviderParityFixtureLifecycle {
 
   cleanup(): ProviderParityCleanupReceipt {
     if (this.state !== 'materialized' || !this.isolatedRoot || !this.canonicalIsolatedRoot ||
-        !this.isolatedRootIdentity || !this.materializedTreeSha256) fail('invalid-state');
+        !this.isolatedRootIdentity || this.isolatedRootHandle === undefined ||
+        !this.materializedTreeSha256) fail('invalid-state');
     this.state = 'cleaning';
     const isolatedRoot = this.isolatedRoot;
     const canonicalRoot = this.canonicalIsolatedRoot;
     const identity = this.isolatedRootIdentity;
+    const handle = this.isolatedRootHandle;
     const materializedTreeSha256 = this.materializedTreeSha256;
     try {
+      if (!sameIdentity(directoryHandleIdentity(handle, 'cleanup-failed'), identity)) fail('cleanup-failed');
       const removedNodeCount = removeTreeWithoutFollowingAliases(isolatedRoot, canonicalRoot, identity, true);
       assertAbsent(isolatedRoot);
+      this.closeIsolatedRootHandle();
       this.isolatedRoot = undefined;
       this.canonicalIsolatedRoot = undefined;
       this.isolatedRootIdentity = undefined;
@@ -599,17 +618,31 @@ export class ProviderParityFixtureLifecycle {
   }
 
   private bestEffortCleanup(): void {
-    if (!this.isolatedRoot || !this.canonicalIsolatedRoot || !this.isolatedRootIdentity) return;
     try {
-      removeTreeWithoutFollowingAliases(
-        this.isolatedRoot,
-        this.canonicalIsolatedRoot,
-        this.isolatedRootIdentity,
-        true,
-      );
+      if (this.isolatedRoot && this.canonicalIsolatedRoot && this.isolatedRootIdentity) {
+        removeTreeWithoutFollowingAliases(
+          this.isolatedRoot,
+          this.canonicalIsolatedRoot,
+          this.isolatedRootIdentity,
+          true,
+        );
+      }
     } catch {
       // Preserve the original fixed failure. This method never broadens the deletion target.
+    } finally {
+      try {
+        this.closeIsolatedRootHandle();
+      } catch {
+        // Preserve the original fixed failure even if releasing the local capability also fails.
+        this.isolatedRootHandle = undefined;
+      }
     }
+  }
+
+  private closeIsolatedRootHandle(): void {
+    if (this.isolatedRootHandle === undefined) return;
+    fs.closeSync(this.isolatedRootHandle);
+    this.isolatedRootHandle = undefined;
   }
 }
 

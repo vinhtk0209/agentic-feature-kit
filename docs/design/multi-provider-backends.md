@@ -313,7 +313,10 @@ are cloned, frozen, and bound to one inventory digest rather than trusted from c
 Cleanup never accepts an arbitrary caller deletion path. It starts from the internally owned root,
 uses `lstat` at each node, unlinks symbolic links and Windows junctions without following their
 targets, and recurses only through real directories whose canonical paths remain inside the owned
-root. A final absence readback is required. State transitions are single-use and all failures are
+root. A live read-only directory handle pins the original root identity until a terminal lifecycle
+state, and cleanup compares that handle's `fstat` identity with the root `lstat`; delete/recreate
+cannot qualify through filesystem inode reuse. The handle is closed on success and every failure
+path, and a final absence readback is required. State transitions are single-use and all failures are
 fixed opaque codes that exclude supplied paths, fixture contents, usernames, and OS diagnostics.
 
 This boundary does not run the golden test or any child/provider/model process. A3B2B must inspect
