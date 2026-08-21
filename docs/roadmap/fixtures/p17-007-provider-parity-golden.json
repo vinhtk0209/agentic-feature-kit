@@ -1,0 +1,199 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixtureId": "p17-007-provider-parity-golden",
+  "fixtureRevision": 1,
+  "classification": "synthetic-public",
+  "provenance": {
+    "kind": "synthetic",
+    "createdFor": "P17-007",
+    "license": "Apache-2.0",
+    "containsCustomerData": false,
+    "containsCredentials": false,
+    "containsPrivateSpecification": false,
+    "containsPersonalData": false
+  },
+  "providerTargets": [
+    "codex",
+    "claude",
+    "copilot"
+  ],
+  "taskPrompt": "Work only inside this synthetic fixture. Read AGENTS.md and spec/semantic-spec.json. First create docs/plan.md that maps AC-1, AC-2, and AC-3 to implementation and verification. Then implement src/report.js without dependencies so the locked test passes. Do not modify locked paths, access the network, install packages, use files outside this fixture, run any command except node --test test/report.test.js, or weaken verification. You may add test/report.additional.test.js. Run the exact test command once. Finish with a compact JSON summary of changed paths, AC IDs, test command, and observed exit code; the harness will treat that summary as untrusted until independent verification.",
+  "taskPromptSha256": "07b1eb213bba17b07c38d76019bd0265948d72b939350387f93d1caca5c9509c",
+  "semanticSpec": {
+    "schemaVersion": "1.0.0",
+    "title": "Export progress report",
+    "sourceDocuments": [
+      {
+        "sourceKind": "local",
+        "sourceRef": "local:synthetic/p17-007-export-progress-report",
+        "sourceSha256": "8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "AC-1",
+        "statement": "Given Progress rows are provided; when CSV is rendered; then The output contains the exact course_id, learner_id, and progress_percent header.",
+        "scenario": {
+          "given": "Progress rows are provided",
+          "when": "CSV is rendered",
+          "then": "The output contains the exact course_id, learner_id, and progress_percent header"
+        },
+        "provenance": [
+          {
+            "sourceKind": "local",
+            "sourceRef": "local:synthetic/p17-007-export-progress-report",
+            "sourceSha256": "8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda",
+            "anchor": "ac:1",
+            "quote": "Given progress rows are provided. When CSV is rendered. Then the output contains the exact course_id, learner_id, and progress_percent header."
+          }
+        ]
+      },
+      {
+        "id": "AC-2",
+        "statement": "Given Rows arrive in any order; when CSV is rendered; then Data rows are ordered by learner_id using ordinal comparison.",
+        "scenario": {
+          "given": "Rows arrive in any order",
+          "when": "CSV is rendered",
+          "then": "Data rows are ordered by learner_id using ordinal comparison"
+        },
+        "provenance": [
+          {
+            "sourceKind": "local",
+            "sourceRef": "local:synthetic/p17-007-export-progress-report",
+            "sourceSha256": "8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda",
+            "anchor": "ac:2",
+            "quote": "Given rows arrive in any order. When CSV is rendered. Then data rows are ordered by learner_id using ordinal comparison."
+          }
+        ]
+      },
+      {
+        "id": "AC-3",
+        "statement": "Given A field contains a comma or quote; when CSV is rendered; then The field is quoted and embedded quotes are doubled.",
+        "scenario": {
+          "given": "A field contains a comma or quote",
+          "when": "CSV is rendered",
+          "then": "The field is quoted and embedded quotes are doubled"
+        },
+        "provenance": [
+          {
+            "sourceKind": "local",
+            "sourceRef": "local:synthetic/p17-007-export-progress-report",
+            "sourceSha256": "8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda",
+            "anchor": "ac:3",
+            "quote": "Given a field contains a comma or quote. When CSV is rendered. Then the field is quoted and embedded quotes are doubled."
+          }
+        ]
+      }
+    ],
+    "contracts": [
+      {
+        "key": "api.contract",
+        "state": "known",
+        "values": [
+          "renderProgressCsv(rows) returns one deterministic UTF-8 CSV string"
+        ],
+        "provenance": [
+          {
+            "sourceKind": "local",
+            "sourceRef": "local:synthetic/p17-007-export-progress-report",
+            "sourceSha256": "8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda",
+            "anchor": "contract:api",
+            "quote": "renderProgressCsv(rows) returns one deterministic UTF-8 CSV string"
+          }
+        ]
+      }
+    ],
+    "ambiguities": [],
+    "semanticHash": "c4b4ea2509bc61fd326f99e60c6bdeb75d5af697d4f34326c68048c678e5267b",
+    "provenanceHash": "2b8fa221bcd7467f4d2180f1f554404d0bcf9a8c521ec5a820a8bed81d9a01e2"
+  },
+  "semanticSpecSha256": "206ae7026488f0d1ea9cfd90d392bb946ebc6726ebf1adbd6936157486d19830",
+  "phaseBindings": [
+    {
+      "phaseId": "B3",
+      "purpose": "planning",
+      "phaseContractSha256": "0c79cc6c07014a8c8ef4a839045173aa184a05520b534ab4bb788315e01f287d"
+    },
+    {
+      "phaseId": "B10",
+      "purpose": "implementation",
+      "phaseContractSha256": "beb5485a673d62153b07c6484fe376296f7b3a27ffdc0058981256f092567a12"
+    },
+    {
+      "phaseId": "B11",
+      "purpose": "verification",
+      "phaseContractSha256": "73dfec19182b0e365648998f54f1067ce1260feb1797dd55b950c6b973a67000"
+    }
+  ],
+  "repositorySeed": {
+    "runtime": "node>=20",
+    "files": [
+      {
+        "path": "AGENTS.md",
+        "content": "# Synthetic parity fixture instructions\n\n- Work only inside this fixture.\n- Do not access the network, install packages, or read files outside this directory.\n- Create `docs/plan.md` before editing source.\n- Keep `renderProgressCsv(rows)` as the only public API.\n- Do not modify locked paths.\n- Run only `node --test test/report.test.js`, once.\n",
+        "sha256": "6044d236a7c76d0a25e88dc21453bb2cdcaa839e083b1e92cabc666e6ab4396e"
+      },
+      {
+        "path": "package.json",
+        "content": "{\n  \"name\": \"p17-007-synthetic-parity-fixture\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"engines\": {\n    \"node\": \">=20\"\n  },\n  \"scripts\": {\n    \"test\": \"node --test test/report.test.js\"\n  }\n}\n",
+        "sha256": "0945ef226fa02944423b5243c32cc4cad9f4bc696db1cce6db3cd3f21d2064bf"
+      },
+      {
+        "path": "spec/semantic-spec.json",
+        "content": "{\n  \"schemaVersion\": \"1.0.0\",\n  \"title\": \"Export progress report\",\n  \"sourceDocuments\": [\n    {\n      \"sourceKind\": \"local\",\n      \"sourceRef\": \"local:synthetic/p17-007-export-progress-report\",\n      \"sourceSha256\": \"8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda\"\n    }\n  ],\n  \"requirements\": [\n    {\n      \"id\": \"AC-1\",\n      \"statement\": \"Given Progress rows are provided; when CSV is rendered; then The output contains the exact course_id, learner_id, and progress_percent header.\",\n      \"scenario\": {\n        \"given\": \"Progress rows are provided\",\n        \"when\": \"CSV is rendered\",\n        \"then\": \"The output contains the exact course_id, learner_id, and progress_percent header\"\n      },\n      \"provenance\": [\n        {\n          \"sourceKind\": \"local\",\n          \"sourceRef\": \"local:synthetic/p17-007-export-progress-report\",\n          \"sourceSha256\": \"8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda\",\n          \"anchor\": \"ac:1\",\n          \"quote\": \"Given progress rows are provided. When CSV is rendered. Then the output contains the exact course_id, learner_id, and progress_percent header.\"\n        }\n      ]\n    },\n    {\n      \"id\": \"AC-2\",\n      \"statement\": \"Given Rows arrive in any order; when CSV is rendered; then Data rows are ordered by learner_id using ordinal comparison.\",\n      \"scenario\": {\n        \"given\": \"Rows arrive in any order\",\n        \"when\": \"CSV is rendered\",\n        \"then\": \"Data rows are ordered by learner_id using ordinal comparison\"\n      },\n      \"provenance\": [\n        {\n          \"sourceKind\": \"local\",\n          \"sourceRef\": \"local:synthetic/p17-007-export-progress-report\",\n          \"sourceSha256\": \"8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda\",\n          \"anchor\": \"ac:2\",\n          \"quote\": \"Given rows arrive in any order. When CSV is rendered. Then data rows are ordered by learner_id using ordinal comparison.\"\n        }\n      ]\n    },\n    {\n      \"id\": \"AC-3\",\n      \"statement\": \"Given A field contains a comma or quote; when CSV is rendered; then The field is quoted and embedded quotes are doubled.\",\n      \"scenario\": {\n        \"given\": \"A field contains a comma or quote\",\n        \"when\": \"CSV is rendered\",\n        \"then\": \"The field is quoted and embedded quotes are doubled\"\n      },\n      \"provenance\": [\n        {\n          \"sourceKind\": \"local\",\n          \"sourceRef\": \"local:synthetic/p17-007-export-progress-report\",\n          \"sourceSha256\": \"8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda\",\n          \"anchor\": \"ac:3\",\n          \"quote\": \"Given a field contains a comma or quote. When CSV is rendered. Then the field is quoted and embedded quotes are doubled.\"\n        }\n      ]\n    }\n  ],\n  \"contracts\": [\n    {\n      \"key\": \"api.contract\",\n      \"state\": \"known\",\n      \"values\": [\n        \"renderProgressCsv(rows) returns one deterministic UTF-8 CSV string\"\n      ],\n      \"provenance\": [\n        {\n          \"sourceKind\": \"local\",\n          \"sourceRef\": \"local:synthetic/p17-007-export-progress-report\",\n          \"sourceSha256\": \"8a842b81d299badc05aca3c6f0db1ee73281796e7e0a7f86148ad8893f8fcbda\",\n          \"anchor\": \"contract:api\",\n          \"quote\": \"renderProgressCsv(rows) returns one deterministic UTF-8 CSV string\"\n        }\n      ]\n    }\n  ],\n  \"ambiguities\": [],\n  \"semanticHash\": \"c4b4ea2509bc61fd326f99e60c6bdeb75d5af697d4f34326c68048c678e5267b\",\n  \"provenanceHash\": \"2b8fa221bcd7467f4d2180f1f554404d0bcf9a8c521ec5a820a8bed81d9a01e2\"\n}\n",
+        "sha256": "5da3ec32fd475b13c83b72e9a2f736747a3d3e7da5d9b3a969ada217e76b89e9"
+      },
+      {
+        "path": "src/report.js",
+        "content": "export function renderProgressCsv(_rows) {\n  throw new Error('P17-007 fixture: implementation missing')\n}\n",
+        "sha256": "eca48acaad517dc0b3ae373ddc314b41dbac6ba715d7323a9f6392d7e3363057"
+      },
+      {
+        "path": "test/report.test.js",
+        "content": "import assert from 'node:assert/strict'\nimport test from 'node:test'\nimport { renderProgressCsv } from '../src/report.js'\n\ntest('renders deterministic escaped progress CSV', () => {\n  const rows = [\n    { courseId: 'course\\\"2', learnerId: 'learner,b', progressPercent: 50 },\n    { courseId: 'course-1', learnerId: 'learner-a', progressPercent: 75 },\n  ]\n  const expected = [\n    'course_id,learner_id,progress_percent',\n    'course-1,learner-a,75',\n    '\"course\"\"2\",\"learner,b\",50',\n  ].join('\\n')\n  assert.equal(renderProgressCsv(rows), expected)\n})\n",
+        "sha256": "4cf18bb64bba77d42c1ed6c6cb523840c09f362ea637bfc0bcada5c4ee07eb5e"
+      }
+    ],
+    "seedTreeSha256": "08493cec29eb682c7188783317a69cc554117b32c625357e7e910213f7ba0ae7",
+    "lockedPaths": [
+      "AGENTS.md",
+      "package.json",
+      "spec/semantic-spec.json",
+      "test/report.test.js"
+    ],
+    "allowedWritePaths": [
+      "docs/plan.md",
+      "src/report.js",
+      "test/report.additional.test.js"
+    ],
+    "testCommand": [
+      "node",
+      "--test",
+      "test/report.test.js"
+    ],
+    "expectedInitialStatus": "failed",
+    "expectedInitialFailureMarker": "P17-007 fixture: implementation missing"
+  },
+  "evaluationPolicy": {
+    "requiredProviderCount": 3,
+    "minimumSemanticRunsPerProvider": 1,
+    "minimumPerformanceRunsPerProvider": 5,
+    "requiredAcceptanceCriterionCoverage": 1,
+    "requiredArtifactCoverage": 1,
+    "requiredGateConservation": 1,
+    "trustedVerificationRequired": true,
+    "transportSmokeMayQualify": false,
+    "providerRankingWhenIncomplete": "forbidden",
+    "maxRunDurationMs": 1200000,
+    "maxCapturedOutputBytes": 16777216,
+    "attemptsPerRun": 1,
+    "retainedContent": [
+      "closed-status",
+      "counts",
+      "hashes",
+      "timings",
+      "token-usage",
+      "cost"
+    ]
+  }
+}
