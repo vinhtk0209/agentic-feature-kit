@@ -283,3 +283,21 @@ still supply fresh fixture materialization, deny-default production environment,
 cleanup, allowed-path/tree enforcement, independent trusted verification, metadata-only A2 receipt
 assembly, managed-policy/hook attestation, and zero-residue deletion before any external provider
 run is eligible.
+
+## §11. Claude deny-default Node process boundary
+
+P17-007 A3B1 adds the Node infrastructure implementation of the A3A `ClaudeProcessPort`. The port
+receives one exact absolute isolated root and one explicit environment map at construction. It does
+not read or spread `process.env`, so ambient credentials and unrelated process state cannot enter by
+omission. Every request must target that root and uses direct `shell:false` spawn with piped stdio.
+
+Raw stdout/stderr bytes share one cap. Timeout, overflow, stdin failure, or termination-grace expiry
+delegates to an injected cross-platform process-tree terminator, while the first terminal state wins.
+Infrastructure errors are opaque fixed codes and never interpolate paths, argv, environment values,
+or child exceptions. Fake-child tests own this slice; no Claude process or model call is qualification
+evidence.
+
+This boundary does not choose a safe per-run environment or prove a session, managed policy, hook,
+fixture, verifier, or cleanup policy. The later isolated materializer/runner must construct those
+inputs, inventory the tree independently, execute the one trusted test, delete the run root, and
+derive the metadata-only A2 receipt before any provider run may qualify.
