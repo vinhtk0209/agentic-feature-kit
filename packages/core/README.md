@@ -189,9 +189,9 @@ and semantic transforms must conserve requirement identities and provenance.
 The public JSON Schema is `docs/schemas/semantic-spec.schema.json`. Source transports remain adapter
 concerns and are deliberately outside this core contract.
 
-### Provider-local specification adapters (P17-004 A2A)
+### Provider-neutral specification adapters (P17-004 A2A–A2B)
 
-`src/spec-adapter.ts` defines the provider-neutral `SpecAdapterResult` schema `1.0.0`, exact frozen
+`src/spec-adapter.ts` defines the provider-neutral `SpecAdapterResult` schema `1.1.0`, exact frozen
 capability discovery, bounded byte/result contracts, stable closed errors, and field-conservation
 rules. Discovery reads only caller-registered descriptors; it does not inspect packages, execute an
 adapter, read environment or credentials, or contact a provider.
@@ -202,8 +202,18 @@ port before fatal UTF-8/JSON parsing, preserve literal anchors, and expose unsup
 without their values. `src/spec-adapter-node.ts` is the isolated Node SHA-256 implementation.
 
 The public result schema is `docs/schemas/spec-adapter-result.schema.json`. A2A performs no network,
-filesystem, auth, CLI, or provider-bundle work. Existing Confluence and local-file `SpecIR` paths
-remain a separate A2B composition decision, so P17-004 remains in progress.
+filesystem, auth, CLI, or provider-bundle work.
+
+`src/spec-ir.ts` is the single `SpecIR` authority. `src/spec-adapter-spec-ir.ts` validates an already
+parsed IR and maps it to the same result contract without source I/O or reparsing. The A2B integration
+composer gives local files opaque `local:<kind>:<sha256>` identities, while Confluence B0 uses
+`confluence:<page-id>`; both write the compatibility IR plus a provider-neutral result and B1 consumes
+only `adapterResult.source`. Warning text remains private and is represented only by the unsupported
+field name `warnings`.
+
+P17-004 remains in progress because live Jira/Azure DevOps I/O, credentials, and provider-package
+exposure are separate slices. A2B does not add network access, tokens, sync, target writes, a version
+bump, or plugin publication.
 
 ## Conditional Quality Gates
 

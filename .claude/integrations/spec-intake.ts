@@ -11,7 +11,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { SpecAdapterError, SpecIR } from './spec-ir';
+import { SpecAdapterError, SpecIR, validateSpecIR } from './spec-ir';
 import { adaptRawUs } from './spec-intake-raw-us';
 import { adaptWord } from './spec-intake-docx';
 import { adaptPdf } from './spec-intake-pdf';
@@ -51,12 +51,19 @@ export function intakeSpecFile(sourceRef: string, requestedKind?: IntakeKind): S
     throw new SpecInputReadError(sourceRef, error);
   }
 
-  switch (kind) {
-    case 'raw-us': return adaptRawUs(raw.toString('utf8'), sourceRef);
-    case 'word': return adaptWord(raw, sourceRef);
-    case 'pdf': return adaptPdf(raw, sourceRef);
-    case 'excel': return adaptExcel(raw, sourceRef);
-  }
+  const pendingRef = `local:${kind}:pending`;
+  const candidate = (() => {
+    switch (kind) {
+      case 'raw-us': return adaptRawUs(raw.toString('utf8'), pendingRef);
+      case 'word': return adaptWord(raw, pendingRef);
+      case 'pdf': return adaptPdf(raw, pendingRef);
+      case 'excel': return adaptExcel(raw, pendingRef);
+    }
+  })();
+  return validateSpecIR({
+    ...candidate,
+    sourceRef: `local:${kind}:${candidate.sourceSha256}`,
+  });
 }
 
 function usage(): string {

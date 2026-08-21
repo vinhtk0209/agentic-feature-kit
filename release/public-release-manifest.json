@@ -494,6 +494,30 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/semantic-spec.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/core/spec-adapter-spec-ir.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/core/spec-adapter.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/core/spec-ir.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/stack-portability.ts",
       "decision": "include",
       "contentKind": "text",
@@ -1083,6 +1107,18 @@
     },
     {
       "path": ".claude/integrations/self-improvement-cycle.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/spec-adapter-compose.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/spec-adapter-compose.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -2405,6 +2441,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-004-a2b-spec-ir-composition-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-006-phase-model-routing-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3191,7 +3233,19 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/spec-adapter-spec-ir.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/spec-adapter.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/src/spec-ir.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -3408,6 +3462,12 @@
     },
     {
       "path": "packages/core/test/spec-adapter-providers.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/spec-adapter-spec-ir.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4194,6 +4254,12 @@
     },
     {
       "path": "scripts/post-17-spec-adapter-runtime-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-spec-adapter-spec-ir-composition-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

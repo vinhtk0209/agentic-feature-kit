@@ -36,6 +36,7 @@ const jiraDescriptor = createSpecAdapterDescriptor({
   providerId: 'jira',
   inputKind: 'utf8-json',
   outputSchemaVersion: SPEC_ADAPTER_RESULT_SCHEMA_VERSION,
+  sourceKinds: ['jira'],
   configurationRequirements: ['base-url', 'field-mapping'],
   unsupportedBehavior: 'explicit-field-names',
 })
@@ -46,6 +47,7 @@ const azureDescriptor = createSpecAdapterDescriptor({
   providerId: 'azure-devops',
   inputKind: 'utf8-json',
   outputSchemaVersion: SPEC_ADAPTER_RESULT_SCHEMA_VERSION,
+  sourceKinds: ['azure-devops'],
   configurationRequirements: ['base-url', 'field-mapping'],
   unsupportedBehavior: 'explicit-field-names',
 })
@@ -88,8 +90,20 @@ run('discovery rejects duplicate adapter IDs', () => {
 
 run('descriptor validation rejects extra fields and unknown versions', () => {
   expectError(() => createSpecAdapterDescriptor({ ...jiraDescriptor, surprise: true }), 'INVALID_DESCRIPTOR')
-  expectError(() => createSpecAdapterDescriptor({ ...jiraDescriptor, schemaVersion: '2.0.0' }), 'INVALID_DESCRIPTOR')
+  expectError(() => createSpecAdapterDescriptor({ ...jiraDescriptor, schemaVersion: '1.0.0' }), 'INVALID_DESCRIPTOR')
   expectError(() => createSpecAdapterDescriptor({ ...jiraDescriptor, configurationRequirements: ['field-mapping', 'base-url'] }), 'INVALID_DESCRIPTOR')
+  expectError(() => createSpecAdapterDescriptor({ ...jiraDescriptor, sourceKinds: ['jira', 'azure-devops'] }), 'INVALID_DESCRIPTOR')
+})
+
+run('descriptor validation bounds sourceKinds before indexed reads', () => {
+  let indexed = false
+  const sourceKinds: string[] = []
+  sourceKinds.length = 17
+  Object.defineProperty(sourceKinds, '0', {
+    get() { indexed = true; throw new Error('sourceKinds index must not be read') },
+  })
+  expectError(() => createSpecAdapterDescriptor({ ...jiraDescriptor, sourceKinds }), 'INVALID_DESCRIPTOR')
+  assert.equal(indexed, false)
 })
 
 run('result construction preserves one source contract and exact capability identity', () => {
@@ -105,9 +119,16 @@ run('result construction preserves one source contract and exact capability iden
   assert.equal(validateSchema(result), true, JSON.stringify(validateSchema.errors))
 })
 
+run('result construction permits an explicit empty unsupported-field set', () => {
+  const result = createSpecAdapterResult({ descriptor: jiraDescriptor, source, unsupportedFields: [] })
+  assert.deepEqual(result.unsupportedFields, [])
+  assert.equal(validateSchema(result), true, JSON.stringify(validateSchema.errors))
+})
+
 run('result validation rejects provider, capability, sorting, and extra-field drift', () => {
   const result = createSpecAdapterResult({ descriptor: jiraDescriptor, source, unsupportedFields: ['a', 'z'] })
   expectError(() => validateSpecAdapterResult({ ...result, providerId: 'azure-devops' }), 'INVALID_RESULT')
+  expectError(() => validateSpecAdapterResult({ ...result, schemaVersion: '1.0.0' }), 'INVALID_RESULT')
   expectError(() => validateSpecAdapterResult({ ...result, adapterId: 'different-v1' }), 'INVALID_RESULT')
   expectError(() => validateSpecAdapterResult({ ...result, unsupportedFields: ['z', 'a'] }), 'INVALID_RESULT')
   expectError(() => validateSpecAdapterResult({ ...result, unsupportedFields: ['a', 'a'] }), 'INVALID_RESULT')

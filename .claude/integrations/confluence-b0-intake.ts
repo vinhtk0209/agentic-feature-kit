@@ -7,6 +7,8 @@ import {
   parseConfluencePageIdentity,
   runConfluenceRefetchActor,
 } from './confluence-refetch-actor';
+import { adaptSpecIR } from './core/spec-adapter-spec-ir';
+import { validateSpecIR } from './spec-ir';
 import { stageConfluenceB0Source } from './spec-intake-confluence';
 
 type Env = Record<string, string | undefined>;
@@ -22,6 +24,45 @@ export interface B0ConfluenceIntakeResult {
   acceptanceCriteria: number;
   stagedSourcePath: string;
   stagedIrPath: string;
+  stagedAdapterResultPath: string;
+}
+
+interface ArtifactPublication {
+  candidatePath: string;
+  targetPath: string;
+}
+
+function publishArtifactSet(entries: ArtifactPublication[], candidateDir: string): void {
+  for (const entry of entries) {
+    if (fs.existsSync(entry.targetPath) && !fs.lstatSync(entry.targetPath).isFile()) {
+      throw new Error(`confluence-b0-intake: destination must be a regular file: ${path.basename(entry.targetPath)}`);
+    }
+  }
+
+  const backups: Array<{ backupPath: string; targetPath: string }> = [];
+  const published: string[] = [];
+  try {
+    for (const [index, entry] of entries.entries()) {
+      if (!fs.existsSync(entry.targetPath)) continue;
+      const backupPath = path.join(candidateDir, `.publish-backup-${index}`);
+      fs.renameSync(entry.targetPath, backupPath);
+      backups.push({ backupPath, targetPath: entry.targetPath });
+    }
+    for (const entry of entries) {
+      fs.renameSync(entry.candidatePath, entry.targetPath);
+      published.push(entry.targetPath);
+    }
+  } catch {
+    let rollbackFailed = false;
+    for (const targetPath of [...published].reverse()) {
+      try { fs.rmSync(targetPath, { force: true }); } catch { rollbackFailed = true; }
+    }
+    for (const backup of [...backups].reverse()) {
+      try { fs.renameSync(backup.backupPath, backup.targetPath); } catch { rollbackFailed = true; }
+    }
+    if (rollbackFailed) throw new Error('confluence-b0-intake: artifact publication rollback failed');
+    throw new Error('confluence-b0-intake: artifact publication failed');
+  }
 }
 
 export function stageConfluenceB0FromActorOutput(input: {
@@ -39,23 +80,39 @@ export function stageConfluenceB0FromActorOutput(input: {
     if (staged.sourceSha256 !== envelope.sourceSha256) {
       throw new Error('confluence-b0-intake: staged source hash does not match the parsed refetch envelope');
     }
+    const canonicalIr = validateSpecIR({
+      ...staged.ir,
+      sourceKind: 'confluence',
+      sourceRef: identity.sourceRef,
+    });
+    const adapterResult = adaptSpecIR(canonicalIr);
     const stagedSourcePath = path.join(stagingDir, '.incoming-spec.md');
     const stagedIrPath = path.join(stagingDir, '.incoming-spec.ir.json');
-    const encodedIr = `${JSON.stringify(staged.ir, null, 2)}\n`;
+    const stagedAdapterResultPath = path.join(stagingDir, '.incoming-spec.adapter-result.json');
+    const candidateIrPath = path.join(candidateDir, '.incoming-spec.ir.json');
+    const candidateAdapterResultPath = path.join(candidateDir, '.incoming-spec.adapter-result.json');
+    const encodedIr = `${JSON.stringify(canonicalIr, null, 2)}\n`;
+    const encodedAdapterResult = `${JSON.stringify(adapterResult, null, 2)}\n`;
 
-    // Both final writes occur only after the actor envelope and canonical Spec-IR have validated.
-    fs.copyFileSync(staged.stagedPath, stagedSourcePath);
-    fs.writeFileSync(stagedIrPath, encodedIr, 'utf8');
+    // Publish only a complete validated candidate set; restore prior regular files on failure.
+    fs.writeFileSync(candidateIrPath, encodedIr, 'utf8');
+    fs.writeFileSync(candidateAdapterResultPath, encodedAdapterResult, 'utf8');
+    publishArtifactSet([
+      { candidatePath: staged.stagedPath, targetPath: stagedSourcePath },
+      { candidatePath: candidateIrPath, targetPath: stagedIrPath },
+      { candidatePath: candidateAdapterResultPath, targetPath: stagedAdapterResultPath },
+    ], candidateDir);
 
     return {
       v: 1,
       sourceRef: envelope.sourceRef,
       sourceSha256: envelope.sourceSha256,
       sourceBytes: staged.legacyB0Bytes,
-      paragraphs: staged.ir.paragraphs.length,
-      acceptanceCriteria: staged.ir.acceptanceCriteria.length,
+      paragraphs: canonicalIr.paragraphs.length,
+      acceptanceCriteria: canonicalIr.acceptanceCriteria.length,
       stagedSourcePath,
       stagedIrPath,
+      stagedAdapterResultPath,
     };
   } finally {
     fs.rmSync(candidateDir, { recursive: true, force: true });

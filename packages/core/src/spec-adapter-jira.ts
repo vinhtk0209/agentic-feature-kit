@@ -25,6 +25,7 @@ export const JIRA_SPEC_ADAPTER_DESCRIPTOR = createSpecAdapterDescriptor({
   providerId: 'jira',
   inputKind: 'utf8-json',
   outputSchemaVersion: SPEC_ADAPTER_RESULT_SCHEMA_VERSION,
+  sourceKinds: ['jira'],
   configurationRequirements: ['base-url', 'field-mapping'],
   unsupportedBehavior: 'explicit-field-names',
 })

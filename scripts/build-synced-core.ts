@@ -21,6 +21,10 @@ export const SYNCED_CORE_FILES = [
   'privacy-policy.ts',
   'privacy-writer.ts',
   'project-intelligence.ts',
+  'semantic-spec.ts',
+  'spec-adapter-spec-ir.ts',
+  'spec-adapter.ts',
+  'spec-ir.ts',
   'stack-portability.ts',
 ] as const
 

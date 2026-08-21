@@ -25,6 +25,7 @@ export const AZURE_DEVOPS_SPEC_ADAPTER_DESCRIPTOR = createSpecAdapterDescriptor(
   providerId: 'azure-devops',
   inputKind: 'utf8-json',
   outputSchemaVersion: SPEC_ADAPTER_RESULT_SCHEMA_VERSION,
+  sourceKinds: ['azure-devops'],
   configurationRequirements: ['base-url', 'field-mapping'],
   unsupportedBehavior: 'explicit-field-names',
 })
