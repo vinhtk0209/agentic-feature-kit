@@ -156,7 +156,9 @@ PLAYWRIGHT_REFRESH_TOKEN=...
 PLAYWRIGHT_TOKEN_EXPIRES_AT=... # epoch ms
 ```
 
-> Shortcut: `npm run workflow:login` populates all three Playwright tokens automatically.
+> `npm run workflow:login` authenticates only the kit license. It does not populate Playwright
+> access, refresh, or expiry credentials. Follow project-specific authentication
+> instructions and keep any resulting credential file gitignored.
 
 > **Why `PUBLIC_PATH` matters**: SPAs with a non-root deploy path (webpack `PUBLIC_PATH`) serve
 > their HTML at `http://localhost:<port>/<PUBLIC_PATH>/`. Without this prefix React Router cannot

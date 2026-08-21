@@ -2735,6 +2735,12 @@
       "reasonCode": "required-release-control"
     },
     {
+      "path": "docs/roadmap/p17-019-a1-credential-lifecycle-input-lock-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-021-distributed-control-panel-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3822,6 +3828,12 @@
     },
     {
       "path": "scripts/post-17-control-plane-topology.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-credential-lifecycle-input-lock-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
