@@ -45,6 +45,8 @@ test('CLI emits validated raw-US IR JSON with literal injection text preserved a
   assert.strictEqual(result.status, 0, result.stderr);
   const ir = JSON.parse(result.stdout);
   assert.strictEqual(ir.sourceKind, 'raw-us');
+  assert.match(ir.sourceRef, /^local:raw-us:[0-9a-f]{64}$/);
+  assert.ok(!result.stdout.includes(input), 'CLI result must not disclose the source filesystem path');
   assert.strictEqual(ir.acceptanceCriteria[0].text, payload);
   assert.strictEqual(ir.acceptanceCriteria[0].sourceAnchor, 'line:3');
 });

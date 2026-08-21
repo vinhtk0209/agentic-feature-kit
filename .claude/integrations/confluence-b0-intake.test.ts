@@ -32,6 +32,19 @@ async function main(): Promise<void> {
   assert.equal(result.acceptanceCriteria, 2);
   const ir = JSON.parse(fs.readFileSync(path.join(stagingDir, '.incoming-spec.ir.json'), 'utf8'));
   assert.equal(ir.sourceSha256, result.sourceSha256);
+  assert.equal(ir.sourceKind, 'confluence');
+  assert.equal(ir.sourceRef, 'confluence:424242');
+  const adapterResult = JSON.parse(fs.readFileSync(path.join(stagingDir, '.incoming-spec.adapter-result.json'), 'utf8'));
+  assert.deepEqual(adapterResult.source, {
+    sourceKind: ir.sourceKind,
+    sourceRef: ir.sourceRef,
+    sourceSha256: ir.sourceSha256,
+    title: ir.title,
+    paragraphs: ir.paragraphs,
+    acceptanceCriteria: ir.acceptanceCriteria,
+  });
+  assert.equal(result.stagedAdapterResultPath, path.join(stagingDir, '.incoming-spec.adapter-result.json'));
+  assert.doesNotMatch(JSON.stringify(adapterResult), /\.confluence-b0-candidate-|confluence-b0-intake-/);
 
   let actorCalls = 0;
   const line = await runConfluenceB0Intake({
@@ -48,6 +61,17 @@ async function main(): Promise<void> {
   assert.match(line, new RegExp(`^${B0_CONFLUENCE_INTAKE_SENTINEL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} `));
   assert.doesNotMatch(line, /not-logged/);
 
+  const blockedDestination = tempDir();
+  const blockedResultPath = path.join(blockedDestination, '.incoming-spec.adapter-result.json');
+  fs.mkdirSync(blockedResultPath);
+  assert.throws(
+    () => stageConfluenceB0FromActorOutput({ rawUrl: URL, actorOutput, stagingDir: blockedDestination }),
+    /destination must be a regular file/,
+  );
+  assert.equal(fs.existsSync(path.join(blockedDestination, '.incoming-spec.md')), false, 'blocked publish must not leave source');
+  assert.equal(fs.existsSync(path.join(blockedDestination, '.incoming-spec.ir.json')), false, 'blocked publish must not leave IR');
+  assert.equal(fs.statSync(blockedResultPath).isDirectory(), true, 'blocked destination must remain untouched');
+
   for (const invalid of [
     '',
     'ordinary output',
@@ -62,9 +86,10 @@ async function main(): Promise<void> {
     );
     assert.equal(fs.existsSync(path.join(untouched, '.incoming-spec.md')), false, 'invalid evidence must not stage source');
     assert.equal(fs.existsSync(path.join(untouched, '.incoming-spec.ir.json')), false, 'invalid evidence must not stage IR');
+    assert.equal(fs.existsSync(path.join(untouched, '.incoming-spec.adapter-result.json')), false, 'invalid evidence must not stage adapter result');
   }
 
-  console.log('Canary GREEN: provider-neutral B0 reuses the exact refetch parser, stages byte-identical source plus Spec-IR, and rejects missing/malformed/duplicate/forged sentinel evidence before writes.');
+  console.log('Canary GREEN: provider-neutral B0 stages byte-identical source plus canonical SpecIR and adapter result, then rejects missing/malformed/duplicate/forged sentinel evidence before writes.');
 }
 
 main().catch((error) => {
