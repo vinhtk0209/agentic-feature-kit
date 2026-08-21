@@ -189,6 +189,54 @@ and semantic transforms must conserve requirement identities and provenance.
 The public JSON Schema is `docs/schemas/semantic-spec.schema.json`. Source transports remain adapter
 concerns and are deliberately outside this core contract.
 
+### Provider-neutral specification adapters (P17-004 A2A–A2E)
+
+`src/spec-adapter.ts` defines the provider-neutral `SpecAdapterResult` schema `1.1.0`, exact frozen
+capability discovery, bounded byte/result contracts, stable closed errors, and field-conservation
+rules. Discovery reads only caller-registered descriptors; it does not inspect packages, execute an
+adapter, read environment or credentials, or contact a provider.
+
+`src/spec-adapter-jira.ts` and `src/spec-adapter-azure-devops.ts` parse only the closed ADF and HTML
+subsets documented by the A2A plan. They accept exact `Uint8Array` input, use an injected SHA-256
+port before fatal UTF-8/JSON parsing, preserve literal anchors, and expose unsupported field names
+without their values. `src/spec-adapter-node.ts` is the isolated Node SHA-256 implementation.
+
+The public result schema is `docs/schemas/spec-adapter-result.schema.json`. A2A performs no network,
+filesystem, auth, CLI, or provider-bundle work.
+
+`src/spec-ir.ts` is the single `SpecIR` authority. `src/spec-adapter-spec-ir.ts` validates an already
+parsed IR and maps it to the same result contract without source I/O or reparsing. The A2B integration
+composer gives local files opaque `local:<kind>:<sha256>` identities, while Confluence B0 uses
+`confluence:<page-id>`; both write the compatibility IR plus a provider-neutral result and B1 consumes
+only `adapterResult.source`. Warning text remains private and is represented only by the unsupported
+field name `warnings`.
+
+`src/spec-adapter-fetch.ts` adds the A2C single-item application contract. It builds one deterministic
+credential-free Jira Cloud or Azure DevOps Services request, calls a destination-bound injected port,
+validates a bounded exact-byte response, and sends those bytes unchanged to A2A. The provider parsers
+admit only locked wire metadata names (`self`/`expand` or `_links`) and never expose their values.
+
+`src/spec-adapter-fetch-node.ts` adds the A2D production Node boundary without adding ambient
+credential discovery. Jira uses an exact OAuth 2.0 3LO gateway base with `read:jira-work`; Azure
+DevOps uses the exact Services origin with Microsoft Entra bearer and `vso.work`. A dedicated token
+byte view transfers into a frozen, destination-bound, single-use descriptor, is zeroized on transfer,
+and its private copy is zeroized after every terminal path. The transport rejects endpoint/query
+confusion before consuming the credential, disables redirects, owns the 12-second abort deadline,
+streams under the 256 KiB cap, returns fresh bytes, and collapses diagnostics to closed codes.
+
+`src/spec-adapter-live-proof.ts` adds the pure A2E readiness and content-addressed receipt contract.
+`src/spec-adapter-live-proof-node.ts` accepts one exact A2C item input plus an already-created A2D
+bearer descriptor and constructs the A2D capability internally with default Node dependencies. It
+performs at most one read-only execution and returns only closed metadata; no caller-supplied port,
+fetch implementation, timer, dependency bag, raw token, item coordinate, source reference, content,
+or low-level diagnostic enters a receipt.
+
+P17-004 remains in progress because real Jira and Azure DevOps live receipts and provider-package
+exposure are separate gates. A2E tests patch only global fetch with synthetic payloads to qualify the
+offline contract; current live readiness is `needs_input` for both providers. A2E does not contact a
+provider, acquire or refresh credentials, add plugin permissions, sync targets, bump a version, or
+publish a package.
+
 ## Conditional Quality Gates
 
 `src/conditional-quality-gates.ts` consumes a validated Project Profile plus bounded feature-change
