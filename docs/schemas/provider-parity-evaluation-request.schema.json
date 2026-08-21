@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vinhtk0209/agentic-feature-kit/blob/main/docs/schemas/provider-parity-evaluation-request.schema.json",
+  "title": "Provider parity evaluation request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "evaluationId", "mode", "golden", "receipts"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "evaluationId": { "$ref": "#/$defs/safeId" },
+    "mode": { "enum": ["qualification", "performance"] },
+    "golden": { "$ref": "#/$defs/golden" },
+    "receipts": {
+      "type": "array",
+      "maxItems": 300,
+      "items": { "$ref": "#/$defs/receipt" }
+    }
+  },
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "isoInstant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "phaseBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phaseId", "phaseContractSha256"],
+      "properties": {
+        "phaseId": { "enum": ["B3", "B10", "B11"] },
+        "phaseContractSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimumSemanticRunsPerProvider", "minimumPerformanceRunsPerProvider", "maxRunDurationMs", "maxCapturedOutputBytes", "attemptsPerRun", "rankingWhenIncomplete"],
+      "properties": {
+        "minimumSemanticRunsPerProvider": { "type": "integer", "minimum": 1 },
+        "minimumPerformanceRunsPerProvider": { "type": "integer", "minimum": 1 },
+        "maxRunDurationMs": { "type": "integer", "minimum": 1 },
+        "maxCapturedOutputBytes": { "type": "integer", "minimum": 1 },
+        "attemptsPerRun": { "const": 1 },
+        "rankingWhenIncomplete": { "const": "forbidden" }
+      }
+    },
+    "golden": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixtureId", "fixtureRevision", "fixtureSha256", "semanticSpecSha256", "taskPromptSha256", "seedTreeSha256", "providers", "acceptanceCriterionIds", "requiredArtifactClasses", "phaseBindings", "policy"],
+      "properties": {
+        "fixtureId": { "$ref": "#/$defs/safeId" },
+        "fixtureRevision": { "type": "integer", "minimum": 1 },
+        "fixtureSha256": { "$ref": "#/$defs/sha256" },
+        "semanticSpecSha256": { "$ref": "#/$defs/sha256" },
+        "taskPromptSha256": { "$ref": "#/$defs/sha256" },
+        "seedTreeSha256": { "$ref": "#/$defs/sha256" },
+        "providers": {
+          "type": "array",
+          "prefixItems": [{ "const": "codex" }, { "const": "claude" }, { "const": "copilot" }],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "acceptanceCriterionIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/safeId" }
+        },
+        "requiredArtifactClasses": {
+          "type": "array",
+          "prefixItems": [{ "const": "plan" }, { "const": "implementation" }, { "const": "test" }, { "const": "trusted-verification" }],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "phaseBindings": {
+          "type": "array",
+          "prefixItems": [
+            { "allOf": [{ "$ref": "#/$defs/phaseBinding" }, { "properties": { "phaseId": { "const": "B3" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/phaseBinding" }, { "properties": { "phaseId": { "const": "B10" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/phaseBinding" }, { "properties": { "phaseId": { "const": "B11" } } }] }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "policy": { "$ref": "#/$defs/policy" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reasonCodes"],
+      "properties": {
+        "state": { "enum": ["completed", "needs_input", "failed"] },
+        "reasonCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["cli_missing", "runtime_entitlement_missing", "authorization_missing", "model_unavailable", "cost_policy_unknown", "timeout", "output_overflow", "provider_refused", "malformed_event", "unauthorized_tool", "unauthorized_network", "process_failed"]
+          }
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixtureId", "fixtureRevision", "fixtureSha256", "semanticSpecSha256", "taskPromptSha256", "seedTreeSha256", "phaseBindings", "runnerId", "cliVersion", "modelId", "reasoningEffort", "adapterCapabilitySha256", "runtimeEntitlementEvidenceSha256", "materializedTreeSha256", "executionPolicySha256", "authorizationReceiptSha256", "sourceCommit", "observedAt", "timeoutMs", "maxCapturedOutputBytes", "attemptOrdinal"],
+      "properties": {
+        "fixtureId": { "$ref": "#/$defs/safeId" },
+        "fixtureRevision": { "type": "integer", "minimum": 1 },
+        "fixtureSha256": { "$ref": "#/$defs/sha256" },
+        "semanticSpecSha256": { "$ref": "#/$defs/sha256" },
+        "taskPromptSha256": { "$ref": "#/$defs/sha256" },
+        "seedTreeSha256": { "$ref": "#/$defs/sha256" },
+        "phaseBindings": {
+          "type": "array",
+          "prefixItems": [
+            { "allOf": [{ "$ref": "#/$defs/phaseBinding" }, { "properties": { "phaseId": { "const": "B3" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/phaseBinding" }, { "properties": { "phaseId": { "const": "B10" } } }] },
+            { "allOf": [{ "$ref": "#/$defs/phaseBinding" }, { "properties": { "phaseId": { "const": "B11" } } }] }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "runnerId": { "$ref": "#/$defs/safeId" },
+        "cliVersion": { "oneOf": [{ "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}$" }, { "type": "null" }] },
+        "modelId": { "$ref": "#/$defs/safeId" },
+        "reasoningEffort": { "oneOf": [{ "$ref": "#/$defs/safeId" }, { "type": "null" }] },
+        "adapterCapabilitySha256": { "$ref": "#/$defs/sha256" },
+        "runtimeEntitlementEvidenceSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "materializedTreeSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "executionPolicySha256": { "$ref": "#/$defs/sha256" },
+        "authorizationReceiptSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "sourceCommit": { "$ref": "#/$defs/sourceCommit" },
+        "observedAt": { "$ref": "#/$defs/isoInstant" },
+        "timeoutMs": { "type": "integer", "minimum": 1 },
+        "maxCapturedOutputBytes": { "type": "integer", "minimum": 1 },
+        "attemptOrdinal": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "evidenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "evidenceSha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/safeId" },
+        "evidenceSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "artifactEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactClass", "evidenceSha256"],
+      "properties": {
+        "artifactClass": { "enum": ["plan", "implementation", "test", "trusted-verification"] },
+        "evidenceSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "gateEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phaseId", "conserved", "evidenceSha256"],
+      "properties": {
+        "phaseId": { "enum": ["B3", "B10", "B11"] },
+        "conserved": { "type": "boolean" },
+        "evidenceSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "trustedVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exitCode", "evidenceSha256"],
+      "properties": {
+        "exitCode": { "type": "integer", "minimum": 0 },
+        "evidenceSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "violations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lockedPathEdit", "undeclaredPath", "externalDependency", "secretOrPathDisclosure", "permissionWidening", "cleanupFailed"],
+      "properties": {
+        "lockedPathEdit": { "type": "boolean" },
+        "undeclaredPath": { "type": "boolean" },
+        "externalDependency": { "type": "boolean" },
+        "secretOrPathDisclosure": { "type": "boolean" },
+        "permissionWidening": { "type": "boolean" },
+        "cleanupFailed": { "type": "boolean" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acceptanceCriteria", "artifacts", "gates", "apiContractConserved", "trustedVerification", "violations"],
+      "properties": {
+        "acceptanceCriteria": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/evidenceEntry" } },
+        "artifacts": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/artifactEvidence" } },
+        "gates": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/gateEvidence" } },
+        "apiContractConserved": { "type": ["boolean", "null"] },
+        "trustedVerification": { "oneOf": [{ "$ref": "#/$defs/trustedVerification" }, { "type": "null" }] },
+        "violations": { "oneOf": [{ "$ref": "#/$defs/violations" }, { "type": "null" }] }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["durationMs", "inputTokens", "outputTokens", "cacheTokens", "pricingStatus", "priceBasisSha256", "costUsd"],
+      "properties": {
+        "durationMs": { "type": ["number", "null"], "minimum": 0 },
+        "inputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "outputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "cacheTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "pricingStatus": { "enum": ["priced", "unpriced"] },
+        "priceBasisSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "costUsd": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "runId", "provider", "execution", "identity", "evidence", "metrics", "receiptHash"],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" },
+        "runId": { "$ref": "#/$defs/safeId" },
+        "provider": { "enum": ["codex", "claude", "copilot"] },
+        "execution": { "$ref": "#/$defs/execution" },
+        "identity": { "$ref": "#/$defs/identity" },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "metrics": { "$ref": "#/$defs/metrics" },
+        "receiptHash": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

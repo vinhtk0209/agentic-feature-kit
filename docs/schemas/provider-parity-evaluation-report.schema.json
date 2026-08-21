@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/vinhtk0209/agentic-feature-kit/blob/main/docs/schemas/provider-parity-evaluation-report.schema.json",
+  "title": "Provider parity evaluation report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "evaluationId", "mode", "requestHash", "status", "providerOrder", "receiptEvaluations", "missingProviders", "pairwiseComparisons", "ranking", "reportHash"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "evaluationId": { "$ref": "#/$defs/safeId" },
+    "mode": { "enum": ["qualification", "performance"] },
+    "requestHash": { "$ref": "#/$defs/sha256" },
+    "status": { "enum": ["needs_input", "passed", "failed", "incomplete"] },
+    "providerOrder": {
+      "type": "array",
+      "prefixItems": [{ "const": "codex" }, { "const": "claude" }, { "const": "copilot" }],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "receiptEvaluations": { "type": "array", "items": { "$ref": "#/$defs/receiptEvaluation" } },
+    "missingProviders": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/provider" } },
+    "pairwiseComparisons": { "type": "array", "items": { "$ref": "#/$defs/pairwise" } },
+    "ranking": { "$ref": "#/$defs/ranking" },
+    "reportHash": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "safeId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "provider": { "enum": ["codex", "claude", "copilot"] },
+    "ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+    "receiptEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "runId", "receiptHash", "status", "reasonCodes", "acceptanceCriterionCoverage", "artifactCoverage", "gateConservation", "apiContractConserved", "trustedVerificationPassed", "implementationTreeSha256", "durationMs", "inputTokens", "outputTokens", "cacheTokens", "pricingStatus", "costUsd", "evaluationHash"],
+      "properties": {
+        "provider": { "$ref": "#/$defs/provider" },
+        "runId": { "$ref": "#/$defs/safeId" },
+        "receiptHash": { "$ref": "#/$defs/sha256" },
+        "status": { "enum": ["needs_input", "passed", "failed"] },
+        "reasonCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["cli_missing", "runtime_entitlement_missing", "authorization_missing", "model_unavailable", "cost_policy_unknown", "timeout", "output_overflow", "provider_refused", "malformed_event", "unauthorized_tool", "unauthorized_network", "process_failed", "fixture_identity_mismatch", "phase_identity_mismatch", "execution_policy_mismatch", "acceptance_criteria_missing", "artifact_missing", "gate_not_conserved", "api_contract_changed", "trusted_verification_failed", "locked_path_changed", "undeclared_path", "external_dependency", "secret_or_path_disclosure", "permission_widened", "cleanup_failed"]
+          }
+        },
+        "acceptanceCriterionCoverage": { "$ref": "#/$defs/ratio" },
+        "artifactCoverage": { "$ref": "#/$defs/ratio" },
+        "gateConservation": { "$ref": "#/$defs/ratio" },
+        "apiContractConserved": { "type": "boolean" },
+        "trustedVerificationPassed": { "type": "boolean" },
+        "implementationTreeSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "durationMs": { "type": ["number", "null"], "minimum": 0 },
+        "inputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "outputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "cacheTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "pricingStatus": { "enum": ["priced", "unpriced"] },
+        "costUsd": { "type": ["number", "null"], "minimum": 0 },
+        "evaluationHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "pairwise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["leftProvider", "rightProvider", "semanticSimilarity", "artifactSimilarity", "gateSimilarity", "implementationTreeEqual"],
+      "properties": {
+        "leftProvider": { "$ref": "#/$defs/provider" },
+        "rightProvider": { "$ref": "#/$defs/provider" },
+        "semanticSimilarity": { "$ref": "#/$defs/ratio" },
+        "artifactSimilarity": { "$ref": "#/$defs/ratio" },
+        "gateSimilarity": { "$ref": "#/$defs/ratio" },
+        "implementationTreeEqual": { "type": "boolean" }
+      }
+    },
+    "rankingRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "sampleCount", "averageDurationMs", "totalInputTokens", "totalOutputTokens", "totalCacheTokens", "averageCostUsd"],
+      "properties": {
+        "provider": { "$ref": "#/$defs/provider" },
+        "sampleCount": { "type": "integer", "minimum": 1 },
+        "averageDurationMs": { "type": "number", "minimum": 0 },
+        "totalInputTokens": { "type": "integer", "minimum": 0 },
+        "totalOutputTokens": { "type": "integer", "minimum": 0 },
+        "totalCacheTokens": { "type": "integer", "minimum": 0 },
+        "averageCostUsd": { "type": "number", "minimum": 0 }
+      }
+    },
+    "ranking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reasonCodes", "rows"],
+      "properties": {
+        "status": { "enum": ["forbidden", "ready"] },
+        "reasonCodes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["qualification_mode", "qualification_incomplete", "insufficient_samples", "missing_metrics", "unpriced_samples", "mixed_identity"] }
+        },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/rankingRow" } }
+      }
+    }
+  }
+}

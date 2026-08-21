@@ -117,7 +117,12 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   later runs require exact runtime entitlement, model/adapter/execution identities, isolated copies,
   fixed `shell:false` argv, one attempt, metadata-only receipts, and independent verification.
   Transport smoke never qualifies, and ranking is forbidden with incomplete providers or samples.
-  A1 completes readiness and moves P17-007 to `in_progress`; it performs no provider execution.
+  A1 completes readiness and moves P17-007 to `in_progress`; it performs no provider execution. A2
+  adds the provider-neutral pure evaluator and closed request/report schemas: exact same-input
+  identity, semantic/artifact/gate/API/trusted-evidence conservation, metadata-only pairwise
+  similarity, and fail-closed performance-ranking readiness. It performs no process, filesystem,
+  network, credential, dashboard, or model call. A3 attacked adapters, A4 fresh three-provider
+  receipts, and dashboard/evidence closeout remain required before P17-007 can become `done`.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness

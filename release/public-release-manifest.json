@@ -2291,6 +2291,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-provider-parity-a2-pure-evaluator-2026-08-21.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-public-release-input-2026-08-14.md",
       "decision": "include",
       "contentKind": "text",
@@ -2538,6 +2544,12 @@
     },
     {
       "path": "docs/roadmap/p17-007-a1-provider-parity-input-lock-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-007-a2-provider-parity-evaluator-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -2993,6 +3005,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/schemas/provider-parity-evaluation-report.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/schemas/provider-parity-evaluation-request.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/schemas/semantic-spec.schema.json",
       "decision": "include",
       "contentKind": "text",
@@ -3305,6 +3329,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/provider-parity-evaluator.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/semantic-spec.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3570,6 +3600,12 @@
     },
     {
       "path": "packages/core/test/provider-bundles.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/provider-parity-evaluator.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4272,6 +4308,12 @@
     },
     {
       "path": "scripts/post-17-privacy-writer-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-provider-parity-evaluator-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
