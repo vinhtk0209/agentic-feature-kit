@@ -500,6 +500,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/spec-adapter-fetch.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/spec-adapter-spec-ir.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2453,6 +2459,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-004-a2c-single-item-fetch-contract-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-006-phase-model-routing-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3227,6 +3239,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/spec-adapter-fetch.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/spec-adapter-jira.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3462,6 +3480,12 @@
     },
     {
       "path": "packages/core/test/semantic-spec.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/spec-adapter-fetch.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4254,6 +4278,12 @@
     },
     {
       "path": "scripts/post-17-spec-adapter-input-lock.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-spec-adapter-live-fetch-contract-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

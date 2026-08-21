@@ -86,6 +86,27 @@ run('Azure DevOps exact bytes produce the locked A1 application result', () => {
   assert.deepEqual(azureResult.unsupportedFields, azureFixture.expected.unsupportedFields)
 })
 
+run('official wire metadata names are ignored without admitting unknown top-level fields', () => {
+  const jiraWire = { ...structuredClone(jiraFixture.payload), self: 'SECRET-JIRA-SELF', expand: 'SECRET-JIRA-EXPAND' }
+  const jiraWireResult = jiraAdapter.adapt({ sourceBytes: bytes(jiraWire), sourceRef: 'SYN-JIRA-WIRE' })
+  assert.ok(!JSON.stringify(jiraWireResult).includes('SECRET-JIRA'))
+
+  const azureWire = { ...structuredClone(azureFixture.payload), _links: { self: 'SECRET-AZURE-LINK' } }
+  const azureWireResult = azureAdapter.adapt({ sourceBytes: bytes(azureWire), sourceRef: 'SYN-AZURE-WIRE' })
+  assert.ok(!JSON.stringify(azureWireResult).includes('SECRET-AZURE-LINK'))
+
+  expectCode(
+    () => jiraAdapter.adapt({ sourceBytes: bytes({ ...jiraWire, changelog: 'SECRET-CHANGELOG' }), sourceRef: 'SYN-JIRA-EXTRA' }),
+    'INVALID_PAYLOAD',
+    'SECRET-CHANGELOG',
+  )
+  expectCode(
+    () => azureAdapter.adapt({ sourceBytes: bytes({ ...azureWire, relations: ['SECRET-RELATION'] }), sourceRef: 'SYN-AZURE-EXTRA' }),
+    'INVALID_PAYLOAD',
+    'SECRET-RELATION',
+  )
+})
+
 run('cross-provider normalization shares meaning while preserving provenance', () => {
   const jiraSpec = normalizeSemanticSpec(jiraResult.source)
   const azureSpec = normalizeSemanticSpec(azureResult.source)

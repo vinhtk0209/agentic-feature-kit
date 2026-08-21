@@ -189,7 +189,7 @@ and semantic transforms must conserve requirement identities and provenance.
 The public JSON Schema is `docs/schemas/semantic-spec.schema.json`. Source transports remain adapter
 concerns and are deliberately outside this core contract.
 
-### Provider-neutral specification adapters (P17-004 A2A–A2B)
+### Provider-neutral specification adapters (P17-004 A2A–A2C)
 
 `src/spec-adapter.ts` defines the provider-neutral `SpecAdapterResult` schema `1.1.0`, exact frozen
 capability discovery, bounded byte/result contracts, stable closed errors, and field-conservation
@@ -211,9 +211,14 @@ composer gives local files opaque `local:<kind>:<sha256>` identities, while Conf
 only `adapterResult.source`. Warning text remains private and is represented only by the unsupported
 field name `warnings`.
 
-P17-004 remains in progress because live Jira/Azure DevOps I/O, credentials, and provider-package
-exposure are separate slices. A2B does not add network access, tokens, sync, target writes, a version
-bump, or plugin publication.
+`src/spec-adapter-fetch.ts` adds the A2C single-item application contract. It builds one deterministic
+credential-free Jira Cloud or Azure DevOps Services request, calls a destination-bound injected port,
+validates a bounded exact-byte response, and sends those bytes unchanged to A2A. The provider parsers
+admit only locked wire metadata names (`self`/`expand` or `_links`) and never expose their values.
+
+P17-004 remains in progress because a production Node port, live credential proof, and provider-
+package exposure are separate slices. A2C does not add network access, tokens, sync, target writes,
+a version bump, or plugin publication.
 
 ## Conditional Quality Gates
 

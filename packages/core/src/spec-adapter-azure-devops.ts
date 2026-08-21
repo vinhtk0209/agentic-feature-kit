@@ -43,6 +43,13 @@ function exactKeys(value: Record<string, unknown>, expected: readonly string[]):
   return JSON.stringify(Object.keys(value).sort(compare)) === JSON.stringify([...expected].sort(compare))
 }
 
+function wireKeys(value: Record<string, unknown>): boolean {
+  const actual = Object.keys(value)
+  const allowed = new Set(['id', 'rev', 'fields', 'url', '_links'])
+  return ['id', 'rev', 'fields', 'url'].every((key) => Object.prototype.hasOwnProperty.call(value, key))
+    && actual.every((key) => allowed.has(key))
+}
+
 function normalizeText(value: string): string {
   return value.normalize('NFKC').replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -141,7 +148,7 @@ export function createAzureDevOpsSpecAdapter(config: SpecAdapterConfig, hashPort
     descriptor: AZURE_DEVOPS_SPEC_ADAPTER_DESCRIPTOR,
     adapt(input: Readonly<SpecAdapterInput>) {
       const parsed = parseSpecAdapterJsonBytes(input, ADAPTER_ID, hashPort)
-      if (!isRecord(parsed.value) || !exactKeys(parsed.value, ['id', 'rev', 'fields', 'url'])) fail('INVALID_PAYLOAD')
+      if (!isRecord(parsed.value) || !wireKeys(parsed.value)) fail('INVALID_PAYLOAD')
       if (!Number.isSafeInteger(parsed.value.id) || (parsed.value.id as number) <= 0 || !Number.isSafeInteger(parsed.value.rev) || (parsed.value.rev as number) <= 0) {
         fail('INVALID_PAYLOAD')
       }

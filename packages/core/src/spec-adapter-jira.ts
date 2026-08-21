@@ -43,6 +43,13 @@ function exactKeys(value: Record<string, unknown>, expected: readonly string[]):
   return JSON.stringify(Object.keys(value).sort(compare)) === JSON.stringify([...expected].sort(compare))
 }
 
+function wireKeys(value: Record<string, unknown>): boolean {
+  const actual = Object.keys(value)
+  const allowed = new Set(['id', 'key', 'fields', 'self', 'expand'])
+  return ['id', 'key', 'fields'].every((key) => Object.prototype.hasOwnProperty.call(value, key))
+    && actual.every((key) => allowed.has(key))
+}
+
 function normalizeText(value: string): string {
   return value.normalize('NFKC').replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -94,7 +101,7 @@ export function createJiraSpecAdapter(config: SpecAdapterConfig, hashPort: SpecA
     descriptor: JIRA_SPEC_ADAPTER_DESCRIPTOR,
     adapt(input: Readonly<SpecAdapterInput>) {
       const parsed = parseSpecAdapterJsonBytes(input, ADAPTER_ID, hashPort)
-      if (!isRecord(parsed.value) || !exactKeys(parsed.value, ['id', 'key', 'fields'])) fail('INVALID_PAYLOAD')
+      if (!isRecord(parsed.value) || !wireKeys(parsed.value)) fail('INVALID_PAYLOAD')
       if (typeof parsed.value.id !== 'string' || parsed.value.id.trim() === '' || typeof parsed.value.key !== 'string' || parsed.value.key.trim() === '') {
         fail('INVALID_PAYLOAD')
       }
