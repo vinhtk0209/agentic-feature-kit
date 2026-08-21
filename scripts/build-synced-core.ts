@@ -24,6 +24,8 @@ export const SYNCED_CORE_FILES = [
   'semantic-spec.ts',
   'spec-adapter-fetch-node.ts',
   'spec-adapter-fetch.ts',
+  'spec-adapter-live-proof-node.ts',
+  'spec-adapter-live-proof.ts',
   'spec-adapter-spec-ir.ts',
   'spec-adapter.ts',
   'spec-ir.ts',

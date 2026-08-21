@@ -189,7 +189,7 @@ and semantic transforms must conserve requirement identities and provenance.
 The public JSON Schema is `docs/schemas/semantic-spec.schema.json`. Source transports remain adapter
 concerns and are deliberately outside this core contract.
 
-### Provider-neutral specification adapters (P17-004 A2A–A2D)
+### Provider-neutral specification adapters (P17-004 A2A–A2E)
 
 `src/spec-adapter.ts` defines the provider-neutral `SpecAdapterResult` schema `1.1.0`, exact frozen
 capability discovery, bounded byte/result contracts, stable closed errors, and field-conservation
@@ -224,9 +224,18 @@ and its private copy is zeroized after every terminal path. The transport reject
 confusion before consuming the credential, disables redirects, owns the 12-second abort deadline,
 streams under the 256 KiB cap, returns fresh bytes, and collapses diagnostics to closed codes.
 
-P17-004 remains in progress because live credential proof and provider-package exposure are separate
-gates. A2D tests only fake fetch and synthetic token bytes; it does not contact providers, acquire or
-refresh credentials, add plugin permissions, sync targets, bump a version, or publish a package.
+`src/spec-adapter-live-proof.ts` adds the pure A2E readiness and content-addressed receipt contract.
+`src/spec-adapter-live-proof-node.ts` accepts one exact A2C item input plus an already-created A2D
+bearer descriptor and constructs the A2D capability internally with default Node dependencies. It
+performs at most one read-only execution and returns only closed metadata; no caller-supplied port,
+fetch implementation, timer, dependency bag, raw token, item coordinate, source reference, content,
+or low-level diagnostic enters a receipt.
+
+P17-004 remains in progress because real Jira and Azure DevOps live receipts and provider-package
+exposure are separate gates. A2E tests patch only global fetch with synthetic payloads to qualify the
+offline contract; current live readiness is `needs_input` for both providers. A2E does not contact a
+provider, acquire or refresh credentials, add plugin permissions, sync targets, bump a version, or
+publish a package.
 
 ## Conditional Quality Gates
 

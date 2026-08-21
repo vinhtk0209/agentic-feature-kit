@@ -512,6 +512,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/core/spec-adapter-live-proof-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/core/spec-adapter-live-proof.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/core/spec-adapter-spec-ir.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2489,6 +2501,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-004-a2e-live-proof-boundary-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-006-phase-model-routing-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -3281,6 +3299,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/spec-adapter-live-proof-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/src/spec-adapter-live-proof.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/spec-adapter-node.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3522,6 +3552,12 @@
     },
     {
       "path": "packages/core/test/spec-adapter-fetch.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/spec-adapter-live-proof.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4320,6 +4356,12 @@
     },
     {
       "path": "scripts/post-17-spec-adapter-live-fetch-contract-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-spec-adapter-live-proof-boundary-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

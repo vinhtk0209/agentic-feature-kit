@@ -95,7 +95,9 @@ deterministic artifact safely, the roadmap should prepare and test it before req
 
 - **P17-004 (`S1/F1/P1/M1/U1/C1/D1/R1/E1/N1` + A2B
   `migration=M1/authority=A1/bridge=B1/confluence=C1/local=L1/staging=S1/privacy=P1/language=T1/scope=N1`
-  + A2C `boundary=B1/request=Q1/bytes=Y1/jira=J1/azure=Z1/auth=C1/failure=E1/privacy=P1/testing=T1/language=L1/scope=N1`):** the P17-003 `SemanticSourceInput` remains
+  + A2C `boundary=B1/request=Q1/bytes=Y1/jira=J1/azure=Z1/auth=C1/failure=E1/privacy=P1/testing=T1/language=L1/scope=N1`
+  + A2D `destination=D1/auth=A1/credential=C1/transport=T1/timeout=O1/bytes=B1/failure=E1/privacy=P1/testing=V1/language=L1/scope=N1`
+  + A2E `boundary=B1/input=I1/readiness=R1/provenance=P1/execution=X1/receipt=E1/integrity=H1/failure=F1/privacy=V1/testing=T1/language=L1/scope=N1`):** the P17-003 `SemanticSourceInput` remains
   canonical; approved Jira/Azure DevOps inputs are synthetic reserved-host exports with exact
   provider anchors, complete mapped-or-unsupported field ownership, and zero tenant/person data.
   A2A added frozen explicit discovery, exact-byte Jira ADF and Azure DevOps HTML
@@ -105,11 +107,11 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   identities, writes dual B0 artifacts, and constrains B1 to `adapterResult.source`. Cross-provider
   fixtures share semantic identity while retaining distinct provenance. A2C builds one deterministic
   credential-free single-item request through an injected destination-bound port, preserves exact
-  response bytes, and admits only bounded official wire metadata names. A2D input lock
-  `destination=D1/auth=A1/credential=C1/transport=T1/timeout=O1/bytes=B1/failure=E1/privacy=P1/testing=V1/language=L1/scope=N1`
-  corrects Jira 3LO exact gateway binding and adds a single-use bearer-only Node transport with fake-
-  fetch tests; live proof and provider-package exposure remain later gates. P17-004 remains
-  `in_progress`.
+  response bytes, and admits only bounded official wire metadata names. A2D corrects Jira 3LO exact
+  gateway binding and adds a single-use bearer-only Node transport with fake-fetch tests. A2E adds a
+  pure readiness/receipt contract plus a no-injection default-Node runner; synthetic tests prove only
+  offline composition, while real Jira and Azure receipts remain `needs_input`. Provider-package
+  exposure remains a later gate, so P17-004 remains `in_progress`.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness
