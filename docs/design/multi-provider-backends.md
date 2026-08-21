@@ -262,3 +262,24 @@ Model availability is runtime evidence. A documented model ID is not added to th
 catalog when the current account rejects it. Conversely, adding a model never creates a new gate:
 it requires a registry entry, an exact entitlement probe, model-specific effort declarations, and
 the same provider-neutral gate/evidence checks.
+
+## §10. Claude CLI output-adapter foundation
+
+P17-007 A3A adds one Claude-specific infrastructure adapter behind the existing `ProviderAdapter`
+port. Its command profile is derived from the current official Claude Code CLI and permission
+references: strict version probe; print-mode JSON; exact model and optional effort; bounded turns
+and estimated USD; safe mode; `dontAsk`; only `Read,Edit,Write` available and pre-approved; all MCP
+tools denied; Chrome disabled; and session persistence disabled.
+
+The adapter receives a fakeable `ClaudeProcessPort`, constructs fixed direct argv with `shell:false`,
+supplies the exact task prompt only through stdin, and normalizes only a successful bounded result
+string. It does not import a process, filesystem, environment, network, or credential API. Raw
+output, session IDs, UUIDs, permission denials,
+diagnostics, local paths, and client-estimated cost never cross the provider-neutral port. Cost
+remains `unknown` until an exact dated price-basis receipt can satisfy the parity evaluator.
+
+This is an output-adapter foundation, not the P17-007 runner. A later provider-neutral slice must
+still supply fresh fixture materialization, deny-default production environment, OS process-tree
+cleanup, allowed-path/tree enforcement, independent trusted verification, metadata-only A2 receipt
+assembly, managed-policy/hook attestation, and zero-residue deletion before any external provider
+run is eligible.

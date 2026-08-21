@@ -284,6 +284,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/claude-cli-adapter.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/claude-cli-adapter.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/cli-reliability.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2555,6 +2567,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-007-a3a-claude-cli-adapter-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-009-cross-platform-release-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -4308,6 +4326,12 @@
     },
     {
       "path": "scripts/post-17-privacy-writer-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-provider-parity-claude-adapter-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
