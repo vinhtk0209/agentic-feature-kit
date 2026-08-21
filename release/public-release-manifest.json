@@ -2543,6 +2543,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-007-a2-provider-parity-evaluator-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-009-cross-platform-release-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -2993,6 +2999,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/schemas/provider-parity-evaluation-report.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/schemas/provider-parity-evaluation-request.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/schemas/semantic-spec.schema.json",
       "decision": "include",
       "contentKind": "text",
@@ -3305,6 +3323,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/provider-parity-evaluator.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/semantic-spec.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3570,6 +3594,12 @@
     },
     {
       "path": "packages/core/test/provider-bundles.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/provider-parity-evaluator.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4272,6 +4302,12 @@
     },
     {
       "path": "scripts/post-17-privacy-writer-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-provider-parity-evaluator-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
