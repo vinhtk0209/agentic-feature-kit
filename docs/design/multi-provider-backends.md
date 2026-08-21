@@ -301,3 +301,25 @@ This boundary does not choose a safe per-run environment or prove a session, man
 fixture, verifier, or cleanup policy. The later isolated materializer/runner must construct those
 inputs, inventory the tree independently, execute the one trusted test, delete the run root, and
 derive the metadata-only A2 receipt before any provider run may qualify.
+
+## §12. Provider-neutral isolated fixture lifecycle
+
+P17-007 A3B2A adds a provider-neutral one-use filesystem lifecycle below every future provider
+runner. It admits only the exact A1 public synthetic golden, creates one random direct child beneath
+a caller-selected real parent, writes the five seed files with exclusive create semantics, and
+recomputes the canonical seed-tree hash from an alias-free readback. Locked and allowed-write paths
+are cloned, frozen, and bound to one inventory digest rather than trusted from caller-owned arrays.
+
+Cleanup never accepts an arbitrary caller deletion path. It starts from the internally owned root,
+uses `lstat` at each node, unlinks symbolic links and Windows junctions without following their
+targets, and recurses only through real directories whose canonical paths remain inside the owned
+root. A live read-only directory handle pins the original root identity until a terminal lifecycle
+state, and cleanup compares that handle's `fstat` identity with the root `lstat`; delete/recreate
+cannot qualify through filesystem inode reuse. The handle is closed on success and every failure
+path, and a final absence readback is required. State transitions are single-use and all failures are
+fixed opaque codes that exclude supplied paths, fixture contents, usernames, and OS diagnostics.
+
+This boundary does not run the golden test or any child/provider/model process. A3B2B must inspect
+the post-provider candidate independently, enforce locked/allowed paths and the closed violation
+set, and run exactly one trusted test through A3B1. A3B3 must bind those results into a metadata-only
+A2 receipt and attest or isolate managed policy/hooks before external parity execution may qualify.
