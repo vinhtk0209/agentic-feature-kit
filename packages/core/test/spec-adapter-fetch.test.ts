@@ -21,6 +21,7 @@ const encoder = new TextEncoder()
 const hashPort = createNodeSpecAdapterHashPort()
 const jiraFixture = JSON.parse(fs.readFileSync(path.join(root, 'docs/roadmap/fixtures/p17-004-jira-minimal.json'), 'utf8')) as JsonRecord
 const azureFixture = JSON.parse(fs.readFileSync(path.join(root, 'docs/roadmap/fixtures/p17-004-azure-devops-minimal.json'), 'utf8')) as JsonRecord
+const jiraDestinationBaseUrl = 'https://api.atlassian.com/ex/jira/01234567-89ab-4cde-8f01-23456789abcd'
 let passed = 0
 let attacks = 0
 
@@ -40,16 +41,16 @@ function response(url: string, body: Uint8Array): SpecAdapterFetchResponse {
 
 function fakeCapability(
   providerId: 'jira' | 'azure-devops',
-  baseOrigin: string,
+  destinationBaseUrl: string,
   responder: (request: SpecAdapterFetchRequest) => Promise<unknown> | unknown,
 ): SpecAdapterFetchCapability {
-  return { providerId, baseOrigin, execute: responder }
+  return { providerId, destinationBaseUrl, execute: responder }
 }
 
 function jiraInput(overrides: Partial<SpecAdapterLiveFetchInput> = {}): SpecAdapterLiveFetchInput {
   return {
     providerId: 'jira',
-    baseUrl: jiraFixture.baseUrl,
+    baseUrl: jiraDestinationBaseUrl,
     issueIdOrKey: 'SYN-101',
     sourceRef: jiraFixture.sourceRef,
     mapping: structuredClone(jiraFixture.mapping),
@@ -88,7 +89,7 @@ await run('Jira builds one deterministic credential-free request and preserves e
   const payload = { ...structuredClone(jiraFixture.payload), self: 'SECRET-JIRA-SELF', expand: 'SECRET-EXPAND' }
   const body = exactBytes(payload)
   const requests: SpecAdapterFetchRequest[] = []
-  const capability = fakeCapability('jira', jiraFixture.baseUrl, async (request) => {
+  const capability = fakeCapability('jira', jiraDestinationBaseUrl, async (request) => {
     requests.push(structuredClone(request))
     return response(request.url, body)
   })
@@ -97,7 +98,7 @@ await run('Jira builds one deterministic credential-free request and preserves e
   assert.deepEqual(requests[0], {
     providerId: 'jira',
     method: 'GET',
-    url: 'https://jira.example.invalid/rest/api/3/issue/SYN-101?fields=customfield_10001%2Ccustomfield_19999%2Cdescription%2Csummary',
+    url: 'https://api.atlassian.com/ex/jira/01234567-89ab-4cde-8f01-23456789abcd/rest/api/3/issue/SYN-101?fields=customfield_10001%2Ccustomfield_19999%2Cdescription%2Csummary',
     accept: 'application/json',
     redirect: 'error',
     timeoutMs: SPEC_ADAPTER_FETCH_TIMEOUT_MS,
@@ -133,22 +134,26 @@ await run('Azure DevOps builds one 7.1 request and ignores only locked wire meta
 
 await run('input shape, identifiers, and destination binding fail before port execution', async () => {
   let calls = 0
-  const capability = fakeCapability('jira', jiraFixture.baseUrl, () => { calls += 1; throw new Error('must not run') })
+  const capability = fakeCapability('jira', jiraDestinationBaseUrl, () => { calls += 1; throw new Error('must not run') })
   for (const input of [
     { ...jiraInput(), extra: true },
-    jiraInput({ baseUrl: 'http://jira.example.invalid' }),
-    jiraInput({ baseUrl: 'https://user:secret@jira.example.invalid' }),
+    jiraInput({ baseUrl: 'http://api.atlassian.com/ex/jira/01234567-89ab-4cde-8f01-23456789abcd' }),
+    jiraInput({ baseUrl: 'https://user:secret@api.atlassian.com/ex/jira/01234567-89ab-4cde-8f01-23456789abcd' }),
+    jiraInput({ baseUrl: 'https://jira.example.invalid' }),
+    jiraInput({ baseUrl: 'https://api.atlassian.com' }),
+    jiraInput({ baseUrl: 'https://api.atlassian.com/ex/jira/01234567-89AB-4CDE-8F01-23456789ABCD' }),
+    jiraInput({ baseUrl: 'https://api.atlassian.com/ex/jira/01234567-89ab-4cde-8f01-23456789abcd/' }),
     jiraInput({ issueIdOrKey: '../secret' }),
     jiraInput({ issueIdOrKey: 'A/B' }),
     jiraInput({ issueIdOrKey: 'A?token=x' }),
     jiraInput({ issueIdOrKey: '' }),
   ]) await expectFetchCode(() => fetchSpecAdapterResult(input, capability, hashPort), 'INVALID_INPUT', 'secret')
   await expectFetchCode(
-    () => fetchSpecAdapterResult(jiraInput(), fakeCapability('jira', 'https://other.example.invalid', () => ({})), hashPort),
+    () => fetchSpecAdapterResult(jiraInput(), fakeCapability('jira', 'https://api.atlassian.com/ex/jira/11234567-89ab-4cde-8f01-23456789abcd', () => ({})), hashPort),
     'DESTINATION_MISMATCH',
   )
   await expectFetchCode(
-    () => fetchSpecAdapterResult(jiraInput(), fakeCapability('azure-devops', jiraFixture.baseUrl, () => ({})), hashPort),
+    () => fetchSpecAdapterResult(jiraInput(), fakeCapability('azure-devops', jiraDestinationBaseUrl, () => ({})), hashPort),
     'DESTINATION_MISMATCH',
   )
   assert.equal(calls, 0)
@@ -159,22 +164,22 @@ await run('capability shape and low-level failures collapse without source leaka
   await expectFetchCode(
     () => fetchSpecAdapterResult(
       jiraInput(),
-      fakeCapability('jira', jiraFixture.baseUrl, () => { invalidHashCalls += 1; return {} }),
+      fakeCapability('jira', jiraDestinationBaseUrl, () => { invalidHashCalls += 1; return {} }),
       {} as typeof hashPort,
     ),
     'INVALID_CAPABILITY',
   )
   assert.equal(invalidHashCalls, 0, 'invalid hash capability must fail before transport execution')
   await expectFetchCode(
-    () => fetchSpecAdapterResult(jiraInput(), { providerId: 'jira', baseOrigin: jiraFixture.baseUrl } as unknown as SpecAdapterFetchCapability, hashPort),
+    () => fetchSpecAdapterResult(jiraInput(), { providerId: 'jira', destinationBaseUrl: jiraDestinationBaseUrl } as unknown as SpecAdapterFetchCapability, hashPort),
     'INVALID_CAPABILITY',
   )
   await expectFetchCode(
-    () => fetchSpecAdapterResult(jiraInput(), { ...fakeCapability('jira', jiraFixture.baseUrl, () => ({})), extra: true } as unknown as SpecAdapterFetchCapability, hashPort),
+    () => fetchSpecAdapterResult(jiraInput(), { ...fakeCapability('jira', jiraDestinationBaseUrl, () => ({})), extra: true } as unknown as SpecAdapterFetchCapability, hashPort),
     'INVALID_CAPABILITY',
   )
   await expectFetchCode(
-    () => fetchSpecAdapterResult(jiraInput(), fakeCapability('jira', jiraFixture.baseUrl, () => { throw new Error('SECRET-PORT-FAILURE') }), hashPort),
+    () => fetchSpecAdapterResult(jiraInput(), fakeCapability('jira', jiraDestinationBaseUrl, () => { throw new Error('SECRET-PORT-FAILURE') }), hashPort),
     'PORT_FAILURE',
     'SECRET-PORT-FAILURE',
   )
@@ -193,7 +198,7 @@ await run('response status, content type, final URL, body, and shape fail closed
     [null, 'INVALID_RESPONSE'],
   ]
   for (const [candidate, code] of cases) {
-    const capability = fakeCapability('jira', jiraFixture.baseUrl, (request) => {
+    const capability = fakeCapability('jira', jiraDestinationBaseUrl, (request) => {
       if (candidate && typeof candidate === 'object' && 'finalUrl' in candidate && (candidate as { finalUrl: string }).finalUrl === 'x') {
         return { ...candidate, finalUrl: request.url }
       }
@@ -206,7 +211,7 @@ await run('response status, content type, final URL, body, and shape fail closed
 await run('response bytes are owned before caller mutation and downstream parsing sees the copy', async () => {
   const original = exactBytes(jiraFixture.payload)
   const expectedHash = crypto.createHash('sha256').update(original).digest('hex')
-  const capability = fakeCapability('jira', jiraFixture.baseUrl, (request) => response(request.url, original))
+  const capability = fakeCapability('jira', jiraDestinationBaseUrl, (request) => response(request.url, original))
   const pending = fetchSpecAdapterResult(jiraInput(), capability, hashPort)
   const result = await pending
   original.fill(0)
@@ -216,7 +221,7 @@ await run('response bytes are owned before caller mutation and downstream parsin
 await run('provider parsers admit only the locked optional wire metadata names', async () => {
   const jiraUnknown = { ...structuredClone(jiraFixture.payload), changelog: 'SECRET-CHANGELOG' }
   const azureUnknown = { ...structuredClone(azureFixture.payload), relations: ['SECRET-RELATION'] }
-  const jiraCapability = fakeCapability('jira', jiraFixture.baseUrl, (request) => response(request.url, exactBytes(jiraUnknown)))
+  const jiraCapability = fakeCapability('jira', jiraDestinationBaseUrl, (request) => response(request.url, exactBytes(jiraUnknown)))
   const azureCapability = fakeCapability('azure-devops', 'https://dev.azure.com', (request) => response(request.url, exactBytes(azureUnknown)))
   await assert.rejects(() => fetchSpecAdapterResult(jiraInput(), jiraCapability, hashPort), /spec-adapter:jira-cloud-json-v1:INVALID_PAYLOAD/)
   await assert.rejects(() => fetchSpecAdapterResult(azureInput(), azureCapability, hashPort), /spec-adapter:azure-devops-work-item-json-v1:INVALID_PAYLOAD/)
@@ -230,7 +235,7 @@ await run('accessor, proxy, sparse, trailing-space, and typed-array traps fail c
     get() { inputGetterCalls += 1; return 'SECRET-ACCESSOR' },
   })
   await expectFetchCode(
-    () => fetchSpecAdapterResult(accessorInput, fakeCapability('jira', jiraFixture.baseUrl, () => ({})), hashPort),
+    () => fetchSpecAdapterResult(accessorInput, fakeCapability('jira', jiraDestinationBaseUrl, () => ({})), hashPort),
     'INVALID_INPUT',
     'SECRET-ACCESSOR',
   )
@@ -240,14 +245,14 @@ await run('accessor, proxy, sparse, trailing-space, and typed-array traps fail c
   sparseMapping.paragraphFields = Array(2)
   sparseMapping.paragraphFields[0] = 'description'
   await expectFetchCode(
-    () => fetchSpecAdapterResult(jiraInput({ mapping: sparseMapping }), fakeCapability('jira', jiraFixture.baseUrl, () => ({})), hashPort),
+    () => fetchSpecAdapterResult(jiraInput({ mapping: sparseMapping }), fakeCapability('jira', jiraDestinationBaseUrl, () => ({})), hashPort),
     'INVALID_INPUT',
   )
 
   const decoratedMapping = structuredClone(jiraFixture.mapping)
   Object.defineProperty(decoratedMapping.paragraphFields, 'extra', { value: 'SECRET-EXTRA', enumerable: true })
   await expectFetchCode(
-    () => fetchSpecAdapterResult(jiraInput({ mapping: decoratedMapping }), fakeCapability('jira', jiraFixture.baseUrl, () => ({})), hashPort),
+    () => fetchSpecAdapterResult(jiraInput({ mapping: decoratedMapping }), fakeCapability('jira', jiraDestinationBaseUrl, () => ({})), hashPort),
     'INVALID_INPUT',
     'SECRET-EXTRA',
   )
@@ -259,7 +264,7 @@ await run('accessor, proxy, sparse, trailing-space, and typed-array traps fail c
 
   let capabilityGetCalls = 0
   const proxiedCapability = new Proxy(
-    fakeCapability('jira', jiraFixture.baseUrl, (request) => response(request.url, exactBytes(jiraFixture.payload))),
+    fakeCapability('jira', jiraDestinationBaseUrl, (request) => response(request.url, exactBytes(jiraFixture.payload))),
     { get(target, property, receiver) { capabilityGetCalls += 1; return Reflect.get(target, property, receiver) } },
   )
   await fetchSpecAdapterResult(jiraInput(), proxiedCapability, hashPort)
@@ -271,7 +276,7 @@ await run('accessor, proxy, sparse, trailing-space, and typed-array traps fail c
   })
   await fetchSpecAdapterResult(
     jiraInput(),
-    fakeCapability('jira', jiraFixture.baseUrl, (request) => response(request.url, exactBytes(jiraFixture.payload))),
+    fakeCapability('jira', jiraDestinationBaseUrl, (request) => response(request.url, exactBytes(jiraFixture.payload))),
     proxiedHashPort,
   )
   assert.equal(hashGetCalls, 0, 'hash capability must execute from its validated data-property snapshot')
@@ -280,7 +285,7 @@ await run('accessor, proxy, sparse, trailing-space, and typed-array traps fail c
   await expectFetchCode(
     () => fetchSpecAdapterResult(
       jiraInput(),
-      fakeCapability('jira', jiraFixture.baseUrl, (request) => response(request.url, proxiedBody)),
+      fakeCapability('jira', jiraDestinationBaseUrl, (request) => response(request.url, proxiedBody)),
       hashPort,
     ),
     'INVALID_RESPONSE',
@@ -293,7 +298,7 @@ await run('accessor, proxy, sparse, trailing-space, and typed-array traps fail c
     { enumerable: true, get() { responseGetterCalls += 1; return 'SECRET-REDIRECT' } },
   )
   await expectFetchCode(
-    () => fetchSpecAdapterResult(jiraInput(), fakeCapability('jira', jiraFixture.baseUrl, () => accessorResponse), hashPort),
+    () => fetchSpecAdapterResult(jiraInput(), fakeCapability('jira', jiraDestinationBaseUrl, () => accessorResponse), hashPort),
     'INVALID_RESPONSE',
     'SECRET-REDIRECT',
   )
@@ -302,7 +307,7 @@ await run('accessor, proxy, sparse, trailing-space, and typed-array traps fail c
 
 await run('public request and errors never expose credential-bearing fields', async () => {
   let serialized = ''
-  const capability = fakeCapability('jira', jiraFixture.baseUrl, (request) => {
+  const capability = fakeCapability('jira', jiraDestinationBaseUrl, (request) => {
     assert.equal(Object.isFrozen(request), true)
     serialized = JSON.stringify(request)
     return response(request.url, exactBytes(jiraFixture.payload))

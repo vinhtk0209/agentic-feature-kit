@@ -105,9 +105,11 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   identities, writes dual B0 artifacts, and constrains B1 to `adapterResult.source`. Cross-provider
   fixtures share semantic identity while retaining distinct provenance. A2C builds one deterministic
   credential-free single-item request through an injected destination-bound port, preserves exact
-  response bytes, and admits only bounded official wire metadata names. P17-004 remains
-  `in_progress`: production Node I/O, live credentials, and provider-package exposure remain separate
-  slices.
+  response bytes, and admits only bounded official wire metadata names. A2D input lock
+  `destination=D1/auth=A1/credential=C1/transport=T1/timeout=O1/bytes=B1/failure=E1/privacy=P1/testing=V1/language=L1/scope=N1`
+  corrects Jira 3LO exact gateway binding and adds a single-use bearer-only Node transport with fake-
+  fetch tests; live proof and provider-package exposure remain later gates. P17-004 remains
+  `in_progress`.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness

@@ -44,7 +44,7 @@ export interface SpecAdapterFetchResponse {
 
 export interface SpecAdapterFetchCapability {
   providerId: SpecAdapterFetchProviderId
-  baseOrigin: string
+  destinationBaseUrl: string
   execute(request: Readonly<SpecAdapterFetchRequest>): Promise<unknown> | unknown
 }
 
@@ -75,6 +75,9 @@ const JSON_CONTENT_TYPE = /^application\/json(?:\s*;|$)/i
 const MAX_BASE_URL_CHARS = 2_048
 const MAX_CONTENT_TYPE_CHARS = 256
 const MAX_FINAL_URL_CHARS = 4_096
+const JIRA_OAUTH_ORIGIN = 'https://api.atlassian.com'
+const AZURE_DEVOPS_ORIGIN = 'https://dev.azure.com'
+const JIRA_CLOUD_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0
@@ -165,7 +168,10 @@ function assertSafeMapping(value: unknown, providerId: unknown): SpecAdapterFiel
   }
 }
 
-function exactBaseOrigin(value: unknown, providerId: unknown): string {
+export function validateSpecAdapterDestinationBaseUrl(value: unknown, providerId: SpecAdapterFetchProviderId): {
+  destinationBaseUrl: string
+  adapterBaseOrigin: string
+} {
   if (typeof value !== 'string' || value.length > MAX_BASE_URL_CHARS || value.trim() !== value) {
     fail(providerId, 'INVALID_INPUT')
   }
@@ -175,17 +181,30 @@ function exactBaseOrigin(value: unknown, providerId: unknown): string {
     url.protocol !== 'https:'
     || url.username !== ''
     || url.password !== ''
-    || url.pathname !== '/'
+    || url.port !== ''
     || url.search !== ''
     || url.hash !== ''
-    || (value !== url.origin && value !== `${url.origin}/`)
   ) fail(providerId, 'INVALID_INPUT')
-  return url.origin
+  if (providerId === 'jira') {
+    const match = /^\/ex\/jira\/([^/]+)$/.exec(url.pathname)
+    if (
+      url.origin !== JIRA_OAUTH_ORIGIN
+      || !match
+      || !JIRA_CLOUD_ID_PATTERN.test(match[1])
+      || value !== `${JIRA_OAUTH_ORIGIN}${url.pathname}`
+    ) fail(providerId, 'INVALID_INPUT')
+    return { destinationBaseUrl: value, adapterBaseOrigin: JIRA_OAUTH_ORIGIN }
+  }
+  if (url.origin !== AZURE_DEVOPS_ORIGIN || url.pathname !== '/' || value !== AZURE_DEVOPS_ORIGIN) {
+    fail(providerId, 'INVALID_INPUT')
+  }
+  return { destinationBaseUrl: AZURE_DEVOPS_ORIGIN, adapterBaseOrigin: AZURE_DEVOPS_ORIGIN }
 }
 
 function validatedInput(value: unknown): {
   input: SpecAdapterLiveFetchInput
-  baseOrigin: string
+  destinationBaseUrl: string
+  adapterBaseOrigin: string
   config: ValidatedSpecAdapterConfig
 } {
   const record = dataRecord(value)
@@ -195,11 +214,11 @@ function validatedInput(value: unknown): {
     ? ['providerId', 'baseUrl', 'issueIdOrKey', 'sourceRef', 'mapping']
     : ['providerId', 'baseUrl', 'organization', 'project', 'workItemId', 'sourceRef', 'mapping']
   if (!exactKeys(record, expected)) fail(providerId, 'INVALID_INPUT')
-  const baseOrigin = exactBaseOrigin(record.baseUrl, providerId)
+  const { destinationBaseUrl, adapterBaseOrigin } = validateSpecAdapterDestinationBaseUrl(record.baseUrl, providerId)
   if (typeof record.sourceRef !== 'string' || !SOURCE_REF_PATTERN.test(record.sourceRef)) fail(providerId, 'INVALID_INPUT')
   const mapping = assertSafeMapping(record.mapping, providerId)
   let config: ValidatedSpecAdapterConfig
-  try { config = validateSpecAdapterConfig({ baseUrl: baseOrigin, mapping }, `${providerId}-fetch`) }
+  try { config = validateSpecAdapterConfig({ baseUrl: adapterBaseOrigin, mapping }, `${providerId}-fetch`) }
   catch { return fail(providerId, 'INVALID_INPUT') }
 
   if (providerId === 'jira') {
@@ -210,8 +229,9 @@ function validatedInput(value: unknown): {
       || record.issueIdOrKey === '..'
     ) fail(providerId, 'INVALID_INPUT')
     return {
-      input: { providerId, baseUrl: baseOrigin, issueIdOrKey: record.issueIdOrKey, sourceRef: record.sourceRef, mapping },
-      baseOrigin,
+      input: { providerId, baseUrl: destinationBaseUrl, issueIdOrKey: record.issueIdOrKey, sourceRef: record.sourceRef, mapping },
+      destinationBaseUrl,
+      adapterBaseOrigin,
       config,
     }
   }
@@ -231,24 +251,25 @@ function validatedInput(value: unknown): {
   return {
     input: {
       providerId,
-      baseUrl: baseOrigin,
+      baseUrl: destinationBaseUrl,
       organization: record.organization,
       project: record.project,
       workItemId: record.workItemId as number,
       sourceRef: record.sourceRef,
       mapping,
     },
-    baseOrigin,
+    destinationBaseUrl,
+    adapterBaseOrigin,
     config,
   }
 }
 
-function capability(value: unknown, providerId: SpecAdapterFetchProviderId, baseOrigin: string): SpecAdapterFetchCapability {
+function capability(value: unknown, providerId: SpecAdapterFetchProviderId, destinationBaseUrl: string): SpecAdapterFetchCapability {
   const record = dataRecord(value)
-  if (!record || !exactKeys(record, ['providerId', 'baseOrigin', 'execute']) || typeof record.execute !== 'function') {
+  if (!record || !exactKeys(record, ['providerId', 'destinationBaseUrl', 'execute']) || typeof record.execute !== 'function') {
     fail(providerId, 'INVALID_CAPABILITY')
   }
-  if (record.providerId !== providerId || record.baseOrigin !== baseOrigin) fail(providerId, 'DESTINATION_MISMATCH')
+  if (record.providerId !== providerId || record.destinationBaseUrl !== destinationBaseUrl) fail(providerId, 'DESTINATION_MISMATCH')
   return record as unknown as SpecAdapterFetchCapability
 }
 
@@ -271,7 +292,7 @@ function fieldList(config: ValidatedSpecAdapterConfig): string[] {
 function buildRequest(input: SpecAdapterLiveFetchInput, config: ValidatedSpecAdapterConfig): SpecAdapterFetchRequest {
   const url = new URL(input.baseUrl)
   if (input.providerId === 'jira') {
-    url.pathname = `/rest/api/3/issue/${encodeURIComponent(input.issueIdOrKey)}`
+    url.pathname = `${url.pathname}/rest/api/3/issue/${encodeURIComponent(input.issueIdOrKey)}`
   } else {
     url.pathname = `/${encodeURIComponent(input.organization)}/${encodeURIComponent(input.project)}/_apis/wit/workitems/${input.workItemId}`
   }
@@ -317,17 +338,16 @@ export async function fetchSpecAdapterResult(
   rawCapability: unknown,
   hashPort: SpecAdapterHashPort,
 ): Promise<SpecAdapterResult> {
-  const { input, baseOrigin } = validatedInput(rawInput)
-  const validatedConfig = validateSpecAdapterConfig({ baseUrl: baseOrigin, mapping: input.mapping }, `${input.providerId}-fetch`)
+  const { input, destinationBaseUrl, adapterBaseOrigin, config: validatedConfig } = validatedInput(rawInput)
   const validatedHashPort = hashCapability(hashPort, input.providerId)
-  const port = capability(rawCapability, input.providerId, baseOrigin)
+  const port = capability(rawCapability, input.providerId, destinationBaseUrl)
   const request = buildRequest(input, validatedConfig)
   let rawResponse: unknown
   try { rawResponse = await port.execute(request) }
   catch { return fail(input.providerId, 'PORT_FAILURE') }
   const sourceBytes = responseBytes(rawResponse, request)
   try {
-    const adapterConfig = { baseUrl: baseOrigin, mapping: input.mapping }
+    const adapterConfig = { baseUrl: adapterBaseOrigin, mapping: input.mapping }
     const adapter = input.providerId === 'jira'
       ? createJiraSpecAdapter(adapterConfig, validatedHashPort)
       : createAzureDevOpsSpecAdapter(adapterConfig, validatedHashPort)
