@@ -2027,6 +2027,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-credential-lifecycle-a1-input-lock-2026-08-21.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-cross-platform-ci.md",
       "decision": "include",
       "contentKind": "text",
@@ -2853,6 +2859,12 @@
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "required-release-control"
+    },
+    {
+      "path": "docs/roadmap/p17-019-a1-credential-lifecycle-input-lock-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
     },
     {
       "path": "docs/roadmap/p17-021-distributed-control-panel-plan.md",
@@ -4044,6 +4056,12 @@
     },
     {
       "path": "scripts/post-17-control-plane-topology.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-credential-lifecycle-input-lock-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

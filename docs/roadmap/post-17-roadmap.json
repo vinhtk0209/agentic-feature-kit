@@ -449,7 +449,7 @@
       "problem": "Playwright authentication can expire mid-run, but generic refresh logic is unsafe because auth flows are project-specific.",
       "scope": ["pluggable credential provider", "expiry detection", "refresh capability contract", "non-secret diagnostics"],
       "outOfScope": ["hardcoded refresh endpoints", "persisting raw tokens", "automatic refresh without project opt-in"],
-      "readiness": {"complete": false, "missing": ["project-specific refresh capability fixture and security approval"], "inputs": ["current version-check", "Playwright auth injection", "project auth contract"]},
+      "readiness": {"complete": false, "missing": ["project-specific refresh capability fixture and security approval"], "inputs": ["current version-check", "Playwright auth injection", "project auth contract", "docs/roadmap/p17-019-a1-credential-lifecycle-input-lock-plan.md"]},
       "packaging": ["optional-adapter"],
       "acceptanceCriteria": ["refresh is opt-in and capability-gated", "tokens never enter evidence", "mid-run expiry has a structured outcome"],
       "tests": ["expired token", "unsupported refresh", "successful adapter refresh", "secret leakage control"],

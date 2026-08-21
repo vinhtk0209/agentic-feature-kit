@@ -128,6 +128,13 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   authorized. P17-018 is done because R1–R6 now provide admitted source, governance, privacy,
   supply-chain, archive, clean-clone, cross-platform, visual, final-readiness, and dashboard evidence.
   No repository, package, plugin, tag, or release was published by this status transition.
+- **P17-019 (`B1/A1/O1/E1/R1/X1/C1/P1/L1/V1/T1/N1`):** shared core owns only exact lifecycle
+  metadata and closed decisions; provider protocol and secret ownership stay inside an explicit
+  project-supplied, non-serializable capability. Refresh is preflight-only and single-use, with no
+  transparent browser replay or stale-token fallback. In-process TypeScript is the default;
+  digest/version-pinned direct-argv `shell:false` executables are conditional, while built-in generic
+  HTTP refresh is rejected. P17-019 remains `backlog` with incomplete readiness until the exact
+  project fixture and security approval exist.
 
 ## Wave order
 
