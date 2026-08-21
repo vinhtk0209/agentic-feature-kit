@@ -2405,6 +2405,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-spec-adapter-live-proof-boundary-2026-08-21.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-spec-adapter-node-fetch-transport-2026-08-21.md",
       "decision": "include",
       "contentKind": "text",
