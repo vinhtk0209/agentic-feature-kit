@@ -1106,6 +1106,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/provider-parity-fixture-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/provider-parity-fixture-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/record-verify.b2b.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2598,6 +2610,12 @@
     },
     {
       "path": "docs/roadmap/p17-007-a3b1-claude-process-port-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-007-a3b2a-fixture-lifecycle-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4374,6 +4392,12 @@
     },
     {
       "path": "scripts/post-17-provider-parity-evaluator-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-provider-parity-fixture-lifecycle-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

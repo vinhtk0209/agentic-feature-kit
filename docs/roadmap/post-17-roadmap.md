@@ -126,8 +126,11 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   it deliberately adds no production spawn, model call, fixture materialization, verifier, cleanup,
   or A2 receipt. A3B1 adds a deny-default Claude Node process port with an explicit non-inherited
   environment, exact isolated-root binding, bounded byte capture, and cross-platform process-tree
-  cleanup, qualified only with fake children and zero provider calls. Golden materialization,
-  independent tree/trusted-test verification, metadata-only receipt assembly, managed-policy/hook
+  cleanup, qualified only with fake children and zero provider calls. A3B2A adds the provider-neutral
+  isolated fixture lifecycle: exact A1-golden admission, one owned direct-child root, exclusive
+  ordinal seed writes, immutable hash-bound inventories, alias-safe zero-residue cleanup, one-use
+  state, and metadata-only local receipts. It launches no child and runs no trusted test. Independent
+  candidate-tree/trusted-test verification, metadata-only A2 receipt assembly, managed-policy/hook
   attestation, A4 fresh three-provider receipts, and dashboard/evidence closeout remain required
   before P17-007 can become `done`.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
