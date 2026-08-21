@@ -2351,6 +2351,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-provider-parity-a3b2a-fixture-lifecycle-correction-2026-08-21.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-public-release-input-2026-08-14.md",
       "decision": "include",
       "contentKind": "text",
