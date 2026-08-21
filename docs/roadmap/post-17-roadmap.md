@@ -64,7 +64,7 @@ When complete:
 | P17-004 | P1 | 2 | in_progress | Provider-neutral specification adapters | Removes operational dependence on one Confluence source or instance. |
 | P17-005 | P1 | 2 | done | Project-derived conditional quality gates | Adds relevant i18n/router/style checks without false framework assumptions. |
 | P17-006 | P1 | 3 | done | Phase-aware model selection and routing | Allows explicit quality/cost/latency routing without silent provider substitution. |
-| P17-007 | P1 | 4 | backlog | Normalized same-input provider parity | Separates action smoke from real planning/implementation parity. |
+| P17-007 | P1 | 4 | in_progress | Normalized same-input provider parity | Separates action smoke from real planning/implementation parity. |
 | P17-008 | P0 | 3 | done | Installable distribution bundles | Produces validated Codex, Claude, and Copilot bundles over one shared core. |
 | P17-009 | P1 | 2 | done | Cross-platform release qualification | Proves Windows and Linux behavior in CI, including paths, quoting, setup, and process cleanup. |
 | P17-010 | P1 | 2 | done | CLI reliability and direct integration tests | Makes malformed input and I/O failures explicit for feedback/KPI/public CLI paths. |
@@ -82,7 +82,6 @@ When complete:
 
 ## Inputs still required before their implementation
 
-- **P17-007:** a golden cross-provider fixture and explicit approval for bounded provider runs.
 - **P17-017:** a measurable RAG benefit benchmark and approved indexing/privacy boundary.
 - **P17-019:** a project-specific refresh capability fixture and security approval.
 - **P17-020:** a representative multi-feature golden set and approved drift budget.
@@ -112,6 +111,13 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   pure readiness/receipt contract plus a no-injection default-Node runner; synthetic tests prove only
   offline composition, while real Jira and Azure receipts remain `needs_input`. Provider-package
   exposure remains a later gate, so P17-004 remains `in_progress`.
+- **P17-007:** decision tuple `G1/B1/I1/E1/P1/S1/V1/C1/R1/F1/D1/T1/N1`; one public synthetic
+  golden binds identical normalized input, prompt, seed tree, B3/B10/B11 contracts, trusted test,
+  and closed qualification/performance thresholds. Pure comparison stays separate from CLI adapters;
+  later runs require exact runtime entitlement, model/adapter/execution identities, isolated copies,
+  fixed `shell:false` argv, one attempt, metadata-only receipts, and independent verification.
+  Transport smoke never qualifies, and ranking is forbidden with incomplete providers or samples.
+  A1 completes readiness and moves P17-007 to `in_progress`; it performs no provider execution.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness
