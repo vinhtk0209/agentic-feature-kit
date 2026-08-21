@@ -2381,6 +2381,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-spec-adapter-spec-ir-composition-2026-08-21.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-wave-0-2026-08-13.md",
       "decision": "include",
       "contentKind": "text",
