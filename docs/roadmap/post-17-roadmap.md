@@ -121,8 +121,11 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   adds the provider-neutral pure evaluator and closed request/report schemas: exact same-input
   identity, semantic/artifact/gate/API/trusted-evidence conservation, metadata-only pairwise
   similarity, and fail-closed performance-ranking readiness. It performs no process, filesystem,
-  network, credential, dashboard, or model call. A3 attacked adapters, A4 fresh three-provider
-  receipts, and dashboard/evidence closeout remain required before P17-007 can become `done`.
+  network, credential, dashboard, or model call. A3A adds the missing Claude CLI output-adapter
+  foundation with fixed direct argv, exact capability identity, and offline fake-process attacks;
+  it deliberately adds no production spawn, model call, fixture materialization, verifier, cleanup,
+  or A2 receipt. The remaining attacked adapter/materializer work, A4 fresh three-provider receipts,
+  and dashboard/evidence closeout remain required before P17-007 can become `done`.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness
