@@ -96,7 +96,11 @@ deterministic artifact safely, the roadmap should prepare and test it before req
 - **P17-004 (`S1/F1/P1/M1/U1/C1/D1/R1/E1/N1`):** the P17-003 `SemanticSourceInput` remains
   canonical; approved Jira/Azure DevOps inputs are synthetic reserved-host exports with exact
   provider anchors, complete mapped-or-unsupported field ownership, and zero tenant/person data.
-  Readiness is complete and P17-004 is `in_progress`; runtime adapters remain a separate A2 slice.
+  A2A adds schema `1.0.0`, frozen explicit discovery, exact-byte Jira ADF and Azure DevOps HTML
+  local parsers, injected Node hashing, 256 KiB/field/node/text budgets, and closed typed failures.
+  Cross-provider fixtures share semantic identity while retaining distinct provenance. P17-004
+  remains `in_progress`: Confluence/local-file composition, live provider I/O, credentials, CLI and
+  provider-package exposure remain separate slices.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness

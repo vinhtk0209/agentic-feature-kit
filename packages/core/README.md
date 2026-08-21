@@ -189,6 +189,22 @@ and semantic transforms must conserve requirement identities and provenance.
 The public JSON Schema is `docs/schemas/semantic-spec.schema.json`. Source transports remain adapter
 concerns and are deliberately outside this core contract.
 
+### Provider-local specification adapters (P17-004 A2A)
+
+`src/spec-adapter.ts` defines the provider-neutral `SpecAdapterResult` schema `1.0.0`, exact frozen
+capability discovery, bounded byte/result contracts, stable closed errors, and field-conservation
+rules. Discovery reads only caller-registered descriptors; it does not inspect packages, execute an
+adapter, read environment or credentials, or contact a provider.
+
+`src/spec-adapter-jira.ts` and `src/spec-adapter-azure-devops.ts` parse only the closed ADF and HTML
+subsets documented by the A2A plan. They accept exact `Uint8Array` input, use an injected SHA-256
+port before fatal UTF-8/JSON parsing, preserve literal anchors, and expose unsupported field names
+without their values. `src/spec-adapter-node.ts` is the isolated Node SHA-256 implementation.
+
+The public result schema is `docs/schemas/spec-adapter-result.schema.json`. A2A performs no network,
+filesystem, auth, CLI, or provider-bundle work. Existing Confluence and local-file `SpecIR` paths
+remain a separate A2B composition decision, so P17-004 remains in progress.
+
 ## Conditional Quality Gates
 
 `src/conditional-quality-gates.ts` consumes a validated Project Profile plus bounded feature-change

@@ -2393,6 +2393,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-004-a2a-provider-local-adapter-runtime-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-006-phase-model-routing-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -2849,6 +2855,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/schemas/spec-adapter-result.schema.json",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/schemas/stack-portability.schema.json",
       "decision": "include",
       "contentKind": "text",
@@ -3155,6 +3167,30 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "packages/core/src/spec-adapter-azure-devops.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/src/spec-adapter-jira.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/src/spec-adapter-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/src/spec-adapter.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "packages/core/src/stack-portability.ts",
       "decision": "include",
       "contentKind": "text",
@@ -3360,6 +3396,18 @@
     },
     {
       "path": "packages/core/test/semantic-spec.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/spec-adapter-providers.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "packages/core/test/spec-adapter.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4134,6 +4182,12 @@
     },
     {
       "path": "scripts/post-17-spec-adapter-input-lock.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-spec-adapter-runtime-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
