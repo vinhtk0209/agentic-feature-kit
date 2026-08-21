@@ -296,6 +296,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/claude-cli-process-node.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/claude-cli-process-node.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/cli-reliability.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2579,6 +2591,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/roadmap/p17-007-a3b1-claude-process-port-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/roadmap/p17-009-cross-platform-release-plan.md",
       "decision": "include",
       "contentKind": "text",
@@ -4338,6 +4356,12 @@
     },
     {
       "path": "scripts/post-17-provider-parity-claude-adapter-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-provider-parity-claude-process-port-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

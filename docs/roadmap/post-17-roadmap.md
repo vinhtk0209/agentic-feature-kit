@@ -124,8 +124,12 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   network, credential, dashboard, or model call. A3A adds the missing Claude CLI output-adapter
   foundation with fixed direct argv, exact capability identity, and offline fake-process attacks;
   it deliberately adds no production spawn, model call, fixture materialization, verifier, cleanup,
-  or A2 receipt. The remaining attacked adapter/materializer work, A4 fresh three-provider receipts,
-  and dashboard/evidence closeout remain required before P17-007 can become `done`.
+  or A2 receipt. A3B1 adds a deny-default Claude Node process port with an explicit non-inherited
+  environment, exact isolated-root binding, bounded byte capture, and cross-platform process-tree
+  cleanup, qualified only with fake children and zero provider calls. Golden materialization,
+  independent tree/trusted-test verification, metadata-only receipt assembly, managed-policy/hook
+  attestation, A4 fresh three-provider receipts, and dashboard/evidence closeout remain required
+  before P17-007 can become `done`.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness
