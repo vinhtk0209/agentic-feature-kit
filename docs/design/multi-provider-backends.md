@@ -344,3 +344,23 @@ The verifier closes only its read-only identity handle; A3B2A remains the sole c
 must still compose these metadata with cleanup and managed-policy/hook evidence into an A2 receipt.
 No provider/model execution, credential/session access, receipt assembly, persistence, sync, or
 release authority is added by this boundary.
+
+## §14. Provider-neutral policy and evidence attestation boundary
+
+P17-007 A3B3A adds the provider-neutral pure attestation boundary between the existing offline
+execution/verifier primitives and later A2 receipt composition. A pre-run policy receipt binds the
+exact provider/run identity plus distinct hashes for environment, filesystem, network, settings,
+managed-policy, hooks, runtime entitlement, authorization, adapter capability, and execution policy.
+Closed settings/managed-policy/hook modes prevent an aggregate or provider-authored success claim
+from standing in for independently established evidence.
+
+The post-run receipt admits exact ordered AC/artifact/gate/API decisions, the hash-valid A3B2B
+candidate-verification receipt, and an A3B2A cleanup success or metadata-only cleanup failure. It
+preserves false decisions, nullable metric provenance, and cleanup failure while exposing no paths,
+source, prompts, transcripts, response bodies, session IDs, environment values, or exceptions.
+
+The module performs canonical validation and hashing only. It does not inspect settings or hooks,
+launch a process/provider/model, discover credentials or environment, read the filesystem/network,
+or emit the A2 receipt. Trusted producers must establish every evidence hash; A3B3B may compose only
+from an admitted A3B3A receipt. A4 remains prohibited until all provider-specific producers and the
+evidence sink are independently qualified.

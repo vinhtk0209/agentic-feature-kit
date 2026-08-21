@@ -5,24 +5,24 @@ import path from 'node:path'
 type JsonRecord = Record<string, any>
 
 const root = process.cwd()
-const planPath = path.join(root, 'docs', 'roadmap', 'p17-007-a3b2b-candidate-verifier-plan.md')
+const planPath = path.join(root, 'docs', 'roadmap', 'p17-007-a3b3a-policy-evidence-attestation-plan.md')
 const packagePath = path.join(root, 'package.json')
 const manifestPath = path.join(root, 'release', 'public-release-manifest.json')
 
 const sourceManifest = [
-  '.claude/integrations/provider-parity-candidate-node.test.ts',
-  '.claude/integrations/provider-parity-candidate-node.ts',
+  '.claude/integrations/provider-parity-attestation.test.ts',
+  '.claude/integrations/provider-parity-attestation.ts',
   'docs/design/multi-provider-backends.md',
-  'docs/roadmap/p17-007-a3b2b-candidate-verifier-plan.md',
+  'docs/roadmap/p17-007-a3b3a-policy-evidence-attestation-plan.md',
   'docs/roadmap/post-17-roadmap.md',
   'package.json',
   'release/public-release-manifest.json',
+  'scripts/post-17-provider-parity-attestation-plan.test.ts',
   'scripts/post-17-provider-parity-candidate-verifier-plan.test.ts',
-  'scripts/post-17-provider-parity-fixture-lifecycle-plan.test.ts',
 ] as const
 
 function readRequired(file: string, label: string): string {
-  if (!fs.existsSync(file)) throw new Error(`P17-007 A3B2B ${label} missing: ${path.relative(root, file)}`)
+  if (!fs.existsSync(file)) throw new Error(`P17-007 A3B3A ${label} missing: ${path.relative(root, file)}`)
   return fs.readFileSync(file, 'utf8')
 }
 
@@ -35,29 +35,23 @@ const normalizedPlan = plan.replace(/\r\n/g, '\n')
 const canonicalPlan = normalizedPlan.replace(/\s+/g, ' ')
 
 for (const heading of [
-  '## Outcome',
-  '## Reconciled evidence and prerequisites',
-  '## Scope and non-scope',
-  '## Architecture decision record',
-  '## Candidate inventory and violation contract',
-  '## Trusted test and mutation contract',
-  '## Attack and evidence ladder',
-  '## TypeScript performance decision',
-  '## Exact source manifest',
-  '## Rollback and next gates',
-  '## Non-claims',
+  '## Outcome', '## Reconciled evidence and prerequisites', '## Scope and non-scope',
+  '## Architecture decision record', '## Pre-run policy attestation contract',
+  '## Post-run evidence attestation contract', '## Attack and evidence ladder',
+  '## TypeScript performance decision', '## Exact source manifest',
+  '## Rollback and next gates', '## Non-claims',
 ]) assert.ok(normalizedPlan.includes(heading), `plan missing ${heading}`)
 
 for (const phrase of [
-  'candidate=C1', 'identity=I1', 'paths=P1', 'dependencies=D1', 'privacy=S1',
-  'permissions=M1', 'test=T1', 'process=X1', 'mutation=U1', 'evidence=E1',
-  'runtime=N1', 'scope=O1', 'exactly one', 'node --test test/report.test.js',
-  'lockedPathEdit', 'undeclaredPath', 'externalDependency', 'secretOrPathDisclosure',
-  'permissionWidening', 'metadata-only', '100 complete', 'zero provider execution',
-  'A3B3', 'A4 remains prohibited',
+  'domain=D1', 'identity=I1', 'policy=P1', 'hooks=H1', 'evidence=E1', 'metrics=M1',
+  'verification=V1', 'cleanup=C1', 'privacy=R1', 'runtime=N1', 'scope=O1',
+  'isolated-empty-v1', 'independently-attested-v1', 'independently-attested-empty-v1',
+  'AC-1..AC-3', 'plan', 'implementation', 'trusted-verification', 'B3/B10/B11',
+  'A3B2B', 'A3B2A', 'metadata-only', '10,000', 'A3B3B', 'A4 remains prohibited',
+  'zero provider execution',
 ]) assert.ok(canonicalPlan.toLowerCase().includes(phrase.toLowerCase()), `plan missing contract phrase: ${phrase}`)
 
-assert.match(normalizedPlan, /^Status: approved A3B2B offline candidate-verifier implementation; zero provider execution\.$/m)
+assert.match(normalizedPlan, /^Status: approved A3B3A pure attestation implementation; zero provider execution\.$/m)
 
 for (const source of sourceManifest) {
   assert.ok(normalizedPlan.includes(`\`${source}\``), `plan source manifest missing ${source}`)
@@ -65,9 +59,9 @@ for (const source of sourceManifest) {
 }
 
 const packageJson = parseRequired(packagePath, 'package')
-assert.equal(packageJson.scripts?.['test:post-17-provider-parity-candidate-verifier-plan'], 'npx tsx scripts/post-17-provider-parity-candidate-verifier-plan.test.ts')
-assert.equal(packageJson.scripts?.['test:provider-parity-candidate-node'], 'npx tsx .claude/integrations/provider-parity-candidate-node.test.ts')
-assert.equal(packageJson.scripts?.['test:provider-parity-candidate-verifier'], 'npm run test:post-17-provider-parity-candidate-verifier-plan && npm run test:provider-parity-candidate-node && npm run test:provider-parity-attestation')
+assert.equal(packageJson.scripts?.['test:post-17-provider-parity-attestation-plan'], 'npx tsx scripts/post-17-provider-parity-attestation-plan.test.ts')
+assert.equal(packageJson.scripts?.['test:provider-parity-attestation-node'], 'npx tsx .claude/integrations/provider-parity-attestation.test.ts')
+assert.equal(packageJson.scripts?.['test:provider-parity-attestation'], 'npm run test:post-17-provider-parity-attestation-plan && npm run test:provider-parity-attestation-node')
 const foundationRoute = packageJson.scripts?.['test:kit:foundation'] ?? ''
 const mainRoute = packageJson.scripts?.['test:kit'] ?? ''
 assert.ok(mainRoute.startsWith('npm run test:kit:foundation && '), 'full kit must begin with the Windows-safe foundation route')
@@ -78,12 +72,13 @@ assert.equal(routedCommands.length, 193, 'full kit command count drifted')
 assert.equal(new Set(routedCommands).size, routedCommands.length, 'full kit commands must remain unique')
 assert.equal(routedCommands[0], 'npm run test:lint-feature')
 assert.equal(routedCommands.at(-1), 'npm run check:lessons-sync')
-assert.ok(mainRoute.includes('npm run test:provider-parity-fixture-lifecycle && npm run test:provider-parity-candidate-verifier'), 'A3B2B must follow A3B2A in the full suite')
+assert.equal(packageJson.scripts?.['test:provider-parity-candidate-verifier'], 'npm run test:post-17-provider-parity-candidate-verifier-plan && npm run test:provider-parity-candidate-node && npm run test:provider-parity-attestation')
+assert.ok(mainRoute.includes('npm run test:provider-parity-candidate-verifier'), 'A3B2B/A3B3A aggregate must remain in the full suite')
 
 const roadmap = readRequired(path.join(root, 'docs', 'roadmap', 'post-17-roadmap.md'), 'human roadmap')
-assert.match(roadmap, /A3B2B adds independent candidate inventory and trusted-test execution/)
+assert.match(roadmap, /A3B3A adds the pure policy and evidence attestation boundary/)
 const architecture = readRequired(path.join(root, 'docs', 'design', 'multi-provider-backends.md'), 'architecture')
-assert.match(architecture, /P17-007 A3B2B adds the provider-neutral candidate verifier/)
+assert.match(architecture, /P17-007 A3B3A adds the provider-neutral pure attestation boundary/)
 
 const manifest = parseRequired(manifestPath, 'public manifest')
 assert.ok(Array.isArray(manifest.entries), 'public manifest entries must be an array')
@@ -98,4 +93,4 @@ for (const publicPath of sourceManifest.filter((entry) => !['package.json', 'rel
   assert.equal(matches[0]?.reasonCode, 'public-source')
 }
 
-console.log(`post-17-provider-parity-candidate-verifier-plan.test: PASS (${sourceManifest.length} source paths, 11 headings, 23 boundary phrases)`)
+console.log(`post-17-provider-parity-attestation-plan.test: PASS (${sourceManifest.length} source paths, 11 headings, 27 boundary phrases)`)
