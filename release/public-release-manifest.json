@@ -2405,6 +2405,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-provider-parity-a3b3b-a2-receipt-composition-2026-08-22.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-public-release-input-2026-08-14.md",
       "decision": "include",
       "contentKind": "text",
