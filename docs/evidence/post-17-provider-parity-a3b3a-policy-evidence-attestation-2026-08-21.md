@@ -1,10 +1,13 @@
 # P17-007 A3B3A Policy and Evidence Attestation Evidence
 
-Status: locally qualified source checkpoint; zero provider execution.
-Date: 2026-08-21
-Source commit: `5a48709bcc4289d1d1d3d2687923875e3bf8911a`
-Source tree: `7e754fc9b5115ae1d3af1aab15635b1f43270e3c`
-Parent: exact qualified `main` `081f5af62cd03d8fbdbc2dd7c484830a25e45963`
+Status: locally requalified after pre-merge review; zero provider execution.
+Initial qualification date: 2026-08-21
+Review-repair qualification date: 2026-08-22
+Final qualified source commit: `ab34c0ea34c8c04038a29e2a34c634b9aabab0ad`
+Final qualified source tree: `e88c9fbe42cafc44e78b7a3409c0befb64765b52`
+Review-repair parent: initial evidence commit `3514d53c6d1a0c14a2f87b3fad23c426ffae52a6`
+Original source commit: `5a48709bcc4289d1d1d3d2687923875e3bf8911a`
+Original parent: exact qualified `main` `081f5af62cd03d8fbdbc2dd7c484830a25e45963`
 Decision lock: `domain=D1, identity=I1, policy=P1, hooks=H1, evidence=E1, metrics=M1, verification=V1, cleanup=C1, privacy=R1, runtime=N1, scope=O1`
 
 ## Qualified outcome
@@ -57,9 +60,26 @@ and later A3B3B A2 composition. Self-review additionally enforced:
 - full policy metadata plus trusted-test/violation/reason summary remains available to A3B3B without
   retaining raw candidate content.
 
+Pre-merge review on 2026-08-22 found two correctness gaps in that initial qualification. Neither
+gap could make a candidate eligible, but both weakened the fail-closed contract and contradicted the
+durable evidence wording:
+
+1. a lexically valid UTC timestamp containing an impossible calendar date reached
+   `Date.prototype.toISOString()` and raised a raw `RangeError` instead of the requested closed
+   `ProviderParityAttestationError` code; and
+2. `trustedTest.status=failed` with one process call, zero exit, and every terminal failure flag false
+   was structurally admitted even though it contained no genuine failure signal.
+
+The retained attack tests produced two independent REDs after the plan guard passed `9` paths / `11`
+headings / `27` phrases: the first received `RangeError: Invalid time value` instead of
+`invalid-policy`; the second reported `Missing expected exception` for the false failed candidate.
+The repair maps impossible calendar values to the requested closed error code and requires a nonzero
+exit, timeout, output cap, signal, stderr, or process failure for a failed trusted test. A positive
+nonzero-exit failed receipt remains admitted and non-eligible.
+
 ## Exact source inventory
 
-Source commit `5a48709bcc4289d1d1d3d2687923875e3bf8911a` changes exactly:
+Original source commit `5a48709bcc4289d1d1d3d2687923875e3bf8911a` changes exactly:
 
 1. `.claude/integrations/provider-parity-attestation.test.ts`
 2. `.claude/integrations/provider-parity-attestation.ts`
@@ -74,14 +94,18 @@ Source commit `5a48709bcc4289d1d1d3d2687923875e3bf8911a` changes exactly:
 The staged source diff was `1,341` insertions and `4` deletions. Commit hooks remained enabled;
 `spec-integrity` passed for four TypeScript paths and zero feature folders.
 
+Review-repair source commit `ab34c0ea34c8c04038a29e2a34c634b9aabab0ad` changes exactly the
+attestation runtime and attack test (items 1 and 2 above): `33` insertions and `2` deletions. Commit
+hooks remained enabled; `spec-integrity` passed for two TypeScript paths and zero feature folders.
+
 ## Focused and strict qualification
 
 | Gate | Result |
 |---|---|
 | A3B3A plan validator | PASS — 9 paths, 11 headings, 27 boundary phrases |
-| A3B3A runtime attacks | PASS — 57 assertions |
-| Performance sentinel | PASS — 10,000 compositions, latest focused wall 2,655.398 ms, p95 0.428 ms, RSS delta 9,908,224 bytes |
-| Full-suite A3B3A sentinel | PASS — wall 2,603.753 ms, p95 0.412 ms, RSS delta 9,994,240 bytes |
+| A3B3A runtime attacks | PASS — 60 assertions, including both review attacks and the genuine-failure positive case |
+| Performance sentinel | PASS — 10,000 compositions, latest focused wall 3,085.488 ms, p95 0.594 ms, RSS delta 10,272,768 bytes |
+| Full-suite A3B3A sentinel | PASS — 60 assertions / 10,000 compositions, wall 3,115.834 ms, p95 0.544 ms, RSS delta 10,158,080 bytes |
 | Strict TypeScript | PASS — TypeScript 5.9.3 / Node 20 types, zero diagnostics |
 
 The repository-local TypeScript is 4.9.5 while the pre-existing local Node types are 26.1.0; that
@@ -106,13 +130,15 @@ real provider/model call count remained zero.
 
 ## Public-source and complete-suite qualification
 
-The full public contract first failed as designed with `link-source-invalid` while the new plan was
-untracked. After staging exactly the nine declared source paths, the identical gate passed:
+The original full public contract first failed as designed with `link-source-invalid` while the new
+plan was untracked. After staging exactly the nine declared source paths, the identical gate passed
+with 814 manifest paths, 247 Markdown files, and 811 text files. The Git-index-aware gate on the
+review-repaired source then passed with:
 
-- 814 public manifest paths and 247 Markdown files;
+- 815 public manifest paths and 248 Markdown files;
 - 48/48 valid relative links;
 - four lockfiles, 754 dependency occurrences, and 617 unique dependencies;
-- 811 text files across ten secret-detector families with zero findings; and
+- 812 text files across ten secret-detector families with zero findings; and
 - final status `eligible-for-r5c2`.
 
 `npm.cmd run test:kit` then exited `0` across the unchanged 193 top-level route chain. Provider,
@@ -122,14 +148,19 @@ under the 172 KB ceiling; lessons synchronization was 60/60.
 
 ## Backup, rollback, and next gate
 
-The verified daily rollback anchors remained unchanged before implementation:
+The verified daily rollback anchors for the review repair are:
 
-- archive SHA-256 `08634E703FBE2EB85F4DDDAE899636352A3C6EAADD7EA637E67C31AA7E8825AB`;
-- tag `backup/2026-08-21=aa7a5c3453a2158d58b03215c1e5ef945dcb9982`.
+- archive `_backups/claude-workflow-kit/2026-08-22/claude-workflow-kit-2026-08-22.zip`,
+  `3,508,408` bytes, SHA-256
+  `2642CB6CD9371D4949194FCFA023BD7403CC657C741EE3E9EF86C71B1D29B65C`, with `854` entries and
+  zero excluded path segments; and
+- tag `backup/2026-08-22=3514d53c6d1a0c14a2f87b3fad23c426ffae52a6`.
 
-Rollback is revert of the evidence commit followed by source commit
-`5a48709bcc4289d1d1d3d2687923875e3bf8911a`, or restoration from the verified backup. No external
-resource cleanup is required.
+Rollback is revert of the evidence-only review commit followed by source repair
+`ab34c0ea34c8c04038a29e2a34c634b9aabab0ad`; complete A3B3A rollback then reverts initial evidence
+`3514d53c6d1a0c14a2f87b3fad23c426ffae52a6` and original source
+`5a48709bcc4289d1d1d3d2687923875e3bf8911a`, or restores the verified backup. No external resource
+cleanup is required.
 
 A3B3B may next compose the exact A2 receipt only from an admitted A3B3A receipt and must prove schema
 compatibility with the existing A2 validator. A4 remains prohibited until trusted provider-specific
@@ -145,4 +176,5 @@ A2 candidate receipt exists, A3 is complete, P17-007 is done, or external public
 
 No provider/model/process execution, credential/session access, package install, real sync,
 dashboard/database/target mutation, direct-main push, force, tag, release, publication, or visibility
-change occurred in this source qualification.
+change occurred in this source or review-repair qualification. Workflow run `32548516022` is bound
+to the pre-repair head and therefore cannot qualify the repaired branch.
