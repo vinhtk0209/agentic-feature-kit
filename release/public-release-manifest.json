@@ -1106,6 +1106,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/provider-parity-attestation.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/provider-parity-attestation.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/provider-parity-candidate-node.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2375,6 +2387,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-provider-parity-a3b3a-policy-evidence-attestation-2026-08-21.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-public-release-input-2026-08-14.md",
       "decision": "include",
       "contentKind": "text",
@@ -2652,6 +2670,12 @@
     },
     {
       "path": "docs/roadmap/p17-007-a3b2b-candidate-verifier-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-007-a3b3a-policy-evidence-attestation-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4410,6 +4434,12 @@
     },
     {
       "path": "scripts/post-17-privacy-writer-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-provider-parity-attestation-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
