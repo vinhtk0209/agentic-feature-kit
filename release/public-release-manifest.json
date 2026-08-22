@@ -1142,6 +1142,18 @@
       "reasonCode": "public-source"
     },
     {
+      "path": ".claude/integrations/provider-parity-receipt-composer.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": ".claude/integrations/provider-parity-receipt-composer.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": ".claude/integrations/record-verify.b2b.test.ts",
       "decision": "include",
       "contentKind": "text",
@@ -2393,6 +2405,12 @@
       "reasonCode": "public-source"
     },
     {
+      "path": "docs/evidence/post-17-provider-parity-a3b3b-a2-receipt-composition-2026-08-22.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
       "path": "docs/evidence/post-17-public-release-input-2026-08-14.md",
       "decision": "include",
       "contentKind": "text",
@@ -2676,6 +2694,12 @@
     },
     {
       "path": "docs/roadmap/p17-007-a3b3a-policy-evidence-attestation-plan.md",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "docs/roadmap/p17-007-a3b3b-a2-receipt-composition-plan.md",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"
@@ -4476,6 +4500,12 @@
     },
     {
       "path": "scripts/post-17-provider-parity-input-lock-plan.test.ts",
+      "decision": "include",
+      "contentKind": "text",
+      "reasonCode": "public-source"
+    },
+    {
+      "path": "scripts/post-17-provider-parity-receipt-composition-plan.test.ts",
       "decision": "include",
       "contentKind": "text",
       "reasonCode": "public-source"

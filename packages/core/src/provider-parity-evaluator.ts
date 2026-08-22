@@ -564,6 +564,12 @@ function validateReceipt(value: unknown): asserts value is ProviderParityCandida
   if (value.receiptHash !== expected) throw new Error('provider-parity: receiptHash mismatch')
 }
 
+/** Re-run the exact A2 candidate-receipt boundary without evaluating a request. */
+export function assertProviderParityCandidateReceipt(value: unknown): asserts value is ProviderParityCandidateReceipt {
+  assertPlainJson(value, 'receipt')
+  validateReceipt(value)
+}
+
 function validateRequest(value: unknown): asserts value is ProviderParityEvaluationRequest {
   assertPlainJson(value, 'request')
   assertRecord(value, 'request')
