@@ -72,7 +72,7 @@ assert.equal(routedCommands.length, 193, 'full kit command count drifted')
 assert.equal(new Set(routedCommands).size, routedCommands.length, 'full kit commands must remain unique')
 assert.equal(routedCommands[0], 'npm run test:lint-feature')
 assert.equal(routedCommands.at(-1), 'npm run check:lessons-sync')
-assert.equal(packageJson.scripts?.['test:provider-parity-candidate-verifier'], 'npm run test:post-17-provider-parity-candidate-verifier-plan && npm run test:provider-parity-candidate-node && npm run test:provider-parity-attestation')
+assert.equal(packageJson.scripts?.['test:provider-parity-candidate-verifier'], 'npm run test:post-17-provider-parity-candidate-verifier-plan && npm run test:provider-parity-candidate-node && npm run test:provider-parity-receipt-composition')
 assert.ok(mainRoute.includes('npm run test:provider-parity-candidate-verifier'), 'A3B2B/A3B3A aggregate must remain in the full suite')
 
 const roadmap = readRequired(path.join(root, 'docs', 'roadmap', 'post-17-roadmap.md'), 'human roadmap')

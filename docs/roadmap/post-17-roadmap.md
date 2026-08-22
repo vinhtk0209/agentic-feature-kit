@@ -138,8 +138,11 @@ deterministic artifact safely, the roadmap should prepare and test it before req
   for environment/filesystem/network/settings/managed-policy/hooks/authority/entitlement, exact
   ordered AC/artifact/gate/API decisions, admitted A3B2B verification, A3B2A cleanup outcome, and
   nullable metric provenance. It emits no A2 receipt and performs zero provider execution.
-  Metadata-only A2 receipt assembly, A4 fresh three-provider receipts, and dashboard/evidence closeout remain required
-  before P17-007 can become `done`.
+  A3B3B adds the pure success-only A2 receipt composer: durable A3B3A re-admission, exact one-source
+  mapping, verified candidate-tree identity, canonical A2 hashing, A2 revalidation, and immutable
+  metadata-only output. It rejects every ineligible attestation and performs zero provider execution.
+  A4 fresh three-provider receipts and dashboard/evidence closeout remain required before P17-007
+  can become `done`.
 - **P17-014 (`T1/M1/X1/R1/E1/S1`):** dashboard-hosted single-region Control Plane with outbound-only
   signed workers, compiled typed `shell:false` operations, at-least-once delivery plus journal/CAS,
   real network-separated two-node evidence, and measured scale revisit thresholds. Input readiness

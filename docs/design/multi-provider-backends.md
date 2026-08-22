@@ -364,3 +364,23 @@ launch a process/provider/model, discover credentials or environment, read the f
 or emit the A2 receipt. Trusted producers must establish every evidence hash; A3B3B may compose only
 from an admitted A3B3A receipt. A4 remains prohibited until all provider-specific producers and the
 evidence sink are independently qualified.
+
+## §15. Exact A2 success-receipt composition boundary
+
+P17-007 A3B3B adds one pure success-only composer between durable A3B3A admission and the existing
+A2 evaluator. It accepts no provider output or partial fields directly. The complete A3B3A receipt
+is re-admitted first, and composition fails unless `eligibleForA2Composition` is exactly true.
+
+Every A2 field has one explicit source. The verified post-provider
+`candidateVerification.candidateTreeSha256` becomes A2's implementation-tree identity; the distinct
+pre-run materialization identity remains bound to A3B2A cleanup and is not substituted. AC,
+artifact, gate, API, trusted-test, violation, cleanup, policy, runtime identity, and nullable metric
+metadata retain their intended meanings. Policy-mode and metric-provenance labels remain in A3B3A
+instead of being relabelled into unrelated A2 hash fields.
+
+The composer derives a fresh canonical A2 receipt hash, invokes the existing exact A2 validator,
+and returns a deeply immutable metadata-only receipt. Ineligible evidence is rejected because A2
+cannot represent false AC/artifact decisions without fabricating coverage. This boundary performs
+no orchestration, persistence, evidence production, provider/model/process call, clock,
+filesystem/environment/network access, credential/session operation, dashboard/database/target
+write, sync, or release action. A4 remains prohibited.
