@@ -312,7 +312,14 @@ function nonNegative(value: unknown, integer: boolean, code: ProviderParityAttes
 }
 
 function timestamp(value: unknown, code: ProviderParityAttestationErrorCode): string {
-  if (typeof value !== 'string' || !ISO_UTC.test(value) || new Date(value).toISOString() !== value) fail(code);
+  if (typeof value !== 'string' || !ISO_UTC.test(value)) fail(code);
+  let normalized: string;
+  try {
+    normalized = new Date(value).toISOString();
+  } catch {
+    fail(code);
+  }
+  if (normalized !== value) fail(code);
   return value;
 }
 
@@ -498,8 +505,13 @@ function admitCandidate(value: unknown): JsonRecord {
   const trustedNotRun = trusted.status === 'not-run' && trusted.exitCode === null && trusted.timedOut === false &&
     trusted.outputCapped === false && trusted.signaled === false && trusted.stderrPresent === false &&
     trusted.processFailure === false && trusted.outputBytes === 0 && trusted.durationMs === 0 && input.processCallCount === 0;
+  const trustedFailed = trusted.status === 'failed' && input.processCallCount === 1 && (
+    (trusted.exitCode !== null && trusted.exitCode !== 0) || trusted.timedOut === true ||
+    trusted.outputCapped === true || trusted.signaled === true || trusted.stderrPresent === true ||
+    trusted.processFailure === true
+  );
   if ((trusted.status === 'passed' && !trustedPassed) || (trusted.status === 'not-run' && !trustedNotRun) ||
-      (trusted.status === 'failed' && input.processCallCount !== 1)) fail('invalid-candidate');
+      (trusted.status === 'failed' && !trustedFailed)) fail('invalid-candidate');
   if (input.candidateTreeSha256 !== input.postTestTreeSha256 ||
       input.mutationDetected !== (input.preTestTreeSha256 !== input.postTestTreeSha256)) fail('invalid-candidate');
   if (passed !== (expectedReasons.length === 0 && trusted.status === 'passed') ||

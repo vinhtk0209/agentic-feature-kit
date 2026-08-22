@@ -266,6 +266,25 @@ delete candidateContradiction.candidateVerification.verificationEvidenceSha256;
 candidateContradiction.candidateVerification.verificationEvidenceSha256 = hashProviderParityAttestationValue(candidateContradiction.candidateVerification);
 expectCode('invalid-candidate', () => createProviderParityEvidenceAttestation(candidateContradiction)); assertions += 1;
 
+const falseFailedCandidate = structuredClone(rawEvidence) as any;
+falseFailedCandidate.candidateVerification.state = 'failed';
+falseFailedCandidate.candidateVerification.trustedTest.status = 'failed';
+falseFailedCandidate.candidateVerification.reasonCodes = ['trusted-test-failed'];
+delete falseFailedCandidate.candidateVerification.verificationEvidenceSha256;
+falseFailedCandidate.candidateVerification.verificationEvidenceSha256 = hashProviderParityAttestationValue(falseFailedCandidate.candidateVerification);
+expectCode('invalid-candidate', () => createProviderParityEvidenceAttestation(falseFailedCandidate)); assertions += 1;
+
+const genuineFailedCandidate = structuredClone(falseFailedCandidate) as any;
+genuineFailedCandidate.candidateVerification.trustedTest.exitCode = 1;
+delete genuineFailedCandidate.candidateVerification.verificationEvidenceSha256;
+genuineFailedCandidate.candidateVerification.verificationEvidenceSha256 = hashProviderParityAttestationValue(genuineFailedCandidate.candidateVerification);
+const genuineFailedReceipt = createProviderParityEvidenceAttestation(genuineFailedCandidate);
+check(genuineFailedReceipt.eligibleForA2Composition === false && genuineFailedReceipt.candidateVerification.trustedTest.exitCode === 1);
+
+const impossibleCalendarPolicy = structuredClone(rawPolicy) as any;
+impossibleCalendarPolicy.issuedAt = '2026-13-21T00:00:00.000Z';
+expectCode('invalid-policy', () => createProviderParityPolicyAttestation(impossibleCalendarPolicy)); assertions += 1;
+
 // Cleanup is exact and a bounded failure remains visible.
 const cleanupMismatch = structuredClone(rawEvidence) as any;
 cleanupMismatch.cleanup.materializedTreeSha256 = hash(95);
